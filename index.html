@@ -6,7 +6,7 @@
     <title>Jodify</title>
     <link rel="stylesheet" href="css/style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
+
 </head>
 
 <body>
@@ -316,6 +316,7 @@
                                 <thead>
                                     <tr>
                                         <th>Usuario</th>
+                                        <th>Estado</th>
                                         <th>Rol</th>
                                         <th>Acción</th>
                                     </tr>
@@ -386,13 +387,25 @@
             </div>
         </div>
     </div>
+
+    <div id="logoutModal" class="modal" style="display: none;">
+        <div class="window modal-window-anim" style="width: 340px; padding: 40px;">
+            <div style="margin-bottom: 20px; font-size: 40px;">👋</div>
+            <h2 style="margin: 0 0 10px 0; color: white;">¿Ya te vas?</h2>
+            <p style="color: #aaa; font-size: 14px; margin-bottom: 5px;">Tu música y sesiones se pausarán.</p>
+
+            <div class="modal-buttons">
+                <button id="cancelLogout" class="modal-btn">Cancelar</button>
+                <button id="confirmLogout" class="modal-btn">Sí, cerrar sesión</button>
+            </div>
+        </div>
+    </div>
     <div id="logoutLoading" class="logout-overlay" style="display: none;">
         <div class="loader-content">
             <div class="spinner-log"></div>
             <p>Estamos cerrando tu sesión...</p>
         </div>
     </div>
-
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>

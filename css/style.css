@@ -1479,14 +1479,92 @@ body {
   background-color: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(5px);
 }
+#logoutModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+}
+/* Contenedor de botones en el modal */
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 25px;
+    justify-content: center;
+}
 
+/* Estilo base para botones del modal */
+.modal-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 50px; /* Estilo píldora */
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+/* Botón de Confirmar (Salir) */
+#confirmLogout {
+    background: #ff4b2b; /* Rojo vibrante */
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 75, 43, 0.3);
+}
+
+#confirmLogout:hover {
+    background: #ff6247;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 75, 43, 0.4);
+}
+
+#confirmLogout:active {
+    transform: translateY(0);
+}
+
+/* Botón de Cancelar */
+#cancelLogout {
+    background: transparent;
+    color: #bbb;
+    border: 1px solid #444;
+}
+
+#cancelLogout:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-color: #888;
+}
+
+/* Animación de entrada para la ventana */
+.modal-window-anim {
+    animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+#logoutModal .window {
+    background: #181818;
+    border: 1px solid #333;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
+}
 .modal-content {
   background: var(--bg-card, #1e1e1e);
   margin: 10% auto;
   padding: 20px;
   border-radius: 15px;
   width: 90%;
-  max-width: 500px;
+  max-width: 700px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   color: white;
 }
@@ -2213,7 +2291,27 @@ body {
     padding-bottom: 100px;
   }
 }
+/* Punto de estado de conexión */
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
 
+.status-online {
+    background-color: #2ecc71; /* Verde */
+    box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
+}
+
+.status-offline {
+    background-color: #95a5a6; /* Gris */
+}
+
+/* Ajuste para las insignias que ya tienes */
+.badge-dev { background: #ff4b2b; color: white; padding: 2px 6px; border-radius: 4px; }
+.badge-admin { background: #f1c40f; color: black; padding: 2px 6px; border-radius: 4px; }
+.badge-user { background: #3498db; color: white; padding: 2px 6px; border-radius: 4px; }
 @media (min-width: 769px) {
   .mobile-toggle-btn {
     display: none;

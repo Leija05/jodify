@@ -199,19 +199,34 @@ window.switchDevPanel = (panelId) => {
 
 window.loadUsersList = async () => {
     const tbody = document.getElementById("usersListBody");
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center">${ICONS.LOADING}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center">${ICONS.LOADING}</td></tr>`;
 
-    const { data, error } = await supabaseClient.from('users_access').select('id, username, role');
+    const { data, error } = await supabaseClient
+        .from('users_access')
+        .select('id, username, role, is_online')
+        .order('is_online', { ascending: false }); // Ponemos los conectados arriba
+
     if (error) {
-        tbody.innerHTML = "<tr><td colspan='3'>Error al cargar datos</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='4'>Error al cargar datos</td></tr>";
         return;
     }
 
     tbody.innerHTML = "";
     data.forEach(user => {
         const tr = document.createElement("tr");
+        
+        // Determinamos el estado visual
+        const statusClass = user.is_online === 1 ? "status-online" : "status-offline";
+        const statusText = user.is_online === 1 ? "En línea" : "Desconectado";
+
         tr.innerHTML = `
-            <td>${user.username}</td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="status-dot ${statusClass}" title="${statusText}"></span>
+                    ${user.username}
+                </div>
+            </td>
+            <td><small style="opacity: 0.7">${statusText}</small></td>
             <td><small class="badge-${user.role}">${user.role}</small></td>
             <td>
                 <button class="btn-delete-small" onclick="deleteUserRecord(${user.id}, '${user.role}', '${user.username}')">Borrar</button>
@@ -448,53 +463,63 @@ if (loginForm) {
     };
 }
 
-const btnLogout = document.getElementById("btnLogout");
-const logoutLoading = document.getElementById("logoutLoading");
+const logoutModal = document.getElementById("logoutModal");
+const confirmLogoutBtn = document.getElementById("confirmLogout");
+const cancelLogoutBtn = document.getElementById("cancelLogout");
 
 if (btnLogout) {
-    btnLogout.onclick = async () => {
-        if (!confirm("¿Cerrar sesión y salir del sistema?")) return;
-
-        logoutLoading.style.display = "flex";
-
-        try {
-            if (appState.usuarioActual && navigator.onLine) {
-                await supabaseClient
-                    .from('users_access')
-                    .update({ is_online: 0 })
-                    .eq('username', appState.usuarioActual);
-
-                await addSystemLog('info', `Cerró sesión.`);
-            }
-            await new Promise(resolve => setTimeout(resolve, 800));
-
-            if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
-            audio.pause();
-            audio.src = "";
-
-            localStorage.removeItem("jodify_session_active");
-            localStorage.removeItem("jodify_user_role");
-            localStorage.removeItem("currentUserName");
-
-            appState.usuarioActual = "";
-            appState.currentUserRole = null;
-            appState.playlist = [];
-
-            document.getElementById("loginScreen").style.display = "flex";
-            const loginForm = document.getElementById("loginForm");
-            if (loginForm) loginForm.reset();
-            if (songList) songList.innerHTML = "";
-
-            if (addSongContainer) addSongContainer.style.display = "none";
-            if (btnOpenRegister) btnOpenRegister.style.display = "none";
-        } catch (err) {
-            console.error("Error al cerrar sesión:", err);
-            location.reload();
-        } finally {
-            logoutLoading.style.display = "none";
-        }
+    btnLogout.onclick = () => {
+        logoutModal.style.display = "flex";
     };
 }
+cancelLogoutBtn.onclick = () => {
+    logoutModal.style.display = "none";
+};
+
+confirmLogoutBtn.onclick = async () => {
+    logoutModal.style.display = "none";
+    logoutLoading.style.display = "flex";
+
+    try {
+        if (appState.usuarioActual && navigator.onLine) {
+            await supabaseClient
+                .from('users_access')
+                .update({ is_online: 0 })
+                .eq('username', appState.usuarioActual);
+
+            await addSystemLog('info', `Cerró sesión.`);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
+        audio.pause();
+        audio.src = "";
+
+        localStorage.removeItem("jodify_session_active");
+        localStorage.removeItem("jodify_user_role");
+        localStorage.removeItem("currentUserName");
+
+        appState.usuarioActual = "";
+        appState.currentUserRole = null;
+        appState.playlist = [];
+
+        // UI Reset
+        document.getElementById("loginScreen").style.display = "flex";
+        const loginForm = document.getElementById("loginForm");
+        if (loginForm) loginForm.reset();
+        if (songList) songList.innerHTML = "";
+
+        if (addSongContainer) addSongContainer.style.display = "none";
+        if (btnOpenRegister) btnOpenRegister.style.display = "none";
+
+    } catch (err) {
+        console.error("Error al cerrar sesión:", err);
+        location.reload();
+    } finally {
+        logoutLoading.style.display = "none";
+    }
+};
 
 const registerForm = document.getElementById("registerForm");
 
