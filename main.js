@@ -4,26 +4,170 @@ const log = require('electron-log');
 const path = require('path');
 
 /* =========================
-   VARIABLES
+   CONFIGURACIÓN INICIAL
 ========================= */
 
 let mainWindow = null;
 let splash = null;
 let updateWindow = null;
-let updateDeferred = false;
 
-/* =========================
-   AUTO UPDATER CONFIG
-========================= */
-
+// Configuración de Logs
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
+
+// IMPORTANTE: Evita que descargue automáticamente para que 
+// tu ventana update.html controle el inicio de la descarga.
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 /* =========================
-   IPC
+   VENTANA DE ACTUALIZACIÓN
 ========================= */
+
+function createUpdateWindow(info) {
+    if (updateWindow) return;
+
+    updateWindow = new BrowserWindow({
+        width: 420,
+        height: 460,
+        frame: false,
+        transparent: true,
+        resizable: false,
+        modal: true,
+        parent: mainWindow, 
+        alwaysOnTop: true,
+        icon: path.join(__dirname, 'assets', 'icon.ico'),
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false
+        }
+    });
+
+    updateWindow.loadFile('update.html');
+
+    // Enviamos la info de versiones cuando el HTML esté listo
+    updateWindow.webContents.on('did-finish-load', () => {
+        updateWindow.webContents.send('update-info', {
+            current: app.getVersion(),
+            next: info.version
+        });
+    });
+
+    updateWindow.on('closed', () => {
+        updateWindow = null;
+    });
+}
+
+/* =========================
+   VENTANA PRINCIPAL Y SPLASH
+========================= */
+
+function createWindow() {
+    // Splash Screen
+    splash = new BrowserWindow({
+        width: 400,
+        height: 500,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        icon: path.join(__dirname, 'assets', 'icon.ico')
+    });
+    splash.loadFile('splash.html');
+
+    // Ventana Principal
+    mainWindow = new BrowserWindow({
+        width: 1000,
+        height: 800,
+        show: false,
+        icon: path.join(__dirname, 'assets', 'icon.ico'),
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            webSecurity: false // Nota: Ten cuidado con esto en apps que cargan contenido externo
+        }
+    });
+
+    mainWindow.loadFile('index.html');
+
+    mainWindow.on('close', (e) => {
+        // Si queremos una salida limpia con animación
+        if (mainWindow) {
+            e.preventDefault();
+            mainWindow.webContents.send('app-close');
+            setTimeout(() => {
+                mainWindow = null;
+                app.quit();
+            }, 300);
+        }
+    });
+
+    mainWindow.once('ready-to-show', () => {
+        setTimeout(() => {
+            splash?.close();
+            mainWindow.show();
+            updateThumbarButtons(false);
+            
+            // BUSCAR ACTUALIZACIONES AL INICIAR
+            // Solo en producción o si tienes configurado el dev-publisher
+            if (app.isPackaged) {
+                autoUpdater.checkForUpdates();
+            } else {
+                console.log("Modo desarrollo: Buscando actualizaciones (Modo Desarrollador)");
+                // Descomenta la siguiente línea para probar tu update.html sin subir a GitHub:
+                // createUpdateWindow({ version: '1.1.0-demo' });
+            }
+        }, 2500);
+    });
+}
+
+/* =========================
+   EVENTOS AUTO-UPDATER
+========================= */
+
+autoUpdater.on('update-available', (info) => {
+    log.info('Actualización disponible encontrada.');
+    createUpdateWindow(info);
+});
+
+autoUpdater.on('update-not-available', () => {
+    log.info('La aplicación está al día.');
+});
+
+autoUpdater.on('error', (err) => {
+    log.error('Error en el auto-updater: ' + err);
+});
+
+autoUpdater.on('download-progress', (progress) => {
+    if (updateWindow) {
+        updateWindow.webContents.send('update-progress', Math.floor(progress.percent));
+    }
+});
+
+autoUpdater.on('update-downloaded', () => {
+    log.info('Descarga completada.');
+    if (updateWindow) {
+        updateWindow.webContents.send('update-progress', 100);
+    }
+    // Pequeña espera para que el usuario vea el 100% y luego instala
+    setTimeout(() => {
+        autoUpdater.quitAndInstall();
+    }, 1500);
+});
+
+/* =========================
+   COMUNICACIÓN IPC
+========================= */
+
+ipcMain.on('start-update-download', () => {
+    log.info('El usuario inició la descarga.');
+    autoUpdater.downloadUpdate();
+});
+
+ipcMain.on('defer-update', () => {
+    if (updateWindow) updateWindow.close();
+});
 
 ipcMain.on('force-update', async () => {
     if (!mainWindow) return;
@@ -31,7 +175,7 @@ ipcMain.on('force-update', async () => {
         await session.defaultSession.clearCache();
         mainWindow.webContents.send('soft-reload');
     } catch (err) {
-        console.error('Error limpiando caché:', err);
+        log.error('Error limpiando caché:', err);
     }
 });
 
@@ -39,17 +183,8 @@ ipcMain.on('update-thumbar', (_, isPlaying) => {
     updateThumbarButtons(isPlaying);
 });
 
-ipcMain.on('start-update-download', () => {
-    autoUpdater.downloadUpdate();
-});
-
-ipcMain.on('defer-update', () => {
-    updateDeferred = true;
-    if (updateWindow) updateWindow.close();
-});
-
 /* =========================
-   THUMBAR
+   CONTROLES DE BARRA (THUMBAR)
 ========================= */
 
 function updateThumbarButtons(isPlaying) {
@@ -80,115 +215,15 @@ function updateThumbarButtons(isPlaying) {
 }
 
 /* =========================
-   UPDATE WINDOW
-========================= */
-
-function createUpdateWindow(info) {
-    if (updateWindow) return;
-
-    updateWindow = new BrowserWindow({
-        width: 420,
-        height: 460,
-        frame: false,
-        transparent: true,
-        resizable: false,
-        modal: true,
-        parent: mainWindow,
-        alwaysOnTop: true,
-        icon: path.join(__dirname, 'assets', 'icon.ico'),
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            contextIsolation: true
-        }
-    });
-
-    updateWindow.loadFile('update.html');
-
-    updateWindow.webContents.on('did-finish-load', () => {
-        updateWindow.webContents.send('update-info', {
-            current: app.getVersion(),
-            next: info.version
-        });
-    });
-
-    updateWindow.on('closed', () => {
-        updateWindow = null;
-    });
-}
-
-/* =========================
-   MAIN WINDOW
-========================= */
-
-function createWindow() {
-    splash = new BrowserWindow({
-        width: 400,
-        height: 500,
-        frame: false,
-        transparent: true,
-        alwaysOnTop: true,
-        icon: path.join(__dirname, 'assets', 'icon.ico')
-    });
-
-    splash.loadFile('splash.html');
-
-    mainWindow = new BrowserWindow({
-        width: 1000,
-        height: 800,
-        show: false,
-        icon: path.join(__dirname, 'assets', 'icon.ico'),
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            contextIsolation: true,
-            nodeIntegration: false,
-            webSecurity: false
-        }
-    });
-
-    mainWindow.loadFile('index.html');
-
-    mainWindow.on('close', (e) => {
-        e.preventDefault();
-        mainWindow.webContents.send('app-close');
-        setTimeout(() => mainWindow.destroy(), 300);
-    });
-
-    mainWindow.once('ready-to-show', () => {
-        setTimeout(() => {
-            splash?.close();
-            mainWindow.show();
-            updateThumbarButtons(false);
-            autoUpdater.checkForUpdates();
-        }, 2500);
-    });
-}
-
-/* =========================
-   AUTO UPDATER EVENTS
-========================= */
-
-autoUpdater.on('update-available', (info) => {
-    if (!updateDeferred) createUpdateWindow(info);
-});
-
-autoUpdater.on('download-progress', (progress) => {
-    updateWindow?.webContents.send(
-        'update-progress',
-        Math.floor(progress.percent)
-    );
-});
-
-autoUpdater.on('update-downloaded', () => {
-    updateWindow?.webContents.send('update-progress', 100);
-    setTimeout(() => autoUpdater.quitAndInstall(), 1200);
-});
-
-/* =========================
-   APP LIFECYCLE
+   CICLO DE VIDA
 ========================= */
 
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });

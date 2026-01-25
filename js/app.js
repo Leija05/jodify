@@ -1,4 +1,3 @@
-const APP_VERSION_LOCAL = "1.0.1"; // <--- CAMBIA ESTO AL ACTUALIZAR TU APP
 let isChangingTrack = false;
 
 // Constantes agrupadas para iconos
@@ -49,42 +48,7 @@ const appState = {
     userFilter: "all"
 };
 
-/* ==========================================
-   SISTEMA DE ACTUALIZACIÓN (ELECTRON)
-   ========================================== */
-async function checkAppVersion() {
-    try {
-        const { data, error } = await supabaseClient
-            .from('system_config')
-            .select('value')
-            .eq('key', 'app_version')
-            .single();
-
-        if (error) throw error;
-
-        if (data.value !== APP_VERSION_LOCAL) {
-            showUpdateOverlay(data.value);
-            setTimeout(() => {
-                window.electronAPI.openUpdatePage();
-            }, 3000);
-        }
-    } catch (err) {
-        console.error("Error verificando versión:", err.message);
-    }
-}
-
-function showUpdateOverlay(nuevaVersión) {
-    const logoutLoading = document.getElementById("logoutLoading");
-    logoutLoading.style.display = "flex";
-    logoutLoading.querySelector('p').innerHTML = `
-        <strong style="color: #ff4b2b; font-size: 1.2rem;">¡Actualización Disponible!</strong><br>
-        Instalando versión ${nuevaVersión}...<br>
-        <small>La aplicación se reiniciará automáticamente.</small>
-    `;
-}
-
 window.onload = async () => {
-    await checkAppVersion();
     const savedVolume = parseFloat(localStorage.getItem("userVolume")) || 0.5;
     setAppVolume(savedVolume);
     const savedTheme = localStorage.getItem("theme") || "dark";

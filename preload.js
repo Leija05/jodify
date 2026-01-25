@@ -1,19 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-/* =========================
-   API SEGURA
-========================= */
-
 contextBridge.exposeInMainWorld('electronAPI', {
-
-    solicitarActualizacion: () =>
-        ipcRenderer.send('force-update'),
-
     updateThumbar: (isPlaying) =>
         ipcRenderer.send('update-thumbar', isPlaying),
-
-    onControlCommand: (callback) =>
-        ipcRenderer.on('control', (_, cmd) => callback(cmd)),
 
     startUpdateDownload: () =>
         ipcRenderer.send('start-update-download'),
@@ -28,13 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('update-info', (_, data) => callback(data)),
 
     onAppClose: (callback) =>
-        ipcRenderer.on('app-close', callback)
+        ipcRenderer.on('app-close', callback),
+    onControlCommand: (callback) => ipcRenderer.on('control', (_, command) => callback(command))
 });
 
-/* =========================
-   READY
-========================= */
-
 window.addEventListener('DOMContentLoaded', () => {
-    console.log('✅ Preload cargado correctamente');
+    console.log('✅ Preload cargado');
 });
