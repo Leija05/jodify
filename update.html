@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Actualizando JodiFy</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            background: radial-gradient(circle at top, #1c1c1c, #0d0d0d);
+            color: #fff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .window {
+            width: 360px;
+            padding: 30px;
+            border-radius: 18px;
+            background: rgba(20, 20, 20, 0.9);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
+            text-align: center;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        img {
+            width: 96px;
+            margin-bottom: 15px;
+            animation: pulse 2.2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+        }
+
+        h2 {
+            margin: 10px 0 4px;
+            font-weight: 600;
+        }
+
+        p {
+            margin: 0 0 18px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 10px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                    #1abc9c,
+                    #2ecc71,
+                    #1abc9c);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s linear infinite;
+            transition: width 0.35s ease;
+        }
+
+        @keyframes shimmer {
+            from {
+                background-position: 0% 0%;
+            }
+
+            to {
+                background-position: 200% 0%;
+            }
+        }
+
+        .percent {
+            font-size: 12px;
+            color: #bbb;
+            margin-bottom: 18px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        button {
+            flex: 1;
+            padding: 9px 0;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-update {
+            background: #2ecc71;
+            color: #000;
+        }
+
+        .btn-update:hover {
+            background: #38e07b;
+            transform: translateY(-1px);
+        }
+
+        .btn-later {
+            background: #333;
+            color: #bbb;
+        }
+
+        .btn-later:hover {
+            background: #3d3d3d;
+            color: #fff;
+        }
+
+        .btn-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="window">
+        <h2>JodiFy</h2>
+        <p>Free Music For Broke People</p>
+
+        <img src="assets/icon.ico" alt="JodiFy">
+        <h2>Actualización disponible</h2>
+        <p id="statusText">Hay una nueva versión lista para instalar</p>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="percent" id="percentText">0%</div>
+
+        <div class="buttons">
+            <button class="btn-update" id="btnUpdate">Actualizar</button>
+            <button class="btn-later" id="btnLater">Después</button>
+        </div>
+    </div>
+
+    <script src="update.js"></script>
+</body>
+
+</html>

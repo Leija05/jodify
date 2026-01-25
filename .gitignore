@@ -1,0 +1,13 @@
+# Node
+node_modules/
+
+# Electron build
+dist/
+win-unpacked/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,57 @@
+{
+  "name": "jodify",
+  "productName": "JodiFy",
+  "version": "1.0.0",
+  "description": "Free Music For Broke People",
+  "main": "main.js",
+  "author": "LeijaSex",
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TU_USUARIO_GITHUB/TU_REPOSITORIO"
+  },
+
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "dist": "electron-builder --publish always"
+  },
+
+  "build": {
+    "appId": "com.jodify.app",
+    "productName": "JodiFy",
+
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Leija05",
+        "repo": "TU_REPOSITORIO"
+      }
+    ],
+
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+
+    "files": [
+      "**/*",
+      "!node_modules/*"
+    ]
+  },
+
+  "devDependencies": {
+    "electron": "^26.6.10",
+    "electron-builder": "^26.4.0"
+  },
+
+  "dependencies": {
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.7.3"
+  }
+}
