@@ -1,4 +1,4 @@
-const APP_VERSION_LOCAL = "1.0.0"; // <--- CAMBIA ESTO AL ACTUALIZAR TU APP
+const APP_VERSION_LOCAL = "1.0.1"; // <--- CAMBIA ESTO AL ACTUALIZAR TU APP
 let isChangingTrack = false;
 
 // Constantes agrupadas para iconos

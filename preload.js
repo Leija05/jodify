@@ -1,38 +1,34 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 /* =========================
-   API SEGURA PARA RENDERER
+   API SEGURA
 ========================= */
 
 contextBridge.exposeInMainWorld('electronAPI', {
 
-    solicitarActualizacion: () => {
-        ipcRenderer.send('force-update');
-    },
+    solicitarActualizacion: () =>
+        ipcRenderer.send('force-update'),
 
-    updateThumbar: (isPlaying) => {
-        ipcRenderer.send('update-thumbar', isPlaying);
-    },
+    updateThumbar: (isPlaying) =>
+        ipcRenderer.send('update-thumbar', isPlaying),
 
-    onControlCommand: (callback) => {
-        ipcRenderer.on('control', (_, command) => callback(command));
-    },
+    onControlCommand: (callback) =>
+        ipcRenderer.on('control', (_, cmd) => callback(cmd)),
 
-    startUpdateDownload: () => {
-        ipcRenderer.send('start-update-download');
-    },
+    startUpdateDownload: () =>
+        ipcRenderer.send('start-update-download'),
 
-    deferUpdate: () => {
-        ipcRenderer.send('defer-update');
-    },
+    deferUpdate: () =>
+        ipcRenderer.send('defer-update'),
 
-    onUpdateProgress: (callback) => {
-        ipcRenderer.on('update-progress', (_, percent) => callback(percent));
-    },
+    onUpdateProgress: (callback) =>
+        ipcRenderer.on('update-progress', (_, p) => callback(p)),
 
-    onAppClose: (callback) => {
-        ipcRenderer.on('app-close', callback);
-    }
+    onUpdateInfo: (callback) =>
+        ipcRenderer.on('update-info', (_, data) => callback(data)),
+
+    onAppClose: (callback) =>
+        ipcRenderer.on('app-close', callback)
 });
 
 /* =========================
