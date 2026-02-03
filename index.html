@@ -3,14 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Jodify | Free Music For Broke Ass Niggas</title>
+    <title>JodiFy</title>
     <link rel="stylesheet" href="css/style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
 </head>
 
 <body>
-    <div id="loginScreen" class="login-overlay">
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-overlay" data-testid="login-screen">
         <div class="login-card">
             <div class="login-header">
                 <div class="logo-icon">
@@ -24,168 +24,194 @@
                 <p>Inicia sesión para continuar</p>
             </div>
 
-            <form id="loginForm">
+            <form id="loginForm" data-testid="login-form">
                 <div class="input-group">
-                    <input type="text" id="username" placeholder=" " required>
+                    <input type="text" id="username" placeholder=" " required data-testid="username-input">
                     <label for="username">Nombre de usuario</label>
                 </div>
 
-                <div class="input-group" style="position: relative;">
-                    <input type="password" id="password" placeholder=" " required>
+                <div class="input-group">
+                    <input type="password" id="password" placeholder=" " required data-testid="password-input">
                     <label for="password">Contraseña</label>
-                    <button type="button" id="togglePassword"
-                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text); padding: 5px; display: flex; align-items: center;">
-                    </button>
+                    <button type="button" id="togglePassword" data-testid="toggle-password"></button>
                 </div>
 
-                <div class="remember-me"
-                    style="margin-top: 15px; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text); opacity: 0.8;">
-                    <input type="checkbox" id="keepSession" style="cursor: pointer; width: 16px; height: 16px;">
-                    <label for="keepSession" style="cursor: pointer;">Mantener sesión iniciada</label>
+                <div class="remember-me">
+                    <input type="checkbox" id="keepSession" data-testid="keep-session">
+                    <label for="keepSession">Mantener sesión iniciada</label>
                 </div>
 
-                <p id="loginError" class="login-error-msg"></p>
+                <p id="loginError" class="login-error-msg" data-testid="login-error"></p>
 
-                <button type="submit" class="btn-login" id="btnLogin">
+                <button type="submit" class="btn-login" id="btnLogin" data-testid="login-submit">
                     <span>Entrar</span>
                 </button>
+
+                <div class="local-users-hint" data-testid="local-users-hint">
+                    <p>Usuarios locales disponibles:</p>
+                    <code>admin / admin123</code>
+                </div>
             </form>
         </div>
     </div>
 
-    <div id="offlineModal" class="modal-overlay" style="display:none;">
+    <!-- OFFLINE MODAL -->
+    <div id="offlineModal" class="modal-overlay" style="display:none;" data-testid="offline-modal">
         <div class="modal-content">
             <h3>📡 Sin conexión detectada</h3>
             <p>No tienes internet. ¿Deseas usar tus canciones descargadas?</p>
             <div class="modal-actions">
-                <button onclick="enableOfflineMode()" class="btn-confirm">Entrar modo Offline</button>
-                <button onclick="location.reload()" class="btn-retry">Reintentar</button>
+                <button onclick="enableOfflineMode()" class="btn-confirm" data-testid="offline-confirm">Entrar modo Offline</button>
+                <button onclick="location.reload()" class="btn-retry" data-testid="offline-retry">Reintentar</button>
             </div>
         </div>
     </div>
+
+    <!-- DYNAMIC BACKGROUND -->
     <div id="dynamic-bg"></div>
 
-    <div class="app">
+    <!-- MAIN APP -->
+    <div class="app" data-testid="main-app">
 
-        <section class="lyrics">
+        <!-- LYRICS SECTION -->
+        <section class="lyrics" data-testid="lyrics-section">
             <div class="lyrics-wrapper">
-                <div id="lyricsBox"></div>
+                <div id="lyricsBox" data-testid="lyrics-box"></div>
             </div>
         </section>
 
-        <aside class="playlist">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-                <h3 style="margin: 0;">Playlist</h3>
+        <!-- PLAYLIST PANEL -->
+        <aside class="playlist" data-testid="playlist-panel">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                <h3 style="margin: 0; flex: 1;">Playlist</h3>
 
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <button id="userProfileBtn" class="user-pill-btn">
-                        <div class="user-pill-content">
-                            <svg class="user-icon-anim" viewBox="0 0 24 24" width="22" height="22" fill="none"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="7" r="4"></circle>
-                                <path class="user-arm" d="M20 21v-2a4 4 0 0 0-3-3.87M4 21v-2a4 4 0 0 1 4-4h2"></path>
-                            </svg>
-                            <span id="displayUsername">Perfil</span>
-                        </div>
-                    </button>
+                <button id="queueBtn" class="btn-icon" title="Cola de reproducción (Q)" data-testid="queue-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                </button>
 
-                    <button id="settingsBtn" title="Configuraciones">
+                <button id="eqBtn" class="btn-icon" title="Ecualizador (E)" data-testid="eq-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="4" y1="21" x2="4" y2="14"></line>
+                        <line x1="4" y1="10" x2="4" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12" y2="3"></line>
+                        <line x1="20" y1="21" x2="20" y2="16"></line>
+                        <line x1="20" y1="12" x2="20" y2="3"></line>
+                        <line x1="1" y1="14" x2="7" y2="14"></line>
+                        <line x1="9" y1="8" x2="15" y2="8"></line>
+                        <line x1="17" y1="16" x2="23" y2="16"></line>
+                    </svg>
+                </button>
 
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-                            stroke-width="2">
+                <!-- PROFILE BUTTON -->
+                <button id="profileBtn" class="profile-btn" title="Mi Perfil" data-testid="profile-btn">
+                    <div class="avatar" id="profileAvatar">
+                        <span id="avatarInitial">A</span>
+                    </div>
+                    <span class="username" id="profileUsername">admin</span>
+                </button>
 
-                            <circle cx="12" cy="12" r="3"></circle>
+                <button id="settingsBtn" class="btn-icon" title="Configuraciones" data-testid="settings-btn">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
 
-                            <path
-                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
-
-                            </path>
-
-                        </svg>
-
-                    </button>
-                </div>
-                <div id="settingsModal" class="modal">
+                <!-- SETTINGS MODAL -->
+                <div id="settingsModal" class="modal" data-testid="settings-modal">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3>Configuraciones</h3>
-                            <button id="closeSettingsModal">&times;</button>
+                            <h3>⚙️ Configuraciones</h3>
+                            <button id="closeSettingsModal" class="close-btn" data-testid="close-settings">&times;</button>
                         </div>
                         <div>
-                            <label><input type="checkbox" id="disableVisualizer"> Desactivar Todo</label><br>
-                            <label><input type="checkbox" id="disableDynamicBg"> Desactivar Fondo Dinámico</label><br>
-                            <button onclick="saveSettings()">Guardar</button>
+                            <label><input type="checkbox" id="disableVisualizer" data-testid="disable-visualizer"> Desactivar Visualizer</label>
+                            <label><input type="checkbox" id="disableDynamicBg" data-testid="disable-bg"> Desactivar Fondo Dinámico</label>
+                            <button onclick="saveSettings()" data-testid="save-settings">Guardar</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="playlist-tabs">
-                <button id="btnGlobal" class="tab-btn active">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+
+            <!-- TABS -->
+            <div class="playlist-tabs" data-testid="playlist-tabs">
+                <button id="btnGlobal" class="tab-btn active" data-testid="tab-global">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="2" y1="12" x2="22" y2="12"></line>
-                        <path
-                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
-                        </path>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                     </svg>
                     Global
                 </button>
-                <button id="btnPersonal" class="tab-btn">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon
-                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                        </polygon>
+                <button id="btnPersonal" class="tab-btn" data-testid="tab-favorites">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
                     Favoritas
                 </button>
             </div>
 
-            <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Filtrar por nombre...">
-                <select id="sortOptions" class="sort-select">
+            <!-- SEARCH BAR -->
+            <div class="search-bar" data-testid="search-bar">
+                <div class="search-input-wrapper">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="M21 21l-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Buscar canciones..." data-testid="search-input">
+                </div>
+                <select id="sortOptions" class="sort-select" data-testid="sort-options">
                     <option value="recent">Recientes</option>
                     <option value="old">Antiguos</option>
                     <option value="popular">Más Populares</option>
                 </select>
             </div>
-            <button id="downloadAllBtn" class="download-all-btn" style="display:none;">Descargar todos mis
-                favoritos</button>
 
-            <ul id="songList"></ul>
+            <button id="downloadAllBtn" class="download-all-btn" style="display:none;" data-testid="download-all">
+                Descargar todos mis favoritos
+            </button>
 
-            <label class="add-song">
+            <!-- SONG LIST -->
+            <ul id="songList" data-testid="song-list"></ul>
+
+            <!-- ADD SONG (ADMIN ONLY) -->
+            <label class="add-song" data-testid="add-song">
                 + Añadir y Compartir
                 <input type="file" id="fileInput" accept="audio/*" multiple hidden>
             </label>
 
-            <div id="uploadStatus"
-                style="font-size: 0.7rem; color: var(--accent); text-align: center; margin-top: 5px; min-height: 12px;">
-            </div>
-
+            <div id="uploadStatus"></div>
         </aside>
 
-        <footer class="player">
-
+        <!-- PLAYER -->
+        <footer class="player" data-testid="player">
             <div class="song-left">
-                <img id="cover" alt="cover" src="assets/default-cover.png">
+                <img id="cover" alt="cover" src="assets/default-cover.png" data-testid="cover-art">
                 <div class="song-meta">
-                    <div class="marquee-wrapper" style="overflow: hidden; white-space: nowrap;">
-                        <p id="songTitle">Selecciona una canción</p>
+                    <div class="marquee-wrapper">
+                        <p id="songTitle" data-testid="song-title">Selecciona una canción</p>
                     </div>
                 </div>
             </div>
 
             <div class="center">
-                <div class="timeline">
+                <div class="timeline" data-testid="timeline">
                     <span id="currentTime">0:00</span>
-                    <input type="range" id="progress" value="0">
+                    <input type="range" id="progress" value="0" data-testid="progress-bar">
                     <span id="duration">0:00</span>
                 </div>
 
-                <div class="controls">
-                    <button id="shuffle" title="Aleatorio">
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
-                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <div class="controls" data-testid="player-controls">
+                    <button id="shuffle" title="Aleatorio (S)" data-testid="shuffle-btn">
+                        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none">
                             <polyline points="16 3 21 3 21 8"></polyline>
                             <line x1="4" y1="20" x2="21" y2="3"></line>
                             <polyline points="21 16 21 21 16 21"></polyline>
@@ -193,72 +219,360 @@
                             <line x1="4" y1="4" x2="9" y2="9"></line>
                         </svg>
                     </button>
-                    <button id="prev" title="Anterior">
-                        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                    <button id="prev" title="Anterior (P)" data-testid="prev-btn">
+                        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
                             <polygon points="19 20 9 12 19 4 19 20"></polygon>
                             <rect x="5" y="4" width="2" height="16"></rect>
                         </svg>
                     </button>
-                    <button id="play" class="play-btn" title="Reproducir">
-                        <svg id="playIcon" viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                    <button id="play" class="play-btn" title="Reproducir (Space)" data-testid="play-btn">
+                        <svg id="playIcon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
                             <polygon points="5 3 19 12 5 21 5 3"></polygon>
                         </svg>
                     </button>
-                    <button id="next" title="Siguiente">
-                        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                    <button id="next" title="Siguiente (N)" data-testid="next-btn">
+                        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
                             <polygon points="5 4 15 12 5 20 5 4"></polygon>
                             <rect x="17" y="4" width="2" height="16"></rect>
                         </svg>
                     </button>
-                    <button id="repeat" title="Repetir">
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
-                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <button id="repeat" title="Repetir (R)" data-testid="repeat-btn">
+                        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none">
                             <polyline points="17 1 21 5 17 9"></polyline>
                             <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
                             <polyline points="7 23 3 19 7 15"></polyline>
-                            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path><text id="repeatOneLabel" x="11" y="15"
-                                font-size="10" font-family="sans-serif" font-weight="bold" style="display:none"
-                                fill="currentColor">1</text>
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
                         </svg>
                     </button>
-                    <button id="likeBtn" title="Me gusta">
-                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path
-                                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
-                            </path>
+                    <button id="likeBtn" title="Me gusta (L)" data-testid="like-btn">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                         </svg>
                     </button>
-                    <button id="btnOpenPlaylist" class="mobile-toggle-btn">
-                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="none"
-                            stroke-width="2">
+                    <button id="btnOpenPlaylist" class="mobile-toggle-btn" data-testid="mobile-playlist-btn">
+                        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2">
                             <line x1="3" y1="12" x2="21" y2="12"></line>
                             <line x1="3" y1="6" x2="21" y2="6"></line>
                             <line x1="3" y1="18" x2="21" y2="18"></line>
                         </svg>
                     </button>
                 </div>
-
             </div>
 
-            <div class="volume">
-                <canvas id="visualizer"></canvas>
+            <div class="volume" data-testid="volume-section">
+                <canvas id="visualizer" data-testid="visualizer"></canvas>
                 <div id="volumeIcon"></div>
-                <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
-                <button id="themeToggle" class="theme-toggle"></button>
+                <input type="range" id="volume" min="0" max="1" step="0.01" value="1" data-testid="volume-slider">
+                <button id="themeToggle" class="theme-toggle" title="Cambiar tema (T)" data-testid="theme-toggle"></button>
             </div>
 
             <audio id="audio" crossorigin="anonymous"></audio>
         </footer>
-
     </div>
 
-    <div id="uploadBadge" class="upload-badge" style="display: none;">
+    <!-- QUEUE DRAWER -->
+    <div class="queue-overlay" id="queueOverlay" data-testid="queue-overlay"></div>
+    <div class="queue-drawer" id="queueDrawer" data-testid="queue-drawer">
+        <div class="queue-header">
+            <h3>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                Cola de reproducción
+            </h3>
+            <button class="close-btn" id="closeQueue" data-testid="close-queue">&times;</button>
+        </div>
+        <div class="queue-list" id="queueList" data-testid="queue-list"></div>
+    </div>
 
+    <!-- EQUALIZER MODAL -->
+    <div class="equalizer-modal" id="equalizerModal" data-testid="equalizer-modal">
+        <div class="equalizer-content">
+            <div class="equalizer-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="4" y1="21" x2="4" y2="14"></line>
+                        <line x1="4" y1="10" x2="4" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12" y2="3"></line>
+                        <line x1="20" y1="21" x2="20" y2="16"></line>
+                        <line x1="20" y1="12" x2="20" y2="3"></line>
+                    </svg>
+                    Ecualizador
+                </h3>
+                <button class="close-btn" id="closeEq" data-testid="close-eq">&times;</button>
+            </div>
+            <div class="eq-presets" data-testid="eq-presets">
+                <button class="eq-preset-btn active" data-preset="flat">Plano</button>
+                <button class="eq-preset-btn" data-preset="bass">Bass Boost</button>
+                <button class="eq-preset-btn" data-preset="treble">Treble</button>
+                <button class="eq-preset-btn" data-preset="vocal">Vocal</button>
+                <button class="eq-preset-btn" data-preset="rock">Rock</button>
+                <button class="eq-preset-btn" data-preset="electronic">Electro</button>
+            </div>
+            <div class="eq-sliders" data-testid="eq-sliders">
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="60" orient="vertical">
+                    <label>60Hz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="170" orient="vertical">
+                    <label>170Hz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="310" orient="vertical">
+                    <label>310Hz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="600" orient="vertical">
+                    <label>600Hz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="1000" orient="vertical">
+                    <label>1kHz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="3000" orient="vertical">
+                    <label>3kHz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="6000" orient="vertical">
+                    <label>6kHz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="12000" orient="vertical">
+                    <label>12kHz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="14000" orient="vertical">
+                    <label>14kHz</label>
+                </div>
+                <div class="eq-band">
+                    <input type="range" min="-12" max="12" value="0" data-band="16000" orient="vertical">
+                    <label>16kHz</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFILE MODAL -->
+    <div class="profile-modal" id="profileModal" data-testid="profile-modal">
+        <div class="profile-card">
+            <div class="profile-header">
+                <button class="close-profile-btn" id="closeProfileBtn" data-testid="close-profile">&times;</button>
+            </div>
+            
+            <div class="profile-avatar-section">
+                <div class="profile-avatar-large" id="profileAvatarLarge">
+                    <span id="avatarInitialLarge">A</span>
+                    <span class="online-indicator"></span>
+                </div>
+            </div>
+            
+            <div class="profile-body">
+                <h2 class="profile-username" id="profileUsernameLarge">admin</h2>
+                <div class="profile-role" id="profileRole" data-testid="profile-role">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span id="profileRoleText">Admin</span>
+                </div>
+                
+                <!-- Listening Activity -->
+                <div class="listening-activity" id="listeningActivity" style="display: none;">
+                    <div class="activity-header">
+                        <span class="pulse"></span>
+                        Escuchando ahora
+                    </div>
+                    <div class="activity-song">
+                        <img class="activity-cover" id="activityCover" src="assets/default-cover.png" alt="">
+                        <div class="activity-info">
+                            <div class="activity-title" id="activityTitle">-</div>
+                            <div class="activity-artist" id="activityArtist">JodiFy</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="statLikes">0</span>
+                        <span class="stat-label">Likes</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statPlayed">0</span>
+                        <span class="stat-label">Escuchadas</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statDownloads">0</span>
+                        <span class="stat-label">Offline</span>
+                    </div>
+                </div>
+                
+                <!-- Discord Integration -->
+                <div class="discord-section">
+                    <div class="discord-header">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                        </svg>
+                        Discord
+                    </div>
+                    
+                    <div id="discordNotLinked" class="discord-not-linked">
+                        <p>Vincula tu cuenta de Discord para mostrar tu avatar y estado</p>
+                        <button class="btn-discord" onclick="openDiscordModal()" data-testid="link-discord">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                            </svg>
+                            Vincular Discord
+                        </button>
+                    </div>
+                    
+                    <div id="discordLinked" class="discord-linked" style="display: none;">
+                        <div class="discord-avatar" id="discordAvatarContainer">
+                            <img id="discordAvatar" src="" alt="">
+                        </div>
+                        <div class="discord-info">
+                            <div class="discord-name" id="discordName">Usuario</div>
+                            <div class="discord-tag" id="discordTag">#0000</div>
+                        </div>
+                        <button class="btn-discord-unlink" onclick="unlinkDiscord()" data-testid="unlink-discord">Desvincular</button>
+                    </div>
+                </div>
+                
+                <!-- Community Button -->
+                <button class="btn-community" onclick="openCommunityModal()" data-testid="community-btn">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Ver Comunidad
+                </button>
+                
+                <!-- Actions -->
+                <div class="profile-actions">
+                    <button class="btn-profile-action" onclick="exportStats()" data-testid="export-stats">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Exportar
+                    </button>
+                    <button class="btn-profile-action danger" onclick="handleLogout()" data-testid="logout-profile">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHORTCUTS MODAL -->
+    <div class="shortcuts-modal" id="shortcutsModal" data-testid="shortcuts-modal">
+        <div class="shortcuts-content">
+            <div class="shortcuts-header">
+                <h3>⌨️ Atajos de Teclado</h3>
+                <button class="close-btn" id="closeShortcuts" data-testid="close-shortcuts">&times;</button>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Reproducir/Pausar</span>
+                <span class="shortcut-key"><kbd>Space</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Siguiente canción</span>
+                <span class="shortcut-key"><kbd>N</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Canción anterior</span>
+                <span class="shortcut-key"><kbd>P</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Me gusta</span>
+                <span class="shortcut-key"><kbd>L</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Silenciar</span>
+                <span class="shortcut-key"><kbd>M</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Subir volumen</span>
+                <span class="shortcut-key"><kbd>↑</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Bajar volumen</span>
+                <span class="shortcut-key"><kbd>↓</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Avanzar 10s</span>
+                <span class="shortcut-key"><kbd>→</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Retroceder 10s</span>
+                <span class="shortcut-key"><kbd>←</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Aleatorio</span>
+                <span class="shortcut-key"><kbd>S</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Repetir</span>
+                <span class="shortcut-key"><kbd>R</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Cambiar tema</span>
+                <span class="shortcut-key"><kbd>T</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Cola de reproducción</span>
+                <span class="shortcut-key"><kbd>Q</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Ecualizador</span>
+                <span class="shortcut-key"><kbd>E</kbd></span>
+            </div>
+            <div class="shortcut-row">
+                <span class="shortcut-desc">Mostrar atajos</span>
+                <span class="shortcut-key"><kbd>?</kbd></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHORTCUT HINT -->
+    <div class="shortcut-hint" id="shortcutHint" data-testid="shortcut-hint">
+        Presiona <kbd>?</kbd> para ver atajos de teclado
+    </div>
+
+    <!-- UPLOAD MODAL -->
+    <div id="uploadModal" class="modal" data-testid="upload-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Subiendo canciones</h3>
+                <button id="closeModal" class="close-btn" data-testid="close-upload">&times;</button>
+            </div>
+            <div id="uploadList" class="upload-list"></div>
+        </div>
+    </div>
+
+    <!-- UPLOAD BADGE -->
+    <div id="uploadBadge" class="upload-badge" style="display: none;" data-testid="upload-badge">
         <span id="badgeText">Subiendo archivos...</span>
     </div>
-    <button id="btnOpenRegister" class="dev-only-btn" style="display: none;" title="Panel Developer">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+
+    <!-- DEV BUTTON -->
+    <button id="btnOpenRegister" class="dev-only-btn" style="display: none;" title="Panel Developer" data-testid="dev-btn">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
             <circle cx="9" cy="7" r="4"></circle>
             <line x1="19" y1="8" x2="19" y2="14"></line>
@@ -266,32 +580,30 @@
         </svg>
     </button>
 
-    <div id="registerModal" class="modal">
+    <!-- DEVELOPER CENTER MODAL -->
+    <div id="registerModal" class="modal" data-testid="dev-modal">
         <div class="modal-content dev-center">
             <div class="modal-header">
-                <h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                        style="vertical-align: middle; margin-right: 5px;">
-                        <path
-                            d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
-                        </path>
+                <h3>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
                     </svg>
-                    Developer Center</h3>
-                <button id="closeRegisterBtn" class="close-btn">&times;</button>
+                    Developer Center
+                </h3>
+                <button id="closeRegisterBtn" class="close-btn" data-testid="close-dev">&times;</button>
             </div>
 
             <div class="dev-layout">
                 <nav class="dev-nav">
-                    <button class="dev-nav-btn active" onclick="switchDevPanel('panel-register')">Registrar
-                        Usuario</button>
-                    <button class="dev-nav-btn" onclick="switchDevPanel('panel-manage'); loadUsersList();">Gestionar
-                        Usuarios</button>
-                    <button class="dev-nav-btn" onclick="switchDevPanel('panel-logs'); fetchLogs();">Logs de
-                        Sistema</button>
+                    <button class="dev-nav-btn active" onclick="switchDevPanel('panel-register')" data-testid="dev-register-tab">Registrar Usuario</button>
+                    <button class="dev-nav-btn" onclick="switchDevPanel('panel-manage'); loadUsersList();" data-testid="dev-manage-tab">Gestionar Usuarios</button>
+                    <button class="dev-nav-btn" onclick="switchDevPanel('panel-logs'); fetchLogs();" data-testid="dev-logs-tab">Logs de Sistema</button>
                 </nav>
 
                 <div class="dev-content">
+                    <!-- Register Panel -->
                     <div id="panel-register" class="dev-panel active">
-                        <form id="registerForm">
+                        <form id="registerForm" data-testid="register-form">
                             <div class="input-group">
                                 <input type="text" id="regUsername" placeholder=" " required>
                                 <label>Nuevo Usuario</label>
@@ -307,27 +619,27 @@
                                 </select>
                             </div>
                             <p id="regMessage"></p>
-                            <button type="submit" class="btn-login">Crear Cuenta</button>
+                            <button type="submit" class="btn-login" data-testid="create-user-btn">Crear Cuenta</button>
                         </form>
                     </div>
 
+                    <!-- Manage Panel -->
                     <div id="panel-manage" class="dev-panel">
                         <div class="table-scroll">
                             <table class="users-table">
                                 <thead>
                                     <tr>
                                         <th>Usuario</th>
-                                        <th>Estado</th>
                                         <th>Rol</th>
                                         <th>Acción</th>
                                     </tr>
                                 </thead>
-                                <tbody id="usersListBody">
-                                </tbody>
+                                <tbody id="usersListBody"></tbody>
                             </table>
                         </div>
                     </div>
 
+                    <!-- Logs Panel -->
                     <div id="panel-logs" class="dev-panel">
                         <div class="logs-header">
                             <div class="terminal-dots">
@@ -336,151 +648,204 @@
                                 <span class="dot green"></span>
                             </div>
                             <div class="logs-search-container">
-                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="#888" fill="none"
-                                    stroke-width="2">
+                                <svg viewBox="0 0 24 24" width="14" height="14" stroke="#888" fill="none" stroke-width="2">
                                     <circle cx="11" cy="11" r="8"></circle>
                                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                                 </svg>
-                                <input type="text" id="logSearchInput" placeholder="Buscar en logs..."
-                                    onkeyup="filterLogs()">
+                                <input type="text" id="logSearchInput" placeholder="Buscar en logs..." onkeyup="filterLogs()">
                             </div>
                             <div class="logs-controls">
                                 <button class="btn-log-action" onclick="fetchLogs()" title="Refrescar">
-                                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none"
-                                        stroke-width="2">
-                                        <path
-                                            d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+                                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                                     </svg>
                                     <span>Actualizar</span>
                                 </button>
                                 <button class="btn-log-action" onclick="clearLogs()" title="Limpiar">
-                                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none"
-                                        stroke-width="2">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
                                         <polyline points="3 6 5 6 21 6"></polyline>
-                                        <path
-                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                        </path>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                                     </svg>
                                     <span>Limpiar</span>
                                 </button>
                             </div>
                         </div>
-
                         <div class="logs-container terminal-style">
-                            <div id="logsBody" class="logs-body">
-                                <div class="log-line info">
-                                    <span class="log-prefix">❯</span>
-                                    <span class="log-time">14:20:05</span>
-                                    <span class="log-badge">INFO</span>
-                                    <span class="log-msg">Sistema iniciado correctamente.</span>
-                                </div>
-                                <div class="log-line error">
-                                    <span class="log-prefix">❯</span>
-                                    <span class="log-time">14:21:10</span>
-                                    <span class="log-badge">ERROR</span>
-                                    <span class="log-msg">Error al subir "song.mp3": Límite de tamaño excedido.</span>
-                                </div>
-                            </div>
+                            <div id="logsBody" class="logs-body"></div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="userProfileModal" class="modal-overlay" style="display: none;">
-        <div class="profile-card glass-effect">
-            <div class="profile-content" id="profileView">
-                <div class="profile-header">
-                    <div class="avatar-large" id="profileInitial"></div>
-                    <h2 id="profileName" class="username-display"></h2>
-                    <span id="profileRole" class="role-badge"></span>
-                </div>
-
-                <div class="profile-stats">
-                    <div class="stat-item">
-                        <span class="stat-value" id="countLiked"></span>
-                        <span class="stat-label">Favoritos</span>
-                    </div>
-                    <div class="stat-divider"></div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="countDownloaded"></span>
-                        <span class="stat-label">Descargas</span>
-                    </div>
-                </div>
-
-                <div class="profile-actions-grid">
-                    <button onclick="showPasswordChange(true)" class="btn-secondary">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path
-                                d="M12 15V17M12 7V13M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" />
-                        </svg>
-                        Cambiar Contraseña
-                    </button>
-                    <button id="btnLogout" class="btn-logout">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                            <polyline points="16 17 21 12 16 7" />
-                            <line x1="21" y1="12" x2="9" y2="12" />
-                        </svg>
-                        Cerrar Sesión
-                    </button>
-                </div>
-                <button onclick="toggleProfileModal(false)" class="btn-close-text">Cerrar</button>
-            </div>
-
-            <div class="profile-content" id="passwordView" style="display: none;">
-                <h3 class="view-title">Actualizar Contraseña</h3>
-                <br>
-                <div class="input-group">
-                    <input type="password" id="newPassword" class="profile-input" placeholder="Nueva contraseña">
-                    <input type="password" id="confirmNewPassword" class="profile-input"
-                        placeholder="Confirmar contraseña">
-                </div>
-                <p id="passwordMessage" class="status-msg"></p>
-                <div class="profile-actions-grid">
-                    <button onclick="updateUserPassword()" class="btn-primary">Guardar Cambios</button>
-                    <button onclick="showPasswordChange(false)" class="btn-secondary">Volver</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="uploadModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Subiendo canciones</h3>
-                <button id="closeModal">&times;</button>
-            </div>
-
-            <div id="uploadList" class="upload-list">
-            </div>
-        </div>
-    </div>
-
-    <div id="logoutModal" class="modal" style="display: none;">
-        <div class="window modal-window-anim" style="width: 340px; padding: 40px;">
-            <div style="margin-bottom: 20px; font-size: 40px;">👋</div>
-            <h2 style="margin: 0 0 10px 0; color: white;">¿Ya te vas?</h2>
-            <p style="color: #aaa; font-size: 14px; margin-bottom: 5px;">Tu música y sesiones se pausarán.</p>
-
-            <div class="modal-buttons">
-                <button id="cancelLogout" class="modal-btn">Cancelar</button>
-                <button id="confirmLogout" class="modal-btn">Sí, cerrar sesión</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="logoutLoading" class="logout-overlay" style="display: none;">
+    <!-- LOGOUT LOADING -->
+    <div id="logoutLoading" class="logout-overlay" style="display: none;" data-testid="logout-loading">
         <div class="loader-content">
             <div class="spinner-log"></div>
-            <p>Estamos cerrando tu sesión...</p>
+            <p>Cerrando sesión...</p>
         </div>
     </div>
 
+    <!-- DISCORD LINK MODAL -->
+    <div class="discord-modal" id="discordLinkModal" data-testid="discord-link-modal">
+        <div class="discord-modal-content">
+            <div class="discord-modal-header">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="#5865F2">
+                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                </svg>
+                <h3>Vincular Discord</h3>
+                <button class="close-btn" onclick="closeDiscordModal()">&times;</button>
+            </div>
+            <div class="discord-modal-body">
+                <p class="discord-instruction">Ingresa tu User ID de Discord para vincular tu perfil</p>
+                <div class="discord-help">
+                    <details>
+                        <summary>¿Cómo obtener mi User ID?</summary>
+                        <ol>
+                            <li>Abre Discord y ve a Configuración</li>
+                            <li>Ve a "Avanzado" y activa "Modo desarrollador"</li>
+                            <li>Haz clic derecho en tu nombre de usuario</li>
+                            <li>Selecciona "Copiar ID de usuario"</li>
+                        </ol>
+                    </details>
+                </div>
+                <div class="discord-input-group">
+                    <input type="text" id="discordUserIdInput" placeholder="Ej: 123456789012345678" data-testid="discord-userid-input">
+                    <label>Discord User ID</label>
+                </div>
+                <div id="discordPreview" class="discord-preview" style="display: none;">
+                    <img id="discordPreviewAvatar" src="" alt="">
+                    <div class="discord-preview-info">
+                        <span id="discordPreviewName">Usuario</span>
+                        <span id="discordPreviewId">#0000</span>
+                    </div>
+                </div>
+                <p id="discordLinkError" class="discord-link-error"></p>
+                <div class="discord-modal-actions">
+                    <button class="btn-discord-cancel" onclick="closeDiscordModal()">Cancelar</button>
+                    <button class="btn-discord-confirm" onclick="confirmLinkDiscord()" id="btnConfirmDiscord" data-testid="confirm-discord">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                        </svg>
+                        Vincular
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMMUNITY MODAL -->
+    <div class="community-modal" id="communityModal" data-testid="community-modal">
+        <div class="community-content">
+            <div class="community-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Comunidad JodiFy
+                </h3>
+                <button class="close-btn" onclick="closeCommunityModal()">&times;</button>
+            </div>
+            
+            <div class="community-tabs">
+                <button class="community-tab active" onclick="switchCommunityTab('online')" data-testid="tab-online">
+                    <span class="online-dot"></span> En línea
+                </button>
+                <button class="community-tab" onclick="switchCommunityTab('all')" data-testid="tab-all">
+                    Todos
+                </button>
+            </div>
+            
+            <div class="community-list" id="communityList" data-testid="community-list">
+                <!-- Users will be rendered here -->
+                <div class="community-loading">
+                    <div class="spinner-log"></div>
+                    <p>Cargando usuarios...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- USER DETAIL MODAL -->
+    <div class="user-detail-modal" id="userDetailModal" data-testid="user-detail-modal">
+        <div class="user-detail-content">
+            <div class="user-detail-banner"></div>
+            <button class="close-btn user-detail-close" onclick="closeUserDetailModal()">&times;</button>
+            
+            <div class="user-detail-avatar-section">
+                <div class="user-detail-avatar" id="userDetailAvatar">
+                    <span id="userDetailInitial">U</span>
+                </div>
+                <div class="user-status-badge" id="userStatusBadge">
+                    <span class="status-dot online"></span>
+                    <span id="userStatusText">En línea</span>
+                </div>
+            </div>
+            
+            <div class="user-detail-body">
+                <h2 class="user-detail-name" id="userDetailName">Usuario</h2>
+                <div class="user-detail-role" id="userDetailRole">Usuario</div>
+                
+                <!-- Now Playing -->
+                <div class="user-now-playing" id="userNowPlaying" style="display: none;">
+                    <div class="now-playing-header">
+                        <span class="pulse-dot"></span>
+                        ESCUCHANDO AHORA
+                    </div>
+                    <div class="now-playing-song">
+                        <img id="userNowPlayingCover" src="assets/default-cover.png" alt="">
+                        <div class="now-playing-info">
+                            <span class="now-playing-title" id="userNowPlayingTitle">-</span>
+                            <span class="now-playing-time" id="userNowPlayingTime">0:00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Discord -->
+                <div class="user-discord-section" id="userDiscordSection" style="display: none;">
+                    <div class="user-discord-badge">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="#5865F2">
+                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.36-.698.772-1.362 1.225-1.993a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.12-.098.246-.198.373-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                        </svg>
+                        <span id="userDiscordName">Discord</span>
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="user-detail-stats">
+                    <div class="user-stat">
+                        <span class="user-stat-value" id="userStatLikes">0</span>
+                        <span class="user-stat-label">Likes</span>
+                    </div>
+                    <div class="user-stat">
+                        <span class="user-stat-value" id="userStatPlayed">0</span>
+                        <span class="user-stat-label">Escuchadas</span>
+                    </div>
+                    <div class="user-stat">
+                        <span class="user-stat-value" id="userStatDownloads">0</span>
+                        <span class="user-stat-label">Offline</span>
+                    </div>
+                </div>
+                
+                <!-- Member since -->
+                <div class="user-member-since">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    Miembro desde <span id="userMemberSince">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.7/dist/jsmediatags.min.js"></script>

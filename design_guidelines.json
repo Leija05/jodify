@@ -1,0 +1,171 @@
+{
+  "identity": {
+    "name": "E1",
+    "role": "Anti-AI Designer",
+    "mission": "Create a unique, top 1% design for JodiFy that breaks the 'Spotify Clone' mold.",
+    "principles": [
+      "Fusion over Imitation: Mix Cyberpunk with Glassmorphism.",
+      "Emotion First: Music is emotional; the UI should feel 'alive'.",
+      "Content is King: Album art and lyrics take center stage.",
+      "Negative Space: Let the music breathe."
+    ]
+  },
+  "design_system": {
+    "theme_name": "Neon Obsidian",
+    "typography": {
+      "headings": {
+        "family": "'Outfit', sans-serif",
+        "weights": [700, 900],
+        "url": "https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap"
+      },
+      "body": {
+        "family": "'Manrope', sans-serif",
+        "weights": [400, 600],
+        "url": "https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap"
+      },
+      "monospace": {
+        "family": "'JetBrains Mono', monospace",
+        "url": "https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap"
+      }
+    },
+    "colors": {
+      "dark": {
+        "background": "#050505",
+        "surface": "rgba(20, 20, 20, 0.6)",
+        "surface_hover": "rgba(255, 255, 255, 0.05)",
+        "primary": "#7F00FF",
+        "secondary": "#00F0FF",
+        "accent": "#FF0080",
+        "text": "#FFFFFF",
+        "text_muted": "rgba(255, 255, 255, 0.5)",
+        "border": "rgba(255, 255, 255, 0.1)",
+        "glass_blur": "20px"
+      },
+      "light": {
+        "background": "#F0F2F5",
+        "surface": "rgba(255, 255, 255, 0.7)",
+        "surface_hover": "rgba(0, 0, 0, 0.05)",
+        "primary": "#6C5CE7",
+        "secondary": "#00CEC9",
+        "accent": "#FD79A8",
+        "text": "#2D3436",
+        "text_muted": "rgba(0, 0, 0, 0.5)",
+        "border": "rgba(0, 0, 0, 0.1)",
+        "glass_blur": "15px"
+      }
+    },
+    "spacing": {
+      "base": "4px",
+      "container_padding": "24px",
+      "element_gap": "16px",
+      "radius_sm": "8px",
+      "radius_md": "16px",
+      "radius_lg": "24px",
+      "radius_full": "9999px"
+    },
+    "shadows": {
+      "card": "0 10px 30px -10px rgba(0, 0, 0, 0.5)",
+      "glow": "0 0 20px rgba(127, 0, 255, 0.4)",
+      "modal": "0 25px 50px -12px rgba(0, 0, 0, 0.7)"
+    },
+    "z_index": {
+      "base": 0,
+      "overlay": 100,
+      "modal": 1000,
+      "toast": 2000,
+      "tooltip": 3000
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": {
+        "background": "linear-gradient(135deg, var(--primary), var(--secondary))",
+        "color": "#fff",
+        "border": "none",
+        "radius": "var(--radius-full)",
+        "padding": "12px 24px",
+        "font_weight": "700",
+        "hover_transform": "translateY(-2px)",
+        "hover_shadow": "var(--shadow-glow)"
+      },
+      "glass": {
+        "background": "rgba(255, 255, 255, 0.05)",
+        "border": "1px solid var(--border)",
+        "color": "var(--text)",
+        "radius": "var(--radius-full)",
+        "backdrop_filter": "blur(10px)"
+      }
+    },
+    "inputs": {
+      "style": "pill",
+      "background": "rgba(0, 0, 0, 0.2)",
+      "border": "1px solid var(--border)",
+      "radius": "var(--radius-full)",
+      "padding": "12px 20px",
+      "focus_border": "var(--primary)"
+    },
+    "modals": {
+      "background": "rgba(10, 10, 10, 0.8)",
+      "backdrop_filter": "blur(24px)",
+      "border": "1px solid var(--border)",
+      "radius": "var(--radius-lg)",
+      "animation": "scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+    },
+    "player": {
+      "position": "fixed bottom",
+      "style": "floating capsule",
+      "width": "90%",
+      "max_width": "1000px",
+      "background": "rgba(20, 20, 20, 0.8)",
+      "backdrop_filter": "blur(30px)",
+      "border": "1px solid var(--border)",
+      "radius": "var(--radius-full)",
+      "shadow": "var(--shadow-modal)"
+    }
+  },
+  "layout_strategies": {
+    "playlist_grid": {
+      "display": "grid",
+      "columns": "repeat(auto-fill, minmax(180px, 1fr))",
+      "gap": "24px",
+      "card_style": "Vertical card with large cover art, title and artist below."
+    },
+    "lyrics_view": {
+      "typography": "Huge, bold text (3rem+)",
+      "active_style": "Glow effect, full opacity",
+      "inactive_style": "Blur (2px), low opacity (0.3)"
+    }
+  },
+  "assets": {
+    "backgrounds": [
+      "https://images.unsplash.com/photo-1588865953952-2ef0e02b1231?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "https://images.unsplash.com/photo-1670834416076-103a2f7d1a27?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "https://images.unsplash.com/photo-1662476894382-088ef55f059c?crop=entropy&cs=srgb&fm=jpg&q=85"
+    ],
+    "default_cover": "https://images.unsplash.com/photo-1670833912501-f752dcc19eee?crop=entropy&cs=srgb&fm=jpg&q=85"
+  },
+  "implementation_guide": {
+    "steps": [
+      "1. Update `index.html` to include Google Fonts (Outfit, Manrope).",
+      "2. Replace CSS variables in `style.css` with the new 'Neon Obsidian' palette.",
+      "3. Refactor `.playlist` to support both List View (for favorites) and Grid View (for global).",
+      "4. Redesign `.player` footer to be a floating capsule.",
+      "5. Fix Z-Index issues by applying the strict scale defined in `design_system`.",
+      "6. Implement the 'Queue' drawer HTML/CSS.",
+      "7. Implement the 'Equalizer' modal HTML/CSS.",
+      "8. Add keyboard shortcut listeners in `app.js` (or `main.js` if renderer integration is needed)."
+    ],
+    "css_overrides": {
+      "body": "font-family: 'Manrope', sans-serif; background: var(--background);",
+      "h1, h2, h3": "font-family: 'Outfit', sans-serif;",
+      ".modal-overlay": "z-index: 1000;",
+      ".login-overlay": "z-index: 2000;",
+      ".player": "bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; border-radius: 50px;"
+    }
+  },
+  "universal_guidelines": {
+    "general": "Avoid generic 'Bootstrap' looks. Use custom spacing and glassmorphism.",
+    "testing": "All interactive elements MUST have `data-testid` attributes.",
+    "accessibility": "Ensure contrast ratios are met. Use `aria-label` for icon-only buttons."
+  }
+}

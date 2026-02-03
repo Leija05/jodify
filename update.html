@@ -104,7 +104,7 @@
 <body>
     <div class="window">
         <h2>JodiFy</h2>
-        <p>Free Music For Broke Ass Niggas</p>
+        <p>Free Music For Broke People</p>
         <p id="versionText" style="font-size:12px;color:#777">Versión</p>
 
         <img src="assets/icon.ico" />
@@ -123,60 +123,7 @@
         </div>
     </div>
 
-   <script>
-    // Referencias al DOM
-    const progressBar = document.getElementById('progressBar');
-    const percentText = document.getElementById('percentText');
-    const statusText = document.getElementById('statusText');
-    const versionText = document.getElementById('versionText');
-    const btnUpdate = document.getElementById('btnUpdate');
-    const btnLater = document.getElementById('btnLater');
-
-    let downloading = false;
-
-    // 1. Escuchar la información de versión (viene del main.js)
-    window.electronAPI.onUpdateInfo((data) => {
-        console.log("Recibida info de versión:", data);
-        versionText.textContent = `Versión ${data.current} → ${data.next}`;
-    });
-
-    // 2. Acción del botón Actualizar
-    btnUpdate.addEventListener('click', () => {
-        if (downloading) return;
-
-        console.log("Iniciando descarga desde el botón...");
-        downloading = true;
-        
-        // UI State
-        btnUpdate.classList.add('btn-disabled');
-        btnLater.classList.add('btn-disabled');
-        statusText.textContent = 'Conectando con el servidor...';
-
-        // ENVIAR SEÑAL AL MAIN.JS
-        window.electronAPI.startUpdateDownload();
-    });
-
-    // 3. Acción del botón Después
-    btnLater.addEventListener('click', () => {
-        if (downloading) return;
-        window.electronAPI.deferUpdate();
-    });
-
-    // 4. Escuchar el progreso de descarga
-    window.electronAPI.onUpdateProgress((percent) => {
-        console.log("Progreso recibido:", percent);
-        const safe = Math.min(Math.max(percent, 0), 100);
-
-        statusText.textContent = 'Descargando actualización...';
-        progressBar.style.width = safe + '%';
-        percentText.textContent = safe + '%';
-
-        if (safe >= 100) {
-            statusText.textContent = 'Descarga completa. Reiniciando...';
-            document.querySelector('.window').style.animation = 'fadeOut 0.6s ease forwards';
-        }
-    });
-</script>
+    <script src="update.js"></script>
 </body>
 
 </html>

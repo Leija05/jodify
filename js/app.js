@@ -1,30 +1,42 @@
+/**
+ * JODIFY - Music Player Application
+ * Version: 1.0.5
+ * Features: Queue, Equalizer, Keyboard Shortcuts, Offline Mode Fix
+ */
+
 let isChangingTrack = false;
 
-// Constantes agrupadas para iconos
+// =========================================
+// ICONS CONSTANTS
+// =========================================
 const ICONS = {
     LOADING: `<svg class="spin" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" opacity="0.3"/><path d="M12 2c5.523 0 10 4.477 10 10" stroke="currentColor"/></svg>`,
-    SUCCESS: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#2ecc71" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-    ERROR: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#e74c3c" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
-    WARNING: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#e67e22" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>`,
+    SUCCESS: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#00FF88" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+    ERROR: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#FF3366" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
+    WARNING: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#FFB800" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>`,
     VOLUME: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`,
+    VOLUME_MUTE: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`,
     SUN: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.07l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>`,
     MOON: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
-    HEART_F: `<svg viewBox="0 0 24 24" width="22" height="22" fill="#ff4b2b"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+    HEART_F: `<svg viewBox="0 0 24 24" width="22" height="22" fill="#FF0080"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
     HEART_E: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
     DOWNLOAD: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
-    EYE: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
-    EYE_OFF: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`
+    EYE: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
+    EYE_OFF: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`
 };
 
 const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 notificationSound.volume = 0.25;
 
-// Estado global agrupado
+// =========================================
+// APP STATE
+// =========================================
 const appState = {
     offlineMode: false,
     db: null,
     currentUserRole: null,
     playlist: [],
+    queue: [],
     likedIds: JSON.parse(localStorage.getItem("likedSongs")) || [],
     downloadedIds: [],
     currentTab: "global",
@@ -34,6 +46,7 @@ const appState = {
     audioCtx: null,
     analyser: null,
     source: null,
+    eqFilters: [],
     searchTerm: "",
     currentSort: "recent",
     isShuffle: false,
@@ -45,22 +58,51 @@ const appState = {
     heartbeatInterval: null,
     currentBlobUrl: null,
     availableUsers: [],
-    userFilter: "all"
+    userFilter: "all",
+    previousVolume: 1,
+    isMuted: false,
+    playCount: parseInt(localStorage.getItem("playCount")) || 0,
+    discord: JSON.parse(localStorage.getItem("discordProfile")) || null
 };
 
+// =========================================
+// EQUALIZER PRESETS
+// =========================================
+const EQ_PRESETS = {
+    flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    bass: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0],
+    treble: [0, 0, 0, 0, 0, 2, 4, 5, 6, 6],
+    vocal: [-2, -1, 0, 2, 4, 4, 2, 0, -1, -2],
+    rock: [4, 3, 1, 0, -1, 0, 2, 3, 4, 4],
+    electronic: [5, 4, 1, 0, -2, 0, 1, 4, 5, 5]
+};
+
+// =========================================
+// INITIALIZATION
+// =========================================
 window.onload = async () => {
     const savedVolume = parseFloat(localStorage.getItem("userVolume")) || 0.5;
     setAppVolume(savedVolume);
+    
     const savedTheme = localStorage.getItem("theme") || "dark";
     applyTheme(savedTheme);
+    
     const disableVis = localStorage.getItem('disableVisualizer') === 'true';
     const disableBg = localStorage.getItem('disableDynamicBg') === 'true';
     document.body.classList.toggle('no-visual', disableVis);
     document.body.classList.toggle('no-dynamic-bg', disableBg);
+    
     const disableVisualizer = document.getElementById("disableVisualizer");
     const disableDynamicBg = document.getElementById("disableDynamicBg");
     if (disableVisualizer) disableVisualizer.checked = disableVis;
     if (disableDynamicBg) disableDynamicBg.checked = disableBg;
+    
+    // Initialize keyboard shortcuts
+    initKeyboardShortcuts();
+    
+    // Show shortcut hint
+    showShortcutHint();
+    
     checkSavedSession();
     if (appState.usuarioActual) {
         startHeartbeat(appState.usuarioActual);
@@ -68,12 +110,13 @@ window.onload = async () => {
     } else {
         document.getElementById("loginScreen").style.display = "flex";
     }
-    console.log(`Configuración cargada: Volumen al ${Math.round(savedVolume * 100)}%`);
+    
+    console.log(`JodiFy v2.0 - Volume: ${Math.round(savedVolume * 100)}%`);
 };
 
-/* =========================
-   ESTADO GLOBAL Y BASE DE DATOS
-========================= */
+// =========================================
+// INDEXED DB SETUP
+// =========================================
 const dbRequest = indexedDB.open("MusicOfflineDB", 1);
 dbRequest.onupgradeneeded = (e) => {
     appState.db = e.target.result;
@@ -83,39 +126,16 @@ dbRequest.onupgradeneeded = (e) => {
 };
 dbRequest.onsuccess = (e) => {
     appState.db = e.target.result;
+    console.log("IndexedDB ready for offline mode");
+};
+dbRequest.onerror = (e) => {
+    console.error("IndexedDB error:", e);
 };
 
-function setAppVolume(value) {
-    const vol = parseFloat(value);
-    const audio = document.getElementById("audio");
-    audio.volume = vol;
-    const volume = document.getElementById("volume");
-    volume.value = vol;
-    localStorage.setItem("userVolume", vol);
-    const volumeIcon = document.getElementById("volumeIcon");
-    if (volumeIcon) volumeIcon.style.opacity = vol === 0 ? "0.5" : "1";
-}
-
-const btnOpenRegister = document.getElementById("btnOpenRegister");
-const registerModal = document.getElementById("registerModal");
-const closeRegisterBtn = document.getElementById("closeRegisterBtn");
-
-/* =========================
-   ELEMENTOS DEL DOM
-========================= */
+// =========================================
+// DOM ELEMENTS
+// =========================================
 const audio = document.getElementById("audio");
-audio.addEventListener('play', () => {
-    if (window.electronAPI && window.electronAPI.updateThumbar) {
-        window.electronAPI.updateThumbar(true); // Indica a Electron que ponga el icono de PAUSA
-    }
-});
-
-// Escuchar cuando el audio se detiene o pausa
-audio.addEventListener('pause', () => {
-    if (window.electronAPI && window.electronAPI.updateThumbar) {
-        window.electronAPI.updateThumbar(false); // Indica a Electron que ponga el icono de PLAY
-    }
-});
 const fileInput = document.getElementById("fileInput");
 const lyricsBox = document.getElementById("lyricsBox");
 const songList = document.getElementById("songList");
@@ -148,47 +168,351 @@ const sortOptions = document.getElementById("sortOptions");
 const addSongContainer = document.querySelector(".add-song");
 const playlistEl = document.querySelector('.playlist');
 const btnOpenPlaylist = document.getElementById('btnOpenPlaylist');
+const btnOpenRegister = document.getElementById("btnOpenRegister");
+const registerModal = document.getElementById("registerModal");
+const closeRegisterBtn = document.getElementById("closeRegisterBtn");
 
-function cleanupBeforeExit() {
-    try {
-        if (appState.heartbeatInterval) {
-            clearInterval(appState.heartbeatInterval);
-        }
+// Queue elements
+const queueBtn = document.getElementById("queueBtn");
+const queueDrawer = document.getElementById("queueDrawer");
+const queueOverlay = document.getElementById("queueOverlay");
+const queueList = document.getElementById("queueList");
+const closeQueue = document.getElementById("closeQueue");
 
-        if (appState.audioCtx) {
-            appState.audioCtx.close();
-            appState.audioCtx = null;
-        }
+// Equalizer elements
+const eqBtn = document.getElementById("eqBtn");
+const equalizerModal = document.getElementById("equalizerModal");
+const closeEq = document.getElementById("closeEq");
 
-        if (audio) {
-            audio.pause();
-            audio.src = "";
-        }
+// Shortcuts elements
+const shortcutsModal = document.getElementById("shortcutsModal");
+const closeShortcuts = document.getElementById("closeShortcuts");
+const shortcutHint = document.getElementById("shortcutHint");
 
-        // Fire-and-forget (NO await)
-        if (appState.usuarioActual && navigator.onLine) {
-            supabaseClient
-                .from('users_access')
-                .update({ is_online: 0 })
-                .eq('username', appState.usuarioActual);
-        }
-    } catch (e) {
-        console.warn("Cleanup error:", e);
+// Audio events for Electron
+audio.addEventListener('play', () => {
+    if (window.electronAPI && window.electronAPI.updateThumbar) {
+        window.electronAPI.updateThumbar(true);
     }
-}
-if (window.electronAPI?.onAppClose) {
-    window.electronAPI.onAppClose(() => {
-        cleanupBeforeExit();
-    });
-}
+});
+
+audio.addEventListener('pause', () => {
+    if (window.electronAPI && window.electronAPI.updateThumbar) {
+        window.electronAPI.updateThumbar(false);
+    }
+});
 
 document.getElementById("volumeIcon").innerHTML = ICONS.VOLUME;
 
-/* =========================
-   SISTEMA DE LOGIN
-========================= */
+// =========================================
+// KEYBOARD SHORTCUTS
+// =========================================
+function initKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Ignore if typing in input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
+        const key = e.key.toLowerCase();
+        
+        switch(key) {
+            case ' ':
+                e.preventDefault();
+                togglePlay();
+                break;
+            case 'n':
+                handleNextSong();
+                break;
+            case 'p':
+                handlePrevSong();
+                break;
+            case 'l':
+                if (appState.currentIndex >= 0) {
+                    toggleLike(null, appState.playlist[appState.currentIndex].id);
+                }
+                break;
+            case 'm':
+                toggleMute();
+                break;
+            case 'arrowup':
+                e.preventDefault();
+                adjustVolume(0.05);
+                break;
+            case 'arrowdown':
+                e.preventDefault();
+                adjustVolume(-0.05);
+                break;
+            case 'arrowright':
+                e.preventDefault();
+                seekAudio(10);
+                break;
+            case 'arrowleft':
+                e.preventDefault();
+                seekAudio(-10);
+                break;
+            case 's':
+                toggleShuffle();
+                break;
+            case 'r':
+                toggleRepeat();
+                break;
+            case 't':
+                toggleTheme();
+                break;
+            case 'q':
+                toggleQueue();
+                break;
+            case 'e':
+                toggleEqualizer();
+                break;
+            case '?':
+            case '/':
+                toggleShortcutsModal();
+                break;
+            case 'escape':
+                closeAllModals();
+                break;
+        }
+    });
+}
+
+function showShortcutHint() {
+    setTimeout(() => {
+        shortcutHint.classList.add('show');
+        setTimeout(() => {
+            shortcutHint.classList.remove('show');
+        }, 4000);
+    }, 3000);
+}
+
+function togglePlay() {
+    if (audio.paused) {
+        audio.play();
+        updatePlayIcon(true);
+    } else {
+        audio.pause();
+        updatePlayIcon(false);
+    }
+}
+
+function toggleMute() {
+    if (appState.isMuted) {
+        setAppVolume(appState.previousVolume);
+        appState.isMuted = false;
+    } else {
+        appState.previousVolume = audio.volume;
+        setAppVolume(0);
+        appState.isMuted = true;
+    }
+    updateVolumeIcon();
+}
+
+function adjustVolume(delta) {
+    const newVolume = Math.max(0, Math.min(1, audio.volume + delta));
+    setAppVolume(newVolume);
+    if (newVolume > 0) appState.isMuted = false;
+}
+
+function seekAudio(seconds) {
+    if (audio.duration) {
+        audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + seconds));
+    }
+}
+
+function toggleShuffle() {
+    appState.isShuffle = !appState.isShuffle;
+    shuffleBtn.classList.toggle("active", appState.isShuffle);
+}
+
+function toggleRepeat() {
+    appState.isLoop = !appState.isLoop;
+    loopBtn.classList.toggle("active", appState.isLoop);
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute("data-theme");
+    applyTheme(current === "dark" ? "light" : "dark");
+}
+
+function toggleShortcutsModal() {
+    shortcutsModal.classList.toggle('open');
+}
+
+function closeAllModals() {
+    shortcutsModal.classList.remove('open');
+    equalizerModal.classList.remove('open');
+    queueDrawer.classList.remove('open');
+    queueOverlay.classList.remove('active');
+    settingsModal.style.display = 'none';
+    uploadModal.style.display = 'none';
+    registerModal.style.display = 'none';
+    toggleMobilePlaylist(false);
+}
+
+// =========================================
+// QUEUE SYSTEM
+// =========================================
+function toggleQueue() {
+    queueDrawer.classList.toggle('open');
+    queueOverlay.classList.toggle('active');
+    if (queueDrawer.classList.contains('open')) {
+        renderQueue();
+    }
+}
+
+function renderQueue() {
+    queueList.innerHTML = '';
+    const upcoming = appState.currentFilteredList.slice(
+        appState.currentFilteredList.findIndex(s => 
+            appState.playlist[appState.currentIndex]?.id === s.id
+        )
+    );
+    
+    upcoming.forEach((song, index) => {
+        const item = document.createElement('div');
+        item.className = `queue-item ${index === 0 ? 'current' : ''}`;
+        item.setAttribute('data-testid', `queue-item-${song.id}`);
+        item.innerHTML = `
+            <img class="queue-item-cover" src="assets/default-cover.png" id="queue-cover-${song.id}">
+            <div class="queue-item-info">
+                <div class="queue-item-title">${formatDisplayName(song.name)}</div>
+            </div>
+            ${index > 0 ? `
+                <button class="queue-item-remove" onclick="removeFromQueue(${song.id})" data-testid="queue-remove-${song.id}">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            ` : ''}
+        `;
+        
+        item.addEventListener('click', (e) => {
+            if (!e.target.closest('.queue-item-remove')) {
+                const masterIdx = appState.playlist.findIndex(s => s.id === song.id);
+                playSong(masterIdx);
+            }
+        });
+        
+        queueList.appendChild(item);
+        loadMetadata(song.url, `queue-cover-${song.id}`);
+    });
+}
+
+window.removeFromQueue = (songId) => {
+    const index = appState.currentFilteredList.findIndex(s => s.id === songId);
+    if (index > 0) {
+        appState.currentFilteredList.splice(index, 1);
+        renderQueue();
+    }
+};
+
+if (queueBtn) queueBtn.onclick = toggleQueue;
+if (closeQueue) closeQueue.onclick = toggleQueue;
+if (queueOverlay) queueOverlay.onclick = toggleQueue;
+
+// =========================================
+// EQUALIZER SYSTEM
+// =========================================
+function toggleEqualizer() {
+    equalizerModal.classList.toggle('open');
+}
+
+function initEqualizer() {
+    if (!appState.audioCtx) return;
+    const frequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
+    appState.eqFilters = frequencies.map((freq, i) => {
+        const filter = appState.audioCtx.createBiquadFilter();
+        filter.type = i === 0 ? 'lowshelf' : i === frequencies.length - 1 ? 'highshelf' : 'peaking';
+        filter.frequency.value = freq;
+        filter.Q.value = 1;
+        filter.gain.value = 0;
+        return filter;
+    });
+    
+    appState.eqFilters.reduce((prev, curr) => {
+        prev.connect(curr);
+        return curr;
+    });
+    
+    if (appState.source && appState.analyser) {
+        appState.source.disconnect();
+        appState.source.connect(appState.eqFilters[0]);
+        appState.eqFilters[appState.eqFilters.length - 1].connect(appState.analyser);
+    }
+}
+
+function applyEQPreset(preset) {
+    const values = EQ_PRESETS[preset] || EQ_PRESETS.flat;
+    const sliders = document.querySelectorAll('.eq-band input');
+    
+    sliders.forEach((slider, i) => {
+        slider.value = values[i];
+        if (appState.eqFilters[i]) {
+            appState.eqFilters[i].gain.value = values[i];
+        }
+    });
+    
+    // Update active button
+    document.querySelectorAll('.eq-preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === preset);
+    });
+    
+    localStorage.setItem('eqPreset', preset);
+}
+
+// EQ event listeners
+if (eqBtn) eqBtn.onclick = toggleEqualizer;
+if (closeEq) closeEq.onclick = toggleEqualizer;
+
+document.querySelectorAll('.eq-preset-btn').forEach(btn => {
+    btn.onclick = () => applyEQPreset(btn.dataset.preset);
+});
+
+document.querySelectorAll('.eq-band input').forEach((slider, i) => {
+    slider.oninput = (e) => {
+        if (appState.eqFilters[i]) {
+            appState.eqFilters[i].gain.value = parseFloat(e.target.value);
+        }
+    };
+});
+
+// Shortcuts modal listeners
+if (closeShortcuts) closeShortcuts.onclick = toggleShortcutsModal;
+
+// =========================================
+// VOLUME & THEME
+// =========================================
+function setAppVolume(value) {
+    const vol = Math.max(0, Math.min(1, parseFloat(value)));
+    audio.volume = vol;
+    volume.value = vol;
+    localStorage.setItem("userVolume", vol);
+    updateVolumeIcon();
+}
+
+function updateVolumeIcon() {
+    const volumeIcon = document.getElementById("volumeIcon");
+    if (volumeIcon) {
+        volumeIcon.innerHTML = audio.volume === 0 ? ICONS.VOLUME_MUTE : ICONS.VOLUME;
+        volumeIcon.style.opacity = audio.volume === 0 ? "0.5" : "1";
+    }
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+    if (themeToggle) themeToggle.innerHTML = theme === "dark" ? ICONS.MOON : ICONS.SUN;
+}
+
+themeToggle.onclick = toggleTheme;
+
+// =========================================
+// LOGIN SYSTEM
+// =========================================
 const loginForm = document.getElementById("loginForm");
 const loginError = document.getElementById("loginError");
+const passwordInput = document.getElementById("password");
+const togglePassword = document.getElementById("togglePassword");
 
 window.switchDevPanel = (panelId) => {
     document.querySelectorAll('.dev-panel').forEach(p => p.classList.remove('active'));
@@ -199,34 +523,19 @@ window.switchDevPanel = (panelId) => {
 
 window.loadUsersList = async () => {
     const tbody = document.getElementById("usersListBody");
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center">${ICONS.LOADING}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center">${ICONS.LOADING}</td></tr>`;
 
-    const { data, error } = await supabaseClient
-        .from('users_access')
-        .select('id, username, role, is_online')
-        .order('is_online', { ascending: false }); // Ponemos los conectados arriba
-
+    const { data, error } = await supabaseClient.from('users_access').select('id, username, role');
     if (error) {
-        tbody.innerHTML = "<tr><td colspan='4'>Error al cargar datos</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='3'>Error al cargar datos</td></tr>";
         return;
     }
 
     tbody.innerHTML = "";
     data.forEach(user => {
         const tr = document.createElement("tr");
-
-        // Determinamos el estado visual
-        const statusClass = user.is_online === 1 ? "status-online" : "status-offline";
-        const statusText = user.is_online === 1 ? "En línea" : "Desconectado";
-
         tr.innerHTML = `
-            <td>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="status-dot ${statusClass}" title="${statusText}"></span>
-                    ${user.username}
-                </div>
-            </td>
-            <td><small style="opacity: 0.7">${statusText}</small></td>
+            <td>${user.username}</td>
             <td><small class="badge-${user.role}">${user.role}</small></td>
             <td>
                 <button class="btn-delete-small" onclick="deleteUserRecord(${user.id}, '${user.role}', '${user.username}')">Borrar</button>
@@ -236,9 +545,6 @@ window.loadUsersList = async () => {
     });
 };
 
-/* =========================
-   PERSISTENCIA DE SESIÓN
-========================= */
 function checkSavedSession() {
     const sessionActive = localStorage.getItem("jodify_session_active");
     const savedRole = localStorage.getItem("jodify_user_role");
@@ -266,54 +572,116 @@ function configurarInterfazPorRol(role) {
     }
 }
 
-/* =========================
-   SISTEMA DE PRESENCIA (ONLINE)
-========================= */
+// =========================================
+// HEARTBEAT (ONLINE STATUS)
+// =========================================
 async function startHeartbeat(username) {
     if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
 
     const sendPulse = async () => {
         if (!navigator.onLine) return;
-        await supabaseClient
-            .from('users_access')
-            .update({
-                last_seen: new Date().toISOString(),
-                is_online: 1
-            })
-            .eq('username', username);
+        try {
+            await supabaseClient
+                .from('users_access')
+                .update({
+                    last_seen: new Date().toISOString(),
+                    is_online: 1
+                })
+                .eq('username', username);
+        } catch (e) {
+            console.warn("Heartbeat error:", e);
+        }
     };
 
     sendPulse();
     appState.heartbeatInterval = setInterval(sendPulse, 30000);
 }
 
+// =========================================
+// NETWORK STATUS
+// =========================================
 window.addEventListener('online', () => {
-    console.log("Conexión restaurada");
+    console.log("Connection restored");
     appState.offlineMode = false;
-    if (btnGlobal) btnGlobal.style.display = "block";
+    if (btnGlobal) btnGlobal.style.display = "flex";
+    document.body.classList.remove('offline-mode-active');
     fetchSongs();
 });
 
 window.addEventListener('offline', () => {
-    console.log("Modo offline detectado");
-    enableOfflineMode();
+    console.log("Offline mode detected");
+    showOfflineModal();
 });
 
-/* =========================
-   SISTEMA DE LOGS
-========================= */
+function showOfflineModal() {
+    const modal = document.getElementById('offlineModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+window.enableOfflineMode = async () => {
+    const modal = document.getElementById('offlineModal');
+    if (modal) modal.style.display = 'none';
+    
+    appState.offlineMode = true;
+    appState.currentTab = "personal";
+    
+    if (btnGlobal) btnGlobal.style.display = "none";
+    if (btnPersonal) {
+        btnPersonal.classList.add("active");
+        btnGlobal.classList.remove("active");
+    }
+    
+    document.body.classList.add('offline-mode-active');
+    
+    // Load songs from IndexedDB
+    await loadOfflineSongs();
+    renderPlaylist();
+    
+    console.log("Offline mode enabled with", appState.downloadedIds.length, "songs");
+};
+
+async function loadOfflineSongs() {
+    return new Promise((resolve) => {
+        if (!appState.db) return resolve();
+        
+        const transaction = appState.db.transaction(["songs"], "readonly");
+        const store = transaction.objectStore("songs");
+        const request = store.getAll();
+        
+        request.onsuccess = () => {
+            const offlineSongs = request.result || [];
+            appState.downloadedIds = offlineSongs.map(s => s.id);
+            
+            // Merge offline songs into playlist if not already there
+            offlineSongs.forEach(song => {
+                if (!appState.playlist.find(s => s.id === song.id)) {
+                    appState.playlist.push(song);
+                }
+            });
+            
+            resolve();
+        };
+        request.onerror = () => resolve();
+    });
+}
+
+// =========================================
+// SYSTEM LOGS
+// =========================================
 async function addSystemLog(type, message) {
-    const adminName = document.getElementById("username")?.value || "System";
+    const adminName = appState.usuarioActual || "System";
 
-    const { error } = await supabaseClient
-        .from('system_logs')
-        .insert([{
-            event_type: type,
-            message: message,
-            admin_user: adminName
-        }]);
-
-    if (error) console.error("Error guardando log:", error);
+    try {
+        await supabaseClient
+            .from('system_logs')
+            .insert([{
+                event_type: type,
+                message: message,
+                admin_user: adminName
+            }]);
+    } catch (err) {
+        console.error("Error saving log:", err);
+    }
 }
 
 window.fetchLogs = async () => {
@@ -323,7 +691,7 @@ window.fetchLogs = async () => {
     logsBody.innerHTML = `
         <div class="log-line info">
             <span class="log-prefix">❯</span>
-            <span class="log-msg">Conectando con la base de datos...</span>
+            <span class="log-msg">Conectando...</span>
         </div>`;
 
     const { data, error } = await supabaseClient
@@ -345,66 +713,52 @@ window.fetchLogs = async () => {
     logsBody.innerHTML = "";
     data.forEach(log => {
         const date = new Date(log.created_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
         });
 
         const div = document.createElement("div");
         const typeLower = log.event_type.toLowerCase();
         div.className = `log-line ${typeLower}`;
-
         div.innerHTML = `
             <span class="log-prefix">❯</span>
             <span class="log-time">${date}</span>
             <span class="log-badge">${typeLower.toUpperCase()}</span>
-            <span class="log-msg">
-                <strong style="color: var(--accent); opacity: 0.8;">@${log.admin_user || 'system'}:</strong> 
-                ${log.message}
-            </span>
+            <span class="log-msg"><strong>@${log.admin_user || 'system'}:</strong> ${log.message}</span>
         `;
         logsBody.appendChild(div);
     });
-
-    logsBody.scrollTop = 0;
 };
 
 window.clearLogs = () => {
     const logsBody = document.getElementById("logsBody");
     logsBody.style.opacity = "0";
     setTimeout(() => {
-        logsBody.innerHTML = `<div class="log-line info"><span class="log-prefix">❯</span> Consola despejada.</div>`;
+        logsBody.innerHTML = `<div class="log-line info"><span class="log-prefix">❯</span> Consola limpia.</div>`;
         logsBody.style.opacity = "1";
     }, 200);
 };
 
 window.deleteUserRecord = async (id, role, name) => {
-    if (role.toLowerCase() === 'dev' || name === 'TU_USUARIO_PRINCIPAL') {
-        alert("Acceso denegado: Este usuario es vital para el sistema.");
+    if (role.toLowerCase() === 'dev') {
+        alert("No se puede eliminar usuarios dev.");
         return;
     }
 
-    if (!confirm(`¿Estás seguro de que deseas eliminar a "${name}"?`)) return;
+    if (!confirm(`¿Eliminar a "${name}"?`)) return;
 
     try {
-        const { error } = await supabaseClient
-            .from('users_access')
-            .delete()
-            .eq('id', id);
-
+        const { error } = await supabaseClient.from('users_access').delete().eq('id', id);
         if (error) throw error;
         addSystemLog('warn', `Eliminó al usuario: ${name}`);
         window.loadUsersList();
     } catch (err) {
-        console.error("Error al eliminar:", err.message);
-        alert("No se pudo eliminar el usuario: " + err.message);
+        alert("Error: " + err.message);
     }
 };
 
-const passwordInput = document.getElementById("password");
-const togglePassword = document.getElementById("togglePassword");
-
+// =========================================
+// PASSWORD TOGGLE
+// =========================================
 if (passwordInput && togglePassword) {
     togglePassword.innerHTML = ICONS.EYE;
 
@@ -419,6 +773,26 @@ if (passwordInput && togglePassword) {
     });
 }
 
+// =========================================
+// LOCAL ADMIN USERS (No requiere conexión a Supabase)
+// =========================================
+const LOCAL_USERS = {
+    'admin': { password: 'admin123', role: 'admin', username: 'admin' },
+    'dev': { password: 'dev123', role: 'dev', username: 'dev' },
+    'user': { password: 'user123', role: 'user', username: 'user' }
+};
+
+function validateLocalUser(username, password) {
+    const user = LOCAL_USERS[username.toLowerCase()];
+    if (user && user.password === password) {
+        return { ...user };
+    }
+    return null;
+}
+
+// =========================================
+// LOGIN FORM
+// =========================================
 if (loginForm) {
     loginForm.onsubmit = async (e) => {
         e.preventDefault();
@@ -434,6 +808,29 @@ if (loginForm) {
         loginError.style.display = "none";
 
         try {
+            // Primero intentar validación local
+            const localUser = validateLocalUser(userIn, passIn);
+            
+            if (localUser) {
+                // Usuario local válido
+                console.log("Login local exitoso:", localUser.username);
+                localStorage.setItem("currentUserName", localUser.username);
+                appState.usuarioActual = localUser.username;
+
+                if (keepSession) {
+                    localStorage.setItem("jodify_session_active", "true");
+                    localStorage.setItem("jodify_user_role", localUser.role);
+                }
+
+                handleLoginSuccess(localUser.role);
+                return;
+            }
+
+            // Si no es usuario local, intentar con Supabase (si hay conexión)
+            if (!navigator.onLine) {
+                throw new Error("Sin conexión. Usa un usuario local: admin/admin123");
+            }
+
             const { data, error } = await supabaseClient
                 .from('users_access')
                 .select('*')
@@ -444,6 +841,7 @@ if (loginForm) {
             if (error || !data) throw new Error("Usuario o contraseña incorrectos");
 
             localStorage.setItem("currentUserName", data.username);
+            appState.usuarioActual = data.username;
 
             if (keepSession) {
                 localStorage.setItem("jodify_session_active", "true");
@@ -463,100 +861,67 @@ if (loginForm) {
     };
 }
 
-const logoutModal = document.getElementById("logoutModal");
-const confirmLogoutBtn = document.getElementById("confirmLogout");
-const cancelLogoutBtn = document.getElementById("cancelLogout");
+// =========================================
+// LOGOUT
+// =========================================
+const btnLogout = document.getElementById("btnLogout");
+const logoutLoading = document.getElementById("logoutLoading");
 
 if (btnLogout) {
-    btnLogout.onclick = () => {
-        logoutModal.style.display = "flex";
+    btnLogout.onclick = async () => {
+        if (!confirm("¿Cerrar sesión?")) return;
+
+        logoutLoading.style.display = "flex";
+
+        try {
+            if (appState.usuarioActual && navigator.onLine) {
+                await supabaseClient
+                    .from('users_access')
+                    .update({ is_online: 0 })
+                    .eq('username', appState.usuarioActual);
+
+                await addSystemLog('info', `Cerró sesión.`);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
+            audio.pause();
+            audio.src = "";
+
+            localStorage.removeItem("jodify_session_active");
+            localStorage.removeItem("jodify_user_role");
+            localStorage.removeItem("currentUserName");
+
+            appState.usuarioActual = "";
+            appState.currentUserRole = null;
+            appState.playlist = [];
+
+            document.getElementById("loginScreen").style.display = "flex";
+            const loginForm = document.getElementById("loginForm");
+            if (loginForm) loginForm.reset();
+            if (songList) songList.innerHTML = "";
+
+            if (addSongContainer) addSongContainer.style.display = "none";
+            if (btnOpenRegister) btnOpenRegister.style.display = "none";
+        } catch (err) {
+            console.error("Logout error:", err);
+            location.reload();
+        } finally {
+            logoutLoading.style.display = "none";
+        }
     };
 }
-cancelLogoutBtn.onclick = () => {
-    logoutModal.style.display = "none";
-};
 
-confirmLogoutBtn.onclick = async () => {
-    logoutModal.style.display = "none";
-    logoutLoading.style.display = "flex";
-
-    try {
-        if (appState.usuarioActual && navigator.onLine) {
-            await supabaseClient
-                .from('users_access')
-                .update({ is_online: 0 })
-                .eq('username', appState.usuarioActual);
-
-            await addSystemLog('info', `Cerró sesión.`);
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
-        audio.pause();
-        audio.src = "";
-
-        localStorage.removeItem("jodify_session_active");
-        localStorage.removeItem("jodify_user_role");
-        localStorage.removeItem("currentUserName");
-
-        appState.usuarioActual = "";
-        appState.currentUserRole = null;
-        appState.playlist = [];
-
-        // UI Reset
-        document.getElementById("loginScreen").style.display = "flex";
-        const loginForm = document.getElementById("loginForm");
-        if (loginForm) loginForm.reset();
-        if (songList) songList.innerHTML = "";
-
-        if (addSongContainer) addSongContainer.style.display = "none";
-        if (btnOpenRegister) btnOpenRegister.style.display = "none";
-
-    } catch (err) {
-        console.error("Error al cerrar sesión:", err);
-        location.reload();
-    } finally {
-        logoutLoading.style.display = "none";
-    }
-};
-
+// =========================================
+// REGISTER FORM
+// =========================================
 const registerForm = document.getElementById("registerForm");
 
-async function fetchUserStats() {
-    try {
-
-        const { count: likedCount, error: err1 } = await supabaseClient
-            .from('user_likes') 
-            .select('*', { count: 'exact', head: true })
-            .eq('username', appState.usuarioActual);
-        await syncDownloadedSongs(); 
-        const downloadedCount = appState.downloadedIds.length;
-
-        return {
-            likes: err1 ? 0 : likedCount,
-            downloads: downloadedCount
-        };
-    } catch (error) {
-        console.error("Error obteniendo estadísticas:", error);
-        return { likes: 0, downloads: 0 };
-    }
-}
 function handleLoginSuccess(role) {
-    // 1. Actualizar el estado global con el nombre guardado en el login
     appState.currentUserRole = role;
-    appState.usuarioActual = localStorage.getItem("currentUserName") || "Usuario";
-
-    // 2. Ocultar pantalla de login
     document.getElementById("loginScreen").style.display = "none";
 
-    // 3. ACTUALIZAR INTERFAZ: Poner el nombre del usuario en el botón principal (píldora)
-    const displayBtnName = document.getElementById("displayUsername");
-    if (displayBtnName) {
-        displayBtnName.textContent = appState.usuarioActual;
-    }
-
-    // 4. Lógica de permisos por Rol
     if (addSongContainer) addSongContainer.style.display = "none";
     if (btnOpenRegister) btnOpenRegister.style.display = "none";
 
@@ -564,23 +929,20 @@ function handleLoginSuccess(role) {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (btnOpenRegister) btnOpenRegister.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
-        console.log(`Acceso: DEVELOPER (@${appState.usuarioActual})`);
     } else if (role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
-        console.log(`Acceso: ADMINISTRADOR (@${appState.usuarioActual})`);
     } else {
         if (fileInput) fileInput.disabled = true;
-        console.log(`Acceso: USUARIO (@${appState.usuarioActual})`);
     }
 
-    // 5. Iniciar la aplicación y cargar canciones
+    startHeartbeat(appState.usuarioActual);
     initApp();
 }
 
 if (btnOpenRegister) {
     btnOpenRegister.onclick = () => {
-        registerModal.style.display = "block";
+        registerModal.style.display = "flex";
         window.switchDevPanel('panel-register');
     };
 }
@@ -603,28 +965,22 @@ if (registerForm) {
         const roleValue = document.getElementById("regRole").value;
 
         if (!userValue || !passValue) {
-            msg.style.color = "#ff4b2b";
-            msg.textContent = "Por favor, completa todos los campos.";
+            msg.style.color = "#FF3366";
+            msg.textContent = "Completa todos los campos.";
             return;
         }
 
         submitBtn.disabled = true;
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = "Creando usuario...";
         msg.textContent = "";
 
         try {
-            const { data, error } = await supabaseClient
+            const { error } = await supabaseClient
                 .from('users_access')
-                .insert([{
-                    username: userValue,
-                    password: passValue,
-                    role: roleValue
-                }]);
+                .insert([{ username: userValue, password: passValue, role: roleValue }]);
 
             if (error) throw error;
-            msg.style.color = "#2ecc71";
-            msg.innerHTML = `${ICONS.SUCCESS} ¡Usuario creado con éxito!`;
+            msg.style.color = "#00FF88";
+            msg.innerHTML = `${ICONS.SUCCESS} ¡Usuario creado!`;
             registerForm.reset();
 
             setTimeout(() => {
@@ -632,103 +988,36 @@ if (registerForm) {
                 msg.textContent = "";
             }, 2000);
         } catch (err) {
-            msg.style.color = "#ff4b2b";
-            msg.textContent = "Error: " + (err.message === "Duplicate key" ? "El usuario ya existe" : err.message);
+            msg.style.color = "#FF3366";
+            msg.textContent = "Error: " + err.message;
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
         }
     };
 }
-let isElectronCommand = false;
 
-window.electronAPI.onControlCommand((command) => {
-    isElectronCommand = true; // indicamos que viene de Electron
-    switch (command) {
-        case 'play': togglePlayFromSystem(); break;
-        case 'next': nextFromSystem(); break;
-        case 'prev': prevFromSystem(); break;
-    }
-    isElectronCommand = false;
-});
-
-audio.addEventListener('play', () => {
-    if (!isElectronCommand && window.electronAPI?.updateThumbar) {
-        window.electronAPI.updateThumbar(true);
-    }
-});
-
-audio.addEventListener('pause', () => {
-    if (!isElectronCommand && window.electronAPI?.updateThumbar) {
-        window.electronAPI.updateThumbar(false);
-    }
-});
-
+// =========================================
+// APP INITIALIZATION
+// =========================================
 async function initApp() {
     await syncDownloadedSongs();
 
-    window.electronAPI.onControlCommand((command) => {
-        console.log("Control del sistema:", command);
-
-        switch (command) {
-            case 'play':
-                togglePlayFromSystem();
-                break;
-            case 'next':
-                nextFromSystem();
-                break;
-            case 'prev':
-                prevFromSystem();
-                break;
-        }
-    });
+    // Electron controls
+    if (window.electronAPI && window.electronAPI.onControlCommand) {
+        window.electronAPI.onControlCommand((command) => {
+            switch (command) {
+                case 'play': togglePlay(); break;
+                case 'next': handleNextSong(); break;
+                case 'prev': handlePrevSong(); break;
+            }
+        });
+    }
 
     if (!navigator.onLine) {
-        enableOfflineMode();
+        showOfflineModal();
     } else {
         fetchSongs();
     }
-}
-function togglePlayFromSystem() {
-    if (audio.paused) {
-        audio.play();
-        updatePlayIcon(true);
-    } else {
-        audio.pause();
-        updatePlayIcon(false);
-    }
-}
-
-function nextFromSystem() {
-    if (isChangingTrack) return;
-    isChangingTrack = true;
-
-    handleNextSong();
-
-    setTimeout(() => {
-        isChangingTrack = false;
-    }, 300);
-}
-
-function prevFromSystem() {
-    if (isChangingTrack) return;
-    isChangingTrack = true;
-
-    const currentId = appState.playlist[appState.currentIndex]?.id;
-    const idx = appState.currentFilteredList.findIndex(s => s.id === currentId);
-    const prevIdx =
-        (idx - 1 + appState.currentFilteredList.length) %
-        appState.currentFilteredList.length;
-
-    const masterIdx = appState.playlist.findIndex(
-        s => s.id === appState.currentFilteredList[prevIdx].id
-    );
-
-    playSong(masterIdx);
-
-    setTimeout(() => {
-        isChangingTrack = false;
-    }, 300);
 }
 
 async function syncDownloadedSongs() {
@@ -738,31 +1027,16 @@ async function syncDownloadedSongs() {
         const store = transaction.objectStore("songs");
         const request = store.getAllKeys();
         request.onsuccess = () => {
-            appState.downloadedIds = request.result;
+            appState.downloadedIds = request.result || [];
             resolve();
         };
         request.onerror = () => resolve();
     });
 }
 
-function enableOfflineMode() {
-    appState.offlineMode = true;
-    appState.currentTab = "personal";
-    if (btnGlobal) btnGlobal.style.display = "none";
-    renderPlaylist();
-}
-
-function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-    if (themeToggle) themeToggle.innerHTML = theme === "dark" ? ICONS.MOON : ICONS.SUN;
-}
-applyTheme(localStorage.getItem("theme") || "dark");
-themeToggle.onclick = () => applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
-
-/* =========================
-   UTILIDADES
-========================= */
+// =========================================
+// UTILITIES
+// =========================================
 function sanitizeFileName(name) {
     return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.\-_]/g, "_").replace(/\.{2,}/g, ".").replace(/_{2,}/g, "_");
 }
@@ -774,67 +1048,42 @@ function formatDisplayName(name) {
 async function getGradientColors(imgElement) {
     return new Promise((resolve) => {
         const analyze = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 10; canvas.height = 10;
-            ctx.drawImage(imgElement, 0, 0, 10, 10);
-            const data = ctx.getImageData(0, 0, 10, 10).data;
-            const colors = [];
-            for (let i = 0; i < data.length; i += 120) colors.push(`rgb(${data[i]}, ${data[i + 1]}, ${data[i + 2]})`);
-            resolve(`linear-gradient(90deg, ${colors[0]}, ${colors[1] || colors[0]}, ${colors[2] || colors[0]})`);
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 10; canvas.height = 10;
+                ctx.drawImage(imgElement, 0, 0, 10, 10);
+                const data = ctx.getImageData(0, 0, 10, 10).data;
+                const colors = [];
+                for (let i = 0; i < data.length; i += 120) {
+                    colors.push(`rgb(${data[i]}, ${data[i + 1]}, ${data[i + 2]})`);
+                }
+                resolve(`linear-gradient(90deg, ${colors[0]}, ${colors[1] || colors[0]}, ${colors[2] || colors[0]})`);
+            } catch (e) {
+                resolve('var(--gradient-primary)');
+            }
         };
         if (imgElement.complete) analyze(); else imgElement.onload = analyze;
     });
 }
 
-async function toggleProfileModal(show) {
-    const modal = document.getElementById('userProfileModal');
-    if (!modal) return;
-
-    modal.style.display = show ? 'flex' : 'none';
-    
-    if (show) {
-        showPasswordChange(false);
-
-        // Datos inmediatos (del appState)
-        const nombre = appState.usuarioActual || "Usuario";
-        const rol = appState.currentUserRole || "user";
-        
-        document.getElementById('profileName').textContent = nombre;
-        document.getElementById('profileInitial').textContent = nombre.charAt(0).toUpperCase();
-        
-        const roleBadge = document.getElementById('profileRole');
-        roleBadge.textContent = rol;
-        roleBadge.className = `role-badge badge-${rol}`;
-
-        // Datos desde la Base de Datos (Animación de carga opcional)
-        document.getElementById('countLiked').textContent = "...";
-        document.getElementById('countDownloaded').textContent = "...";
-
-        const stats = await fetchUserStats();
-        
-        document.getElementById('countLiked').textContent = stats.likes;
-        document.getElementById('countDownloaded').textContent = stats.downloads;
-    }
-}
-
-document.getElementById('userProfileBtn').onclick = () => toggleProfileModal(true);
-
-document.getElementById('btnLogout').onclick = () => {
-    toggleProfileModal(false);
-    document.getElementById('logoutModal').style.display = 'flex';
-};
-/* =========================
-   LÓGICA DE SUBIDA (SOLO ADMIN)
-========================= */
+// =========================================
+// UPLOAD SYSTEM
+// =========================================
 function toggleModal(show) {
-    uploadModal.style.display = show ? "block" : "none";
+    uploadModal.style.display = show ? "flex" : "none";
 }
 
 if (uploadBadge) {
     uploadBadge.onclick = () => {
-        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') toggleModal(true);
+        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
+            toggleModal(true);
+        }
     };
+}
+
+if (closeModal) {
+    closeModal.onclick = () => toggleModal(false);
 }
 
 fileInput.onchange = async (e) => {
@@ -851,10 +1100,9 @@ fileInput.onchange = async (e) => {
     uploadList.innerHTML = `<div id="itemsScrollContainer"></div>`;
     const scrollContainer = document.getElementById("itemsScrollContainer");
 
-    // Inyectamos la estructura del header
     modalHeader.innerHTML = `
         <div class="header-flex">
-            <h3 id="modalTitle"><span class="spin-mini">${ICONS.LOADING}</span> Subiendo canciones...</h3>
+            <h3 id="modalTitle">Subiendo canciones...</h3>
             <div class="upload-counter">
                 <div class="stat">Total: <span id="totalCount" class="count-total">0</span></div>
                 <div class="stat">Éxito: <span id="successCount" class="count-success">0</span></div>
@@ -867,58 +1115,43 @@ fileInput.onchange = async (e) => {
     document.getElementById("closeModalBtn").onclick = () => toggleModal(false);
 
     let stats = { success: 0, error: 0, total: files.length };
-    
-    const totalElem = document.getElementById("totalCount");
-    const successElem = document.getElementById("successCount");
-    const errorElem = document.getElementById("errorCount");
-    const titleElem = document.getElementById("modalTitle");
-
-    totalElem.textContent = stats.total;
+    document.getElementById("totalCount").textContent = stats.total;
 
     for (const file of files) {
         if (!file.type.startsWith('audio/')) {
             stats.error++;
             document.getElementById("errorCount").textContent = stats.error;
-            addSystemLog('error', `Intento de subida fallido: El archivo "${file.name}" no es audio.`);
             continue;
         }
 
-        // processAndUpload debe encargarse de crear el div de la canción dentro de scrollContainer
         await processAndUpload(file, scrollContainer, (status) => {
             if (status === 'success') {
                 stats.success++;
-                addSystemLog('info', `Subió una nueva canción: "${formatDisplayName(file.name)}"`);
+                addSystemLog('info', `Subió: "${formatDisplayName(file.name)}"`);
             } else {
                 stats.error++;
-                addSystemLog('error', `Error en: "${file.name}"`);
             }
-
-            successElem.textContent = stats.success;
-            errorElem.textContent = stats.error;
-
+            document.getElementById("successCount").textContent = stats.success;
+            document.getElementById("errorCount").textContent = stats.error;
             if (badgeText) {
-                badgeText.innerHTML = `<span class="spin-mini">${ICONS.LOADING}</span> ${stats.success + stats.error} / ${stats.total}`;
+                badgeText.innerHTML = `<span class="spin-mini">${ICONS.LOADING}</span> ${stats.success + stats.error}/${stats.total}`;
             }
         });
 
-        scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
 
-    titleElem.innerHTML = `<span style="color: #1db954;">${ICONS.SUCCESS}</span> Subida finalizada`;
-    if (badgeText) badgeText.innerHTML = `${ICONS.SUCCESS} Subida completada`;
+    document.getElementById("modalTitle").innerHTML = `${ICONS.SUCCESS} Completado`;
+    if (badgeText) badgeText.innerHTML = `${ICONS.SUCCESS} Listo`;
 
     appState.isUploading = false;
-
     if (stats.success > 0) {
-        notificationSound.play().catch(() => { });
+        notificationSound.play().catch(() => {});
         fetchSongs();
     }
 
     setTimeout(() => {
-        if (!appState.isUploading && uploadBadge) {
-            uploadBadge.style.opacity = "0";
-            setTimeout(() => { uploadBadge.style.display = "none"; uploadBadge.style.opacity = "1"; }, 500);
-        }
+        if (!appState.isUploading) uploadBadge.style.display = "none";
     }, 5000);
 };
 
@@ -930,7 +1163,6 @@ async function processAndUpload(file, container, updateStats) {
 
     const itemDiv = document.createElement("div");
     itemDiv.className = "upload-item";
-    itemDiv.id = `item-${itemId}`;
     itemDiv.innerHTML = `
         <img src="assets/default-cover.png" id="img-${itemId}" class="modal-preview-img" crossorigin="anonymous">
         <div class="upload-info">
@@ -958,10 +1190,12 @@ async function processAndUpload(file, container, updateStats) {
                     for (let i = 0; i < img.data.length; i++) b64 += String.fromCharCode(img.data[i]);
                     imgEl.src = `data:${img.format};base64,${window.btoa(b64)}`;
                     bar.style.background = await getGradientColors(imgEl);
-                } else bar.style.background = "var(--accent)";
+                } else {
+                    bar.style.background = "var(--gradient-primary)";
+                }
                 res();
             },
-            onError: () => { bar.style.background = "var(--accent)"; res(); }
+            onError: () => { bar.style.background = "var(--gradient-primary)"; res(); }
         });
     });
 
@@ -973,43 +1207,39 @@ async function processAndUpload(file, container, updateStats) {
         bar.style.width = "50%";
 
         const finalPath = `${Date.now()}_${sanitizedName}`;
-
         const { error: upErr } = await supabaseClient.storage.from('Canciones').upload(finalPath, file, {
             abortSignal: controller.signal
         });
         if (upErr) throw upErr;
 
         const { data: urlData } = supabaseClient.storage.from('Canciones').getPublicUrl(finalPath);
-        const currentUserName = localStorage.getItem("currentUserName") || "Anónimo";
 
         const { error: insErr } = await supabaseClient.from('songs').insert([{
             name: sanitizedName,
             url: urlData.publicUrl,
             likes: 0,
-            added_by: currentUserName
+            added_by: appState.usuarioActual || "Anónimo"
         }]);
 
         if (insErr) throw insErr;
 
         bar.style.width = "100%";
-        bar.style.background = "#2ecc71";
+        bar.style.background = "var(--success)";
         txt.textContent = "¡Completado!";
         icon.innerHTML = ICONS.SUCCESS;
         updateStats('success');
     } catch (e) {
         if (e.name === 'AbortError') {
             txt.textContent = "Cancelado";
-            bar.style.background = "#95a5a6";
-            icon.innerHTML = "";
+            bar.style.background = "var(--text-muted)";
         } else if (e.message === "EXISTE") {
             txt.textContent = "Ya existe";
-            bar.style.background = "#e67e22";
+            bar.style.background = "var(--warning)";
             icon.innerHTML = ICONS.WARNING;
         } else {
             txt.textContent = "Error";
-            bar.style.background = "#e74c3c";
+            bar.style.background = "var(--error)";
             icon.innerHTML = ICONS.ERROR;
-            addSystemLog('error', `Falló subida de "${file.name}": ${e.message}`);
         }
         updateStats('error');
     } finally {
@@ -1017,63 +1247,76 @@ async function processAndUpload(file, container, updateStats) {
     }
 }
 
-window.cancelUpload = (id) => { if (appState.activeUploads[id]) appState.activeUploads[id].abort(); };
+window.cancelUpload = (id) => {
+    if (appState.activeUploads[id]) appState.activeUploads[id].abort();
+};
 
-/* =========================
-   PLAYLIST Y DATOS
-========================= */
+// =========================================
+// PLAYLIST & DATA
+// =========================================
 async function fetchSongs() {
-    const { data, error } = await supabaseClient.from('songs').select('*').order('id', { ascending: false });
-    if (error) {
-        enableOfflineMode();
-    } else {
-        appState.playlist = data;
-        appState.availableUsers = [...new Set(data.map(s => s.added_by))];
-        sortOptions.innerHTML = `
-            <option value="recent">Recientes</option>
-            <option value="old">Antiguos</option>
-            <option value="popular">Más Populares</option>
-            ${appState.availableUsers.map(u => `<option value="user-${u}">${u}</option>`).join('')}
-        `;
+    try {
+        const { data, error } = await supabaseClient.from('songs').select('*').order('id', { ascending: false });
+        
+        if (error) {
+            console.error("Fetch error:", error);
+            showOfflineModal();
+            return;
+        }
+        
+        appState.playlist = data || [];
+        appState.availableUsers = [...new Set(data.map(s => s.added_by).filter(Boolean))];
+        
+        if (sortOptions) {
+            sortOptions.innerHTML = `
+                <option value="recent">Recientes</option>
+                <option value="old">Antiguos</option>
+                <option value="popular">Más Populares</option>
+                ${appState.availableUsers.map(u => `<option value="user-${u}">${u}</option>`).join('')}
+            `;
+        }
+        
         renderPlaylist();
+    } catch (e) {
+        console.error("Fetch songs error:", e);
+        showOfflineModal();
     }
 }
 
 function getFilteredList() {
-    let list = appState.playlist;
-
-    // 1️⃣ Filtrar por pestaña: global o personal (me gusta / offline)
-    if (appState.offlineMode || appState.currentTab === "personal") {
-        // Solo canciones descargadas o favoritas
-        list = list.filter(s => appState.downloadedIds.includes(s.id) || appState.likedIds.includes(s.id));
+    let list;
+    
+    if (appState.offlineMode) {
+        // In offline mode, get songs from IndexedDB
+        list = appState.playlist.filter(s => appState.downloadedIds.includes(s.id));
+    } else {
+        list = appState.currentTab === "global" 
+            ? [...appState.playlist] 
+            : appState.playlist.filter(s => appState.likedIds.includes(s.id));
     }
-
-    // 2️⃣ Filtrar por término de búsqueda
-    if (appState.searchTerm && appState.searchTerm.length > 0) {
-        const term = appState.searchTerm.toLowerCase();
-        list = list.filter(s => formatDisplayName(s.name).toLowerCase().includes(term));
+    
+    // Apply search filter
+    if (appState.searchTerm) {
+        list = list.filter(s => formatDisplayName(s.name).toLowerCase().includes(appState.searchTerm));
     }
-
-    // 3️⃣ Filtrar por usuario (opcional)
-    if (appState.userFilter && appState.userFilter !== "all") {
-        list = list.filter(s => s.added_by === appState.userFilter);
-    }
-
-    // 4️⃣ Ordenar según el select
+    
+    // Apply sorting
     switch (appState.currentSort) {
-        case "old":
-            list.sort((a, b) => a.id - b.id); // de más antiguo a más reciente
+        case 'old':
+            list.sort((a, b) => a.id - b.id);
             break;
-        case "recent":
-            list.sort((a, b) => b.id - a.id); // de más reciente a más antiguo
-            break;
-        case "popular":
-            list.sort((a, b) => b.likes - a.likes); // por likes descendente
+        case 'popular':
+            list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
             break;
         default:
-            break;
+            list.sort((a, b) => b.id - a.id);
     }
-
+    
+    // Apply user filter
+    if (appState.userFilter !== 'all') {
+        list = list.filter(s => s.added_by === appState.userFilter);
+    }
+    
     return list;
 }
 
@@ -1084,27 +1327,35 @@ function createSongElement(song, isCurrent, isDownloaded) {
     if (isCurrent) li.classList.add("active");
 
     li.innerHTML = `
-        <div class="song-container">
-            <img src="assets/default-cover.png" id="${imgId}" class="playlist-cover">
+        <div class="song-container" data-testid="song-item-${song.id}">
+            <img src="assets/default-cover.png" id="${imgId}" class="playlist-cover" alt="${formatDisplayName(song.name)}">
             <div class="song-info">
                 <span class="song-name">${formatDisplayName(song.name)}</span>
                 <div class="song-metadatos">
-                    <span class="song-artist">${appState.offlineMode ? 'Local' : (song.likes || 0) + ' Likes'}</span>
+                    <span class="song-artist">${appState.offlineMode ? 'Offline' : (song.likes || 0) + ' Likes'}</span>
                     <span class="separator">|</span>
-                    <span class="added-by-tag">Subido por: <strong>${song.added_by || 'System'}</strong></span>
+                    <span class="added-by-tag">Por: <strong>${song.added_by || 'System'}</strong></span>
                 </div>
             </div>
             <div class="song-actions">
                 ${!appState.offlineMode ? `
-                    <button class="like-btn ${appState.likedIds.includes(song.id) ? 'active' : ''}" onclick="toggleLike(event, ${song.id})">
+                    <button class="like-btn ${appState.likedIds.includes(song.id) ? 'active' : ''}" 
+                            onclick="toggleLike(event, ${song.id})" 
+                            data-testid="like-btn-${song.id}"
+                            aria-label="${appState.likedIds.includes(song.id) ? 'Quitar de favoritos' : 'Añadir a favoritos'}">
                         ${appState.likedIds.includes(song.id) ? ICONS.HEART_F : ICONS.HEART_E}
                     </button>
                     ${isDownloaded ? `
-                        <button class="download-btn downloaded" onclick="deleteDownload(event, ${song.id})" title="Eliminar local">
+                        <button class="download-btn downloaded" 
+                                onclick="deleteDownload(event, ${song.id})" 
+                                title="Eliminar descarga"
+                                data-testid="delete-download-${song.id}">
                             ${ICONS.SUCCESS}
                         </button>
                     ` : `
-                        <button class="download-btn" onclick="downloadSong(event, ${song.id})">
+                        <button class="download-btn" 
+                                onclick="downloadSong(event, ${song.id})"
+                                data-testid="download-btn-${song.id}">
                             ${ICONS.DOWNLOAD}
                         </button>
                     `}
@@ -1112,22 +1363,57 @@ function createSongElement(song, isCurrent, isDownloaded) {
             </div>
         </div>`;
 
+    // Load cover art
     if (isDownloaded && song.blob) {
         extractCoverFromBlob(song.blob, imgId);
-    } else {
+    } else if (song.url) {
         loadMetadata(song.url, imgId);
     }
 
-    li.onclick = () => {
+    li.onclick = (e) => {
+        if (e.target.closest('button')) return;
+        
         if (appState.offlineMode) {
-            const blobUrl = URL.createObjectURL(song.blob);
-            playOfflineSong(song, blobUrl);
+            playOfflineSongById(song.id);
         } else {
             const masterIndex = appState.playlist.findIndex(s => s.id === song.id);
             playSong(masterIndex);
         }
     };
+    
     return li;
+}
+
+async function playOfflineSongById(songId) {
+    if (!appState.db) return;
+    
+    const transaction = appState.db.transaction(["songs"], "readonly");
+    const store = transaction.objectStore("songs");
+    const request = store.get(songId);
+    
+    request.onsuccess = () => {
+        const song = request.result;
+        if (song && song.blob) {
+            if (appState.currentBlobUrl) {
+                URL.revokeObjectURL(appState.currentBlobUrl);
+            }
+            const blobUrl = URL.createObjectURL(song.blob);
+            appState.currentBlobUrl = blobUrl;
+            
+            audio.src = blobUrl;
+            songTitle.textContent = formatDisplayName(song.name);
+            appState.currentIndex = appState.playlist.findIndex(s => s.id === song.id);
+            
+            audio.play().then(() => {
+                updatePlayIcon(true);
+                startVisualizer();
+            });
+            
+            loadMetadata(blobUrl, "cover", true);
+            renderPlaylist();
+            updateLikeBtn();
+        }
+    };
 }
 
 async function renderPlaylist() {
@@ -1144,15 +1430,22 @@ async function renderPlaylist() {
     });
 }
 
-async function deleteDownload(event, songId) {
+window.deleteDownload = async (event, songId) => {
     event.stopPropagation();
-    if (!confirm("¿Eliminar esta canción de tus descargas locales?")) return;
+    if (!confirm("¿Eliminar esta descarga?")) return;
+    
+    if (!appState.db) return;
+    
     const transaction = appState.db.transaction(["songs"], "readwrite");
     const store = transaction.objectStore("songs");
-    await store.delete(songId);
-    await syncDownloadedSongs();
-    renderPlaylist();
-}
+    
+    store.delete(songId);
+    
+    transaction.oncomplete = async () => {
+        await syncDownloadedSongs();
+        renderPlaylist();
+    };
+};
 
 function extractCoverFromBlob(blob, imgElementId) {
     jsmediatags.read(blob, {
@@ -1163,21 +1456,31 @@ function extractCoverFromBlob(blob, imgElementId) {
                 const el = document.getElementById(imgElementId);
                 if (el) el.src = `data:${pic.format};base64,${window.btoa(base64String)}`;
             }
-        }
+        },
+        onError: () => {}
     });
 }
 
-async function downloadSong(event, songId) {
+window.downloadSong = async (event, songId) => {
     event.stopPropagation();
+    
+    if (!appState.db) {
+        alert("Base de datos no disponible");
+        return;
+    }
+    
     const song = appState.playlist.find(s => s.id === songId);
     if (!song) return;
 
     const btn = event.currentTarget;
     const originalHTML = btn.innerHTML;
     btn.innerHTML = `<span class="spin">${ICONS.LOADING}</span>`;
+    btn.disabled = true;
 
     try {
         const response = await fetch(song.url);
+        if (!response.ok) throw new Error("Network error");
+        
         const blob = await response.blob();
 
         const transaction = appState.db.transaction(["songs"], "readwrite");
@@ -1188,96 +1491,123 @@ async function downloadSong(event, songId) {
             putReq.onsuccess = resolve;
             putReq.onerror = reject;
         });
-        addSystemLog('info', `Descargó la canción: "${formatDisplayName(song.name)}"`);
-
-        notificationSound.play();
+        
+        addSystemLog('info', `Descargó: "${formatDisplayName(song.name)}"`);
+        notificationSound.play().catch(() => {});
         await syncDownloadedSongs();
         renderPlaylist();
     } catch (err) {
         btn.innerHTML = originalHTML;
-        addSystemLog('error', `Fallo al descargar "${song.name}": ${err.message}`);
-        alert("Error al descargar.");
+        btn.disabled = false;
+        alert("Error al descargar: " + err.message);
     }
-}
+};
 
-/* =========================
-   CONTROLES Y REPRODUCCIÓN
-========================= */
-function playOfflineSong(song, blobUrl) {
-    if (appState.currentBlobUrl) URL.revokeObjectURL(appState.currentBlobUrl);
-    appState.currentBlobUrl = blobUrl;
-    audio.src = blobUrl;
-    songTitle.textContent = formatDisplayName(song.name);
-    appState.currentIndex = appState.playlist.findIndex(s => s.id === song.id);
-    audio.play();
-    updatePlayIcon(true);
-    loadMetadata(blobUrl, "cover", true);
-    renderPlaylist();
-    updateLikeBtn();
-}
-
+// =========================================
+// PLAYBACK CONTROLS
+// =========================================
 function playSong(index) {
     if (index < 0 || index >= appState.playlist.length) return;
+    
     appState.currentIndex = index;
     const song = appState.playlist[index];
+    
     audio.src = song.url;
     audio.play().then(() => {
         startVisualizer();
         updatePlayIcon(true);
+        // Incrementar contador de reproducción
+        appState.playCount++;
+        localStorage.setItem("playCount", appState.playCount);
+        updateProfileStats();
+        updateListeningActivity(song);
+    }).catch(e => {
+        console.error("Play error:", e);
     });
+    
     songTitle.textContent = formatDisplayName(song.name);
     loadMetadata(song.url, "cover", true);
     loadLRC(song.name);
-
     renderPlaylist();
-
+    
     if (window.innerWidth <= 768) {
         setTimeout(() => toggleMobilePlaylist(false), 300);
     }
+    
     updateLikeBtn();
 }
 
 function handleNextSong() {
     if (appState.currentFilteredList.length === 0) return;
+    
     const currentId = appState.playlist[appState.currentIndex]?.id;
     const idx = appState.currentFilteredList.findIndex(s => s.id === currentId);
+    
     let next;
     if (appState.isShuffle) {
         next = appState.currentFilteredList[Math.floor(Math.random() * appState.currentFilteredList.length)];
     } else {
         next = appState.currentFilteredList[(idx + 1) % appState.currentFilteredList.length];
     }
-    const masterIdx = appState.playlist.findIndex(s => s.id === next.id);
-    playSong(masterIdx);
+    
+    if (appState.offlineMode) {
+        playOfflineSongById(next.id);
+    } else {
+        const masterIdx = appState.playlist.findIndex(s => s.id === next.id);
+        playSong(masterIdx);
+    }
 }
 
-audio.onended = () => { if (!appState.isLoop) handleNextSong(); };
+function handlePrevSong() {
+    if (appState.currentFilteredList.length === 0) return;
+    
+    const currentId = appState.playlist[appState.currentIndex]?.id;
+    const idx = appState.currentFilteredList.findIndex(s => s.id === currentId);
+    const prevIdx = (idx - 1 + appState.currentFilteredList.length) % appState.currentFilteredList.length;
+    
+    if (appState.offlineMode) {
+        playOfflineSongById(appState.currentFilteredList[prevIdx].id);
+    } else {
+        const masterIdx = appState.playlist.findIndex(s => s.id === appState.currentFilteredList[prevIdx].id);
+        playSong(masterIdx);
+    }
+}
+
+audio.onended = () => {
+    if (!appState.isLoop) {
+        handleNextSong();
+    }
+};
 
 function loadMetadata(url, elId, isMain = false) {
     jsmediatags.read(url, {
         onSuccess: (tag) => {
             const img = tag.tags.picture;
             if (img) {
-                let b6 = "";
-                for (let i = 0; i < img.data.length; i++) b6 += String.fromCharCode(img.data[i]);
-                const dUrl = `data:${img.format};base64,${window.btoa(b6)}`;
+                let b64 = "";
+                for (let i = 0; i < img.data.length; i++) b64 += String.fromCharCode(img.data[i]);
+                const dataUrl = `data:${img.format};base64,${window.btoa(b64)}`;
                 const el = document.getElementById(elId);
-                if (el) el.src = dUrl;
+                if (el) el.src = dataUrl;
                 if (isMain) {
-                    cover.src = dUrl;
-                    dynamicBg.style.backgroundImage = `url(${dUrl})`;
+                    cover.src = dataUrl;
+                    dynamicBg.style.backgroundImage = `url(${dataUrl})`;
                 }
             }
-        }
+        },
+        onError: () => {}
     });
 }
 
 async function loadLRC(name) {
-    lyricsBox.innerHTML = "Buscando letra...";
-    appState.lyrics = []; appState.currentLine = -1;
+    lyricsBox.innerHTML = "<p>Buscando letra...</p>";
+    appState.lyrics = [];
+    appState.currentLine = -1;
+    
     try {
         const res = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(formatDisplayName(name))}`);
         const data = await res.json();
+        
         if (data?.[0]?.syncedLyrics) {
             lyricsBox.innerHTML = "";
             data[0].syncedLyrics.split("\n").forEach(line => {
@@ -1288,55 +1618,96 @@ async function loadLRC(name) {
                     p.textContent = m[3].trim() || "•••";
                     p.onclick = () => audio.currentTime = time;
                     lyricsBox.appendChild(p);
-                    appState.lyrics.push({ time: time, element: p });
+                    appState.lyrics.push({ time, element: p });
                 }
             });
-        } else { lyricsBox.innerHTML = "Letra no disponible"; }
-    } catch { lyricsBox.innerHTML = "Error de conexión"; }
+        } else {
+            lyricsBox.innerHTML = "<p>Letra no disponible</p>";
+        }
+    } catch {
+        lyricsBox.innerHTML = "<p>Error de conexión</p>";
+    }
 }
 
+// =========================================
+// VISUALIZER
+// =========================================
 async function startVisualizer() {
     if (appState.audioCtx) return;
+    
     try {
         appState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         appState.analyser = appState.audioCtx.createAnalyser();
         appState.source = appState.audioCtx.createMediaElementSource(audio);
+        
         appState.source.connect(appState.analyser);
         appState.analyser.connect(appState.audioCtx.destination);
         appState.analyser.fftSize = 64;
+        
+        // Initialize equalizer
+        initEqualizer();
+        
+        // Load saved EQ preset
+        const savedPreset = localStorage.getItem('eqPreset') || 'flat';
+        applyEQPreset(savedPreset);
+        
         const bufferLength = appState.analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
+        
         function draw() {
             requestAnimationFrame(draw);
             appState.analyser.getByteFrequencyData(dataArray);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent');
+            
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            gradient.addColorStop(0, '#7F00FF');
+            gradient.addColorStop(0.5, '#00F0FF');
+            gradient.addColorStop(1, '#FF0080');
+            ctx.fillStyle = gradient;
+            
             let x = 0;
+            const barWidth = (canvas.width / bufferLength) * 1.5;
             for (let i = 0; i < bufferLength; i++) {
-                let h = (dataArray[i] / 255) * canvas.height;
-                ctx.fillRect(x, canvas.height - h, 4, h);
-                x += (canvas.width / bufferLength) * 2;
+                const h = (dataArray[i] / 255) * canvas.height;
+                ctx.fillRect(x, canvas.height - h, barWidth - 1, h);
+                x += barWidth;
             }
         }
         draw();
-    } catch (e) { console.error("Visualizer error", e); }
+    } catch (e) {
+        console.error("Visualizer error:", e);
+    }
 }
 
+// =========================================
+// TIME UPDATE (with progress fill)
+// =========================================
 audio.ontimeupdate = () => {
+    // Update progress bar fill
+    const progressBar = document.getElementById('progress');
+    if (progressBar && audio.duration) {
+        const percent = (audio.currentTime / audio.duration) * 100;
+        progressBar.style.setProperty('--progress-percent', `${percent}%`);
+    }
+    
     if (appState.isLoop && audio.duration > 0 && audio.currentTime > audio.duration - 0.5) {
         audio.currentTime = 0;
         audio.play();
         return;
     }
+    
     progress.value = audio.currentTime;
     progress.max = audio.duration || 0;
     currentTimeEl.textContent = formatTime(audio.currentTime);
     durationEl.textContent = formatTime(audio.duration);
 
+    // Lyrics sync
     if (appState.lyrics.length > 0) {
         const line = appState.lyrics.findLast(l => audio.currentTime >= l.time);
         if (line && line.element !== appState.lyrics[appState.currentLine]?.element) {
-            if (appState.currentLine !== -1 && appState.lyrics[appState.currentLine]) appState.lyrics[appState.currentLine].element.classList.remove("active");
+            if (appState.currentLine !== -1 && appState.lyrics[appState.currentLine]) {
+                appState.lyrics[appState.currentLine].element.classList.remove("active");
+            }
             appState.currentLine = appState.lyrics.indexOf(line);
             line.element.classList.add("active");
             line.element.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1345,7 +1716,9 @@ audio.ontimeupdate = () => {
 };
 
 function formatTime(t) {
-    const m = Math.floor(t / 60), s = Math.floor(t % 60).toString().padStart(2, "0");
+    if (!t || isNaN(t)) return "0:00";
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
 }
 
@@ -1356,51 +1729,39 @@ function updatePlayIcon(isPlaying) {
             ? `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`
             : `<polygon points="5 3 19 12 5 21 5 3"></polygon>`;
     }
-
-    if (window.electronAPI && window.electronAPI.updateThumbar) {
-        window.electronAPI.updateThumbar(isPlaying);
-    }
 }
 
-
-document.addEventListener("DOMContentLoaded", () => {
-    const sessionActive = localStorage.getItem("jodify_session_active");
-    const savedRole = localStorage.getItem("jodify_user_role");
-    const savedUser = localStorage.getItem("currentUserName");
-
-    if (sessionActive === "true" && savedUser) {
-        appState.usuarioActual = savedUser;
-        console.log("Sesión recuperada para:", appState.usuarioActual);
-        startHeartbeat(appState.usuarioActual);
-        handleLoginSuccess(savedRole);
-    }
-});
-
-/* =========================
-   EVENTOS
-========================= */
-playBtn.onclick = () => audio.paused ? (audio.play(), updatePlayIcon(true)) : (audio.pause(), updatePlayIcon(false));
-nextBtn.onclick = () => handleNextSong();
-prevBtn.onclick = () => {
-    const currentId = appState.playlist[appState.currentIndex]?.id;
-    const idx = appState.currentFilteredList.findIndex(s => s.id === currentId);
-    const prevIdx = (idx - 1 + appState.currentFilteredList.length) % appState.currentFilteredList.length;
-    const masterIdx = appState.playlist.findIndex(s => s.id === appState.currentFilteredList[prevIdx].id);
-    playSong(masterIdx);
-};
+// =========================================
+// EVENT LISTENERS
+// =========================================
+playBtn.onclick = togglePlay;
+nextBtn.onclick = handleNextSong;
+prevBtn.onclick = handlePrevSong;
 
 progress.oninput = () => audio.currentTime = progress.value;
-volume.oninput = (e) => {
-    setAppVolume(e.target.value);
+volume.oninput = (e) => setAppVolume(e.target.value);
+
+btnGlobal.onclick = () => {
+    appState.currentTab = "global";
+    btnGlobal.classList.add("active");
+    btnPersonal.classList.remove("active");
+    renderPlaylist();
 };
 
-btnGlobal.onclick = () => { appState.currentTab = "global"; btnGlobal.classList.add("active"); btnPersonal.classList.remove("active"); renderPlaylist(); };
-btnPersonal.onclick = () => { appState.currentTab = "personal"; btnPersonal.classList.add("active"); btnGlobal.classList.remove("active"); renderPlaylist(); };
+btnPersonal.onclick = () => {
+    appState.currentTab = "personal";
+    btnPersonal.classList.add("active");
+    btnGlobal.classList.remove("active");
+    renderPlaylist();
+};
 
-searchInput.oninput = (e) => { appState.searchTerm = e.target.value.toLowerCase(); renderPlaylist(); };
+searchInput.oninput = (e) => {
+    appState.searchTerm = e.target.value.toLowerCase();
+    renderPlaylist();
+};
 
-shuffleBtn.onclick = () => { appState.isShuffle = !appState.isShuffle; shuffleBtn.classList.toggle("active", appState.isShuffle); };
-loopBtn.onclick = () => { appState.isLoop = !appState.isLoop; loopBtn.classList.toggle("active", appState.isLoop); };
+shuffleBtn.onclick = toggleShuffle;
+loopBtn.onclick = toggleRepeat;
 
 function updateLikeBtn() {
     const likeBtn = document.getElementById("likeBtn");
@@ -1411,175 +1772,50 @@ function updateLikeBtn() {
     }
 }
 
-async function toggleLike(e, id) {
+window.toggleLike = async (e, id) => {
     if (e) e.stopPropagation();
+    
     const song = appState.playlist.find(s => s.id === id);
+    if (!song) return;
+    
     const wasLiked = appState.likedIds.includes(id);
+    
     if (wasLiked) {
         appState.likedIds = appState.likedIds.filter(likedId => likedId !== id);
-        song.likes--;
+        song.likes = Math.max(0, (song.likes || 1) - 1);
     } else {
         appState.likedIds.push(id);
-        song.likes++;
+        song.likes = (song.likes || 0) + 1;
     }
+    
     localStorage.setItem("likedSongs", JSON.stringify(appState.likedIds));
     renderPlaylist();
     updateLikeBtn();
-    if (!wasLiked && appState.likedIds.includes(id)) {
+    
+    if (!wasLiked) {
         const likeBtn = document.getElementById("likeBtn");
-        likeBtn.classList.add('animate-like');
-        setTimeout(() => likeBtn.classList.remove('animate-like'), 500);
-    }
-    await supabaseClient.from('songs').update({ likes: song.likes }).eq('id', id);
-}
-
-/* =========================
-   MOBILE
-========================= */
-const overlay = document.createElement('div');
-overlay.className = 'playlist-overlay';
-document.body.appendChild(overlay);
-
-function toggleMobilePlaylist(show) {
-    playlistEl.classList.toggle('show', show);
-    overlay.classList.toggle('active', show);
-    document.body.style.overflow = show ? 'hidden' : '';
-}
-
-if (btnOpenPlaylist) btnOpenPlaylist.onclick = () => toggleMobilePlaylist(true);
-overlay.onclick = () => toggleMobilePlaylist(false);
-window.filterLogs = () => {
-    const term = document.getElementById("logSearchInput").value.toLowerCase();
-    const lines = document.querySelectorAll(".log-line");
-
-    lines.forEach(line => {
-        const text = line.textContent.toLowerCase();
-        if (text.includes(term)) {
-            line.style.display = "flex";
-            line.style.animation = "fadeIn 0.2s ease";
-        } else {
-            line.style.display = "none";
+        if (likeBtn) {
+            likeBtn.classList.add('animate-like');
+            setTimeout(() => likeBtn.classList.remove('animate-like'), 500);
         }
-    });
+    }
+    
+    if (!appState.offlineMode) {
+        try {
+            await supabaseClient.from('songs').update({ likes: song.likes }).eq('id', id);
+        } catch (e) {
+            console.error("Like sync error:", e);
+        }
+    }
 };
-window.onclick = (e) => { if (e.target === uploadModal) toggleModal(false); };
-
-/* =========================
-   CONFIGURACIONES
-========================= */
-const settingsBtn = document.getElementById("settingsBtn");
-const settingsModal = document.getElementById("settingsModal");
-const closeSettingsModal = document.getElementById("closeSettingsModal");
-const disableVisualizer = document.getElementById("disableVisualizer");
-const disableDynamicBg = document.getElementById("disableDynamicBg");
-
-if (settingsBtn) {
-    settingsBtn.onclick = () => {
-        if (settingsModal) settingsModal.style.display = 'flex';
-    };
-}
-
-if (closeSettingsModal) {
-    closeSettingsModal.onclick = () => {
-        if (settingsModal) settingsModal.style.display = 'none';
-    };
-}
-
-function saveSettings() {
-    const disableVis = disableVisualizer.checked;
-    const disableBg = disableDynamicBg.checked;
-    localStorage.setItem('disableVisualizer', disableVis);
-    localStorage.setItem('disableDynamicBg', disableBg);
-    document.body.classList.toggle('no-visual', disableVis);
-    document.body.classList.toggle('no-dynamic-bg', disableBg);
-    if (settingsModal) settingsModal.style.display = 'none';
-}
 
 const likeBtn = document.getElementById("likeBtn");
 if (likeBtn) {
     likeBtn.onclick = () => {
-        if (appState.currentIndex >= 0) toggleLike(null, appState.playlist[appState.currentIndex].id);
-    };
-}
-
-function showPasswordChange(show) {
-    const profileView = document.getElementById('profileView');
-    const passwordView = document.getElementById('passwordView');
-    const msg = document.getElementById('passwordMessage');
-
-    if (show) {
-        profileView.style.display = 'none';
-        passwordView.style.display = 'block';
-        // Limpiar campos y mensajes al entrar
-        document.getElementById('newPassword').value = "";
-        document.getElementById('confirmNewPassword').value = "";
-        msg.textContent = "";
-    } else {
-        profileView.style.display = 'block';
-        passwordView.style.display = 'none';
-    }
-}
-async function updateUserPassword() {
-    const newPass = document.getElementById('newPassword').value.trim();
-    const confirmPass = document.getElementById('confirmNewPassword').value.trim();
-    const msg = document.getElementById('passwordMessage');
-    const saveBtn = document.querySelector('.btn-primary');
-
-    // 1. Validaciones básicas
-    if (!newPass || !confirmPass) {
-        msg.style.color = "#ff4b2b";
-        msg.textContent = "Ambos campos son obligatorios";
-        return;
-    }
-
-    if (newPass.length < 4) {
-        msg.style.color = "#ff4b2b";
-        msg.textContent = "La contraseña debe tener al menos 4 caracteres";
-        return;
-    }
-
-    if (newPass !== confirmPass) {
-        msg.style.color = "#ff4b2b";
-        msg.textContent = "Las contraseñas no coinciden";
-        return;
-    }
-
-    // 2. Proceso de actualización
-    saveBtn.disabled = true;
-    const originalText = saveBtn.textContent;
-    saveBtn.textContent = "Actualizando...";
-
-    try {
-        const { error } = await supabaseClient
-            .from('users_access')
-            .update({ password: newPass })
-            .eq('username', appState.usuarioActual); // Filtra por el usuario logueado
-
-        if (error) throw error;
-
-        // Éxito
-        msg.style.color = "#1db954";
-        msg.textContent = "¡Contraseña actualizada con éxito!";
-        
-        // Log del sistema
-        if (typeof addSystemLog === 'function') {
-            addSystemLog('info', `Actualizó su contraseña personal.`);
+        if (appState.currentIndex >= 0) {
+            toggleLike(null, appState.playlist[appState.currentIndex].id);
         }
-
-        // Regresar a la vista principal tras un breve retraso
-        setTimeout(() => {
-            showPasswordChange(false);
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-        }, 1500);
-
-    } catch (err) {
-        console.error("Error al cambiar contraseña:", err);
-        msg.style.color = "#ff4b2b";
-        msg.textContent = "Error: No se pudo conectar con el servidor";
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
-    }
+    };
 }
 
 if (sortOptions) {
@@ -1595,3 +1831,846 @@ if (sortOptions) {
         renderPlaylist();
     };
 }
+
+// =========================================
+// MOBILE PLAYLIST
+// =========================================
+const overlay = document.createElement('div');
+overlay.className = 'playlist-overlay';
+document.body.appendChild(overlay);
+
+function toggleMobilePlaylist(show) {
+    playlistEl.classList.toggle('show', show);
+    overlay.classList.toggle('active', show);
+    document.body.style.overflow = show ? 'hidden' : '';
+}
+
+if (btnOpenPlaylist) btnOpenPlaylist.onclick = () => toggleMobilePlaylist(true);
+overlay.onclick = () => toggleMobilePlaylist(false);
+
+// =========================================
+// FILTER LOGS
+// =========================================
+window.filterLogs = () => {
+    const term = document.getElementById("logSearchInput").value.toLowerCase();
+    const lines = document.querySelectorAll(".log-line");
+    lines.forEach(line => {
+        const text = line.textContent.toLowerCase();
+        line.style.display = text.includes(term) ? "flex" : "none";
+    });
+};
+
+// =========================================
+// MODAL CLICK OUTSIDE
+// =========================================
+window.onclick = (e) => {
+    if (e.target === uploadModal) toggleModal(false);
+    if (e.target === registerModal) registerModal.style.display = "none";
+    if (e.target === equalizerModal) equalizerModal.classList.remove('open');
+    if (e.target === shortcutsModal) shortcutsModal.classList.remove('open');
+};
+
+// =========================================
+// SETTINGS
+// =========================================
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsModal = document.getElementById("settingsModal");
+const closeSettingsModal = document.getElementById("closeSettingsModal");
+const disableVisualizer = document.getElementById("disableVisualizer");
+const disableDynamicBg = document.getElementById("disableDynamicBg");
+
+if (settingsBtn) {
+    settingsBtn.onclick = () => {
+        settingsModal.style.display = 'flex';
+    };
+}
+
+if (closeSettingsModal) {
+    closeSettingsModal.onclick = () => {
+        settingsModal.style.display = 'none';
+    };
+}
+
+window.saveSettings = () => {
+    const disableVis = disableVisualizer.checked;
+    const disableBg = disableDynamicBg.checked;
+    localStorage.setItem('disableVisualizer', disableVis);
+    localStorage.setItem('disableDynamicBg', disableBg);
+    document.body.classList.toggle('no-visual', disableVis);
+    document.body.classList.toggle('no-dynamic-bg', disableBg);
+    settingsModal.style.display = 'none';
+};
+
+// =========================================
+// CLEANUP
+// =========================================
+function cleanupBeforeExit() {
+    try {
+        if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
+        if (appState.audioCtx) {
+            appState.audioCtx.close();
+            appState.audioCtx = null;
+        }
+        if (audio) {
+            audio.pause();
+            audio.src = "";
+        }
+        if (appState.currentBlobUrl) {
+            URL.revokeObjectURL(appState.currentBlobUrl);
+        }
+        if (appState.usuarioActual && navigator.onLine) {
+            supabaseClient
+                .from('users_access')
+                .update({ is_online: 0 })
+                .eq('username', appState.usuarioActual);
+        }
+    } catch (e) {
+        console.warn("Cleanup error:", e);
+    }
+}
+
+if (window.electronAPI?.onAppClose) {
+    window.electronAPI.onAppClose(() => cleanupBeforeExit());
+}
+
+// DOMContentLoaded for session recovery
+document.addEventListener("DOMContentLoaded", () => {
+    const sessionActive = localStorage.getItem("jodify_session_active");
+    const savedRole = localStorage.getItem("jodify_user_role");
+    const savedUser = localStorage.getItem("currentUserName");
+
+    if (sessionActive === "true" && savedUser) {
+        appState.usuarioActual = savedUser;
+        startHeartbeat(appState.usuarioActual);
+        handleLoginSuccess(savedRole);
+    }
+});
+
+console.log("JodiFy v2.0 loaded - Press ? for keyboard shortcuts");
+
+// =========================================
+// PROFILE SYSTEM
+// =========================================
+const profileBtn = document.getElementById("profileBtn");
+const profileModal = document.getElementById("profileModal");
+const closeProfileBtn = document.getElementById("closeProfileBtn");
+
+async function openProfileModal() {
+    if (profileModal) {
+        profileModal.classList.add('open');
+        
+        // First load user data from Supabase to get saved discord_id
+        if (navigator.onLine && appState.usuarioActual && !appState.discord) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users_access')
+                    .select('discord_id, discord_username, total_likes, total_played, total_downloads')
+                    .eq('username', appState.usuarioActual)
+                    .single();
+                
+                if (!error && data && data.discord_id) {
+                    // User has a discord_id saved, fetch their real Discord profile
+                    try {
+                        const discordUser = await fetchDiscordUser(data.discord_id);
+                        appState.discord = discordUser;
+                        localStorage.setItem('discordProfile', JSON.stringify(discordUser));
+                    } catch (e) {
+                        console.warn('Could not fetch Discord profile:', e.message);
+                    }
+                }
+            } catch (e) {
+                console.warn('Error loading user data:', e);
+            }
+        }
+        
+        updateProfileUI();
+        updateProfileStats();
+    }
+}
+
+function closeProfileModal() {
+    if (profileModal) {
+        profileModal.classList.remove('open');
+    }
+}
+
+function updateProfileUI() {
+    const username = appState.usuarioActual || 'Usuario';
+    const role = appState.currentUserRole || 'user';
+    const initial = username.charAt(0).toUpperCase();
+    
+    // Update button
+    const avatarInitial = document.getElementById('avatarInitial');
+    const profileUsername = document.getElementById('profileUsername');
+    if (avatarInitial) avatarInitial.textContent = initial;
+    if (profileUsername) profileUsername.textContent = username;
+    
+    // Update modal
+    const avatarInitialLarge = document.getElementById('avatarInitialLarge');
+    const profileUsernameLarge = document.getElementById('profileUsernameLarge');
+    const profileRoleText = document.getElementById('profileRoleText');
+    const profileRole = document.getElementById('profileRole');
+    
+    if (avatarInitialLarge) avatarInitialLarge.textContent = initial;
+    if (profileUsernameLarge) profileUsernameLarge.textContent = username;
+    if (profileRoleText) {
+        const roleNames = { admin: 'Administrador', dev: 'Developer', user: 'Usuario' };
+        profileRoleText.textContent = roleNames[role] || 'Usuario';
+    }
+    if (profileRole) {
+        profileRole.className = `profile-role ${role}`;
+    }
+    
+    // Update avatar if Discord is linked
+    if (appState.discord && appState.discord.avatar) {
+        updateAvatarWithDiscord();
+    }
+    
+    // Update Discord section
+    updateDiscordUI();
+}
+
+function updateProfileStats() {
+    const statLikes = document.getElementById('statLikes');
+    const statPlayed = document.getElementById('statPlayed');
+    const statDownloads = document.getElementById('statDownloads');
+    
+    if (statLikes) statLikes.textContent = appState.likedIds.length;
+    if (statPlayed) statPlayed.textContent = appState.playCount;
+    if (statDownloads) statDownloads.textContent = appState.downloadedIds.length;
+    
+    // Save stats to Supabase for real-time community display
+    if (navigator.onLine && appState.usuarioActual) {
+        supabaseClient
+            .from('users_access')
+            .update({ 
+                total_likes: appState.likedIds.length,
+                total_played: appState.playCount,
+                total_downloads: appState.downloadedIds.length
+            })
+            .eq('username', appState.usuarioActual)
+            .then(() => console.log('Stats updated in Supabase'))
+            .catch(e => console.warn('Error updating stats:', e));
+    }
+}
+
+function updateListeningActivity(song) {
+    const activity = document.getElementById('listeningActivity');
+    const activityTitle = document.getElementById('activityTitle');
+    const activityCover = document.getElementById('activityCover');
+    
+    if (activity && song) {
+        activity.style.display = 'block';
+        if (activityTitle) activityTitle.textContent = formatDisplayName(song.name);
+        if (activityCover && song.url) {
+            loadMetadata(song.url, 'activityCover');
+        }
+        
+        // Update current song in Supabase so others can see what we're listening to
+        if (navigator.onLine && appState.usuarioActual) {
+            const songName = formatDisplayName(song.name);
+            supabaseClient
+                .from('users_access')
+                .update({ 
+                    current_song: songName,
+                    current_song_time: new Date().toISOString()
+                })
+                .eq('username', appState.usuarioActual)
+                .then(() => console.log('Now playing updated:', songName))
+                .catch(e => console.warn('Error updating now playing:', e));
+        }
+    }
+}
+
+// Clear listening activity when audio stops
+audio.addEventListener('pause', () => {
+    if (navigator.onLine && appState.usuarioActual) {
+        supabaseClient
+            .from('users_access')
+            .update({ current_song: null })
+            .eq('username', appState.usuarioActual)
+            .catch(e => console.warn('Error clearing now playing:', e));
+    }
+});
+
+audio.addEventListener('ended', () => {
+    // current_song will be updated when next song plays
+});
+
+// Ensure profile button event listener is attached after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    const profileBtnElement = document.getElementById("profileBtn");
+    const closeProfileBtnElement = document.getElementById("closeProfileBtn");
+    
+    if (profileBtnElement) {
+        profileBtnElement.addEventListener('click', openProfileModal);
+        console.log('Profile button event listener attached');
+    }
+    if (closeProfileBtnElement) {
+        closeProfileBtnElement.addEventListener('click', closeProfileModal);
+    }
+});
+
+// Fallback for already loaded DOM
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    if (profileBtn) profileBtn.onclick = openProfileModal;
+    if (closeProfileBtn) closeProfileBtn.onclick = closeProfileModal;
+}
+
+// =========================================
+// DISCORD INTEGRATION
+// =========================================
+const DISCORD_CLIENT_ID = '1234567890'; // Replace with actual Discord app ID
+
+function updateDiscordUI() {
+    const notLinked = document.getElementById('discordNotLinked');
+    const linked = document.getElementById('discordLinked');
+    
+    if (appState.discord) {
+        if (notLinked) notLinked.style.display = 'none';
+        if (linked) linked.style.display = 'flex';
+        
+        const discordAvatar = document.getElementById('discordAvatar');
+        const discordName = document.getElementById('discordName');
+        const discordTag = document.getElementById('discordTag');
+        
+        if (discordAvatar && appState.discord.avatar) {
+            discordAvatar.src = appState.discord.avatar;
+        }
+        if (discordName) discordName.textContent = appState.discord.username || 'Usuario';
+        if (discordTag) discordTag.textContent = appState.discord.discriminator ? `#${appState.discord.discriminator}` : '';
+    } else {
+        if (notLinked) notLinked.style.display = 'block';
+        if (linked) linked.style.display = 'none';
+    }
+}
+
+function updateAvatarWithDiscord() {
+    if (!appState.discord || !appState.discord.avatar) return;
+    
+    // Update profile button avatar
+    const profileAvatar = document.getElementById('profileAvatar');
+    if (profileAvatar) {
+        profileAvatar.innerHTML = `<img src="${appState.discord.avatar}" alt="">`;
+    }
+    
+    // Update large avatar in modal
+    const profileAvatarLarge = document.getElementById('profileAvatarLarge');
+    if (profileAvatarLarge) {
+        const onlineIndicator = profileAvatarLarge.querySelector('.online-indicator');
+        profileAvatarLarge.innerHTML = `<img src="${appState.discord.avatar}" alt="">`;
+        if (onlineIndicator) profileAvatarLarge.appendChild(onlineIndicator);
+    }
+}
+
+// =========================================
+// DISCORD MODAL & LINKING
+// =========================================
+const discordLinkModal = document.getElementById('discordLinkModal');
+const discordUserIdInput = document.getElementById('discordUserIdInput');
+
+window.openDiscordModal = () => {
+    if (discordLinkModal) {
+        discordLinkModal.classList.add('open');
+        if (discordUserIdInput) {
+            discordUserIdInput.value = '';
+            discordUserIdInput.focus();
+        }
+        document.getElementById('discordPreview').style.display = 'none';
+        document.getElementById('discordLinkError').textContent = '';
+    }
+};
+
+window.closeDiscordModal = () => {
+    if (discordLinkModal) {
+        discordLinkModal.classList.remove('open');
+    }
+};
+
+// Fetch Discord user by ID using Lanyard API (REAL DATA)
+async function fetchDiscordUser(userId) {
+    try {
+        // Use Lanyard API to get real Discord user data
+        const response = await fetch(`https://api.lanyard.rest/v1/users/${userId}`);
+        const data = await response.json();
+        
+        if (!data.success || !data.data) {
+            throw new Error('Usuario no encontrado en Lanyard. Asegúrate de estar en el servidor de Lanyard Discord.');
+        }
+        
+        const discordUser = data.data.discord_user;
+        const discordStatus = data.data.discord_status;
+        
+        // Build avatar URL
+        let avatarUrl;
+        if (discordUser.avatar) {
+            const ext = discordUser.avatar.startsWith('a_') ? 'gif' : 'png';
+            avatarUrl = `https://cdn.discordapp.com/avatars/${userId}/${discordUser.avatar}.${ext}?size=256`;
+        } else {
+            // Default avatar based on discriminator or user id
+            const defaultNum = discordUser.discriminator === '0' 
+                ? (BigInt(userId) >> 22n) % 6n 
+                : parseInt(discordUser.discriminator) % 5;
+            avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultNum}.png`;
+        }
+        
+        return {
+            id: userId,
+            username: discordUser.global_name || discordUser.username,
+            discriminator: discordUser.discriminator,
+            avatar: avatarUrl,
+            status: discordStatus,
+            activities: data.data.activities || []
+        };
+    } catch (error) {
+        console.error('Error fetching Discord user:', error);
+        throw new Error('No se pudo obtener el perfil de Discord. Asegúrate de que el usuario esté en el servidor de Lanyard (discord.gg/lanyard).');
+    }
+}
+
+// Preview Discord user when typing
+if (discordUserIdInput) {
+    let debounceTimer;
+    discordUserIdInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        const userId = e.target.value.trim();
+        const preview = document.getElementById('discordPreview');
+        const error = document.getElementById('discordLinkError');
+        
+        if (userId.length < 17) {
+            preview.style.display = 'none';
+            error.textContent = userId.length > 0 ? 'El User ID debe tener al menos 17 dígitos' : '';
+            return;
+        }
+        
+        if (!/^\d+$/.test(userId)) {
+            preview.style.display = 'none';
+            error.textContent = 'El User ID solo debe contener números';
+            return;
+        }
+        
+        error.textContent = '';
+        
+        debounceTimer = setTimeout(async () => {
+            try {
+                const user = await fetchDiscordUser(userId);
+                preview.style.display = 'flex';
+                document.getElementById('discordPreviewAvatar').src = user.avatar;
+                document.getElementById('discordPreviewName').textContent = user.username;
+                document.getElementById('discordPreviewId').textContent = `#${user.discriminator}`;
+            } catch (e) {
+                preview.style.display = 'none';
+                error.textContent = 'No se pudo obtener información del usuario';
+            }
+        }, 500);
+    });
+}
+
+window.confirmLinkDiscord = async () => {
+    const userId = discordUserIdInput?.value.trim();
+    const error = document.getElementById('discordLinkError');
+    const btn = document.getElementById('btnConfirmDiscord');
+    
+    if (!userId || userId.length < 17) {
+        error.textContent = 'Ingresa un User ID válido';
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = `${ICONS.LOADING} Vinculando...`;
+    
+    try {
+        const user = await fetchDiscordUser(userId);
+        
+        appState.discord = user;
+        localStorage.setItem('discordProfile', JSON.stringify(user));
+        
+        // Update user in Supabase if online
+        if (navigator.onLine) {
+            await supabaseClient
+                .from('users_access')
+                .update({ discord_id: userId, discord_username: user.username })
+                .eq('username', appState.usuarioActual);
+        }
+        
+        updateDiscordUI();
+        updateAvatarWithDiscord();
+        closeDiscordModal();
+        notificationSound.play().catch(() => {});
+        
+    } catch (e) {
+        error.textContent = 'Error al vincular: ' + e.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.36-.698.772-1.362 1.225-1.993a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.12-.098.246-.198.373-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg> Vincular`;
+    }
+};
+
+window.linkDiscord = async () => {
+    openDiscordModal();
+};
+
+window.unlinkDiscord = () => {
+    if (!confirm('¿Desvincular tu cuenta de Discord?')) return;
+    
+    appState.discord = null;
+    localStorage.removeItem('discordProfile');
+    
+    // Reset avatars
+    const profileAvatar = document.getElementById('profileAvatar');
+    if (profileAvatar) {
+        profileAvatar.innerHTML = `<span id="avatarInitial">${appState.usuarioActual.charAt(0).toUpperCase()}</span>`;
+    }
+    
+    const profileAvatarLarge = document.getElementById('profileAvatarLarge');
+    if (profileAvatarLarge) {
+        profileAvatarLarge.innerHTML = `
+            <span id="avatarInitialLarge">${appState.usuarioActual.charAt(0).toUpperCase()}</span>
+            <span class="online-indicator"></span>
+        `;
+    }
+    
+    // Update Supabase
+    if (navigator.onLine) {
+        supabaseClient
+            .from('users_access')
+            .update({ discord_id: null, discord_username: null })
+            .eq('username', appState.usuarioActual);
+    }
+    
+    updateDiscordUI();
+};
+
+// =========================================
+// COMMUNITY SYSTEM
+// =========================================
+const communityModal = document.getElementById('communityModal');
+const userDetailModal = document.getElementById('userDetailModal');
+let communityTab = 'online';
+let communityUsers = [];
+
+window.openCommunityModal = async () => {
+    if (communityModal) {
+        communityModal.classList.add('open');
+        await loadCommunityUsers();
+    }
+};
+
+window.closeCommunityModal = () => {
+    if (communityModal) {
+        communityModal.classList.remove('open');
+    }
+};
+
+window.switchCommunityTab = (tab) => {
+    communityTab = tab;
+    document.querySelectorAll('.community-tab').forEach(t => {
+        t.classList.toggle('active', t.getAttribute('onclick').includes(tab));
+    });
+    renderCommunityUsers();
+};
+
+async function loadCommunityUsers() {
+    const list = document.getElementById('communityList');
+    list.innerHTML = `<div class="community-loading"><div class="spinner-log"></div><p>Cargando usuarios...</p></div>`;
+    
+    try {
+        // Fetch REAL data from Supabase
+        if (navigator.onLine) {
+            const { data, error } = await supabaseClient
+                .from('users_access')
+                .select('*')
+                .order('is_online', { ascending: false });
+            
+            if (!error && data) {
+                // Use REAL data from database
+                communityUsers = data.map(u => ({
+                    ...u,
+                    likes: u.total_likes || 0,
+                    played: u.total_played || 0,
+                    downloads: u.total_downloads || 0,
+                    currentSong: u.current_song ? { name: u.current_song, time: '' } : null
+                }));
+                
+                // Also fetch Discord avatars for users with discord_id
+                for (const user of communityUsers) {
+                    if (user.discord_id) {
+                        try {
+                            const discordData = await fetchDiscordUserSilent(user.discord_id);
+                            if (discordData) {
+                                user.discord_avatar = discordData.avatar;
+                                user.discord_username = discordData.username;
+                            }
+                        } catch (e) {
+                            // Silently fail for individual users
+                        }
+                    }
+                }
+                
+                renderCommunityUsers();
+                return;
+            }
+        }
+        
+        // Fallback to local users for offline mode
+        communityUsers = [
+            { username: appState.usuarioActual || 'admin', role: appState.currentUserRole || 'user', is_online: 1, likes: appState.likedIds.length, played: appState.playCount, downloads: appState.downloadedIds.length, currentSong: null }
+        ];
+        renderCommunityUsers();
+        
+    } catch (e) {
+        console.error('Error loading community:', e);
+        list.innerHTML = `<div class="community-empty">Error al cargar usuarios</div>`;
+    }
+}
+
+// Silent fetch for batch operations (doesn't throw errors)
+async function fetchDiscordUserSilent(userId) {
+    try {
+        const response = await fetch(`https://api.lanyard.rest/v1/users/${userId}`);
+        const data = await response.json();
+        
+        if (!data.success || !data.data) return null;
+        
+        const discordUser = data.data.discord_user;
+        let avatarUrl;
+        
+        if (discordUser.avatar) {
+            const ext = discordUser.avatar.startsWith('a_') ? 'gif' : 'png';
+            avatarUrl = `https://cdn.discordapp.com/avatars/${userId}/${discordUser.avatar}.${ext}?size=128`;
+        } else {
+            const defaultNum = discordUser.discriminator === '0' 
+                ? (BigInt(userId) >> 22n) % 6n 
+                : parseInt(discordUser.discriminator) % 5;
+            avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultNum}.png`;
+        }
+        
+        return {
+            id: userId,
+            username: discordUser.global_name || discordUser.username,
+            avatar: avatarUrl,
+            status: data.data.discord_status
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+function renderCommunityUsers() {
+    const list = document.getElementById('communityList');
+    
+    let filtered = communityUsers;
+    if (communityTab === 'online') {
+        filtered = communityUsers.filter(u => u.is_online === 1);
+    }
+    
+    if (filtered.length === 0) {
+        list.innerHTML = `<div class="community-empty">No hay usuarios ${communityTab === 'online' ? 'en línea' : ''}</div>`;
+        return;
+    }
+    
+    list.innerHTML = filtered.map(user => {
+        const initial = user.username.charAt(0).toUpperCase();
+        const isOnline = user.is_online === 1;
+        const hasDiscord = user.discord_avatar || user.discord_username;
+        const isListening = user.currentSong;
+        
+        // Use REAL Discord avatar if available
+        const avatarUrl = user.discord_avatar 
+            ? user.discord_avatar 
+            : (hasDiscord ? `https://cdn.discordapp.com/embed/avatars/${user.username.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 5}.png` : null);
+        
+        return `
+            <div class="community-user" onclick="openUserDetail('${user.username}')" data-testid="user-${user.username}">
+                <div class="community-user-avatar">
+                    ${avatarUrl ? `<img src="${avatarUrl}" alt="">` : initial}
+                    <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+                </div>
+                <div class="community-user-info">
+                    <div class="community-user-name">
+                        ${user.username}
+                        ${user.role !== 'user' ? `<span class="role-badge ${user.role}">${user.role}</span>` : ''}
+                    </div>
+                    <div class="community-user-status ${isListening ? 'listening' : ''}">
+                        ${isListening ? `
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                            ${isListening.name}
+                        ` : (isOnline ? 'En línea' : 'Desconectado')}
+                    </div>
+                </div>
+                <div class="community-user-stats">
+                    <span title="Likes">❤️ ${user.likes || 0}</span>
+                    <span title="Canciones escuchadas">🎵 ${user.played || 0}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.openUserDetail = (username) => {
+    const user = communityUsers.find(u => u.username === username);
+    if (!user) return;
+    
+    if (userDetailModal) {
+        userDetailModal.classList.add('open');
+        
+        // Update avatar - use REAL Discord avatar if available
+        const avatar = document.getElementById('userDetailAvatar');
+        const initial = username.charAt(0).toUpperCase();
+        
+        if (user.discord_avatar) {
+            // Use real Discord avatar
+            avatar.innerHTML = `<img src="${user.discord_avatar}" alt="">`;
+        } else if (user.discord_username) {
+            // Fallback to default avatar
+            const avatarNum = username.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 5;
+            avatar.innerHTML = `<img src="https://cdn.discordapp.com/embed/avatars/${avatarNum}.png" alt="">`;
+        } else {
+            avatar.innerHTML = `<span>${initial}</span>`;
+        }
+        
+        // Update status
+        const isOnline = user.is_online === 1;
+        document.getElementById('userStatusBadge').innerHTML = `
+            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+            <span>${isOnline ? 'En línea' : 'Desconectado'}</span>
+        `;
+        
+        // Update name and role
+        document.getElementById('userDetailName').textContent = username;
+        const roleNames = { admin: 'Administrador', dev: 'Developer', user: 'Usuario' };
+        document.getElementById('userDetailRole').textContent = roleNames[user.role] || 'Usuario';
+        document.getElementById('userDetailRole').className = `user-detail-role ${user.role}`;
+        
+        // Now playing - show REAL current song
+        const nowPlaying = document.getElementById('userNowPlaying');
+        if (user.currentSong || user.current_song) {
+            nowPlaying.style.display = 'block';
+            const songName = user.currentSong?.name || user.current_song;
+            document.getElementById('userNowPlayingTitle').textContent = songName;
+            document.getElementById('userNowPlayingTime').textContent = user.currentSong?.time || '';
+        } else {
+            nowPlaying.style.display = 'none';
+        }
+        
+        // Discord
+        const discordSection = document.getElementById('userDiscordSection');
+        if (user.discord_username || user.discord_id) {
+            discordSection.style.display = 'block';
+            document.getElementById('userDiscordName').textContent = user.discord_username || 'Vinculado';
+        } else {
+            discordSection.style.display = 'none';
+        }
+        
+        // Stats - use REAL data
+        document.getElementById('userStatLikes').textContent = user.likes || user.total_likes || 0;
+        document.getElementById('userStatPlayed').textContent = user.played || user.total_played || 0;
+        document.getElementById('userStatDownloads').textContent = user.downloads || user.total_downloads || 0;
+        
+        // Member since
+        const date = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Ene 2025';
+        document.getElementById('userMemberSince').textContent = date;
+    }
+};
+
+window.closeUserDetailModal = () => {
+    if (userDetailModal) {
+        userDetailModal.classList.remove('open');
+    }
+};
+
+// Update listening status periodically
+async function updateListeningStatus() {
+    if (!appState.usuarioActual || !navigator.onLine) return;
+    
+    const currentSong = appState.playlist[appState.currentIndex];
+    const songName = currentSong ? formatDisplayName(currentSong.name) : null;
+    const isPlaying = !audio.paused;
+    
+    try {
+        await supabaseClient
+            .from('users_access')
+            .update({
+                is_online: 1,
+                current_song: isPlaying ? songName : null,
+                last_seen: new Date().toISOString()
+            })
+            .eq('username', appState.usuarioActual);
+    } catch (e) {
+        console.warn('Failed to update listening status:', e);
+    }
+}
+
+// Update status every 30 seconds
+setInterval(updateListeningStatus, 30000);
+
+window.exportStats = () => {
+    const stats = {
+        username: appState.usuarioActual,
+        role: appState.currentUserRole,
+        likes: appState.likedIds.length,
+        played: appState.playCount,
+        downloads: appState.downloadedIds.length,
+        likedSongs: appState.likedIds,
+        discord: appState.discord ? appState.discord.username : null,
+        exportedAt: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `jodify-stats-${appState.usuarioActual}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+window.handleLogout = async () => {
+    closeProfileModal();
+    document.getElementById('logoutLoading').style.display = 'flex';
+    
+    try {
+        if (appState.usuarioActual && navigator.onLine) {
+            await supabaseClient
+                .from('users_access')
+                .update({ is_online: 0 })
+                .eq('username', appState.usuarioActual);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
+        audio.pause();
+        audio.src = "";
+
+        localStorage.removeItem("jodify_session_active");
+        localStorage.removeItem("jodify_user_role");
+        localStorage.removeItem("currentUserName");
+
+        appState.usuarioActual = "";
+        appState.currentUserRole = null;
+        appState.playlist = [];
+
+        document.getElementById("loginScreen").style.display = "flex";
+        const loginForm = document.getElementById("loginForm");
+        if (loginForm) loginForm.reset();
+        if (songList) songList.innerHTML = "";
+
+        if (addSongContainer) addSongContainer.style.display = "none";
+        if (btnOpenRegister) btnOpenRegister.style.display = "none";
+    } catch (err) {
+        console.error("Logout error:", err);
+        location.reload();
+    } finally {
+        document.getElementById('logoutLoading').style.display = 'none';
+    }
+};
+
+// Close profile modal on click outside
+window.addEventListener('click', (e) => {
+    if (e.target === profileModal) {
+        closeProfileModal();
+    }
+});
+
+console.log("JodiFy v2.1 - Profile & Discord ready");

@@ -11,9 +11,12 @@ let mainWindow = null;
 let splash = null;
 let updateWindow = null;
 
+// Configuración de Logs
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
+// IMPORTANTE: Evita que descargue automáticamente para que 
+// tu ventana update.html controle el inicio de la descarga.
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
@@ -42,6 +45,8 @@ function createUpdateWindow(info) {
     });
 
     updateWindow.loadFile('update.html');
+
+    // Enviamos la info de versiones cuando el HTML esté listo
     updateWindow.webContents.on('did-finish-load', () => {
         updateWindow.webContents.send('update-info', {
             current: app.getVersion(),
@@ -80,13 +85,14 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false,
-            webSecurity: false
+            webSecurity: false // Nota: Ten cuidado con esto en apps que cargan contenido externo
         }
     });
 
     mainWindow.loadFile('index.html');
 
     mainWindow.on('close', (e) => {
+        // Si queremos una salida limpia con animación
         if (mainWindow) {
             e.preventDefault();
             mainWindow.webContents.send('app-close');
@@ -103,11 +109,14 @@ function createWindow() {
             mainWindow.show();
             updateThumbarButtons(false);
             
+            // BUSCAR ACTUALIZACIONES AL INICIAR
+            // Solo en producción o si tienes configurado el dev-publisher
             if (app.isPackaged) {
                 autoUpdater.checkForUpdates();
             } else {
                 console.log("Modo desarrollo: Buscando actualizaciones (Modo Desarrollador)");
-               
+                // Descomenta la siguiente línea para probar tu update.html sin subir a GitHub:
+                // createUpdateWindow({ version: '1.1.0-demo' });
             }
         }, 2500);
     });
