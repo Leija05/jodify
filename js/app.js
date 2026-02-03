@@ -214,7 +214,7 @@ window.loadUsersList = async () => {
     tbody.innerHTML = "";
     data.forEach(user => {
         const tr = document.createElement("tr");
-        
+
         // Determinamos el estado visual
         const statusClass = user.is_online === 1 ? "status-online" : "status-offline";
         const statusText = user.is_online === 1 ? "En línea" : "Desconectado";
@@ -489,7 +489,7 @@ confirmLogoutBtn.onclick = async () => {
 
             await addSystemLog('info', `Cerró sesión.`);
         }
-        
+
         await new Promise(resolve => setTimeout(resolve, 800));
 
         if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
@@ -523,10 +523,40 @@ confirmLogoutBtn.onclick = async () => {
 
 const registerForm = document.getElementById("registerForm");
 
+async function fetchUserStats() {
+    try {
+
+        const { count: likedCount, error: err1 } = await supabaseClient
+            .from('user_likes') 
+            .select('*', { count: 'exact', head: true })
+            .eq('username', appState.usuarioActual);
+        await syncDownloadedSongs(); 
+        const downloadedCount = appState.downloadedIds.length;
+
+        return {
+            likes: err1 ? 0 : likedCount,
+            downloads: downloadedCount
+        };
+    } catch (error) {
+        console.error("Error obteniendo estadísticas:", error);
+        return { likes: 0, downloads: 0 };
+    }
+}
 function handleLoginSuccess(role) {
+    // 1. Actualizar el estado global con el nombre guardado en el login
     appState.currentUserRole = role;
+    appState.usuarioActual = localStorage.getItem("currentUserName") || "Usuario";
+
+    // 2. Ocultar pantalla de login
     document.getElementById("loginScreen").style.display = "none";
 
+    // 3. ACTUALIZAR INTERFAZ: Poner el nombre del usuario en el botón principal (píldora)
+    const displayBtnName = document.getElementById("displayUsername");
+    if (displayBtnName) {
+        displayBtnName.textContent = appState.usuarioActual;
+    }
+
+    // 4. Lógica de permisos por Rol
     if (addSongContainer) addSongContainer.style.display = "none";
     if (btnOpenRegister) btnOpenRegister.style.display = "none";
 
@@ -534,16 +564,17 @@ function handleLoginSuccess(role) {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (btnOpenRegister) btnOpenRegister.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
-        console.log("Acceso: DEVELOPER");
+        console.log(`Acceso: DEVELOPER (@${appState.usuarioActual})`);
     } else if (role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
-        console.log("Acceso: ADMINISTRADOR");
+        console.log(`Acceso: ADMINISTRADOR (@${appState.usuarioActual})`);
     } else {
         if (fileInput) fileInput.disabled = true;
-        console.log("Acceso: USUARIO");
+        console.log(`Acceso: USUARIO (@${appState.usuarioActual})`);
     }
 
+    // 5. Iniciar la aplicación y cargar canciones
     initApp();
 }
 
@@ -609,6 +640,29 @@ if (registerForm) {
         }
     };
 }
+let isElectronCommand = false;
+
+window.electronAPI.onControlCommand((command) => {
+    isElectronCommand = true; // indicamos que viene de Electron
+    switch (command) {
+        case 'play': togglePlayFromSystem(); break;
+        case 'next': nextFromSystem(); break;
+        case 'prev': prevFromSystem(); break;
+    }
+    isElectronCommand = false;
+});
+
+audio.addEventListener('play', () => {
+    if (!isElectronCommand && window.electronAPI?.updateThumbar) {
+        window.electronAPI.updateThumbar(true);
+    }
+});
+
+audio.addEventListener('pause', () => {
+    if (!isElectronCommand && window.electronAPI?.updateThumbar) {
+        window.electronAPI.updateThumbar(false);
+    }
+});
 
 async function initApp() {
     await syncDownloadedSongs();
@@ -733,6 +787,43 @@ async function getGradientColors(imgElement) {
     });
 }
 
+async function toggleProfileModal(show) {
+    const modal = document.getElementById('userProfileModal');
+    if (!modal) return;
+
+    modal.style.display = show ? 'flex' : 'none';
+    
+    if (show) {
+        showPasswordChange(false);
+
+        // Datos inmediatos (del appState)
+        const nombre = appState.usuarioActual || "Usuario";
+        const rol = appState.currentUserRole || "user";
+        
+        document.getElementById('profileName').textContent = nombre;
+        document.getElementById('profileInitial').textContent = nombre.charAt(0).toUpperCase();
+        
+        const roleBadge = document.getElementById('profileRole');
+        roleBadge.textContent = rol;
+        roleBadge.className = `role-badge badge-${rol}`;
+
+        // Datos desde la Base de Datos (Animación de carga opcional)
+        document.getElementById('countLiked').textContent = "...";
+        document.getElementById('countDownloaded').textContent = "...";
+
+        const stats = await fetchUserStats();
+        
+        document.getElementById('countLiked').textContent = stats.likes;
+        document.getElementById('countDownloaded').textContent = stats.downloads;
+    }
+}
+
+document.getElementById('userProfileBtn').onclick = () => toggleProfileModal(true);
+
+document.getElementById('btnLogout').onclick = () => {
+    toggleProfileModal(false);
+    document.getElementById('logoutModal').style.display = 'flex';
+};
 /* =========================
    LÓGICA DE SUBIDA (SOLO ADMIN)
 ========================= */
@@ -760,9 +851,10 @@ fileInput.onchange = async (e) => {
     uploadList.innerHTML = `<div id="itemsScrollContainer"></div>`;
     const scrollContainer = document.getElementById("itemsScrollContainer");
 
+    // Inyectamos la estructura del header
     modalHeader.innerHTML = `
         <div class="header-flex">
-            <h3 id="modalTitle">Subiendo canciones...</h3>
+            <h3 id="modalTitle"><span class="spin-mini">${ICONS.LOADING}</span> Subiendo canciones...</h3>
             <div class="upload-counter">
                 <div class="stat">Total: <span id="totalCount" class="count-total">0</span></div>
                 <div class="stat">Éxito: <span id="successCount" class="count-success">0</span></div>
@@ -775,7 +867,13 @@ fileInput.onchange = async (e) => {
     document.getElementById("closeModalBtn").onclick = () => toggleModal(false);
 
     let stats = { success: 0, error: 0, total: files.length };
-    document.getElementById("totalCount").textContent = stats.total;
+    
+    const totalElem = document.getElementById("totalCount");
+    const successElem = document.getElementById("successCount");
+    const errorElem = document.getElementById("errorCount");
+    const titleElem = document.getElementById("modalTitle");
+
+    totalElem.textContent = stats.total;
 
     for (const file of files) {
         if (!file.type.startsWith('audio/')) {
@@ -785,37 +883,42 @@ fileInput.onchange = async (e) => {
             continue;
         }
 
+        // processAndUpload debe encargarse de crear el div de la canción dentro de scrollContainer
         await processAndUpload(file, scrollContainer, (status) => {
             if (status === 'success') {
                 stats.success++;
                 addSystemLog('info', `Subió una nueva canción: "${formatDisplayName(file.name)}"`);
             } else {
                 stats.error++;
-                addSystemLog('error', `Error al procesar la subida de: "${file.name}"`);
+                addSystemLog('error', `Error en: "${file.name}"`);
             }
 
-            document.getElementById("successCount").textContent = stats.success;
-            document.getElementById("errorCount").textContent = stats.error;
+            successElem.textContent = stats.success;
+            errorElem.textContent = stats.error;
 
             if (badgeText) {
-                badgeText.innerHTML = `<span class="spin-mini">${ICONS.LOADING}</span> Subiendo: ${stats.success + stats.error} / ${stats.total}`;
+                badgeText.innerHTML = `<span class="spin-mini">${ICONS.LOADING}</span> ${stats.success + stats.error} / ${stats.total}`;
             }
         });
 
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
     }
 
-    document.getElementById("modalTitle").innerHTML = `${ICONS.SUCCESS} Subida finalizada`;
+    titleElem.innerHTML = `<span style="color: #1db954;">${ICONS.SUCCESS}</span> Subida finalizada`;
     if (badgeText) badgeText.innerHTML = `${ICONS.SUCCESS} Subida completada`;
 
     appState.isUploading = false;
+
     if (stats.success > 0) {
         notificationSound.play().catch(() => { });
         fetchSongs();
     }
 
     setTimeout(() => {
-        if (!appState.isUploading && uploadBadge) uploadBadge.style.display = "none";
+        if (!appState.isUploading && uploadBadge) {
+            uploadBadge.style.opacity = "0";
+            setTimeout(() => { uploadBadge.style.display = "none"; uploadBadge.style.opacity = "1"; }, 500);
+        }
     }, 5000);
 };
 
@@ -937,9 +1040,41 @@ async function fetchSongs() {
 }
 
 function getFilteredList() {
-    let list = appState.offlineMode ? appState.playlist.filter(s => appState.downloadedIds.includes(s.id)) :
-        (appState.currentTab === "global" ? [...appState.playlist] : appState.playlist.filter(s => appState.likedIds.includes(s.id)));
-    return list.filter(s => formatDisplayName(s.name).toLowerCase().includes(appState.searchTerm));
+    let list = appState.playlist;
+
+    // 1️⃣ Filtrar por pestaña: global o personal (me gusta / offline)
+    if (appState.offlineMode || appState.currentTab === "personal") {
+        // Solo canciones descargadas o favoritas
+        list = list.filter(s => appState.downloadedIds.includes(s.id) || appState.likedIds.includes(s.id));
+    }
+
+    // 2️⃣ Filtrar por término de búsqueda
+    if (appState.searchTerm && appState.searchTerm.length > 0) {
+        const term = appState.searchTerm.toLowerCase();
+        list = list.filter(s => formatDisplayName(s.name).toLowerCase().includes(term));
+    }
+
+    // 3️⃣ Filtrar por usuario (opcional)
+    if (appState.userFilter && appState.userFilter !== "all") {
+        list = list.filter(s => s.added_by === appState.userFilter);
+    }
+
+    // 4️⃣ Ordenar según el select
+    switch (appState.currentSort) {
+        case "old":
+            list.sort((a, b) => a.id - b.id); // de más antiguo a más reciente
+            break;
+        case "recent":
+            list.sort((a, b) => b.id - a.id); // de más reciente a más antiguo
+            break;
+        case "popular":
+            list.sort((a, b) => b.likes - a.likes); // por likes descendente
+            break;
+        default:
+            break;
+    }
+
+    return list;
 }
 
 function createSongElement(song, isCurrent, isDownloaded) {
@@ -1214,14 +1349,19 @@ function formatTime(t) {
     return `${m}:${s}`;
 }
 
-function updatePlayIcon(play) {
+function updatePlayIcon(isPlaying) {
     const playIconElement = document.getElementById("playIcon");
     if (playIconElement) {
-        playIconElement.innerHTML = play
+        playIconElement.innerHTML = isPlaying
             ? `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`
             : `<polygon points="5 3 19 12 5 21 5 3"></polygon>`;
     }
+
+    if (window.electronAPI && window.electronAPI.updateThumbar) {
+        window.electronAPI.updateThumbar(isPlaying);
+    }
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
     const sessionActive = localStorage.getItem("jodify_session_active");
@@ -1360,6 +1500,86 @@ if (likeBtn) {
     likeBtn.onclick = () => {
         if (appState.currentIndex >= 0) toggleLike(null, appState.playlist[appState.currentIndex].id);
     };
+}
+
+function showPasswordChange(show) {
+    const profileView = document.getElementById('profileView');
+    const passwordView = document.getElementById('passwordView');
+    const msg = document.getElementById('passwordMessage');
+
+    if (show) {
+        profileView.style.display = 'none';
+        passwordView.style.display = 'block';
+        // Limpiar campos y mensajes al entrar
+        document.getElementById('newPassword').value = "";
+        document.getElementById('confirmNewPassword').value = "";
+        msg.textContent = "";
+    } else {
+        profileView.style.display = 'block';
+        passwordView.style.display = 'none';
+    }
+}
+async function updateUserPassword() {
+    const newPass = document.getElementById('newPassword').value.trim();
+    const confirmPass = document.getElementById('confirmNewPassword').value.trim();
+    const msg = document.getElementById('passwordMessage');
+    const saveBtn = document.querySelector('.btn-primary');
+
+    // 1. Validaciones básicas
+    if (!newPass || !confirmPass) {
+        msg.style.color = "#ff4b2b";
+        msg.textContent = "Ambos campos son obligatorios";
+        return;
+    }
+
+    if (newPass.length < 4) {
+        msg.style.color = "#ff4b2b";
+        msg.textContent = "La contraseña debe tener al menos 4 caracteres";
+        return;
+    }
+
+    if (newPass !== confirmPass) {
+        msg.style.color = "#ff4b2b";
+        msg.textContent = "Las contraseñas no coinciden";
+        return;
+    }
+
+    // 2. Proceso de actualización
+    saveBtn.disabled = true;
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = "Actualizando...";
+
+    try {
+        const { error } = await supabaseClient
+            .from('users_access')
+            .update({ password: newPass })
+            .eq('username', appState.usuarioActual); // Filtra por el usuario logueado
+
+        if (error) throw error;
+
+        // Éxito
+        msg.style.color = "#1db954";
+        msg.textContent = "¡Contraseña actualizada con éxito!";
+        
+        // Log del sistema
+        if (typeof addSystemLog === 'function') {
+            addSystemLog('info', `Actualizó su contraseña personal.`);
+        }
+
+        // Regresar a la vista principal tras un breve retraso
+        setTimeout(() => {
+            showPasswordChange(false);
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+        }, 1500);
+
+    } catch (err) {
+        console.error("Error al cambiar contraseña:", err);
+        msg.style.color = "#ff4b2b";
+        msg.textContent = "Error: No se pudo conectar con el servidor";
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+    }
 }
 
 if (sortOptions) {

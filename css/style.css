@@ -15,6 +15,16 @@
   --bg-secondary: #1e1e1e;
   --input-bg: rgba(255, 255, 255, 0.1);
   --border-color: rgba(255, 255, 255, 0.2);
+  --bg-modal: rgba(0, 0, 0, 0.85);
+  --card-bg: rgba(255, 255, 255, 0.08);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --text: #ffffff;
+  --text-secondary: #cccccc;
+  --accent: #1db954;
+  --accent-hover: #1ed760;
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --btn-logout-bg: rgba(255, 75, 43, 0.1);
+  --btn-logout-color: #ff4b2b;
 }
 
 [data-theme="light"] {
@@ -31,6 +41,16 @@
   --bg-secondary: #f5f5f5;
   --input-bg: rgba(0, 0, 0, 0.05);
   --border-color: rgba(0, 0, 0, 0.15);
+  --bg-modal: rgba(255, 255, 255, 0.9);
+  --card-bg: rgba(255, 255, 255, 0.98);
+  --card-border: rgba(0, 0, 0, 0.1);
+  --text: #222222;
+  --text-secondary: #555555;
+  --accent: #1db954;
+  --accent-hover: #1ed760;
+  --input-bg: rgba(0, 0, 0, 0.05);
+  --btn-logout-bg: rgba(255, 75, 43, 0.1);
+  --btn-logout-color: #ff4b2b;
 }
 
 /* =========================================
@@ -84,13 +104,16 @@ body {
   0% {
     transform: translate(0, 0) scale(1);
   }
+
   50% {
     transform: translate(-2%, 4%) scale(1.08) rotate(1deg);
   }
+
   100% {
     transform: translate(3%, -2%) scale(1) rotate(-1deg);
   }
 }
+
 .no-visual #visualizer {
   display: none;
 }
@@ -98,6 +121,7 @@ body {
 .no-visual #dynamic-bg {
   display: none;
 }
+
 /* =========================================
    3. LAYOUT PRINCIPAL
 ========================================= */
@@ -183,6 +207,320 @@ body {
   max-width: 600px;
 }
 
+/* =========================================
+   BOTÓN DE PERFIL (USER PILL)
+========================================= */
+.user-pill-btn {
+  background: var(--glass-bg, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 8px 18px;
+  border-radius: 50px;
+  /* Estilo píldora */
+  color: var(--text, #ffffff);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.user-pill-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Animación del Icono */
+.user-icon-anim {
+  transition: transform 0.3s ease, color 0.3s ease;
+  color: var(--accent, #ff4b2b);
+  /* Color de acento para el icono */
+}
+
+/* Efectos al pasar el ratón (Hover) */
+.user-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent, #ff4b2b);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 75, 43, 0.2);
+}
+
+.user-pill-btn:hover .user-icon-anim {
+  transform: scale(1.1);
+}
+
+/* Animación interna del brazo del SVG (Opcional) */
+.user-pill-btn:hover .user-arm {
+  stroke-dasharray: 50;
+  animation: wave 1.5s ease-in-out infinite;
+}
+
+@keyframes wave {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-5deg) translateX(-1px);
+  }
+}
+
+/* Estado activo/clic */
+.user-pill-btn:active {
+  transform: translateY(0);
+  filter: brightness(0.8);
+}
+
+/* =========================================
+   MODAL OVERLAY
+========================================= */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-modal);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  transition: opacity 0.3s ease;
+}
+
+/* =========================================
+   PROFILE CARD / GLASS EFFECT
+========================================= */
+.profile-card {
+   background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 450px;
+  padding: 30px 25px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* =========================================
+   PROFILE HEADER
+========================================= */
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-large {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.username-display {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.role-badge {
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 4px 12px;
+  border-radius: 12px;
+ background: rgba(29, 185, 84, 0.2);
+    color: var(--accent);
+}
+
+/* =========================================
+   PROFILE STATS
+========================================= */
+.profile-stats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 0;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* =========================================
+   PROFILE ACTION BUTTONS GRID
+========================================= */
+.profile-actions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-logout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  padding: 12px 15px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+
+
+.btn-logout:hover {
+  background: #ff4b2b;
+  color: #fff;
+}
+
+/* =========================================
+   CLOSE BUTTON
+========================================= */
+.btn-close-text {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 10px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.btn-close-text:hover {
+  color: var(--accent);
+}
+
+/* =========================================
+   PASSWORD VIEW
+========================================= */
+.profile-content#passwordView {
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.view-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-input {
+  padding: 12px 15px;
+  border-radius: 12px;
+   border: 1px solid rgba(0,0,0,0.1);
+  background: var(--input-bg);
+  color: var(--text);
+  outline: none;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.profile-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.status-msg {
+  font-size: 0.8rem;
+  color: #ff4b2b;
+  min-height: 18px;
+  text-align: center;
+}
+
+/* =========================================
+   ANIMATIONS
+========================================= */
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .playlist h3 {
   margin-bottom: 20px;
   font-size: 1.3rem;
@@ -205,7 +543,19 @@ body {
   vertical-align: middle;
   margin-right: 6px;
 }
+.btn-secondary {
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text);
+    border: 1px solid var(--card-border);
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
 
+.btn-secondary:hover {
+    background-color: rgba(255,255,255,0.15);
+}
 .tab-btn {
   flex: 1;
   cursor: pointer;
@@ -279,6 +629,7 @@ body {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -383,9 +734,11 @@ body {
   0% {
     left: -150%;
   }
+
   30% {
     left: 100%;
   }
+
   100% {
     left: 100%;
   }
@@ -400,34 +753,35 @@ body {
   border-color: #1DB954;
   box-shadow: 0 0 10px rgba(29, 185, 84, 0.3);
 }
+
 #settingsBtn {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    color: var(--text);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    opacity: 0.8;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0.8;
 }
 
 #settingsBtn:hover {
-    opacity: 1;
-    background: var(--accent);
-    color: white;
-    transform: scale(1.05);
+  opacity: 1;
+  background: var(--accent);
+  color: white;
+  transform: scale(1.05);
 }
 
 #settingsBtn svg {
-    transition: transform 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 #settingsBtn:hover svg {
-    transform: rotate(45deg);
+  transform: rotate(45deg);
 }
 
 #songList {
@@ -476,6 +830,7 @@ body {
   0% {
     background-position: 0% 50%;
   }
+
   100% {
     background-position: 200% 50%;
   }
@@ -697,8 +1052,8 @@ body {
   transition: all 0.3s ease;
 }
 
-.input-group input:focus ~ label,
-.input-group input:not(:placeholder-shown) ~ label {
+.input-group input:focus~label,
+.input-group input:not(:placeholder-shown)~label {
   top: -10px;
   left: 10px;
   font-size: 0.75rem;
@@ -870,8 +1225,8 @@ body {
   transition: all 0.3s ease;
 }
 
-.input-group input:focus ~ label,
-.input-group input:not(:placeholder-shown) ~ label {
+.input-group input:focus~label,
+.input-group input:not(:placeholder-shown)~label {
   top: -10px;
   left: 10px;
   font-size: 12px;
@@ -1106,6 +1461,7 @@ body {
     opacity: 0;
     transform: translateX(-5px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -1117,6 +1473,7 @@ body {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1170,6 +1527,7 @@ body {
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -1232,6 +1590,7 @@ body {
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -1309,10 +1668,12 @@ body {
     transform: scale(1);
     filter: brightness(1);
   }
+
   50% {
     transform: scale(1.3);
     filter: brightness(1.5) drop-shadow(0 0 8px var(--accent));
   }
+
   100% {
     transform: scale(1);
     filter: brightness(1);
@@ -1327,9 +1688,11 @@ body {
   0% {
     transform: translateX(0);
   }
+
   10% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(var(--scroll-dist));
   }
@@ -1479,85 +1842,98 @@ body {
   background-color: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(5px);
 }
+
 #logoutModal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    backdrop-filter: blur(5px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(5px);
 }
+
 /* Contenedor de botones en el modal */
 .modal-buttons {
-    display: flex;
-    gap: 12px;
-    margin-top: 25px;
-    justify-content: center;
+  display: flex;
+  gap: 12px;
+  margin-top: 25px;
+  justify-content: center;
 }
 
 /* Estilo base para botones del modal */
 .modal-btn {
-    flex: 1;
-    padding: 12px 20px;
-    border-radius: 50px; /* Estilo píldora */
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    border: none;
-    transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 50px;
+  /* Estilo píldora */
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
 }
 
 /* Botón de Confirmar (Salir) */
 #confirmLogout {
-    background: #ff4b2b; /* Rojo vibrante */
-    color: white;
-    box-shadow: 0 4px 15px rgba(255, 75, 43, 0.3);
+  background: #ff4b2b;
+  /* Rojo vibrante */
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 75, 43, 0.3);
 }
 
 #confirmLogout:hover {
-    background: #ff6247;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 75, 43, 0.4);
+  background: #ff6247;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 75, 43, 0.4);
 }
 
 #confirmLogout:active {
-    transform: translateY(0);
+  transform: translateY(0);
 }
 
 /* Botón de Cancelar */
 #cancelLogout {
-    background: transparent;
-    color: #bbb;
-    border: 1px solid #444;
+  background: transparent;
+  color: #bbb;
+  border: 1px solid #444;
 }
 
 #cancelLogout:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    border-color: #888;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  border-color: #888;
 }
 
 /* Animación de entrada para la ventana */
 .modal-window-anim {
-    animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes modalPop {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
+
 #logoutModal .window {
-    background: #181818;
-    border: 1px solid #333;
-    padding: 25px;
-    border-radius: 15px;
-    text-align: center;
+  background: #181818;
+  border: 1px solid #333;
+  padding: 25px;
+  border-radius: 15px;
+  text-align: center;
 }
+
 .modal-content {
   background: var(--bg-card, #1e1e1e);
   margin: 10% auto;
@@ -1724,111 +2100,130 @@ body {
   position: relative;
   z-index: 5;
 }
+
 #btnOpenPlaylist {
-    display: none;
+  display: none;
 }
 
 @media (max-width: 600px) {
-    #btnOpenPlaylist {
-        display: block;
-    }
+  #btnOpenPlaylist {
+    display: block;
+  }
 }
+
 .offline-mode-active .download-btn,
 .offline-mode-active .like-btn,
 .offline-mode-active #btnGlobal,
 .offline-mode-active .upload-badge {
   display: none !important;
 }
+
 .no-dynamic-bg #dynamic-bg {
-    display: none;
+  display: none;
 }
+
 /* =========================================
    MODAL DE CONFIGURACIONES
 ========================================= */
 #settingsModal .modal-content {
-    max-width: 400px;
-    padding: 20px;
+  max-width: 400px;
+  padding: 20px;
 }
 
 #settingsModal .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
 #settingsModal .modal-header h3 {
-    margin: 0;
-    font-size: 1.5rem;
-    color: var(--text);
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text);
 }
 
 #settingsModal .modal-header button {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--text);
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text);
 }
 
 #settingsModal label {
-    display: block;
-    margin-bottom: 15px;
-    font-size: 1rem;
-    color: var(--text);
-    cursor: pointer;
+  display: block;
+  margin-bottom: 15px;
+  font-size: 1rem;
+  color: var(--text);
+  cursor: pointer;
 }
+
 #likeBtn.animate-like {
-    animation: heart-pulse 0.5s ease-in-out;
+  animation: heart-pulse 0.5s ease-in-out;
 }
 
 @keyframes heart-pulse {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.2);
-        opacity: 0.8;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
+
 /* Animación para el corazón al dar like */
 .animate-like {
-    animation: heart-pulse 0.6s ease-out;
+  animation: heart-pulse 0.6s ease-out;
 }
 
 @keyframes heart-pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
+
 /* Estilo permanente para corazón marcado (opcional, para resaltar) */
 #likeBtn.liked svg {
-    fill: #ff4b2b;  /* Rojo para marcado */
-    stroke: #ff4b2b;
+  fill: #ff4b2b;
+  /* Rojo para marcado */
+  stroke: #ff4b2b;
 }
+
 #settingsModal input[type="checkbox"] {
-    margin-right: 10px;
-    cursor: pointer;
+  margin-right: 10px;
+  cursor: pointer;
 }
 
 #settingsModal button {
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background 0.3s ease;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s ease;
 }
 
 #settingsModal button:hover {
-    background: var(--accent-hover);
+  background: var(--accent-hover);
 }
 
 .offline-mode-active .playlist-header::after {
@@ -1915,12 +2310,15 @@ body {
   0% {
     transform: translateX(0);
   }
+
   20% {
     transform: translateX(0);
   }
+
   80% {
     transform: translateX(-50%);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -2006,6 +2404,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -2016,6 +2415,7 @@ body {
     transform: translateY(-30px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -2027,6 +2427,7 @@ body {
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -2037,9 +2438,11 @@ body {
   0% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 1;
   }
+
   100% {
     opacity: 0.6;
   }
@@ -2291,27 +2694,48 @@ body {
     padding-bottom: 100px;
   }
 }
+
 /* Punto de estado de conexión */
 .status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 .status-online {
-    background-color: #2ecc71; /* Verde */
-    box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
+  background-color: #2ecc71;
+  /* Verde */
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
 }
 
 .status-offline {
-    background-color: #95a5a6; /* Gris */
+  background-color: #95a5a6;
+  /* Gris */
 }
 
 /* Ajuste para las insignias que ya tienes */
-.badge-dev { background: #ff4b2b; color: white; padding: 2px 6px; border-radius: 4px; }
-.badge-admin { background: #f1c40f; color: black; padding: 2px 6px; border-radius: 4px; }
-.badge-user { background: #3498db; color: white; padding: 2px 6px; border-radius: 4px; }
+.badge-dev {
+  background: #ff4b2b;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.badge-admin {
+  background: #f1c40f;
+  color: black;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.badge-user {
+  background: #3498db;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 @media (min-width: 769px) {
   .mobile-toggle-btn {
     display: none;
