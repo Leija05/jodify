@@ -49,7 +49,7 @@
 
                 <div class="local-users-hint" data-testid="local-users-hint">
                     <p>Usuarios locales disponibles:</p>
-                    <code>admin / admin123</code>
+                    <code>user / user123</code>
                 </div>
             </form>
         </div>
@@ -58,7 +58,7 @@
     <!-- OFFLINE MODAL -->
     <div id="offlineModal" class="modal-overlay" style="display:none;" data-testid="offline-modal">
         <div class="modal-content">
-            <h3>📡 Sin conexión detectada</h3>
+            <h3>Sin conexión detectada</h3>
             <p>No tienes internet. ¿Deseas usar tus canciones descargadas?</p>
             <div class="modal-actions">
                 <button onclick="enableOfflineMode()" class="btn-confirm" data-testid="offline-confirm">Entrar modo Offline</button>
@@ -115,7 +115,7 @@
                     <div class="avatar" id="profileAvatar">
                         <span id="avatarInitial">A</span>
                     </div>
-                    <span class="username" id="profileUsername">admin</span>
+                    <span class="username" id="profileUsername"></span>
                 </button>
 
                 <button id="settingsBtn" class="btn-icon" title="Configuraciones" data-testid="settings-btn">
@@ -129,7 +129,7 @@
                 <div id="settingsModal" class="modal" data-testid="settings-modal">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3>⚙️ Configuraciones</h3>
+                            <h3>Configuraciones</h3>
                             <button id="closeSettingsModal" class="close-btn" data-testid="close-settings">&times;</button>
                         </div>
                         <div>
@@ -375,7 +375,7 @@
             </div>
             
             <div class="profile-body">
-                <h2 class="profile-username" id="profileUsernameLarge">admin</h2>
+                <h2 class="profile-username" id="profileUsernameLarge"></h2>
                 <div class="profile-role" id="profileRole" data-testid="profile-role">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>

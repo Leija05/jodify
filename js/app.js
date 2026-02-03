@@ -777,8 +777,6 @@ if (passwordInput && togglePassword) {
 // LOCAL ADMIN USERS (No requiere conexión a Supabase)
 // =========================================
 const LOCAL_USERS = {
-    'admin': { password: 'admin123', role: 'admin', username: 'admin' },
-    'dev': { password: 'dev123', role: 'dev', username: 'dev' },
     'user': { password: 'user123', role: 'user', username: 'user' }
 };
 
