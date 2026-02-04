@@ -1834,7 +1834,7 @@ if (sortOptions) {
 // MOBILE PLAYLIST
 // =========================================
 const overlay = document.createElement('div');
-overlay.className = 'playlist-overlay';
+
 document.body.appendChild(overlay);
 
 function toggleMobilePlaylist(show) {
