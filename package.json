@@ -1,13 +1,13 @@
 {
   "name": "jodify",
   "productName": "JodiFy",
-  "version": "1.1.2",
+  "version": "1.0.6",
   "description": "Free Music For Friends",
   "main": "main.js",
   "author": "LeijaSex",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Leija05/jodify.git"
+    "url": "https://github.com/Leija05/jodify"
   },
   "scripts": {
     "start": "electron .",
@@ -56,11 +56,5 @@
   "dependencies": {
     "electron-log": "^5.4.3",
     "electron-updater": "^6.7.3"
-  },
-  "keywords": [],
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Leija05/jodify/issues"
-  },
-  "homepage": "https://github.com/Leija05/jodify#readme"
+  }
 }
