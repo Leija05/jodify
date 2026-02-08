@@ -3,6 +3,7 @@ import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { playback } from '../src/core/player/playback';
 import { queue } from '../src/core/player/queue';
 import { time } from '../src/core/utils/time';
+import { desktopHomeContent } from '../src/ui/desktop/homeLayout';
 
 const now = time.now();
 playback.setVolume(0.5);
@@ -14,11 +15,11 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.logo}>JodiFy</Text>
-          <Text style={styles.tagline}>Tu música, tu ritmo</Text>
+          <Text style={styles.logo}>{desktopHomeContent.brand.name}</Text>
+          <Text style={styles.tagline}>{desktopHomeContent.brand.tagline}</Text>
         </View>
         <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>En línea</Text>
+          <Text style={styles.statusText}>{desktopHomeContent.brand.status}</Text>
         </View>
       </View>
 
@@ -27,7 +28,7 @@ export default function App() {
           <Text style={styles.coverText}>JF</Text>
         </View>
         <View style={styles.heroInfo}>
-          <Text style={styles.heroLabel}>Reproduciendo ahora</Text>
+          <Text style={styles.heroLabel}>{desktopHomeContent.nowPlayingLabel}</Text>
           <Text style={styles.heroTitle}>{song?.name ?? 'Sin canción'}</Text>
           <Text style={styles.heroMeta}>Volumen: {Math.round(playback.state.volume * 100)}%</Text>
           <Text style={styles.heroMeta}>Sesión: {new Date(now).toLocaleTimeString()}</Text>
@@ -37,7 +38,7 @@ export default function App() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Accesos rápidos</Text>
         <View style={styles.quickGrid}>
-          {['Biblioteca', 'Favoritos', 'Playlists', 'Descubrir'].map((label) => (
+          {desktopHomeContent.quickActions.map((label) => (
             <View key={label} style={styles.quickCard}>
               <Text style={styles.quickLabel}>{label}</Text>
               <Text style={styles.quickMeta}>Abrir</Text>
@@ -49,10 +50,10 @@ export default function App() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Para ti</Text>
         <View style={styles.recommendCard}>
-          <Text style={styles.recommendTitle}>Mix Diario</Text>
-          <Text style={styles.recommendSubtitle}>Nueva música basada en tus gustos</Text>
+          <Text style={styles.recommendTitle}>{desktopHomeContent.recommendation.title}</Text>
+          <Text style={styles.recommendSubtitle}>{desktopHomeContent.recommendation.subtitle}</Text>
           <View style={styles.recommendPill}>
-            <Text style={styles.recommendPillText}>Escuchar</Text>
+            <Text style={styles.recommendPillText}>{desktopHomeContent.recommendation.cta}</Text>
           </View>
         </View>
       </View>
@@ -60,12 +61,14 @@ export default function App() {
       <View style={styles.playerDock}>
         <View>
           <Text style={styles.playerSong}>{song?.name ?? 'Sin canción'}</Text>
-          <Text style={styles.playerArtist}>JodiFy Studio</Text>
+          <Text style={styles.playerArtist}>{desktopHomeContent.player.artist}</Text>
         </View>
         <View style={styles.playerControls}>
-          <Text style={styles.playerButton}>⏮</Text>
-          <Text style={styles.playerButton}>⏯</Text>
-          <Text style={styles.playerButton}>⏭</Text>
+          {desktopHomeContent.player.controls.map((control) => (
+            <Text key={control} style={styles.playerButton}>
+              {control}
+            </Text>
+          ))}
         </View>
       </View>
     </SafeAreaView>
