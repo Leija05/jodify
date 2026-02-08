@@ -1057,6 +1057,7 @@ function broadcastJamState(event) {
     const currentSong = appState.playlist[appState.currentIndex];
     if (!currentSong) return;
     updateJamSessionState(currentSong.id).catch(() => {});
+    updateJamMembersCurrentSong(currentSong.id).catch(() => {});
     appState.jamChannel.send({
         type: 'broadcast',
         event,
@@ -1090,6 +1091,18 @@ async function updateJamSessionState(songId) {
             .from('jam_sessions')
             .update(minimalPayload)
             .eq('id', appState.jamSessionId);
+    }
+}
+
+async function updateJamMembersCurrentSong(songId) {
+    if (!appState.jamSessionId || !appState.jamUsers.length) return;
+    const usernames = appState.jamUsers.map(user => user.username);
+    const { error } = await supabaseClient
+        .from('users_access')
+        .update({ current_song_id: songId })
+        .in('username', usernames);
+    if (error) {
+        console.warn('Error updating jam users current song:', error);
     }
 }
 
