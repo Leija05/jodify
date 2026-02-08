@@ -733,25 +733,40 @@ async function initializeJamSession({ asHost, code = null }) {
     let jamCode = code;
 
     if (asHost) {
-        jamCode = jamCode || generateJamCode();
-        const { data, error } = await supabaseClient
-            .from('jam_sessions')
-            .insert([{
-                code: jamCode,
-                host_username: username,
-                is_active: true,
-                current_song_id: null,
-                current_time: 0,
-                is_playing: false
-            }])
-            .select('id, code')
-            .single();
-        if (error) {
-            console.error('Error creando Jam:', error);
-            alert('No se pudo crear la Jam.');
+        let attempts = 0;
+        let createdSession = null;
+        while (!createdSession && attempts < 3) {
+            attempts += 1;
+            jamCode = jamCode || generateJamCode();
+            const { data, error } = await supabaseClient
+                .from('jam_sessions')
+                .insert([{
+                    code: jamCode,
+                    host_username: username,
+                    is_active: true,
+                    current_song_id: null,
+                    current_time: 0,
+                    is_playing: false
+                }])
+                .select('id, code')
+                .single();
+            if (error) {
+                const errorMessage = error?.message || JSON.stringify(error);
+                console.error('Error creando Jam:', errorMessage);
+                if (errorMessage.toLowerCase().includes('duplicate')) {
+                    jamCode = null;
+                    continue;
+                }
+                alert('No se pudo crear la Jam. Revisa las políticas de Supabase.');
+                return;
+            }
+            createdSession = data;
+        }
+        if (!createdSession) {
+            alert('No se pudo crear la Jam. Intenta de nuevo.');
             return;
         }
-        appState.jamSessionId = data.id;
+        appState.jamSessionId = createdSession.id;
     } else {
         const session = await fetchJamSessionByCode(jamCode);
         if (!session) {
@@ -785,7 +800,8 @@ async function fetchJamSessionByCode(code) {
         .eq('is_active', true)
         .single();
     if (error) {
-        console.warn('Jam session fetch error:', error);
+        const errorMessage = error?.message || JSON.stringify(error);
+        console.warn('Jam session fetch error:', errorMessage);
         return null;
     }
     return data;
@@ -793,7 +809,7 @@ async function fetchJamSessionByCode(code) {
 
 async function upsertJamMember({ username, isHost }) {
     if (!appState.jamSessionId) return;
-    await supabaseClient
+    const { error } = await supabaseClient
         .from('jam_members')
         .upsert([{
             jam_id: appState.jamSessionId,
@@ -802,6 +818,10 @@ async function upsertJamMember({ username, isHost }) {
             active: true,
             last_seen: new Date().toISOString()
         }], { onConflict: 'jam_id,username' });
+    if (error) {
+        const errorMessage = error?.message || JSON.stringify(error);
+        console.warn('Error registrando miembro de Jam:', errorMessage);
+    }
 }
 
 async function updateJamMemberStatus(active) {
