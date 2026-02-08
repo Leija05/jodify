@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, session, nativeImage } = require('electron'
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 const path = require('path');
+const { spawn } = require('child_process');
 
 /* =========================
    CONFIGURACIÓN INICIAL
@@ -10,6 +11,8 @@ const path = require('path');
 let mainWindow = null;
 let splash = null;
 let updateWindow = null;
+let importBackendProcess = null;
+let importBackendStarting = null;
 
 // Configuración de Logs
 autoUpdater.logger = log;
@@ -181,6 +184,55 @@ ipcMain.on('force-update', async () => {
 
 ipcMain.on('update-thumbar', (_, isPlaying) => {
     updateThumbarButtons(isPlaying);
+});
+
+ipcMain.handle('start-import-backend', async (_, options = {}) => {
+    const port = options.port || 8000;
+    if (importBackendProcess && !importBackendProcess.killed) {
+        return { status: 'running', port };
+    }
+    if (importBackendStarting) {
+        return importBackendStarting;
+    }
+
+    importBackendStarting = new Promise((resolve) => {
+        const serverPath = path.join(__dirname, 'backend', 'server.py');
+        const env = {
+            ...process.env,
+            JODIFY_STATIC_ROOT: __dirname
+        };
+
+        const trySpawn = (cmd, fallbackCmd) => {
+            const child = spawn(cmd, [serverPath], {
+                env,
+                stdio: 'ignore'
+            });
+
+            child.once('error', (err) => {
+                if (fallbackCmd) {
+                    return trySpawn(fallbackCmd, null);
+                }
+                resolve({ status: 'error', error: err.message });
+            });
+
+            child.once('spawn', () => {
+                importBackendProcess = child;
+                resolve({ status: 'started', port });
+            });
+
+            child.once('exit', () => {
+                if (importBackendProcess === child) {
+                    importBackendProcess = null;
+                }
+            });
+        };
+
+        trySpawn(process.env.JODIFY_PYTHON || 'python3', 'python');
+    }).finally(() => {
+        importBackendStarting = null;
+    });
+
+    return importBackendStarting;
 });
 
 /* =========================

@@ -428,6 +428,132 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text);
 }
 
+.playlist-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.playlist-insights {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin: var(--space-md) 0 var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.smart-mix-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 18px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background: var(--gradient-accent);
+  color: white;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.smart-mix-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.smart-mix-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.smart-mix-btn .mix-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+}
+
+.insight-items {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.insight-card {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.insight-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.insight-value {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.link-import-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+
+.link-import-btn:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.add-actions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-top: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.link-import-secondary {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+
+.link-import-secondary:hover {
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
 /* Lista de canciones */
 #songList {
   list-style: none;
@@ -506,6 +632,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;
 }
 
 .song-name {
@@ -513,8 +640,9 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.9rem;
   color: var(--text);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: inline-block;
+  padding-right: 24px;
+  animation: marqueeText 12s linear infinite;
 }
 
 #songList li.active .song-name {
@@ -669,8 +797,8 @@ h1, h2, h3, h4, h5, h6 {
 .marquee-wrapper {
   overflow: hidden;
   white-space: nowrap;
-  mask-image: linear-gradient(to right, black 90%, transparent);
-  -webkit-mask-image: linear-gradient(to right, black 90%, transparent);
+  mask-image: linear-gradient(to right, black 85%, transparent);
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent);
 }
 
 #songTitle {
@@ -679,6 +807,18 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1rem;
   color: var(--text);
   display: inline-block;
+  padding-right: 24px;
+  white-space: nowrap;
+  animation: marqueeText 14s linear infinite;
+}
+
+@keyframes marqueeText {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
 }
 
 /* Sección central - Controles */
@@ -1789,6 +1929,135 @@ h1, h2, h3, h4, h5, h6 {
   gap: var(--space-sm);
 }
 
+#settingsModal .settings-timer {
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+#settingsModal .settings-timer-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+#settingsModal .settings-timer-controls {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+#settingsModal select {
+  flex: 1;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-full);
+  padding: 8px 12px;
+}
+
+#settingsModal .btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  margin-top: 0;
+  padding: 8px 14px;
+}
+
+#settingsModal .btn-secondary:hover {
+  background: var(--surface-hover);
+  box-shadow: none;
+}
+
+#settingsModal .settings-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* Link Import Modal */
+#linkModal .modal-content {
+  max-width: 460px;
+}
+
+.link-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.link-modal-body label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.link-modal-body input[type="url"] {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  outline: none;
+}
+
+.link-modal-body input[type="url"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(127, 0, 255, 0.2);
+}
+
+.link-modal-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.link-server-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.link-server-row .btn-secondary {
+  padding: 8px 14px;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.link-modal-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.link-modal-actions .btn-primary {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--gradient-primary);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.link-modal-actions .btn-secondary {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.link-import-status {
+  min-height: 18px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 #settingsModal .range-labels {
   display: flex;
   justify-content: space-between;
@@ -2605,6 +2874,63 @@ button:focus-visible, input:focus-visible {
   border-radius: var(--radius-sm);
   font-family: 'JetBrains Mono', monospace;
   margin: 0 2px;
+}
+
+/* =========================================
+   26. TOASTS & FOCUS MODE
+========================================= */
+.toast-container {
+  position: fixed;
+  bottom: calc(var(--space-lg) + 48px);
+  right: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  z-index: var(--z-toast);
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 240px;
+  animation: slideInRight 0.3s var(--ease-out);
+}
+
+.toast.success {
+  border-color: rgba(0, 255, 136, 0.4);
+}
+
+.toast.warning {
+  border-color: rgba(255, 184, 0, 0.5);
+}
+
+.toast.error {
+  border-color: rgba(255, 51, 102, 0.5);
+}
+
+body.focus-mode #dynamic-bg {
+  filter: blur(110px) saturate(130%) brightness(0.3);
+}
+
+body.focus-mode .lyrics {
+  opacity: 0.25;
+}
+
+body.focus-mode #lyricsBox p {
+  filter: blur(4px);
+  opacity: 0.2;
+}
+
+body.focus-mode #lyricsBox p.active {
+  opacity: 0.5;
+  filter: blur(2px);
 }
 
 /* =========================================
