@@ -738,18 +738,10 @@ async function initializeJamSession({ asHost, code = null }) {
         while (!createdSession && attempts < 3) {
             attempts += 1;
             jamCode = jamCode || generateJamCode();
-            const { data, error } = await supabaseClient
-                .from('jam_sessions')
-                .insert([{
-                    code: jamCode,
-                    host_username: username,
-                    is_active: true,
-                    current_song_id: null,
-                    current_time: 0,
-                    is_playing: false
-                }])
-                .select('id, code')
-                .single();
+            const { data, error } = await createJamSessionRecord({
+                code: jamCode,
+                hostUsername: username
+            });
             if (error) {
                 const errorMessage = error?.message || JSON.stringify(error);
                 console.error('Error creando Jam:', errorMessage);
@@ -805,6 +797,37 @@ async function fetchJamSessionByCode(code) {
         return null;
     }
     return data;
+}
+
+async function createJamSessionRecord({ code, hostUsername }) {
+    const payload = {
+        code,
+        host_username: hostUsername,
+        is_active: true,
+        current_song_id: null,
+        current_time: 0,
+        is_playing: false
+    };
+    let response = await supabaseClient
+        .from('jam_sessions')
+        .insert([payload])
+        .select('id, code')
+        .single();
+    if (response.error?.message?.includes("current_time")) {
+        const minimalPayload = {
+            code,
+            host_username: hostUsername,
+            is_active: true,
+            current_song_id: null,
+            is_playing: false
+        };
+        response = await supabaseClient
+            .from('jam_sessions')
+            .insert([minimalPayload])
+            .select('id, code')
+            .single();
+    }
+    return response;
 }
 
 async function upsertJamMember({ username, isHost }) {
@@ -1047,15 +1070,27 @@ function broadcastJamState(event) {
 
 async function updateJamSessionState(songId) {
     if (!appState.jamSessionId) return;
-    await supabaseClient
+    const payload = {
+        current_song_id: songId,
+        current_time: audio.currentTime || 0,
+        is_playing: !audio.paused,
+        updated_at: new Date().toISOString()
+    };
+    let response = await supabaseClient
         .from('jam_sessions')
-        .update({
+        .update(payload)
+        .eq('id', appState.jamSessionId);
+    if (response.error?.message?.includes("current_time")) {
+        const minimalPayload = {
             current_song_id: songId,
-            current_time: audio.currentTime || 0,
             is_playing: !audio.paused,
             updated_at: new Date().toISOString()
-        })
-        .eq('id', appState.jamSessionId);
+        };
+        response = await supabaseClient
+            .from('jam_sessions')
+            .update(minimalPayload)
+            .eq('id', appState.jamSessionId);
+    }
 }
 
 // =========================================
