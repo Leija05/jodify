@@ -208,8 +208,8 @@
                     <option value="popular">Más Populares</option>
                 </select>
             </div>
-            
-            <div class="playlist-insights" data-testid="playlist-insights">
+
+            <div class="playlist-actions" data-testid="playlist-actions">
                 <button id="smartMixBtn" class="smart-mix-btn" data-testid="smart-mix">
                     <span class="mix-icon">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -223,6 +223,23 @@
                     </span>
                     Smart Mix
                 </button>
+                <button id="openLinkModal" class="link-import-btn" data-testid="link-import">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10 13a5 5 0 0 1 7 0l1 1a5 5 0 0 1-7 7l-1-1"></path>
+                        <path d="M14 11a5 5 0 0 1-7 0l-1-1a5 5 0 0 1 7-7l1 1"></path>
+                    </svg>
+                    Importar link
+                </button>
+            </div>
+
+            <button id="downloadAllBtn" class="download-all-btn" style="display:none;" data-testid="download-all">
+                Descargar todos mis favoritos
+            </button>
+
+            <!-- SONG LIST -->
+            <ul id="songList" data-testid="song-list"></ul>
+
+            <div class="playlist-insights" data-testid="playlist-insights">
                 <div class="insight-items">
                     <div class="insight-card">
                         <span class="insight-label">Sesión</span>
@@ -239,18 +256,16 @@
                 </div>
             </div>
 
-            <button id="downloadAllBtn" class="download-all-btn" style="display:none;" data-testid="download-all">
-                Descargar todos mis favoritos
-            </button>
-
-            <!-- SONG LIST -->
-            <ul id="songList" data-testid="song-list"></ul>
-
             <!-- ADD SONG (ADMIN ONLY) -->
-            <label class="add-song" data-testid="add-song">
-                + Añadir y Compartir
-                <input type="file" id="fileInput" accept="audio/*" multiple hidden>
-            </label>
+            <div class="add-actions" data-testid="add-actions">
+                <label class="add-song" data-testid="add-song">
+                    + Añadir y Compartir
+                    <input type="file" id="fileInput" accept="audio/*" multiple hidden>
+                </label>
+                <button class="link-import-secondary" id="openLinkModalFooter" data-testid="link-import-footer">
+                    + Añadir por link
+                </button>
+            </div>
 
             <div id="uploadStatus"></div>
         </aside>
@@ -668,6 +683,26 @@
     <!-- UPLOAD BADGE -->
     <div id="uploadBadge" class="upload-badge" style="display: none;" data-testid="upload-badge">
         <span id="badgeText">Subiendo archivos...</span>
+    </div>
+
+    <!-- LINK IMPORT MODAL -->
+    <div id="linkModal" class="modal" data-testid="link-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Importar desde Spotify o YouTube</h3>
+                <button id="closeLinkModal" class="close-btn" data-testid="close-link-modal">&times;</button>
+            </div>
+            <div class="link-modal-body">
+                <label for="linkInput">Pega el enlace de la canción</label>
+                <input type="url" id="linkInput" placeholder="https://open.spotify.com/track/... o https://youtu.be/..." data-testid="link-input">
+                <p class="link-modal-hint">Se descargará el audio y se agregará a tu biblioteca.</p>
+                <div class="link-modal-actions">
+                    <button id="linkImportBtn" class="btn-primary" data-testid="link-import-btn">Importar</button>
+                    <button id="linkCancelBtn" class="btn-secondary" data-testid="link-cancel-btn">Cancelar</button>
+                </div>
+                <div id="linkImportStatus" class="link-import-status" data-testid="link-import-status"></div>
+            </div>
+        </div>
     </div>
 
     <!-- DEV BUTTON -->

@@ -212,6 +212,7 @@ const uploadBadge = document.getElementById("uploadBadge");
 const badgeText = document.getElementById("badgeText");
 const sortOptions = document.getElementById("sortOptions");
 const addSongContainer = document.querySelector(".add-song");
+const addActions = document.querySelector(".add-actions");
 const playlistEl = document.querySelector('.playlist');
 const btnOpenPlaylist = document.getElementById('btnOpenPlaylist');
 const btnOpenRegister = document.getElementById("btnOpenRegister");
@@ -225,6 +226,14 @@ const sleepTimerSelect = document.getElementById("sleepTimerSelect");
 const applySleepTimerBtn = document.getElementById("applySleepTimer");
 const sleepTimerStatus = document.getElementById("sleepTimerStatus");
 const toastContainer = document.getElementById("toastContainer");
+const openLinkModalBtn = document.getElementById("openLinkModal");
+const openLinkModalFooterBtn = document.getElementById("openLinkModalFooter");
+const linkModal = document.getElementById("linkModal");
+const closeLinkModalBtn = document.getElementById("closeLinkModal");
+const linkCancelBtn = document.getElementById("linkCancelBtn");
+const linkImportBtn = document.getElementById("linkImportBtn");
+const linkInput = document.getElementById("linkInput");
+const linkImportStatus = document.getElementById("linkImportStatus");
 
 // Queue elements
 const queueBtn = document.getElementById("queueBtn");
@@ -424,6 +433,7 @@ function closeAllModals() {
     settingsModal.style.display = 'none';
     uploadModal.style.display = 'none';
     registerModal.style.display = 'none';
+    if (linkModal) linkModal.style.display = 'none';
     toggleMobilePlaylist(false);
 }
 
@@ -880,10 +890,16 @@ function checkSavedSession() {
 function configurarInterfazPorRol(role) {
     if (role === 'dev' || role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
+        if (addActions) addActions.style.display = "flex";
+        if (openLinkModalBtn) openLinkModalBtn.style.display = "inline-flex";
+        if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "inline-flex";
         if (btnOpenRegister) btnOpenRegister.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
     } else {
         if (addSongContainer) addSongContainer.style.display = "none";
+        if (addActions) addActions.style.display = "none";
+        if (openLinkModalBtn) openLinkModalBtn.style.display = "none";
+        if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "none";
         if (btnOpenRegister) btnOpenRegister.style.display = "none";
         if (fileInput) fileInput.disabled = true;
     }
@@ -1218,6 +1234,9 @@ if (btnLogout) {
             if (songList) songList.innerHTML = "";
 
             if (addSongContainer) addSongContainer.style.display = "none";
+            if (addActions) addActions.style.display = "none";
+            if (openLinkModalBtn) openLinkModalBtn.style.display = "none";
+            if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "none";
             if (btnOpenRegister) btnOpenRegister.style.display = "none";
         } catch (err) {
             console.error("Logout error:", err);
@@ -1238,14 +1257,23 @@ function handleLoginSuccess(role) {
     document.getElementById("loginScreen").style.display = "none";
 
     if (addSongContainer) addSongContainer.style.display = "none";
+    if (addActions) addActions.style.display = "none";
+    if (openLinkModalBtn) openLinkModalBtn.style.display = "none";
+    if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "none";
     if (btnOpenRegister) btnOpenRegister.style.display = "none";
 
     if (role === 'dev') {
         if (addSongContainer) addSongContainer.style.display = "flex";
+        if (addActions) addActions.style.display = "flex";
+        if (openLinkModalBtn) openLinkModalBtn.style.display = "inline-flex";
+        if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "inline-flex";
         if (btnOpenRegister) btnOpenRegister.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
     } else if (role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
+        if (addActions) addActions.style.display = "flex";
+        if (openLinkModalBtn) openLinkModalBtn.style.display = "inline-flex";
+        if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "inline-flex";
         if (fileInput) fileInput.disabled = false;
     } else {
         if (fileInput) fileInput.disabled = true;
@@ -1389,23 +1417,16 @@ function toggleModal(show) {
     uploadModal.style.display = show ? "flex" : "none";
 }
 
-if (uploadBadge) {
-    uploadBadge.onclick = () => {
-        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
-            toggleModal(true);
-        }
-    };
+function toggleLinkModal(show) {
+    if (!linkModal) return;
+    linkModal.style.display = show ? "flex" : "none";
+    if (!show && linkImportStatus) {
+        linkImportStatus.textContent = "";
+    }
 }
 
-if (closeModal) {
-    closeModal.onclick = () => toggleModal(false);
-}
-
-fileInput.onchange = async (e) => {
-    if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') return;
-
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
+async function startUploadSession(files) {
+    if (!files.length) return;
 
     appState.isUploading = true;
     uploadBadge.style.display = "flex";
@@ -1468,7 +1489,116 @@ fileInput.onchange = async (e) => {
     setTimeout(() => {
         if (!appState.isUploading) uploadBadge.style.display = "none";
     }, 5000);
+}
+
+if (uploadBadge) {
+    uploadBadge.onclick = () => {
+        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
+            toggleModal(true);
+        }
+    };
+}
+
+if (closeModal) {
+    closeModal.onclick = () => toggleModal(false);
+}
+
+if (openLinkModalBtn) {
+    openLinkModalBtn.onclick = () => {
+        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
+            toggleLinkModal(true);
+        } else {
+            showToast("Solo admins o devs pueden importar enlaces", "warning");
+        }
+    };
+}
+
+if (openLinkModalFooterBtn) {
+    openLinkModalFooterBtn.onclick = () => {
+        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
+            toggleLinkModal(true);
+        } else {
+            showToast("Solo admins o devs pueden importar enlaces", "warning");
+        }
+    };
+}
+
+if (closeLinkModalBtn) {
+    closeLinkModalBtn.onclick = () => toggleLinkModal(false);
+}
+
+if (linkCancelBtn) {
+    linkCancelBtn.onclick = () => toggleLinkModal(false);
+}
+
+fileInput.onchange = async (e) => {
+    if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') return;
+
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    await startUploadSession(files);
 };
+
+function extractFilenameFromHeader(header) {
+    if (!header) return null;
+    const match = /filename="(.+?)"/.exec(header);
+    if (match?.[1]) return match[1];
+    const fallbackMatch = /filename=(.+)/.exec(header);
+    return fallbackMatch?.[1] || null;
+}
+
+async function importFromLink() {
+    if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') {
+        showToast("Solo admins o devs pueden importar enlaces", "warning");
+        return;
+    }
+    const url = linkInput?.value.trim();
+    if (!url) {
+        if (linkImportStatus) linkImportStatus.textContent = "Ingresa un enlace válido.";
+        return;
+    }
+    if (linkImportStatus) linkImportStatus.textContent = "Descargando audio...";
+    if (linkImportBtn) linkImportBtn.disabled = true;
+    if (linkInput) linkInput.disabled = true;
+
+    try {
+        const response = await fetch('/api/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+        if (!response.ok) {
+            let detail = "No se pudo importar el enlace.";
+            try {
+                const data = await response.json();
+                detail = data?.detail || detail;
+            } catch (e) {
+                detail = detail;
+            }
+            throw new Error(detail);
+        }
+        const blob = await response.blob();
+        const contentType = response.headers.get('content-type') || 'audio/mpeg';
+        const disposition = response.headers.get('content-disposition');
+        const filename = extractFilenameFromHeader(disposition) || `import-${Date.now()}.mp3`;
+        const file = new File([blob], filename, { type: contentType });
+        if (linkImportStatus) linkImportStatus.textContent = "Subiendo a la biblioteca...";
+        await startUploadSession([file]);
+        if (linkInput) linkInput.value = "";
+        toggleLinkModal(false);
+        showToast("Importación iniciada", "success");
+    } catch (err) {
+        if (linkImportStatus) linkImportStatus.textContent = err.message;
+        showToast("No se pudo importar el enlace", "error");
+    } finally {
+        if (linkImportBtn) linkImportBtn.disabled = false;
+        if (linkInput) linkInput.disabled = false;
+    }
+}
+
+if (linkImportBtn) {
+    linkImportBtn.onclick = importFromLink;
+}
 
 async function processAndUpload(file, container, updateStats) {
     const sanitizedName = sanitizeFileName(file.name);
@@ -2265,6 +2395,7 @@ window.onclick = (e) => {
     if (e.target === registerModal) registerModal.style.display = "none";
     if (e.target === equalizerModal) equalizerModal.classList.remove('open');
     if (e.target === shortcutsModal) shortcutsModal.classList.remove('open');
+    if (e.target === linkModal) toggleLinkModal(false);
 };
 
 // =========================================
