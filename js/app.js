@@ -2744,27 +2744,34 @@ function updateListeningActivity(song) {
         // Update current song in Supabase so others can see what we're listening to
         if (navigator.onLine && appState.usuarioActual) {
             const songName = formatDisplayName(song.name);
-            supabaseClient
-                .from('users_access')
-                .update({ 
-                    current_song: songName,
-                    current_song_time: new Date().toISOString()
-                })
-                .eq('username', appState.usuarioActual)
-                .then(() => console.log('Now playing updated:', songName))
-                .catch(e => console.warn('Error updating now playing:', e));
+            (async () => {
+                const { error } = await supabaseClient
+                    .from('users_access')
+                    .update({ 
+                        current_song: songName,
+                        current_song_time: new Date().toISOString()
+                    })
+                    .eq('username', appState.usuarioActual);
+                if (error) {
+                    console.warn('Error updating now playing:', error);
+                } else {
+                    console.log('Now playing updated:', songName);
+                }
+            })();
         }
     }
 }
 
 // Clear listening activity when audio stops
-audio.addEventListener('pause', () => {
+audio.addEventListener('pause', async () => {
     if (navigator.onLine && appState.usuarioActual) {
-        supabaseClient
+        const { error } = await supabaseClient
             .from('users_access')
             .update({ current_song: null })
-            .eq('username', appState.usuarioActual)
-            .catch(e => console.warn('Error clearing now playing:', e));
+            .eq('username', appState.usuarioActual);
+        if (error) {
+            console.warn('Error clearing now playing:', error);
+        }
     }
 });
 
