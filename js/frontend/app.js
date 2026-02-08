@@ -67,6 +67,7 @@ const appState = {
     userVolume: parseFloat(localStorage.getItem("userVolume")) || 0.5,
     fadeEnabled: localStorage.getItem("fadeEnabled") === "true",
     fadeDuration: parseInt(localStorage.getItem("fadeDuration"), 10) || 4,
+    focusMode: localStorage.getItem("focusMode") === "true",
     isFading: false,
     playCount: parseInt(localStorage.getItem("playCount")) || 0,
     discord: JSON.parse(localStorage.getItem("discordProfile")) || null,
@@ -80,7 +81,17 @@ const appState = {
     jamSessionId: localStorage.getItem("jamSessionId") || null,
     jamMembersInterval: null,
     jamSessionInterval: null,
-    lastJamSongId: null
+    lastJamSongId: null,
+    sessionSeconds: 0,
+    sessionInterval: null,
+    sleepTimer: {
+        endAt: null,
+        mode: "off",
+        timeoutId: null,
+        intervalId: null,
+        triggered: false,
+        durationMinutes: null
+    }
 };
 
 // =========================================
@@ -110,17 +121,25 @@ window.onload = async () => {
     const disableBg = localStorage.getItem('disableDynamicBg') === 'true';
     document.body.classList.toggle('no-visual', disableVis);
     document.body.classList.toggle('no-dynamic-bg', disableBg);
+    document.body.classList.toggle('focus-mode', appState.focusMode);
     
     const disableVisualizer = document.getElementById("disableVisualizer");
     const disableDynamicBg = document.getElementById("disableDynamicBg");
+    const enableFocusMode = document.getElementById("enableFocusMode");
     const enableFade = document.getElementById("enableFade");
     const fadeDuration = document.getElementById("fadeDuration");
     const fadeDurationValue = document.getElementById("fadeDurationValue");
     if (disableVisualizer) disableVisualizer.checked = disableVis;
     if (disableDynamicBg) disableDynamicBg.checked = disableBg;
+    if (enableFocusMode) enableFocusMode.checked = appState.focusMode;
     if (enableFade) enableFade.checked = appState.fadeEnabled;
     if (fadeDuration) fadeDuration.value = appState.fadeDuration;
     if (fadeDurationValue) fadeDurationValue.textContent = `${appState.fadeDuration}s`;
+
+    restoreSleepTimerFromStorage();
+    startSessionTimer();
+    updateQueueIndicator();
+    updateSmartMixAvailability();
     
     // Initialize keyboard shortcuts
     initKeyboardShortcuts();
@@ -198,6 +217,14 @@ const btnOpenPlaylist = document.getElementById('btnOpenPlaylist');
 const btnOpenRegister = document.getElementById("btnOpenRegister");
 const registerModal = document.getElementById("registerModal");
 const closeRegisterBtn = document.getElementById("closeRegisterBtn");
+const smartMixBtn = document.getElementById("smartMixBtn");
+const sessionTimeEl = document.getElementById("sessionTime");
+const sleepTimerBadge = document.getElementById("sleepTimerBadge");
+const queueCount = document.getElementById("queueCount");
+const sleepTimerSelect = document.getElementById("sleepTimerSelect");
+const applySleepTimerBtn = document.getElementById("applySleepTimer");
+const sleepTimerStatus = document.getElementById("sleepTimerStatus");
+const toastContainer = document.getElementById("toastContainer");
 
 // Queue elements
 const queueBtn = document.getElementById("queueBtn");
@@ -400,6 +427,173 @@ function closeAllModals() {
     toggleMobilePlaylist(false);
 }
 
+function showToast(message, type = "info") {
+    if (!toastContainer) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <span>${message}</span>
+    `;
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 3500);
+}
+
+function formatDuration(totalSeconds) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function startSessionTimer() {
+    if (appState.sessionInterval) clearInterval(appState.sessionInterval);
+    const startedAt = Date.now();
+    appState.sessionInterval = setInterval(() => {
+        appState.sessionSeconds = Math.floor((Date.now() - startedAt) / 1000);
+        if (sessionTimeEl) sessionTimeEl.textContent = formatDuration(appState.sessionSeconds);
+    }, 1000);
+}
+
+function updateQueueIndicator() {
+    if (queueCount) queueCount.textContent = appState.queue.length.toString();
+}
+
+function updateSmartMixAvailability() {
+    if (!smartMixBtn) return;
+    const list = appState.currentFilteredList?.length ? appState.currentFilteredList : appState.playlist;
+    smartMixBtn.disabled = !list || list.length === 0;
+}
+
+function updateSleepTimerUI() {
+    if (!sleepTimerBadge && !sleepTimerStatus) return;
+    if (appState.sleepTimer.mode === "off") {
+        if (sleepTimerBadge) sleepTimerBadge.textContent = "Off";
+        if (sleepTimerStatus) sleepTimerStatus.textContent = "Sin temporizador activo";
+        if (sleepTimerSelect) sleepTimerSelect.value = "0";
+        return;
+    }
+    if (appState.sleepTimer.mode === "end") {
+        if (sleepTimerBadge) sleepTimerBadge.textContent = "Fin canción";
+        if (sleepTimerStatus) sleepTimerStatus.textContent = "Se detendrá al finalizar la canción";
+        if (sleepTimerSelect) sleepTimerSelect.value = "end";
+        return;
+    }
+    if (appState.sleepTimer.mode === "timer" && appState.sleepTimer.endAt) {
+        const remaining = Math.max(0, Math.floor((appState.sleepTimer.endAt - Date.now()) / 1000));
+        const formatted = formatDuration(remaining);
+        if (sleepTimerBadge) sleepTimerBadge.textContent = formatted;
+        if (sleepTimerStatus) sleepTimerStatus.textContent = `Quedan ${formatted}`;
+        if (sleepTimerSelect && appState.sleepTimer.durationMinutes) {
+            sleepTimerSelect.value = String(appState.sleepTimer.durationMinutes);
+        }
+    }
+}
+
+function clearSleepTimer(options = { silent: false }) {
+    if (appState.sleepTimer.timeoutId) clearTimeout(appState.sleepTimer.timeoutId);
+    if (appState.sleepTimer.intervalId) clearInterval(appState.sleepTimer.intervalId);
+    appState.sleepTimer = { endAt: null, mode: "off", timeoutId: null, intervalId: null, triggered: false, durationMinutes: null };
+    localStorage.removeItem("sleepTimerData");
+    updateSleepTimerUI();
+    if (!options.silent) showToast("Temporizador desactivado", "warning");
+}
+
+function triggerSleepTimer(message) {
+    appState.sleepTimer.triggered = true;
+    if (!audio.paused) audio.pause();
+    clearSleepTimer({ silent: true });
+    showToast(message, "warning");
+}
+
+function scheduleSleepTimer(endAt, durationMinutes = null) {
+    if (!endAt) return;
+    appState.sleepTimer.endAt = endAt;
+    appState.sleepTimer.mode = "timer";
+    appState.sleepTimer.durationMinutes = durationMinutes;
+    appState.sleepTimer.triggered = false;
+    if (appState.sleepTimer.intervalId) clearInterval(appState.sleepTimer.intervalId);
+    appState.sleepTimer.intervalId = setInterval(updateSleepTimerUI, 1000);
+    if (appState.sleepTimer.timeoutId) clearTimeout(appState.sleepTimer.timeoutId);
+    appState.sleepTimer.timeoutId = setTimeout(() => {
+        triggerSleepTimer("Tiempo de sueño alcanzado");
+    }, Math.max(0, endAt - Date.now()));
+    updateSleepTimerUI();
+    localStorage.setItem("sleepTimerData", JSON.stringify({ mode: "timer", endAt, durationMinutes }));
+}
+
+function restoreSleepTimerFromStorage() {
+    const saved = localStorage.getItem("sleepTimerData");
+    if (!saved) {
+        updateSleepTimerUI();
+        return;
+    }
+    try {
+        const parsed = JSON.parse(saved);
+        if (parsed.mode === "end") {
+            appState.sleepTimer.mode = "end";
+            updateSleepTimerUI();
+            return;
+        }
+        if (parsed.mode === "timer" && parsed.endAt) {
+            if (parsed.endAt > Date.now()) {
+                scheduleSleepTimer(parsed.endAt, parsed.durationMinutes);
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn("Sleep timer restore failed", e);
+    }
+    clearSleepTimer({ silent: true });
+}
+
+function setSleepTimerFromSelection(value) {
+    if (!value || value === "0") {
+        clearSleepTimer();
+        return;
+    }
+    if (value === "end") {
+        clearSleepTimer({ silent: true });
+        appState.sleepTimer.mode = "end";
+        appState.sleepTimer.durationMinutes = null;
+        appState.sleepTimer.triggered = false;
+        localStorage.setItem("sleepTimerData", JSON.stringify({ mode: "end" }));
+        updateSleepTimerUI();
+        showToast("Se detendrá al finalizar la canción actual", "success");
+        return;
+    }
+    const minutes = parseInt(value, 10);
+    if (Number.isNaN(minutes) || minutes <= 0) return;
+    const endAt = Date.now() + minutes * 60 * 1000;
+    scheduleSleepTimer(endAt, minutes);
+    showToast(`Temporizador activado: ${minutes} min`, "success");
+}
+
+function createSmartMix() {
+    const list = appState.currentFilteredList?.length ? appState.currentFilteredList : appState.playlist;
+    if (!list || list.length === 0) {
+        showToast("No hay canciones para mezclar", "warning");
+        return;
+    }
+    const currentId = appState.playlist[appState.currentIndex]?.id;
+    const existingIds = new Set(appState.queue.map(song => song.id));
+    const candidates = list.filter(song => song.id !== currentId && !existingIds.has(song.id));
+    if (!candidates.length) {
+        showToast("Tu cola ya tiene todas las canciones disponibles", "warning");
+        return;
+    }
+    const shuffled = [...candidates].sort(() => 0.5 - Math.random());
+    const size = Math.min(12, shuffled.length);
+    appState.queue.push(...shuffled.slice(0, size));
+    renderQueue();
+    updateQueueIndicator();
+    showToast(`Smart Mix listo: ${size} canciones a la cola`, "success");
+}
+
 // =========================================
 // QUEUE SYSTEM
 // =========================================
@@ -455,6 +649,7 @@ function renderQueue() {
         queueList.appendChild(item);
         loadMetadata(song.url, `queue-cover-${song.id}`);
     });
+    updateQueueIndicator();
 }
 
 window.removeFromQueue = (songId) => {
@@ -464,6 +659,7 @@ window.removeFromQueue = (songId) => {
             appState.queue.splice(index, 1);
             renderQueue();
         }
+        updateQueueIndicator();
         return;
     }
     const index = appState.currentFilteredList.findIndex(s => s.id === songId);
@@ -471,6 +667,7 @@ window.removeFromQueue = (songId) => {
         appState.currentFilteredList.splice(index, 1);
         renderQueue();
     }
+    updateQueueIndicator();
 };
 
 window.addToQueue = (event, songId) => {
@@ -480,6 +677,7 @@ window.addToQueue = (event, songId) => {
     const exists = appState.queue.some(s => s.id === songId);
     if (!exists) {
         appState.queue.push(song);
+        updateQueueIndicator();
         if (queueDrawer.classList.contains('open')) {
             renderQueue();
         }
@@ -489,6 +687,12 @@ window.addToQueue = (event, songId) => {
 if (queueBtn) queueBtn.onclick = toggleQueue;
 if (closeQueue) closeQueue.onclick = toggleQueue;
 if (queueOverlay) queueOverlay.onclick = toggleQueue;
+if (smartMixBtn) smartMixBtn.onclick = createSmartMix;
+if (applySleepTimerBtn) {
+    applySleepTimerBtn.onclick = () => {
+        setSleepTimerFromSelection(sleepTimerSelect?.value);
+    };
+}
 
 // =========================================
 // EQUALIZER SYSTEM
@@ -1555,6 +1759,7 @@ async function renderPlaylist() {
         const li = createSongElement(song, isCurrent, isDownloaded);
         songList.appendChild(li);
     });
+    updateSmartMixAvailability();
 }
 
 window.deleteDownload = async (event, songId) => {
@@ -1739,6 +1944,13 @@ async function handlePrevSong() {
 
 audio.onended = () => {
     if (appState.fadePending) {
+        return;
+    }
+    if (appState.sleepTimer.mode === "end") {
+        triggerSleepTimer("Sleep timer completado");
+        return;
+    }
+    if (appState.sleepTimer.triggered) {
         return;
     }
     if (!appState.isLoop) {
@@ -2063,6 +2275,7 @@ const settingsModal = document.getElementById("settingsModal");
 const closeSettingsModal = document.getElementById("closeSettingsModal");
 const disableVisualizer = document.getElementById("disableVisualizer");
 const disableDynamicBg = document.getElementById("disableDynamicBg");
+const enableFocusMode = document.getElementById("enableFocusMode");
 const enableFade = document.getElementById("enableFade");
 const fadeDurationInput = document.getElementById("fadeDuration");
 const fadeDurationValue = document.getElementById("fadeDurationValue");
@@ -2089,14 +2302,18 @@ if (fadeDurationInput) {
 window.saveSettings = () => {
     const disableVis = disableVisualizer.checked;
     const disableBg = disableDynamicBg.checked;
+    const focusMode = enableFocusMode?.checked ?? false;
     const fadeEnabled = enableFade?.checked ?? false;
     const fadeDuration = parseInt(fadeDurationInput?.value, 10) || 4;
     localStorage.setItem('disableVisualizer', disableVis);
     localStorage.setItem('disableDynamicBg', disableBg);
+    localStorage.setItem('focusMode', focusMode);
     localStorage.setItem('fadeEnabled', fadeEnabled);
     localStorage.setItem('fadeDuration', fadeDuration);
     document.body.classList.toggle('no-visual', disableVis);
     document.body.classList.toggle('no-dynamic-bg', disableBg);
+    document.body.classList.toggle('focus-mode', focusMode);
+    appState.focusMode = focusMode;
     appState.fadeEnabled = fadeEnabled;
     appState.fadeDuration = fadeDuration;
     settingsModal.style.display = 'none';
@@ -2108,6 +2325,9 @@ window.saveSettings = () => {
 function cleanupBeforeExit() {
     try {
         if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
+        if (appState.sessionInterval) clearInterval(appState.sessionInterval);
+        if (appState.sleepTimer.timeoutId) clearTimeout(appState.sleepTimer.timeoutId);
+        if (appState.sleepTimer.intervalId) clearInterval(appState.sleepTimer.intervalId);
         if (appState.audioCtx) {
             appState.audioCtx.close();
             appState.audioCtx = null;
