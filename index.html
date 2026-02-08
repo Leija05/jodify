@@ -110,6 +110,14 @@
                     </svg>
                 </button>
 
+                <button id="jamBtn" class="btn-icon" title="Crear Jam" data-testid="jam-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 12a8 8 0 0 1 16 0"></path>
+                        <path d="M7 12a5 5 0 0 1 10 0"></path>
+                        <circle cx="12" cy="15" r="2"></circle>
+                    </svg>
+                </button>
+
                 <!-- PROFILE BUTTON -->
                 <button id="profileBtn" class="profile-btn" title="Mi Perfil" data-testid="profile-btn">
                     <div class="avatar" id="profileAvatar">
@@ -135,6 +143,14 @@
                         <div>
                             <label><input type="checkbox" id="disableVisualizer" data-testid="disable-visualizer"> Desactivar Visualizer</label>
                             <label><input type="checkbox" id="disableDynamicBg" data-testid="disable-bg"> Desactivar Fondo Dinámico</label>
+                            <label><input type="checkbox" id="enableFade" data-testid="enable-fade"> Activar Fade entre canciones</label>
+                            <div class="settings-range">
+                                <div class="range-labels">
+                                    <span>Duración del Fade</span>
+                                    <span id="fadeDurationValue">4s</span>
+                                </div>
+                                <input type="range" id="fadeDuration" min="2" max="12" step="1" value="4" data-testid="fade-duration">
+                            </div>
                             <button onclick="saveSettings()" data-testid="save-settings">Guardar</button>
                         </div>
                     </div>
@@ -355,6 +371,38 @@
                 <div class="eq-band">
                     <input type="range" min="-12" max="12" value="0" data-band="16000" orient="vertical">
                     <label>16kHz</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAM MODAL -->
+    <div class="jam-modal" id="jamModal" data-testid="jam-modal">
+        <div class="jam-content">
+            <div class="jam-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 12a8 8 0 0 1 16 0"></path>
+                        <path d="M7 12a5 5 0 0 1 10 0"></path>
+                        <circle cx="12" cy="15" r="2"></circle>
+                    </svg>
+                    Jam
+                </h3>
+                <button class="close-btn" id="closeJam" data-testid="close-jam">&times;</button>
+            </div>
+            <div class="jam-body">
+                <p id="jamStatus">Crea una Jam para compartir la cola con tus amigos.</p>
+                <div class="jam-code">
+                    <span>Código:</span>
+                    <strong id="jamCode">----</strong>
+                </div>
+                <div class="jam-actions">
+                    <button id="jamToggle" class="jam-primary" data-testid="jam-toggle">Iniciar Jam</button>
+                    <button id="jamCopy" class="jam-secondary" data-testid="jam-copy">Copiar código</button>
+                </div>
+                <div class="jam-join">
+                    <input type="text" id="jamJoinInput" placeholder="Ingresa un código para unirte" data-testid="jam-join-input">
+                    <button id="jamJoinBtn" class="jam-secondary" data-testid="jam-join">Unirme</button>
                 </div>
             </div>
         </div>
