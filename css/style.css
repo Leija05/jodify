@@ -554,7 +554,7 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 1;
 }
 
-.like-btn, .download-btn {
+.like-btn, .download-btn, .queue-add-btn {
   background: transparent;
   border: none;
   padding: var(--space-xs);
@@ -566,7 +566,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius-full);
 }
 
-.like-btn:hover, .download-btn:hover {
+.like-btn:hover, .download-btn:hover, .queue-add-btn:hover {
   transform: scale(1.2);
   background: var(--surface-hover);
 }
@@ -578,6 +578,10 @@ h1, h2, h3, h4, h5, h6 {
 
 .download-btn.downloaded svg {
   stroke: var(--success);
+}
+
+.queue-add-btn svg {
+  stroke: var(--secondary);
 }
 
 /* Botón añadir canción */
@@ -1117,6 +1121,161 @@ h1, h2, h3, h4, h5, h6 {
   color: white;
 }
 
+/* =========================================
+   9.1 JAM MODAL
+========================================= */
+.jam-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: var(--z-modal);
+}
+
+.jam-modal.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.jam-content {
+  background: var(--surface);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  width: min(420px, 92vw);
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all 0.3s var(--ease-out);
+  box-shadow: var(--shadow-lg);
+}
+
+.jam-modal.open .jam-content {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.jam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.jam-header h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 1.1rem;
+}
+
+.jam-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  color: var(--text-muted);
+}
+
+.jam-users {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.jam-users-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.jam-users-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: var(--space-sm);
+}
+
+.jam-users-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.jam-users-list .jam-host {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--secondary);
+}
+
+.jam-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--surface-hover);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.jam-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.jam-actions button,
+.jam-join button {
+  border: none;
+  border-radius: var(--radius-full);
+  padding: var(--space-sm) var(--space-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.jam-primary {
+  background: var(--gradient-primary);
+  color: white;
+}
+
+.jam-secondary {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.jam-actions button:hover,
+.jam-join button:hover {
+  box-shadow: var(--shadow-glow);
+}
+
+.jam-join {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.jam-join input {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
 .eq-sliders {
   display: flex;
   justify-content: space-between;
@@ -1621,6 +1780,24 @@ h1, h2, h3, h4, h5, h6 {
 
 #settingsModal button:hover {
   box-shadow: var(--shadow-glow);
+}
+
+#settingsModal .settings-range {
+  margin-top: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+#settingsModal .range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+#settingsModal input[type="range"] {
+  width: 100%;
 }
 
 #settingsBtn {
@@ -3666,4 +3843,3 @@ button:focus-visible, input:focus-visible {
   padding: var(--space-2xl);
   color: var(--text-muted);
 }
-
