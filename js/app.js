@@ -76,7 +76,9 @@ const appState = {
     jamSyncInProgress: false,
     fadePending: false,
     jamSessionId: localStorage.getItem("jamSessionId") || null,
-    jamMembersInterval: null
+    jamMembersInterval: null,
+    jamSessionInterval: null,
+    lastJamSongId: null
 };
 
 // =========================================
@@ -684,6 +686,11 @@ function leaveJamChannel() {
         clearInterval(appState.jamMembersInterval);
         appState.jamMembersInterval = null;
     }
+    if (appState.jamSessionInterval) {
+        clearInterval(appState.jamSessionInterval);
+        appState.jamSessionInterval = null;
+    }
+    appState.lastJamSongId = null;
     appState.jamUsers = [];
     renderJamUsers();
 }
@@ -720,6 +727,9 @@ function connectToJam(code, isHost) {
         if (status === 'SUBSCRIBED') {
             await channel.track({ username, isHost });
             startJamMembersPolling();
+            if (!isHost) {
+                startJamSessionPolling();
+            }
         }
     });
 }
@@ -893,10 +903,29 @@ function startJamMembersPolling() {
     }, 8000);
 }
 
+function startJamSessionPolling() {
+    if (appState.jamSessionInterval) return;
+    appState.jamSessionInterval = setInterval(async () => {
+        if (!appState.jamActive || appState.jamHost || !appState.jamCode) return;
+        const session = await fetchJamSessionByCode(appState.jamCode);
+        if (!session) return;
+        const songId = session.current_song_id;
+        if (songId && songId !== appState.lastJamSongId && !appState.jamSyncInProgress) {
+            appState.lastJamSongId = songId;
+            applyJamSync({
+                songId,
+                time: session.current_time || 0,
+                isPlaying: session.is_playing
+            });
+        }
+    }, 4000);
+}
+
 async function syncFromJamSession() {
     const session = await fetchJamSessionByCode(appState.jamCode);
     if (!session) return;
     if (session.current_song_id) {
+        appState.lastJamSongId = session.current_song_id;
         applyJamSync({
             songId: session.current_song_id,
             time: session.current_time || 0,
@@ -1056,6 +1085,7 @@ function broadcastJamState(event) {
     if (!appState.jamChannel || !appState.jamActive || !appState.jamHost) return;
     const currentSong = appState.playlist[appState.currentIndex];
     if (!currentSong) return;
+    appState.lastJamSongId = currentSong.id;
     updateJamSessionState(currentSong.id).catch(() => {});
     updateJamMembersCurrentSong(currentSong.id).catch(() => {});
     appState.jamChannel.send({
