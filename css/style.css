@@ -2013,6 +2013,18 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-muted);
 }
 
+.link-server-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.link-server-row .btn-secondary {
+  padding: 8px 14px;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
 .link-modal-actions {
   display: flex;
   gap: var(--space-sm);

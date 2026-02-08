@@ -234,6 +234,8 @@ const linkCancelBtn = document.getElementById("linkCancelBtn");
 const linkImportBtn = document.getElementById("linkImportBtn");
 const linkInput = document.getElementById("linkInput");
 const linkImportStatus = document.getElementById("linkImportStatus");
+const linkServerInput = document.getElementById("linkServerInput");
+const linkServerTestBtn = document.getElementById("linkServerTestBtn");
 
 // Queue elements
 const queueBtn = document.getElementById("queueBtn");
@@ -1423,6 +1425,9 @@ function toggleLinkModal(show) {
     if (!show && linkImportStatus) {
         linkImportStatus.textContent = "";
     }
+    if (show && linkServerInput) {
+        linkServerInput.value = getSavedImportServer();
+    }
 }
 
 async function startUploadSession(files) {
@@ -1531,6 +1536,10 @@ if (linkCancelBtn) {
     linkCancelBtn.onclick = () => toggleLinkModal(false);
 }
 
+if (linkServerTestBtn) {
+    linkServerTestBtn.onclick = () => testImportServer();
+}
+
 fileInput.onchange = async (e) => {
     if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') return;
 
@@ -1547,11 +1556,38 @@ function extractFilenameFromHeader(header) {
     return fallbackMatch?.[1] || null;
 }
 
+function getSavedImportServer() {
+    return localStorage.getItem("importServerUrl") || "http://127.0.0.1:8000";
+}
+
 function getImportBaseUrl() {
     if (window.location.protocol === 'file:') {
-        return 'http://127.0.0.1:8000';
+        return getSavedImportServer();
     }
-    return '';
+    return "";
+}
+
+function saveImportServer(url) {
+    if (!url) return;
+    localStorage.setItem("importServerUrl", url);
+}
+
+async function testImportServer() {
+    const baseUrl = linkServerInput?.value.trim() || getSavedImportServer();
+    if (!baseUrl) return;
+    saveImportServer(baseUrl);
+    if (linkImportStatus) linkImportStatus.textContent = "Probando conexión...";
+    try {
+        const response = await fetch(`${baseUrl.replace(/\/$/, "")}/health`);
+        if (!response.ok) throw new Error("No responde");
+        if (linkImportStatus) linkImportStatus.textContent = "Servidor listo para importar.";
+        showToast("Servidor de importación conectado", "success");
+    } catch (err) {
+        if (linkImportStatus) {
+            linkImportStatus.textContent = "No se pudo conectar al servidor. Revisa la URL y que esté activo.";
+        }
+        showToast("Servidor de importación no disponible", "error");
+    }
 }
 
 async function importFromLink() {
@@ -1568,7 +1604,11 @@ async function importFromLink() {
     if (linkImportBtn) linkImportBtn.disabled = true;
     if (linkInput) linkInput.disabled = true;
 
-    const importUrl = `${getImportBaseUrl()}/api/import`;
+    const baseUrl = getImportBaseUrl().replace(/\/$/, "");
+    if (linkServerInput?.value.trim()) {
+        saveImportServer(linkServerInput.value.trim());
+    }
+    const importUrl = `${baseUrl}/api/import`;
     try {
         const response = await fetch(importUrl, {
             method: 'POST',
@@ -1598,7 +1638,7 @@ async function importFromLink() {
     } catch (err) {
         if (err instanceof TypeError) {
             if (linkImportStatus) {
-                linkImportStatus.textContent = "No hay conexión con el servidor de importación. Verifica que el backend esté activo en 127.0.0.1:8000.";
+                linkImportStatus.textContent = "No hay conexión con el servidor de importación. Revisa la URL y que el backend esté activo.";
             }
             showToast("Servidor de importación no disponible", "error");
         } else {

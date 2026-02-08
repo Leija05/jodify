@@ -695,6 +695,11 @@
             <div class="link-modal-body">
                 <label for="linkInput">Pega el enlace de la canción</label>
                 <input type="url" id="linkInput" placeholder="https://open.spotify.com/track/... o https://youtu.be/..." data-testid="link-input">
+                <label for="linkServerInput">Servidor de importación</label>
+                <div class="link-server-row">
+                    <input type="url" id="linkServerInput" placeholder="http://127.0.0.1:8000" data-testid="link-server-input">
+                    <button id="linkServerTestBtn" class="btn-secondary" data-testid="link-server-test">Probar</button>
+                </div>
                 <p class="link-modal-hint">Se descargará el audio y se agregará a tu biblioteca.</p>
                 <div class="link-modal-actions">
                     <button id="linkImportBtn" class="btn-primary" data-testid="link-import-btn">Importar</button>
