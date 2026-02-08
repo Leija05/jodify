@@ -638,9 +638,8 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   font-size: 0.9rem;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
 }
 
 #songList li.active .song-name {
@@ -793,10 +792,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .marquee-wrapper {
-  overflow: hidden;
-  white-space: nowrap;
-  mask-image: linear-gradient(to right, black 90%, transparent);
-  -webkit-mask-image: linear-gradient(to right, black 90%, transparent);
+  overflow: visible;
+  white-space: normal;
+  mask-image: none;
+  -webkit-mask-image: none;
 }
 
 #songTitle {
@@ -804,7 +803,8 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   font-size: 1rem;
   color: var(--text);
-  display: inline-block;
+  display: block;
+  word-break: break-word;
 }
 
 /* Sección central - Controles */

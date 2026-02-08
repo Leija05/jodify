@@ -1552,6 +1552,11 @@ async function importFromLink() {
         showToast("Solo admins o devs pueden importar enlaces", "warning");
         return;
     }
+    if (window.location.protocol === 'file:') {
+        if (linkImportStatus) linkImportStatus.textContent = "Necesitas ejecutar el backend para importar enlaces.";
+        showToast("Importación disponible solo con servidor activo", "warning");
+        return;
+    }
     const url = linkInput?.value.trim();
     if (!url) {
         if (linkImportStatus) linkImportStatus.textContent = "Ingresa un enlace válido.";
