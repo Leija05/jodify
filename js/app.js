@@ -69,7 +69,12 @@ const appState = {
     playCount: parseInt(localStorage.getItem("playCount")) || 0,
     discord: JSON.parse(localStorage.getItem("discordProfile")) || null,
     jamActive: localStorage.getItem("jamActive") === "true",
-    jamCode: localStorage.getItem("jamCode") || ""
+    jamCode: localStorage.getItem("jamCode") || "",
+    jamHost: localStorage.getItem("jamHost") === "true",
+    jamChannel: null,
+    jamUsers: [],
+    jamSyncInProgress: false,
+    fadePending: false
 };
 
 // =========================================
@@ -123,6 +128,11 @@ window.onload = async () => {
         initApp();
     } else {
         document.getElementById("loginScreen").style.display = "flex";
+    }
+
+    if (appState.jamActive && appState.jamCode) {
+        connectToJam(appState.jamCode, appState.jamHost);
+        updateJamUI();
     }
     
     console.log(`JodiFy v2.0 - Volume: ${Math.round(savedVolume * 100)}%`);
@@ -208,6 +218,7 @@ const jamToggle = document.getElementById("jamToggle");
 const jamCopy = document.getElementById("jamCopy");
 const jamJoinInput = document.getElementById("jamJoinInput");
 const jamJoinBtn = document.getElementById("jamJoinBtn");
+const jamUsersList = document.getElementById("jamUsersList");
 
 // Shortcuts elements
 const shortcutsModal = document.getElementById("shortcutsModal");
@@ -219,11 +230,23 @@ audio.addEventListener('play', () => {
     if (window.electronAPI && window.electronAPI.updateThumbar) {
         window.electronAPI.updateThumbar(true);
     }
+    if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+        broadcastJamState('jam-play');
+    }
 });
 
 audio.addEventListener('pause', () => {
     if (window.electronAPI && window.electronAPI.updateThumbar) {
         window.electronAPI.updateThumbar(false);
+    }
+    if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+        broadcastJamState('jam-pause');
+    }
+});
+
+audio.addEventListener('seeked', () => {
+    if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+        broadcastJamState('jam-seek');
     }
 });
 
@@ -310,6 +333,10 @@ function showShortcutHint() {
 }
 
 function togglePlay() {
+    if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
+        alert("Solo el host puede controlar la reproducción en una Jam.");
+        return;
+    }
     if (audio.paused) {
         audio.play();
         updatePlayIcon(true);
@@ -543,7 +570,14 @@ function updateJamUI() {
     jamStatus.textContent = appState.jamActive
         ? 'Jam activa. Comparte el código para sumar gente.'
         : 'Crea una Jam para compartir la cola con tus amigos.';
-    jamToggle.textContent = appState.jamActive ? 'Finalizar Jam' : 'Iniciar Jam';
+    if (!appState.jamActive) {
+        jamToggle.textContent = 'Iniciar Jam';
+    } else if (appState.jamHost) {
+        jamToggle.textContent = 'Finalizar Jam';
+    } else {
+        jamToggle.textContent = 'Salir de la Jam';
+    }
+    renderJamUsers();
 }
 
 function openJamModal() {
@@ -557,19 +591,25 @@ function closeJamModal() {
 
 function startJam() {
     appState.jamActive = true;
+    appState.jamHost = true;
     if (!appState.jamCode) {
         appState.jamCode = generateJamCode();
     }
     localStorage.setItem('jamActive', 'true');
     localStorage.setItem('jamCode', appState.jamCode);
+    localStorage.setItem('jamHost', 'true');
+    connectToJam(appState.jamCode, true);
     updateJamUI();
 }
 
 function stopJam() {
     appState.jamActive = false;
     appState.jamCode = '';
+    appState.jamHost = false;
     localStorage.setItem('jamActive', 'false');
     localStorage.removeItem('jamCode');
+    localStorage.removeItem('jamHost');
+    leaveJamChannel();
     updateJamUI();
 }
 
@@ -578,17 +618,174 @@ function joinJam() {
     if (!code) return;
     appState.jamActive = true;
     appState.jamCode = code;
+    appState.jamHost = false;
     localStorage.setItem('jamActive', 'true');
     localStorage.setItem('jamCode', appState.jamCode);
+    localStorage.setItem('jamHost', 'false');
+    connectToJam(appState.jamCode, false);
     updateJamUI();
+}
+
+function leaveJam() {
+    appState.jamActive = false;
+    appState.jamCode = '';
+    appState.jamHost = false;
+    localStorage.setItem('jamActive', 'false');
+    localStorage.removeItem('jamCode');
+    localStorage.removeItem('jamHost');
+    leaveJamChannel();
+    updateJamUI();
+}
+
+function renderJamUsers() {
+    if (!jamUsersList) return;
+    if (!appState.jamActive) {
+        jamUsersList.innerHTML = `<li>Sin usuarios en la Jam</li>`;
+        return;
+    }
+    if (!appState.jamUsers.length) {
+        jamUsersList.innerHTML = `<li>Conectando...</li>`;
+        return;
+    }
+    jamUsersList.innerHTML = appState.jamUsers
+        .map(user => `
+            <li>
+                <span>${user.username}</span>
+                ${user.isHost ? '<span class="jam-host">Host</span>' : ''}
+            </li>
+        `)
+        .join('');
+}
+
+function setJamUsersFromPresence(presenceState) {
+    const users = [];
+    Object.values(presenceState || {}).forEach(entries => {
+        entries.forEach(entry => {
+            users.push({
+                username: entry.username || 'Invitado',
+                isHost: entry.isHost || false
+            });
+        });
+    });
+    appState.jamUsers = users;
+    renderJamUsers();
+}
+
+function leaveJamChannel() {
+    if (appState.jamChannel) {
+        supabaseClient.removeChannel(appState.jamChannel);
+        appState.jamChannel = null;
+    }
+    appState.jamUsers = [];
+    renderJamUsers();
+}
+
+function connectToJam(code, isHost) {
+    if (!code || !navigator.onLine) return;
+    if (appState.jamChannel) {
+        leaveJamChannel();
+    }
+    const username = appState.usuarioActual || 'Invitado';
+    const channel = supabaseClient.channel(`jam-${code}`, {
+        config: {
+            presence: { key: username }
+        }
+    });
+    appState.jamChannel = channel;
+
+    channel.on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        setJamUsersFromPresence(state);
+    });
+
+    channel.on('broadcast', { event: 'jam-play' }, payload => {
+        if (appState.jamHost) return;
+        applyJamSync(payload);
+    });
+
+    channel.on('broadcast', { event: 'jam-pause' }, payload => {
+        if (appState.jamHost) return;
+        applyJamPause(payload);
+    });
+
+    channel.on('broadcast', { event: 'jam-seek' }, payload => {
+        if (appState.jamHost) return;
+        applyJamSeek(payload);
+    });
+
+    channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+            await channel.track({ username, isHost });
+        }
+    });
+}
+
+function applyJamSync(payload) {
+    if (!payload?.songId) return;
+    const songId = payload.songId;
+    const targetTime = payload.time || 0;
+    const isPlaying = payload.isPlaying;
+    const songIndex = appState.playlist.findIndex(s => s.id === songId);
+    if (songIndex === -1) return;
+
+    appState.jamSyncInProgress = true;
+    const finishSync = () => {
+        appState.jamSyncInProgress = false;
+    };
+
+    if (appState.offlineMode) {
+        playOfflineSongById(songId, { fadeOutMs: 0, fadeInMs: 0 });
+        setTimeout(() => {
+            audio.currentTime = targetTime;
+            if (isPlaying) {
+                audio.play();
+            } else {
+                audio.pause();
+            }
+            finishSync();
+        }, 600);
+        return;
+    }
+
+    playSong(songIndex, { fadeOutMs: 0, fadeInMs: 0 });
+    setTimeout(() => {
+        audio.currentTime = targetTime;
+        if (isPlaying) {
+            audio.play();
+        } else {
+            audio.pause();
+        }
+        finishSync();
+    }, 600);
+}
+
+function applyJamPause(payload) {
+    if (!payload) return;
+    appState.jamSyncInProgress = true;
+    audio.currentTime = payload.time || audio.currentTime;
+    audio.pause();
+    setTimeout(() => {
+        appState.jamSyncInProgress = false;
+    }, 400);
+}
+
+function applyJamSeek(payload) {
+    if (!payload) return;
+    appState.jamSyncInProgress = true;
+    audio.currentTime = payload.time || audio.currentTime;
+    setTimeout(() => {
+        appState.jamSyncInProgress = false;
+    }, 200);
 }
 
 if (jamBtn) jamBtn.onclick = openJamModal;
 if (closeJam) closeJam.onclick = closeJamModal;
 if (jamToggle) {
     jamToggle.onclick = () => {
-        if (appState.jamActive) {
+        if (appState.jamActive && appState.jamHost) {
             stopJam();
+        } else if (appState.jamActive) {
+            leaveJam();
         } else {
             startJam();
         }
@@ -669,6 +866,21 @@ function applyTheme(theme) {
 }
 
 themeToggle.onclick = toggleTheme;
+
+function broadcastJamState(event) {
+    if (!appState.jamChannel || !appState.jamActive || !appState.jamHost) return;
+    const currentSong = appState.playlist[appState.currentIndex];
+    if (!currentSong) return;
+    appState.jamChannel.send({
+        type: 'broadcast',
+        event,
+        payload: {
+            songId: currentSong.id,
+            time: audio.currentTime || 0,
+            isPlaying: !audio.paused
+        }
+    });
+}
 
 // =========================================
 // LOGIN SYSTEM
@@ -1555,6 +1767,10 @@ function createSongElement(song, isCurrent, isDownloaded) {
 
 async function playOfflineSongById(songId, options = {}) {
     if (!appState.db) return;
+    if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
+        alert("Solo el host puede cambiar la canción en una Jam.");
+        return;
+    }
     
     const transaction = appState.db.transaction(["songs"], "readonly");
     const store = transaction.objectStore("songs");
@@ -1578,6 +1794,9 @@ async function playOfflineSongById(songId, options = {}) {
                 await startSongPlayback(song, blobUrl, options);
             } finally {
                 isChangingTrack = false;
+            }
+            if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+                broadcastJamState('jam-play');
             }
             
             loadMetadata(blobUrl, "cover", true);
@@ -1699,11 +1918,16 @@ async function startSongPlayback(song, sourceUrl, options = {}) {
     if (useFade) {
         await rampVolume(targetVolume, fadeInMs);
     }
+    appState.fadePending = false;
 }
 
 async function playSong(index, options = {}) {
     if (index < 0 || index >= appState.playlist.length) return;
     if (isChangingTrack) return;
+    if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
+        alert("Solo el host puede cambiar la canción en una Jam.");
+        return;
+    }
     
     isChangingTrack = true;
     appState.currentIndex = index;
@@ -1716,6 +1940,9 @@ async function playSong(index, options = {}) {
         localStorage.setItem("playCount", appState.playCount);
         updateProfileStats();
         updateListeningActivity(song);
+        if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+            broadcastJamState('jam-play');
+        }
     } finally {
         isChangingTrack = false;
     }
@@ -1774,6 +2001,9 @@ async function handlePrevSong() {
 }
 
 audio.onended = () => {
+    if (appState.fadePending) {
+        return;
+    }
     if (!appState.isLoop) {
         handleNextSong();
     }
@@ -1890,9 +2120,10 @@ audio.ontimeupdate = () => {
         progressBar.style.setProperty('--progress-percent', `${percent}%`);
     }
 
-    if (audio.duration && shouldUseFade() && !appState.isLoop && !isChangingTrack && !audio.paused) {
+    if (audio.duration && shouldUseFade() && !appState.isLoop && !isChangingTrack && !audio.paused && !appState.fadePending) {
         const remaining = audio.duration - audio.currentTime;
         if (remaining > 0 && remaining <= appState.fadeDuration) {
+            appState.fadePending = true;
             handleNextSong({
                 fadeOutMs: Math.max(0, remaining * 1000),
                 fadeInMs: getFadeDurationMs() / 2
@@ -1949,7 +2180,13 @@ playBtn.onclick = togglePlay;
 nextBtn.onclick = handleNextSong;
 prevBtn.onclick = handlePrevSong;
 
-progress.oninput = () => audio.currentTime = progress.value;
+progress.oninput = () => {
+    if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
+        alert("Solo el host puede adelantar la canción en una Jam.");
+        return;
+    }
+    audio.currentTime = progress.value;
+};
 volume.oninput = (e) => setAppVolume(e.target.value);
 
 btnGlobal.onclick = () => {
