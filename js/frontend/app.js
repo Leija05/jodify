@@ -1568,8 +1568,9 @@ async function importFromLink() {
     if (linkImportBtn) linkImportBtn.disabled = true;
     if (linkInput) linkInput.disabled = true;
 
+    const importUrl = `${getImportBaseUrl()}/api/import`;
     try {
-        const response = await fetch(`${getImportBaseUrl()}/api/import`, {
+        const response = await fetch(importUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })
@@ -1595,8 +1596,15 @@ async function importFromLink() {
         toggleLinkModal(false);
         showToast("Importación iniciada", "success");
     } catch (err) {
-        if (linkImportStatus) linkImportStatus.textContent = err.message;
-        showToast("No se pudo importar el enlace", "error");
+        if (err instanceof TypeError) {
+            if (linkImportStatus) {
+                linkImportStatus.textContent = "No hay conexión con el servidor de importación. Verifica que el backend esté activo en 127.0.0.1:8000.";
+            }
+            showToast("Servidor de importación no disponible", "error");
+        } else {
+            if (linkImportStatus) linkImportStatus.textContent = err.message;
+            showToast("No se pudo importar el enlace", "error");
+        }
     } finally {
         if (linkImportBtn) linkImportBtn.disabled = false;
         if (linkInput) linkInput.disabled = false;
