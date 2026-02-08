@@ -74,7 +74,9 @@ const appState = {
     jamChannel: null,
     jamUsers: [],
     jamSyncInProgress: false,
-    fadePending: false
+    fadePending: false,
+    jamSessionId: localStorage.getItem("jamSessionId") || null,
+    jamMembersInterval: null
 };
 
 // =========================================
@@ -131,8 +133,27 @@ window.onload = async () => {
     }
 
     if (appState.jamActive && appState.jamCode) {
-        connectToJam(appState.jamCode, appState.jamHost);
-        updateJamUI();
+        if (appState.jamSessionId) {
+            connectToJam(appState.jamCode, appState.jamHost);
+            updateJamUI();
+        } else {
+            fetchJamSessionByCode(appState.jamCode).then(session => {
+                if (session) {
+                    appState.jamSessionId = session.id;
+                    localStorage.setItem('jamSessionId', appState.jamSessionId);
+                    connectToJam(appState.jamCode, appState.jamHost);
+                    updateJamUI();
+                } else {
+                    appState.jamActive = false;
+                    appState.jamCode = '';
+                    appState.jamHost = false;
+                    localStorage.setItem('jamActive', 'false');
+                    localStorage.removeItem('jamCode');
+                    localStorage.removeItem('jamHost');
+                    localStorage.removeItem('jamSessionId');
+                }
+            });
+        }
     }
     
     console.log(`JodiFy v2.0 - Volume: ${Math.round(savedVolume * 100)}%`);
@@ -590,25 +611,26 @@ function closeJamModal() {
 }
 
 function startJam() {
-    appState.jamActive = true;
-    appState.jamHost = true;
-    if (!appState.jamCode) {
-        appState.jamCode = generateJamCode();
-    }
-    localStorage.setItem('jamActive', 'true');
-    localStorage.setItem('jamCode', appState.jamCode);
-    localStorage.setItem('jamHost', 'true');
-    connectToJam(appState.jamCode, true);
-    updateJamUI();
+    initializeJamSession({ asHost: true });
 }
 
 function stopJam() {
+    const sessionId = appState.jamSessionId;
+    const wasHost = appState.jamHost;
     appState.jamActive = false;
     appState.jamCode = '';
-    appState.jamHost = false;
     localStorage.setItem('jamActive', 'false');
     localStorage.removeItem('jamCode');
     localStorage.removeItem('jamHost');
+    localStorage.removeItem('jamSessionId');
+    if (sessionId) {
+        updateJamMemberStatus(false).catch(() => {});
+        if (wasHost) {
+            closeJamSessionIfHost(sessionId).catch(() => {});
+        }
+    }
+    appState.jamHost = false;
+    appState.jamSessionId = null;
     leaveJamChannel();
     updateJamUI();
 }
@@ -616,23 +638,19 @@ function stopJam() {
 function joinJam() {
     const code = jamJoinInput?.value.trim().toUpperCase();
     if (!code) return;
-    appState.jamActive = true;
-    appState.jamCode = code;
-    appState.jamHost = false;
-    localStorage.setItem('jamActive', 'true');
-    localStorage.setItem('jamCode', appState.jamCode);
-    localStorage.setItem('jamHost', 'false');
-    connectToJam(appState.jamCode, false);
-    updateJamUI();
+    initializeJamSession({ asHost: false, code });
 }
 
 function leaveJam() {
     appState.jamActive = false;
     appState.jamCode = '';
     appState.jamHost = false;
+    appState.jamSessionId = null;
     localStorage.setItem('jamActive', 'false');
     localStorage.removeItem('jamCode');
     localStorage.removeItem('jamHost');
+    localStorage.removeItem('jamSessionId');
+    updateJamMemberStatus(false).catch(() => {});
     leaveJamChannel();
     updateJamUI();
 }
@@ -657,24 +675,14 @@ function renderJamUsers() {
         .join('');
 }
 
-function setJamUsersFromPresence(presenceState) {
-    const users = [];
-    Object.values(presenceState || {}).forEach(entries => {
-        entries.forEach(entry => {
-            users.push({
-                username: entry.username || 'Invitado',
-                isHost: entry.isHost || false
-            });
-        });
-    });
-    appState.jamUsers = users;
-    renderJamUsers();
-}
-
 function leaveJamChannel() {
     if (appState.jamChannel) {
         supabaseClient.removeChannel(appState.jamChannel);
         appState.jamChannel = null;
+    }
+    if (appState.jamMembersInterval) {
+        clearInterval(appState.jamMembersInterval);
+        appState.jamMembersInterval = null;
     }
     appState.jamUsers = [];
     renderJamUsers();
@@ -692,11 +700,6 @@ function connectToJam(code, isHost) {
         }
     });
     appState.jamChannel = channel;
-
-    channel.on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        setJamUsersFromPresence(state);
-    });
 
     channel.on('broadcast', { event: 'jam-play' }, payload => {
         if (appState.jamHost) return;
@@ -716,8 +719,147 @@ function connectToJam(code, isHost) {
     channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
             await channel.track({ username, isHost });
+            startJamMembersPolling();
         }
     });
+}
+
+async function initializeJamSession({ asHost, code = null }) {
+    if (!navigator.onLine) {
+        alert("Se requiere conexión para iniciar una Jam.");
+        return;
+    }
+    const username = appState.usuarioActual || 'Invitado';
+    let jamCode = code;
+
+    if (asHost) {
+        jamCode = jamCode || generateJamCode();
+        const { data, error } = await supabaseClient
+            .from('jam_sessions')
+            .insert([{
+                code: jamCode,
+                host_username: username,
+                is_active: true,
+                current_song_id: null,
+                current_time: 0,
+                is_playing: false
+            }])
+            .select('id, code')
+            .single();
+        if (error) {
+            console.error('Error creando Jam:', error);
+            alert('No se pudo crear la Jam.');
+            return;
+        }
+        appState.jamSessionId = data.id;
+    } else {
+        const session = await fetchJamSessionByCode(jamCode);
+        if (!session) {
+            alert('Código de Jam inválido o inactivo.');
+            return;
+        }
+        appState.jamSessionId = session.id;
+    }
+
+    appState.jamActive = true;
+    appState.jamHost = asHost;
+    appState.jamCode = jamCode;
+    localStorage.setItem('jamActive', 'true');
+    localStorage.setItem('jamCode', appState.jamCode);
+    localStorage.setItem('jamHost', asHost ? 'true' : 'false');
+    localStorage.setItem('jamSessionId', appState.jamSessionId);
+
+    await upsertJamMember({ username, isHost: asHost });
+    if (!asHost) {
+        await syncFromJamSession();
+    }
+    connectToJam(appState.jamCode, asHost);
+    updateJamUI();
+}
+
+async function fetchJamSessionByCode(code) {
+    const { data, error } = await supabaseClient
+        .from('jam_sessions')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+    if (error) {
+        console.warn('Jam session fetch error:', error);
+        return null;
+    }
+    return data;
+}
+
+async function upsertJamMember({ username, isHost }) {
+    if (!appState.jamSessionId) return;
+    await supabaseClient
+        .from('jam_members')
+        .upsert([{
+            jam_id: appState.jamSessionId,
+            username,
+            is_host: isHost,
+            active: true,
+            last_seen: new Date().toISOString()
+        }], { onConflict: 'jam_id,username' });
+}
+
+async function updateJamMemberStatus(active) {
+    if (!appState.jamSessionId) return;
+    const username = appState.usuarioActual || 'Invitado';
+    await supabaseClient
+        .from('jam_members')
+        .update({ active, last_seen: new Date().toISOString() })
+        .eq('jam_id', appState.jamSessionId)
+        .eq('username', username);
+}
+
+async function closeJamSessionIfHost(sessionId = appState.jamSessionId) {
+    if (!sessionId) return;
+    await supabaseClient
+        .from('jam_sessions')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', sessionId);
+}
+
+async function refreshJamMembers() {
+    if (!appState.jamSessionId) return;
+    const { data, error } = await supabaseClient
+        .from('jam_members')
+        .select('username,is_host,active')
+        .eq('jam_id', appState.jamSessionId)
+        .eq('active', true)
+        .order('is_host', { ascending: false });
+    if (error) {
+        console.warn('Jam members fetch error:', error);
+        return;
+    }
+    appState.jamUsers = (data || []).map(member => ({
+        username: member.username,
+        isHost: member.is_host
+    }));
+    renderJamUsers();
+}
+
+function startJamMembersPolling() {
+    refreshJamMembers().catch(() => {});
+    if (appState.jamMembersInterval) return;
+    appState.jamMembersInterval = setInterval(() => {
+        refreshJamMembers().catch(() => {});
+        updateJamMemberStatus(true).catch(() => {});
+    }, 8000);
+}
+
+async function syncFromJamSession() {
+    const session = await fetchJamSessionByCode(appState.jamCode);
+    if (!session) return;
+    if (session.current_song_id) {
+        applyJamSync({
+            songId: session.current_song_id,
+            time: session.current_time || 0,
+            isPlaying: session.is_playing
+        });
+    }
 }
 
 function applyJamSync(payload) {
@@ -871,6 +1013,7 @@ function broadcastJamState(event) {
     if (!appState.jamChannel || !appState.jamActive || !appState.jamHost) return;
     const currentSong = appState.playlist[appState.currentIndex];
     if (!currentSong) return;
+    updateJamSessionState(currentSong.id).catch(() => {});
     appState.jamChannel.send({
         type: 'broadcast',
         event,
@@ -880,6 +1023,19 @@ function broadcastJamState(event) {
             isPlaying: !audio.paused
         }
     });
+}
+
+async function updateJamSessionState(songId) {
+    if (!appState.jamSessionId) return;
+    await supabaseClient
+        .from('jam_sessions')
+        .update({
+            current_song_id: songId,
+            current_time: audio.currentTime || 0,
+            is_playing: !audio.paused,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', appState.jamSessionId);
 }
 
 // =========================================
