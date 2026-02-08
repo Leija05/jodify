@@ -12,12 +12,61 @@ export default function App() {
   const song = queue.current();
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>JodiFy Mobile</Text>
-        <Text style={styles.subtitle}>Core compartido conectado</Text>
-        <Text style={styles.meta}>Ahora: {song?.name ?? 'Sin canción'}</Text>
-        <Text style={styles.meta}>Volumen: {Math.round(playback.state.volume * 100)}%</Text>
-        <Text style={styles.meta}>Init: {new Date(now).toLocaleTimeString()}</Text>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.logo}>JodiFy</Text>
+          <Text style={styles.tagline}>Tu música, tu ritmo</Text>
+        </View>
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>En línea</Text>
+        </View>
+      </View>
+
+      <View style={styles.heroCard}>
+        <View style={styles.coverArt}>
+          <Text style={styles.coverText}>JF</Text>
+        </View>
+        <View style={styles.heroInfo}>
+          <Text style={styles.heroLabel}>Reproduciendo ahora</Text>
+          <Text style={styles.heroTitle}>{song?.name ?? 'Sin canción'}</Text>
+          <Text style={styles.heroMeta}>Volumen: {Math.round(playback.state.volume * 100)}%</Text>
+          <Text style={styles.heroMeta}>Sesión: {new Date(now).toLocaleTimeString()}</Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Accesos rápidos</Text>
+        <View style={styles.quickGrid}>
+          {['Biblioteca', 'Favoritos', 'Playlists', 'Descubrir'].map((label) => (
+            <View key={label} style={styles.quickCard}>
+              <Text style={styles.quickLabel}>{label}</Text>
+              <Text style={styles.quickMeta}>Abrir</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Para ti</Text>
+        <View style={styles.recommendCard}>
+          <Text style={styles.recommendTitle}>Mix Diario</Text>
+          <Text style={styles.recommendSubtitle}>Nueva música basada en tus gustos</Text>
+          <View style={styles.recommendPill}>
+            <Text style={styles.recommendPillText}>Escuchar</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.playerDock}>
+        <View>
+          <Text style={styles.playerSong}>{song?.name ?? 'Sin canción'}</Text>
+          <Text style={styles.playerArtist}>JodiFy Studio</Text>
+        </View>
+        <View style={styles.playerControls}>
+          <Text style={styles.playerButton}>⏮</Text>
+          <Text style={styles.playerButton}>⏯</Text>
+          <Text style={styles.playerButton}>⏭</Text>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -26,28 +75,159 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#0f0f12',
+    paddingHorizontal: 20,
+    paddingTop: 12
+  },
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'space-between',
+    marginBottom: 20
   },
-  card: {
-    padding: 24,
-    borderRadius: 16,
-    backgroundColor: '#1e1e1e',
-    width: '90%'
-  },
-  title: {
+  logo: {
     color: '#ffffff',
-    fontSize: 24,
+    fontSize: 28,
+    fontWeight: '800'
+  },
+  tagline: {
+    color: '#8c8f98',
+    marginTop: 4
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#1f2a20'
+  },
+  statusText: {
+    color: '#8cf39a',
+    fontWeight: '600',
+    fontSize: 12
+  },
+  heroCard: {
+    backgroundColor: '#1a1a20',
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24
+  },
+  coverArt: {
+    width: 88,
+    height: 88,
+    borderRadius: 20,
+    backgroundColor: '#2c2c35',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16
+  },
+  coverText: {
+    color: '#f4f4f6',
+    fontWeight: '800',
+    fontSize: 24
+  },
+  heroInfo: {
+    flex: 1
+  },
+  heroLabel: {
+    color: '#8c8f98',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1
+  },
+  heroTitle: {
+    color: '#ffffff',
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: 8
+    marginVertical: 6
   },
-  subtitle: {
-    color: '#9aa0a6',
-    marginBottom: 16
+  heroMeta: {
+    color: '#c8c8d0',
+    fontSize: 13,
+    marginTop: 2
   },
-  meta: {
-    color: '#d0d0d0',
-    marginTop: 6
+  section: {
+    marginBottom: 22
+  },
+  sectionTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  quickCard: {
+    flexBasis: '47%',
+    backgroundColor: '#1b1b22',
+    padding: 16,
+    borderRadius: 16
+  },
+  quickLabel: {
+    color: '#ffffff',
+    fontWeight: '600',
+    marginBottom: 6
+  },
+  quickMeta: {
+    color: '#8c8f98',
+    fontSize: 12
+  },
+  recommendCard: {
+    backgroundColor: '#242433',
+    padding: 18,
+    borderRadius: 20
+  },
+  recommendTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700'
+  },
+  recommendSubtitle: {
+    color: '#b0b3bd',
+    marginTop: 6,
+    marginBottom: 14
+  },
+  recommendPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#5b5bff'
+  },
+  recommendPillText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 12
+  },
+  playerDock: {
+    backgroundColor: '#1a1a20',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 'auto',
+    marginBottom: 20
+  },
+  playerSong: {
+    color: '#ffffff',
+    fontWeight: '700'
+  },
+  playerArtist: {
+    color: '#8c8f98',
+    marginTop: 4,
+    fontSize: 12
+  },
+  playerControls: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  playerButton: {
+    color: '#ffffff',
+    fontSize: 18
   }
 });
