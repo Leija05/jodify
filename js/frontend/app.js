@@ -1572,7 +1572,23 @@ function saveImportServer(url) {
     localStorage.setItem("importServerUrl", url);
 }
 
+let importCooldownUntil = 0;
+
+function isImportCooldownActive() {
+    return Date.now() < importCooldownUntil;
+}
+
+function setImportCooldown(ms = 5000) {
+    importCooldownUntil = Date.now() + ms;
+}
+
 async function testImportServer() {
+    if (isImportCooldownActive()) {
+        if (linkImportStatus) {
+            linkImportStatus.textContent = "Espera unos segundos antes de volver a intentar.";
+        }
+        return;
+    }
     const baseUrl = linkServerInput?.value.trim() || getSavedImportServer();
     if (!baseUrl) return;
     saveImportServer(baseUrl);
@@ -1583,6 +1599,7 @@ async function testImportServer() {
         if (linkImportStatus) linkImportStatus.textContent = "Servidor listo para importar.";
         showToast("Servidor de importación conectado", "success");
     } catch (err) {
+        setImportCooldown();
         if (linkImportStatus) {
             linkImportStatus.textContent = "No se pudo conectar al servidor. Revisa la URL y que esté activo.";
         }
@@ -1591,6 +1608,12 @@ async function testImportServer() {
 }
 
 async function importFromLink() {
+    if (isImportCooldownActive()) {
+        if (linkImportStatus) {
+            linkImportStatus.textContent = "Espera unos segundos antes de volver a intentar.";
+        }
+        return;
+    }
     if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') {
         showToast("Solo admins o devs pueden importar enlaces", "warning");
         return;
@@ -1637,6 +1660,7 @@ async function importFromLink() {
         showToast("Importación iniciada", "success");
     } catch (err) {
         if (err instanceof TypeError) {
+            setImportCooldown();
             if (linkImportStatus) {
                 linkImportStatus.textContent = "No hay conexión con el servidor de importación. Revisa la URL y que el backend esté activo.";
             }
