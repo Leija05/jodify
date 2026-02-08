@@ -11,6 +11,9 @@ let mainWindow = null;
 let splash = null;
 let updateWindow = null;
 
+const rendererDir = path.join(__dirname, '..', 'renderer');
+const rendererAssetsDir = path.join(rendererDir, 'assets');
+
 // Configuración de Logs
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
@@ -36,7 +39,7 @@ function createUpdateWindow(info) {
         modal: true,
         parent: mainWindow, 
         alwaysOnTop: true,
-        icon: path.join(__dirname, 'assets', 'icon.ico'),
+        icon: path.join(rendererAssetsDir, 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -44,7 +47,7 @@ function createUpdateWindow(info) {
         }
     });
 
-    updateWindow.loadFile('update.html');
+    updateWindow.loadFile(path.join(rendererDir, 'update.html'));
 
     // Enviamos la info de versiones cuando el HTML esté listo
     updateWindow.webContents.on('did-finish-load', () => {
@@ -71,16 +74,16 @@ function createWindow() {
         frame: false,
         transparent: true,
         alwaysOnTop: true,
-        icon: path.join(__dirname, 'assets', 'icon.ico')
+        icon: path.join(rendererAssetsDir, 'icon.ico')
     });
-    splash.loadFile('splash.html');
+    splash.loadFile(path.join(rendererDir, 'splash.html'));
 
     // Ventana Principal
     mainWindow = new BrowserWindow({
         width: 1000,
         height: 800,
         show: false,
-        icon: path.join(__dirname, 'assets', 'icon.ico'),
+        icon: path.join(rendererAssetsDir, 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -89,7 +92,7 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadFile('index.html');
+    mainWindow.loadFile(path.join(rendererDir, 'index.html'));
 
     mainWindow.on('close', (e) => {
         // Si queremos una salida limpia con animación
@@ -192,7 +195,7 @@ function updateThumbarButtons(isPlaying) {
 
     const getIcon = (file) =>
         nativeImage
-            .createFromPath(path.join(__dirname, 'assets', file))
+            .createFromPath(path.join(rendererAssetsDir, file))
             .resize({ width: 16, height: 16 });
 
     mainWindow.setThumbarButtons([
