@@ -11,7 +11,7 @@ let mainWindow = null;
 let splash = null;
 let updateWindow = null;
 
-const rendererDir = path.join(__dirname, '..', 'renderer');
+const rendererDir = path.join(__dirname, '..', 'public');
 const rendererAssetsDir = path.join(rendererDir, 'assets');
 
 // Configuración de Logs

@@ -3,7 +3,7 @@
   "productName": "JodiFy",
   "version": "1.0.6",
   "description": "Free Music For Friends",
-  "main": "src/main/main.js",
+  "main": "electron/main.js",
   "author": "LeijaSex",
   "repository": {
     "type": "git",
@@ -28,15 +28,15 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "src/renderer/assets/icon.ico"
+      "icon": "public/assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "shortcutName": "JodiFy",
-      "installerIcon": "src/renderer/assets/icon.ico",
-      "uninstallerIcon": "src/renderer/assets/icon.ico"
+      "installerIcon": "public/assets/icon.ico",
+      "uninstallerIcon": "public/assets/icon.ico"
     },
     "files": [
       "**/*",
