@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "JodiFy Mobile",
+    "slug": "jodify-mobile",
+    "version": "1.0.0",
+    "sdkVersion": "50.0.0",
+    "platforms": ["ios", "android", "web"],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#121212"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["**/*"]
+  }
+}
