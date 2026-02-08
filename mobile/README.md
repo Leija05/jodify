@@ -17,9 +17,13 @@ npm run start
 
 ## Ejecutar en iPhone físico (Expo Go)
 1. Instala **Expo Go** desde la App Store.
-2. En la terminal:
+2. En la terminal (acepta ambas variantes):
    ```bash
    npm run start:tunnel
+   ```
+   o
+   ```bash
+   npm run start:tunel
    ```
 3. Escanea el QR desde Expo Go (o usa la opción *Scan QR Code*).
 

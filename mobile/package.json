@@ -9,6 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "start:tunnel": "expo start --tunnel",
+    "start:tunel": "expo start --tunnel",
     "start:lan": "expo start --lan",
     "start:local": "expo start --localhost"
   },
