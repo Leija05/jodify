@@ -62,7 +62,10 @@ const appState = {
     previousVolume: 1,
     isMuted: false,
     playCount: parseInt(localStorage.getItem("playCount")) || 0,
-    discord: JSON.parse(localStorage.getItem("discordProfile")) || null
+    discord: JSON.parse(localStorage.getItem("discordProfile")) || null,
+    playHistory: JSON.parse(localStorage.getItem("playHistory")) || [],
+    lastRecommendations: [],
+    recommendationSeed: Date.now()
 };
 
 // =========================================
@@ -147,6 +150,10 @@ const songTitle = document.getElementById("songTitle");
 const cover = document.getElementById("cover");
 const dynamicBg = document.getElementById("dynamic-bg");
 const searchInput = document.getElementById("searchInput");
+const recommendationsList = document.getElementById("recommendationsList");
+const recommendationsSubtitle = document.getElementById("recommendationsSubtitle");
+const refreshRecsBtn = document.getElementById("refreshRecs");
+const queueRecsBtn = document.getElementById("queueRecsBtn");
 const canvas = document.getElementById("visualizer");
 const ctx = canvas.getContext("2d");
 
@@ -1066,6 +1073,190 @@ async function getGradientColors(imgElement) {
 }
 
 // =========================================
+// RECOMMENDATIONS
+// =========================================
+const MAX_HISTORY_ITEMS = 120;
+
+function getArtistFromName(name) {
+    const displayName = formatDisplayName(name);
+    const separators = [" - ", " – ", " — ", " · ", " | "];
+    for (const separator of separators) {
+        if (displayName.includes(separator)) {
+            return displayName.split(separator)[0].trim();
+        }
+    }
+    return displayName.split(" ").slice(0, 2).join(" ").trim();
+}
+
+function getTimeMood() {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "mañanero";
+    if (hour >= 12 && hour < 18) return "energético";
+    if (hour >= 18 && hour < 23) return "nocturno";
+    return "trasnochador";
+}
+
+function registerPlayInHistory(song) {
+    if (!song) return;
+    appState.playHistory.unshift({
+        id: song.id,
+        playedAt: Date.now()
+    });
+    if (appState.playHistory.length > MAX_HISTORY_ITEMS) {
+        appState.playHistory = appState.playHistory.slice(0, MAX_HISTORY_ITEMS);
+    }
+    localStorage.setItem("playHistory", JSON.stringify(appState.playHistory));
+}
+
+function buildRecommendationContext() {
+    const playCounts = appState.playHistory.reduce((acc, entry) => {
+        acc[entry.id] = (acc[entry.id] || 0) + 1;
+        return acc;
+    }, {});
+    
+    const recentIds = new Set(appState.playHistory.slice(0, 8).map(entry => entry.id));
+    const artistCounts = appState.playHistory.reduce((acc, entry) => {
+        const song = appState.playlist.find(s => s.id === entry.id);
+        if (!song) return acc;
+        const artist = getArtistFromName(song.name);
+        if (artist) {
+            acc[artist] = (acc[artist] || 0) + 1;
+        }
+        return acc;
+    }, {});
+    
+    const topArtists = Object.entries(artistCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([artist]) => artist);
+    
+    return { playCounts, recentIds, topArtists };
+}
+
+function scoreRecommendation(song, context) {
+    let score = 0;
+    const reasons = [];
+    const artist = getArtistFromName(song.name);
+    
+    if (appState.likedIds.includes(song.id)) {
+        score += 4;
+        reasons.push("Favorita");
+    }
+    if (appState.downloadedIds.includes(song.id)) {
+        score += 2;
+        reasons.push("Offline listo");
+    }
+    if (!context.playCounts[song.id]) {
+        score += 2;
+        reasons.push("Nuevo para ti");
+    } else if (!context.recentIds.has(song.id)) {
+        score += 1;
+        reasons.push("Hace rato que no suena");
+    }
+    if (artist && context.topArtists.includes(artist)) {
+        score += 3;
+        reasons.push(`Más de ${artist}`);
+    }
+    if (song.likes) {
+        score += Math.min(2, song.likes / 10);
+        if (song.likes >= 8) reasons.push("Popular");
+    }
+    score += (appState.recommendationSeed % 7) * 0.05;
+    
+    return { score, reasons };
+}
+
+function getRecommendationCandidates() {
+    const baseList = appState.offlineMode
+        ? appState.playlist.filter(song => appState.downloadedIds.includes(song.id))
+        : appState.playlist;
+    
+    return baseList.filter(song => {
+        if (appState.currentIndex >= 0 && appState.playlist[appState.currentIndex]?.id === song.id) {
+            return false;
+        }
+        return true;
+    });
+}
+
+function renderRecommendations() {
+    if (!recommendationsList || !recommendationsSubtitle) return;
+    
+    const mood = getTimeMood();
+    recommendationsSubtitle.textContent = `Modo ${mood}: recomendaciones hechas para tu momento.`;
+    
+    const context = buildRecommendationContext();
+    const candidates = getRecommendationCandidates();
+    
+    const ranked = candidates
+        .map(song => {
+            const { score, reasons } = scoreRecommendation(song, context);
+            return { song, score, reasons };
+        })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 4);
+    
+    appState.lastRecommendations = ranked.map(item => item.song);
+    recommendationsList.innerHTML = "";
+    
+    if (ranked.length === 0) {
+        recommendationsList.innerHTML = `<div class="recommendations-empty">Escucha más para generar recomendaciones.</div>`;
+        return;
+    }
+    
+    ranked.forEach(({ song, reasons }) => {
+        const item = document.createElement("div");
+        const imgId = `rec-cover-${song.id}`;
+        item.className = "recommendation-item";
+        item.setAttribute("data-testid", `recommendation-${song.id}`);
+        item.innerHTML = `
+            <img class="recommendation-cover" src="assets/default-cover.png" id="${imgId}" alt="${formatDisplayName(song.name)}">
+            <div class="recommendation-info">
+                <div class="recommendation-title">${formatDisplayName(song.name)}</div>
+                <div class="recommendation-reason">${reasons.slice(0, 2).join(" · ")}</div>
+            </div>
+        `;
+        
+        item.addEventListener("click", () => {
+            if (appState.offlineMode) {
+                playOfflineSongById(song.id);
+            } else {
+                const masterIndex = appState.playlist.findIndex(s => s.id === song.id);
+                playSong(masterIndex);
+            }
+        });
+        
+        recommendationsList.appendChild(item);
+        if (song.url) loadMetadata(song.url, imgId);
+    });
+}
+
+function queueRecommendations() {
+    if (!appState.lastRecommendations.length) return;
+    
+    if (!appState.currentFilteredList.length) {
+        appState.currentFilteredList = getFilteredList();
+    }
+    
+    const currentId = appState.playlist[appState.currentIndex]?.id;
+    const insertIndex = Math.max(
+        1,
+        appState.currentFilteredList.findIndex(song => song.id === currentId) + 1
+    );
+    const existingIds = new Set(appState.currentFilteredList.map(song => song.id));
+    const toInsert = appState.lastRecommendations.filter(song => !existingIds.has(song.id));
+    
+    if (!toInsert.length) return;
+    
+    appState.currentFilteredList.splice(insertIndex, 0, ...toInsert);
+    if (queueDrawer.classList.contains('open')) {
+        renderQueue();
+    }
+    addSystemLog('info', `Se añadieron ${toInsert.length} recomendaciones a la cola.`);
+}
+
+// =========================================
 // UPLOAD SYSTEM
 // =========================================
 function toggleModal(show) {
@@ -1426,6 +1617,7 @@ async function renderPlaylist() {
         const li = createSongElement(song, isCurrent, isDownloaded);
         songList.appendChild(li);
     });
+    renderRecommendations();
 }
 
 window.deleteDownload = async (event, songId) => {
@@ -1519,6 +1711,8 @@ function playSong(index) {
         localStorage.setItem("playCount", appState.playCount);
         updateProfileStats();
         updateListeningActivity(song);
+        registerPlayInHistory(song);
+        renderRecommendations();
     }).catch(e => {
         console.error("Play error:", e);
     });
@@ -1758,6 +1952,17 @@ searchInput.oninput = (e) => {
     renderPlaylist();
 };
 
+if (refreshRecsBtn) {
+    refreshRecsBtn.onclick = () => {
+        appState.recommendationSeed = Date.now();
+        renderRecommendations();
+    };
+}
+
+if (queueRecsBtn) {
+    queueRecsBtn.onclick = queueRecommendations;
+}
+
 shuffleBtn.onclick = toggleShuffle;
 loopBtn.onclick = toggleRepeat;
 
@@ -1789,6 +1994,7 @@ window.toggleLike = async (e, id) => {
     localStorage.setItem("likedSongs", JSON.stringify(appState.likedIds));
     renderPlaylist();
     updateLikeBtn();
+    renderRecommendations();
     
     if (!wasLiked) {
         const likeBtn = document.getElementById("likeBtn");

@@ -179,6 +179,23 @@
                 Descargar todos mis favoritos
             </button>
 
+            <!-- RECOMMENDATIONS -->
+            <section class="recommendations" data-testid="recommendations">
+                <div class="recommendations-header">
+                    <div>
+                        <h4>Para ti</h4>
+                        <p id="recommendationsSubtitle">Descubre algo nuevo basado en tu actividad.</p>
+                    </div>
+                    <button id="refreshRecs" class="btn-chip" data-testid="refresh-recommendations">Actualizar</button>
+                </div>
+                <div id="recommendationsList" class="recommendations-list" data-testid="recommendations-list"></div>
+                <div class="recommendations-actions">
+                    <button id="queueRecsBtn" class="queue-recs-btn" data-testid="queue-recommendations">
+                        Añadir recomendaciones a la cola
+                    </button>
+                </div>
+            </section>
+
             <!-- SONG LIST -->
             <ul id="songList" data-testid="song-list"></ul>
 

@@ -428,6 +428,133 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text);
 }
 
+/* Recomendaciones */
+.recommendations {
+  margin-bottom: var(--space-md);
+  padding: var(--space-md);
+  background: linear-gradient(135deg, rgba(127, 0, 255, 0.12), rgba(0, 240, 255, 0.12));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.recommendations-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.recommendations-header h4 {
+  font-size: 1rem;
+  margin-bottom: var(--space-xs);
+}
+
+.recommendations-header p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.btn-chip {
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+
+.btn-chip:hover {
+  border-color: var(--primary);
+  color: white;
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.recommendation-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+
+.recommendation-item:hover {
+  border-color: var(--primary);
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.recommendation-cover {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.recommendation-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.recommendation-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recommendation-reason {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.recommendations-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.queue-recs-btn {
+  background: var(--gradient-accent);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+
+.queue-recs-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.recommendations-empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--space-sm);
+}
+
 /* Lista de canciones */
 #songList {
   list-style: none;
@@ -3666,4 +3793,3 @@ button:focus-visible, input:focus-visible {
   padding: var(--space-2xl);
   color: var(--text-muted);
 }
-
