@@ -1547,14 +1547,16 @@ function extractFilenameFromHeader(header) {
     return fallbackMatch?.[1] || null;
 }
 
+function getImportBaseUrl() {
+    if (window.location.protocol === 'file:') {
+        return 'http://127.0.0.1:8000';
+    }
+    return '';
+}
+
 async function importFromLink() {
     if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') {
         showToast("Solo admins o devs pueden importar enlaces", "warning");
-        return;
-    }
-    if (window.location.protocol === 'file:') {
-        if (linkImportStatus) linkImportStatus.textContent = "Necesitas ejecutar el backend para importar enlaces.";
-        showToast("Importación disponible solo con servidor activo", "warning");
         return;
     }
     const url = linkInput?.value.trim();
@@ -1567,7 +1569,7 @@ async function importFromLink() {
     if (linkInput) linkInput.disabled = true;
 
     try {
-        const response = await fetch('/api/import', {
+        const response = await fetch(`${getImportBaseUrl()}/api/import`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url })

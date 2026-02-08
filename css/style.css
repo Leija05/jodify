@@ -632,14 +632,17 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;
 }
 
 .song-name {
   font-weight: 600;
   font-size: 0.9rem;
   color: var(--text);
-  white-space: normal;
-  overflow: visible;
+  white-space: nowrap;
+  display: inline-block;
+  padding-right: 24px;
+  animation: marqueeText 12s linear infinite;
 }
 
 #songList li.active .song-name {
@@ -792,10 +795,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .marquee-wrapper {
-  overflow: visible;
-  white-space: normal;
-  mask-image: none;
-  -webkit-mask-image: none;
+  overflow: hidden;
+  white-space: nowrap;
+  mask-image: linear-gradient(to right, black 85%, transparent);
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent);
 }
 
 #songTitle {
@@ -803,8 +806,19 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   font-size: 1rem;
   color: var(--text);
-  display: block;
-  word-break: break-word;
+  display: inline-block;
+  padding-right: 24px;
+  white-space: nowrap;
+  animation: marqueeText 14s linear infinite;
+}
+
+@keyframes marqueeText {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
 }
 
 /* Sección central - Controles */
