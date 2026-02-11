@@ -50,6 +50,7 @@ const appState = {
     analyser: null,
     source: null,
     eqFilters: [],
+    customEqPresets: JSON.parse(localStorage.getItem("customEqPresets") || "{}"),
     searchTerm: "",
     currentSort: "recent",
     isShuffle: false,
@@ -97,14 +98,25 @@ const appState = {
 // =========================================
 // EQUALIZER PRESETS
 // =========================================
-const EQ_PRESETS = {
+const DEFAULT_EQ_PRESETS = {
     flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     bass: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0],
     treble: [0, 0, 0, 0, 0, 2, 4, 5, 6, 6],
     vocal: [-2, -1, 0, 2, 4, 4, 2, 0, -1, -2],
     rock: [4, 3, 1, 0, -1, 0, 2, 3, 4, 4],
-    electronic: [5, 4, 1, 0, -2, 0, 1, 4, 5, 5]
+    electronic: [5, 4, 1, 0, -2, 0, 1, 4, 5, 5],
+    podcast: [-3, -2, -1, 2, 4, 5, 4, 2, 1, 0],
+    dance: [5, 4, 2, 0, -1, 1, 3, 4, 5, 5],
+    classical: [2, 1, 0, -1, 0, 2, 3, 4, 3, 2],
+    night: [4, 3, 1, 0, 0, 1, 2, 2, 1, 0]
 };
+
+function isUserActive(user) {
+    if (!user) return false;
+    if (user.is_online !== 1 || !user.last_seen) return false;
+    const diff = Date.now() - new Date(user.last_seen).getTime();
+    return diff >= 0 && diff < 90000;
+}
 
 // =========================================
 // INITIALIZATION
@@ -226,16 +238,6 @@ const sleepTimerSelect = document.getElementById("sleepTimerSelect");
 const applySleepTimerBtn = document.getElementById("applySleepTimer");
 const sleepTimerStatus = document.getElementById("sleepTimerStatus");
 const toastContainer = document.getElementById("toastContainer");
-const openLinkModalBtn = document.getElementById("openLinkModal");
-const openLinkModalFooterBtn = document.getElementById("openLinkModalFooter");
-const linkModal = document.getElementById("linkModal");
-const closeLinkModalBtn = document.getElementById("closeLinkModal");
-const linkCancelBtn = document.getElementById("linkCancelBtn");
-const linkImportBtn = document.getElementById("linkImportBtn");
-const linkInput = document.getElementById("linkInput");
-const linkImportStatus = document.getElementById("linkImportStatus");
-const linkServerInput = document.getElementById("linkServerInput");
-const linkServerTestBtn = document.getElementById("linkServerTestBtn");
 
 // Queue elements
 const queueBtn = document.getElementById("queueBtn");
@@ -248,6 +250,9 @@ const closeQueue = document.getElementById("closeQueue");
 const eqBtn = document.getElementById("eqBtn");
 const equalizerModal = document.getElementById("equalizerModal");
 const closeEq = document.getElementById("closeEq");
+const eqPresetList = document.getElementById("eqPresetList");
+const eqPresetNameInput = document.getElementById("eqPresetName");
+const saveEqPresetBtn = document.getElementById("saveEqPresetBtn");
 
 // Shortcuts elements
 const shortcutsModal = document.getElementById("shortcutsModal");
@@ -435,7 +440,6 @@ function closeAllModals() {
     settingsModal.style.display = 'none';
     uploadModal.style.display = 'none';
     registerModal.style.display = 'none';
-    if (linkModal) linkModal.style.display = 'none';
     toggleMobilePlaylist(false);
 }
 
@@ -737,40 +741,98 @@ function initEqualizer() {
     }
 }
 
+function getAllEQPresets() {
+    return {
+        ...DEFAULT_EQ_PRESETS,
+        ...(appState.customEqPresets || {})
+    };
+}
+
+function renderEQPresets() {
+    if (!eqPresetList) return;
+    const presets = getAllEQPresets();
+    eqPresetList.innerHTML = Object.entries(presets).map(([key]) => {
+        const custom = !Object.prototype.hasOwnProperty.call(DEFAULT_EQ_PRESETS, key);
+        return `
+            <button class="eq-preset-btn" data-preset="${key}">
+                ${key}
+                ${custom ? `<span class="eq-remove" data-remove="${key}" title="Eliminar">×</span>` : ''}
+            </button>
+        `;
+    }).join('');
+
+    eqPresetList.querySelectorAll('.eq-preset-btn').forEach(btn => {
+        btn.onclick = (event) => {
+            const removeBtn = event.target.closest('.eq-remove');
+            if (removeBtn) {
+                event.stopPropagation();
+                removeCustomPreset(removeBtn.dataset.remove);
+                return;
+            }
+            applyEQPreset(btn.dataset.preset);
+        };
+    });
+}
+
 function applyEQPreset(preset) {
-    const values = EQ_PRESETS[preset] || EQ_PRESETS.flat;
+    const values = getAllEQPresets()[preset] || DEFAULT_EQ_PRESETS.flat;
     const sliders = document.querySelectorAll('.eq-band input');
-    
+
     sliders.forEach((slider, i) => {
-        slider.value = values[i];
+        slider.value = values[i] ?? 0;
         if (appState.eqFilters[i]) {
-            appState.eqFilters[i].gain.value = values[i];
+            appState.eqFilters[i].gain.value = values[i] ?? 0;
         }
     });
-    
-    // Update active button
+
     document.querySelectorAll('.eq-preset-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.preset === preset);
     });
-    
+
     localStorage.setItem('eqPreset', preset);
+    localStorage.setItem('eqCustomValues', JSON.stringify(values));
 }
 
-// EQ event listeners
-if (eqBtn) eqBtn.onclick = toggleEqualizer;
-if (closeEq) closeEq.onclick = toggleEqualizer;
+function saveCustomPreset() {
+    const name = (eqPresetNameInput?.value || '').trim().toLowerCase();
+    if (!name) {
+        showToast('Escribe un nombre para guardar el preset', 'warning');
+        return;
+    }
+    const values = Array.from(document.querySelectorAll('.eq-band input')).map(slider => parseFloat(slider.value || '0'));
+    appState.customEqPresets[name] = values;
+    localStorage.setItem('customEqPresets', JSON.stringify(appState.customEqPresets));
+    if (eqPresetNameInput) eqPresetNameInput.value = '';
+    renderEQPresets();
+    applyEQPreset(name);
+    showToast(`Preset "${name}" guardado`, 'success');
+}
 
-document.querySelectorAll('.eq-preset-btn').forEach(btn => {
-    btn.onclick = () => applyEQPreset(btn.dataset.preset);
-});
+function removeCustomPreset(name) {
+    if (!name || Object.prototype.hasOwnProperty.call(DEFAULT_EQ_PRESETS, name)) return;
+    delete appState.customEqPresets[name];
+    localStorage.setItem('customEqPresets', JSON.stringify(appState.customEqPresets));
+    renderEQPresets();
+    const current = localStorage.getItem('eqPreset');
+    if (current === name) {
+        applyEQPreset('flat');
+    }
+}
+
+if (saveEqPresetBtn) saveEqPresetBtn.onclick = saveCustomPreset;
 
 document.querySelectorAll('.eq-band input').forEach((slider, i) => {
     slider.oninput = (e) => {
+        const gain = parseFloat(e.target.value);
         if (appState.eqFilters[i]) {
-            appState.eqFilters[i].gain.value = parseFloat(e.target.value);
+            appState.eqFilters[i].gain.value = gain;
         }
+        const values = Array.from(document.querySelectorAll('.eq-band input')).map(item => parseFloat(item.value || '0'));
+        localStorage.setItem('eqCustomValues', JSON.stringify(values));
     };
 });
+
+renderEQPresets();
 
 // Shortcuts modal listeners
 if (closeShortcuts) closeShortcuts.onclick = toggleShortcutsModal;
@@ -893,15 +955,11 @@ function configurarInterfazPorRol(role) {
     if (role === 'dev' || role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (addActions) addActions.style.display = "flex";
-        if (openLinkModalBtn) openLinkModalBtn.style.display = "inline-flex";
-        if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "inline-flex";
         if (btnOpenRegister) btnOpenRegister.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
     } else {
         if (addSongContainer) addSongContainer.style.display = "none";
         if (addActions) addActions.style.display = "none";
-        if (openLinkModalBtn) openLinkModalBtn.style.display = "none";
-        if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "none";
         if (btnOpenRegister) btnOpenRegister.style.display = "none";
         if (fileInput) fileInput.disabled = true;
     }
@@ -1237,9 +1295,7 @@ if (btnLogout) {
 
             if (addSongContainer) addSongContainer.style.display = "none";
             if (addActions) addActions.style.display = "none";
-            if (openLinkModalBtn) openLinkModalBtn.style.display = "none";
-            if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "none";
-            if (btnOpenRegister) btnOpenRegister.style.display = "none";
+                    if (btnOpenRegister) btnOpenRegister.style.display = "none";
         } catch (err) {
             console.error("Logout error:", err);
             location.reload();
@@ -1260,22 +1316,16 @@ function handleLoginSuccess(role) {
 
     if (addSongContainer) addSongContainer.style.display = "none";
     if (addActions) addActions.style.display = "none";
-    if (openLinkModalBtn) openLinkModalBtn.style.display = "none";
-    if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "none";
     if (btnOpenRegister) btnOpenRegister.style.display = "none";
 
     if (role === 'dev') {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (addActions) addActions.style.display = "flex";
-        if (openLinkModalBtn) openLinkModalBtn.style.display = "inline-flex";
-        if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "inline-flex";
         if (btnOpenRegister) btnOpenRegister.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
     } else if (role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (addActions) addActions.style.display = "flex";
-        if (openLinkModalBtn) openLinkModalBtn.style.display = "inline-flex";
-        if (openLinkModalFooterBtn) openLinkModalFooterBtn.style.display = "inline-flex";
         if (fileInput) fileInput.disabled = false;
     } else {
         if (fileInput) fileInput.disabled = true;
@@ -1419,17 +1469,6 @@ function toggleModal(show) {
     uploadModal.style.display = show ? "flex" : "none";
 }
 
-function toggleLinkModal(show) {
-    if (!linkModal) return;
-    linkModal.style.display = show ? "flex" : "none";
-    if (!show && linkImportStatus) {
-        linkImportStatus.textContent = "";
-    }
-    if (show && linkServerInput) {
-        linkServerInput.value = getSavedImportServer();
-    }
-}
-
 async function startUploadSession(files) {
     if (!files.length) return;
 
@@ -1508,38 +1547,6 @@ if (closeModal) {
     closeModal.onclick = () => toggleModal(false);
 }
 
-if (openLinkModalBtn) {
-    openLinkModalBtn.onclick = () => {
-        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
-            toggleLinkModal(true);
-        } else {
-            showToast("Solo admins o devs pueden importar enlaces", "warning");
-        }
-    };
-}
-
-if (openLinkModalFooterBtn) {
-    openLinkModalFooterBtn.onclick = () => {
-        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
-            toggleLinkModal(true);
-        } else {
-            showToast("Solo admins o devs pueden importar enlaces", "warning");
-        }
-    };
-}
-
-if (closeLinkModalBtn) {
-    closeLinkModalBtn.onclick = () => toggleLinkModal(false);
-}
-
-if (linkCancelBtn) {
-    linkCancelBtn.onclick = () => toggleLinkModal(false);
-}
-
-if (linkServerTestBtn) {
-    linkServerTestBtn.onclick = () => testImportServer();
-}
-
 fileInput.onchange = async (e) => {
     if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') return;
 
@@ -1548,180 +1555,6 @@ fileInput.onchange = async (e) => {
     await startUploadSession(files);
 };
 
-function extractFilenameFromHeader(header) {
-    if (!header) return null;
-    const match = /filename="(.+?)"/.exec(header);
-    if (match?.[1]) return match[1];
-    const fallbackMatch = /filename=(.+)/.exec(header);
-    return fallbackMatch?.[1] || null;
-}
-
-function getSavedImportServer() {
-    return localStorage.getItem("importServerUrl") || "http://127.0.0.1:8000";
-}
-
-function getImportBaseUrl() {
-    if (window.location.protocol === 'file:') {
-        return getSavedImportServer();
-    }
-    return "";
-}
-
-function saveImportServer(url) {
-    if (!url) return;
-    localStorage.setItem("importServerUrl", url);
-}
-
-let importCooldownUntil = 0;
-
-function isImportCooldownActive() {
-    return Date.now() < importCooldownUntil;
-}
-
-function setImportCooldown(ms = 5000) {
-    importCooldownUntil = Date.now() + ms;
-}
-
-async function waitForImportServer(baseUrl, attempts = 10, delayMs = 400) {
-    const url = `${baseUrl.replace(/\/$/, "")}/health`;
-    for (let i = 0; i < attempts; i += 1) {
-        try {
-            const response = await fetch(url);
-            if (response.ok) return true;
-        } catch (err) {
-            // keep waiting
-        }
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-    return false;
-}
-
-async function ensureImportBackendReady(baseUrl) {
-    if (window.location.protocol !== 'file:') return true;
-    if (!window.electronAPI?.startImportBackend) return true;
-    if (baseUrl && !baseUrl.includes("127.0.0.1") && !baseUrl.includes("localhost")) {
-        return true;
-    }
-    const status = await window.electronAPI.startImportBackend({ port: 8000 });
-    if (status?.status === 'error') {
-        if (linkImportStatus) {
-            linkImportStatus.textContent = "No se pudo iniciar el backend local. Verifica que Python esté instalado.";
-        }
-        showToast("No se pudo iniciar el backend local", "error");
-        return false;
-    }
-    const ready = await waitForImportServer(baseUrl);
-    if (!ready) {
-        if (linkImportStatus) {
-            linkImportStatus.textContent = "El backend local no respondió. Verifica que Python esté instalado.";
-        }
-        showToast("Servidor de importación no disponible", "error");
-    }
-    return ready;
-}
-
-async function testImportServer() {
-    if (isImportCooldownActive()) {
-        if (linkImportStatus) {
-            linkImportStatus.textContent = "Espera unos segundos antes de volver a intentar.";
-        }
-        return;
-    }
-    const baseUrl = linkServerInput?.value.trim() || getSavedImportServer();
-    if (!baseUrl) return;
-    if (window.location.protocol === 'file:') {
-        const ready = await ensureImportBackendReady(baseUrl);
-        if (!ready) return;
-    }
-    saveImportServer(baseUrl);
-    if (linkImportStatus) linkImportStatus.textContent = "Probando conexión...";
-    try {
-        const response = await fetch(`${baseUrl.replace(/\/$/, "")}/health`);
-        if (!response.ok) throw new Error("No responde");
-        if (linkImportStatus) linkImportStatus.textContent = "Servidor listo para importar.";
-        showToast("Servidor de importación conectado", "success");
-    } catch (err) {
-        setImportCooldown();
-        if (linkImportStatus) {
-            linkImportStatus.textContent = "No se pudo conectar al servidor. Revisa la URL y que esté activo.";
-        }
-        showToast("Servidor de importación no disponible", "error");
-    }
-}
-
-async function importFromLink() {
-    if (isImportCooldownActive()) {
-        if (linkImportStatus) {
-            linkImportStatus.textContent = "Espera unos segundos antes de volver a intentar.";
-        }
-        return;
-    }
-    if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') {
-        showToast("Solo admins o devs pueden importar enlaces", "warning");
-        return;
-    }
-    const url = linkInput?.value.trim();
-    if (!url) {
-        if (linkImportStatus) linkImportStatus.textContent = "Ingresa un enlace válido.";
-        return;
-    }
-    if (linkImportStatus) linkImportStatus.textContent = "Descargando audio...";
-    if (linkImportBtn) linkImportBtn.disabled = true;
-    if (linkInput) linkInput.disabled = true;
-
-    const baseUrl = (getImportBaseUrl() || getSavedImportServer()).replace(/\/$/, "");
-    if (linkServerInput?.value.trim()) {
-        saveImportServer(linkServerInput.value.trim());
-    }
-    const ready = await ensureImportBackendReady(baseUrl || getSavedImportServer());
-    if (!ready) return;
-    const importUrl = `${baseUrl}/api/import`;
-    try {
-        const response = await fetch(importUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
-        });
-        if (!response.ok) {
-            let detail = "No se pudo importar el enlace.";
-            try {
-                const data = await response.json();
-                detail = data?.detail || detail;
-            } catch (e) {
-                detail = detail;
-            }
-            throw new Error(detail);
-        }
-        const blob = await response.blob();
-        const contentType = response.headers.get('content-type') || 'audio/mpeg';
-        const disposition = response.headers.get('content-disposition');
-        const filename = extractFilenameFromHeader(disposition) || `import-${Date.now()}.mp3`;
-        const file = new File([blob], filename, { type: contentType });
-        if (linkImportStatus) linkImportStatus.textContent = "Subiendo a la biblioteca...";
-        await startUploadSession([file]);
-        if (linkInput) linkInput.value = "";
-        toggleLinkModal(false);
-        showToast("Importación iniciada", "success");
-    } catch (err) {
-        if (err instanceof TypeError) {
-            setImportCooldown();
-            if (linkImportStatus) {
-                linkImportStatus.textContent = "No hay conexión con el servidor de importación. Revisa la URL y que el backend esté activo.";
-            }
-            showToast("Servidor de importación no disponible", "error");
-        } else {
-            if (linkImportStatus) linkImportStatus.textContent = err.message;
-            showToast("No se pudo importar el enlace", "error");
-        }
-    } finally {
-        if (linkImportBtn) linkImportBtn.disabled = false;
-        if (linkInput) linkInput.disabled = false;
-    }
-}
-
-if (linkImportBtn) {
-    linkImportBtn.onclick = importFromLink;
-}
 
 async function processAndUpload(file, container, updateStats) {
     const sanitizedName = sanitizeFileName(file.name);
@@ -2281,7 +2114,17 @@ async function startVisualizer() {
         
         // Load saved EQ preset
         const savedPreset = localStorage.getItem('eqPreset') || 'flat';
-        applyEQPreset(savedPreset);
+        const customValues = JSON.parse(localStorage.getItem('eqCustomValues') || 'null');
+        if (savedPreset && getAllEQPresets()[savedPreset]) {
+            applyEQPreset(savedPreset);
+        } else if (Array.isArray(customValues) && customValues.length) {
+            document.querySelectorAll('.eq-band input').forEach((slider, i) => {
+                slider.value = customValues[i] ?? 0;
+            });
+            applyEQPreset('flat');
+        } else {
+            applyEQPreset('flat');
+        }
         
         const bufferLength = appState.analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
@@ -2518,7 +2361,6 @@ window.onclick = (e) => {
     if (e.target === registerModal) registerModal.style.display = "none";
     if (e.target === equalizerModal) equalizerModal.classList.remove('open');
     if (e.target === shortcutsModal) shortcutsModal.classList.remove('open');
-    if (e.target === linkModal) toggleLinkModal(false);
 };
 
 // =========================================
@@ -3154,6 +2996,7 @@ function renderCommunityUsers() {
     list.innerHTML = filtered.map(user => {
         const initial = user.username.charAt(0).toUpperCase();
         const isOnline = user.is_online === 1;
+        const isActive = isUserActive(user);
         const hasDiscord = user.discord_avatar || user.discord_username;
         const isListening = user.currentSong;
         
@@ -3177,12 +3020,13 @@ function renderCommunityUsers() {
                         ${isListening ? `
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                             ${isListening.name}
-                        ` : (isOnline ? 'En línea' : 'Desconectado')}
+                        ` : (isActive ? 'Activo ahora' : (isOnline ? 'Conectado inactivo' : 'Desconectado'))}
                     </div>
                 </div>
                 <div class="community-user-stats">
-                    <span title="Likes">❤️ ${user.likes || 0}</span>
-                    <span title="Canciones escuchadas">🎵 ${user.played || 0}</span>
+                    <span title="Reproducciones">▶️ ${user.played || 0}</span>
+                    <span title="Descargadas">⬇️ ${user.downloads || 0}</span>
+                    <span title="Canciones favoritas">❤️ ${user.likes || 0}</span>
                 </div>
             </div>
         `;
@@ -3213,9 +3057,10 @@ window.openUserDetail = (username) => {
         
         // Update status
         const isOnline = user.is_online === 1;
+        const isActive = isUserActive(user);
         document.getElementById('userStatusBadge').innerHTML = `
             <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
-            <span>${isOnline ? 'En línea' : 'Desconectado'}</span>
+            <span>${isActive ? 'Activo ahora' : (isOnline ? 'Conectado inactivo' : 'Desconectado')}</span>
         `;
         
         // Update name and role
@@ -3229,8 +3074,9 @@ window.openUserDetail = (username) => {
         if (user.currentSong || user.current_song) {
             nowPlaying.style.display = 'block';
             const songName = user.currentSong?.name || user.current_song;
+            const since = user.current_song_time ? new Date(user.current_song_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
             document.getElementById('userNowPlayingTitle').textContent = songName;
-            document.getElementById('userNowPlayingTime').textContent = user.currentSong?.time || '';
+            document.getElementById('userNowPlayingTime').textContent = since ? `desde ${since}` : '';
         } else {
             nowPlaying.style.display = 'none';
         }
