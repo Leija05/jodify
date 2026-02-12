@@ -11,6 +11,8 @@
     body { font-family: 'Segoe UI', system-ui, sans-serif; }
 
     .overlay {
+      --accent: #8b5cf6;
+      --accent2: #22d3ee;
       position: fixed;
       left: 26px;
       bottom: 22px;
@@ -19,13 +21,14 @@
       gap: 14px;
       padding: 12px 14px;
       border-radius: 16px;
-      background: rgba(8, 10, 18, 0.72);
-      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 18%, rgba(8,10,18,.72)), color-mix(in oklab, var(--accent2) 16%, rgba(8,10,18,.72)));
+      border: 1px solid color-mix(in oklab, var(--accent) 30%, rgba(255,255,255,0.14));
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       min-width: 340px;
       max-width: 540px;
-      box-shadow: 0 16px 34px rgba(0,0,0,0.35);
+      box-shadow: 0 16px 34px rgba(0,0,0,0.35), 0 0 26px color-mix(in oklab, var(--accent) 38%, transparent);
+      transition: background .4s ease, border-color .4s ease, box-shadow .4s ease;
     }
 
     .cover { width: 58px; height: 58px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.16); }
@@ -45,7 +48,7 @@
       width: 0%;
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, #8b5cf6, #22d3ee);
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
       transition: width .25s linear;
     }
     .badge {
@@ -140,32 +143,78 @@
       } catch {}
     }
 
+    function getAccentFromString(seed = '') {
+      let hash = 0;
+      for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+      const hue = Math.abs(hash) % 360;
+      return [`hsl(${hue} 82% 60%)`, `hsl(${(hue + 55) % 360} 82% 58%)`];
+    }
+
+    function applyDynamicTheme(seed, imageEl) {
+      const [c1, c2] = getAccentFromString(seed || titleEl.textContent || 'jodify');
+      rootEl.style.setProperty('--accent', c1);
+      rootEl.style.setProperty('--accent2', c2);
+
+      if (!imageEl) return;
+      imageEl.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          const x = c.getContext('2d', { willReadFrequently: true });
+          c.width = 8; c.height = 8;
+          x.drawImage(imageEl, 0, 0, 8, 8);
+          const d = x.getImageData(0, 0, 8, 8).data;
+          let r=0,g=0,b=0,n=0;
+          for (let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; }
+          r=Math.round(r/n); g=Math.round(g/n); b=Math.round(b/n);
+          rootEl.style.setProperty('--accent', `rgb(${r},${g},${b})`);
+          rootEl.style.setProperty('--accent2', `rgb(${Math.min(255,r+35)},${Math.min(255,g+35)},${Math.min(255,b+35)})`);
+        } catch {}
+      };
+      if (imageEl.complete) imageEl.onload();
+    }
+
+    async function fetchJson(url) {
+      const res = await fetch(url, {
+        headers: {
+          apikey: SB_KEY,
+          Authorization: `Bearer ${SB_KEY}`
+        }
+      });
+      return res.json();
+    }
+
     async function readRemoteState() {
       if (!overlayUsername) {
         readState();
+        applyDynamicTheme(titleEl.textContent, coverEl);
         return;
       }
       try {
-        const url = `${SB_URL}/rest/v1/users_access?select=current_song_name,listening_since,username&username=eq.${encodeURIComponent(overlayUsername)}&limit=1`;
-        const res = await fetch(url, {
-          headers: {
-            apikey: SB_KEY,
-            Authorization: `Bearer ${SB_KEY}`
-          }
-        });
-        const rows = await res.json();
+        const userUrl = `${SB_URL}/rest/v1/users_access?select=current_song_id,current_song_name,listening_since,username&username=eq.${encodeURIComponent(overlayUsername)}&limit=1`;
+        const rows = await fetchJson(userUrl);
         const row = Array.isArray(rows) ? rows[0] : null;
+
+        let coverUrl = 'assets/default-cover.png';
+        if (row?.current_song_id) {
+          const songUrl = `${SB_URL}/rest/v1/songs?select=url&id=eq.${row.current_song_id}&limit=1`;
+          const songs = await fetchJson(songUrl);
+          const song = Array.isArray(songs) ? songs[0] : null;
+          if (song?.url) coverUrl = song.url;
+        }
+
         const title = row?.current_song_name || 'Sin reproducción';
         applyState({
           title,
           addedBy: row?.username || overlayUsername,
-          cover: 'assets/default-cover.png',
+          cover: coverUrl,
           currentTime: 0,
           duration: 0,
           isPlaying: Boolean(row?.current_song_name)
         });
+        applyDynamicTheme(title + coverUrl, coverEl);
       } catch (e) {
         readState();
+        applyDynamicTheme(titleEl.textContent, coverEl);
       }
     }
 
@@ -176,7 +225,7 @@
     });
 
     readRemoteState();
-    setInterval(readRemoteState, 2000);
+    setInterval(readRemoteState, 1000);
   </script>
 </body>
 </html>
