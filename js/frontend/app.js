@@ -2959,7 +2959,7 @@ async function openProfileModal() {
             try {
                 const { data, error } = await supabaseClient
                     .from('users_access')
-                    .select('discord_id, discord_username')
+                    .select('discord_id')
                     .eq('username', appState.usuarioActual)
                     .single();
 
@@ -3302,7 +3302,7 @@ if (discordUserIdInput) {
     });
 }
 
-async function persistDiscordLinkInUsersAccess(userId, discordUsername) {
+async function persistDiscordLinkInUsersAccess(userId) {
     if (!appState.usuarioActual) {
         throw new Error('No hay sesión activa para guardar Discord ID');
     }
@@ -3314,8 +3314,7 @@ async function persistDiscordLinkInUsersAccess(userId, discordUsername) {
     const { data, error } = await supabaseClient
         .from('users_access')
         .update({
-            discord_id: userId,
-            discord_username: discordUsername
+            discord_id: userId
         })
         .eq('username', appState.usuarioActual)
         .select('id')
@@ -3342,7 +3341,7 @@ window.confirmLinkDiscord = async () => {
 
     try {
         const user = await fetchDiscordUser(userId);
-        await persistDiscordLinkInUsersAccess(userId, user.username);
+        await persistDiscordLinkInUsersAccess(userId);
 
         appState.discord = user;
         localStorage.setItem('discordProfile', JSON.stringify(user));
@@ -3376,7 +3375,7 @@ window.unlinkDiscord = async () => {
     try {
         const { error } = await supabaseClient
             .from('users_access')
-            .update({ discord_id: null, discord_username: null })
+            .update({ discord_id: null })
             .eq('username', appState.usuarioActual);
 
         if (error) throw error;
