@@ -252,7 +252,7 @@ h1, h2, h3, h4, h5, h6 {
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--gradient-primary);
+  background: linear-gradient(120deg, var(--profile-accent), var(--profile-accent2));
   opacity: 0.5;
 }
 
@@ -2787,12 +2787,15 @@ button:focus-visible, input:focus-visible {
    25. USER PROFILE MODAL - PREMIUM
 ========================================= */
 .profile-btn {
+  --profile-accent: #7f00ff;
+  --profile-accent2: #00f0ff;
+  --profile-accent-rgb: 127, 0, 255;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
+  background: linear-gradient(120deg, rgba(var(--profile-accent-rgb), 0.20), var(--surface-hover));
+  border: 1px solid rgba(var(--profile-accent-rgb), 0.38);
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: all 0.3s var(--ease-out);
@@ -2801,8 +2804,8 @@ button:focus-visible, input:focus-visible {
 }
 
 .profile-btn:hover {
-  background: var(--gradient-primary);
-  border-color: transparent;
+  background: linear-gradient(120deg, rgba(var(--profile-accent-rgb), 0.35), var(--surface));
+  border-color: rgba(var(--profile-accent-rgb), 0.58);
   box-shadow: var(--shadow-glow);
 }
 
@@ -2810,7 +2813,7 @@ button:focus-visible, input:focus-visible {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--gradient-primary);
+  background: linear-gradient(120deg, var(--profile-accent), var(--profile-accent2));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2857,6 +2860,9 @@ button:focus-visible, input:focus-visible {
 }
 
 .profile-card {
+  --profile-accent: #7f00ff;
+  --profile-accent2: #00f0ff;
+  --profile-accent-rgb: 127, 0, 255;
   background: var(--surface-solid);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -2864,8 +2870,8 @@ button:focus-visible, input:focus-visible {
   max-width: 420px;
   overflow: hidden;
   transform: scale(0.9) translateY(30px);
-  transition: transform 0.4s var(--ease-out);
-  box-shadow: var(--shadow-lg);
+  transition: transform 0.4s var(--ease-out), box-shadow 0.35s ease;
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(var(--profile-accent-rgb), 0.18);
 }
 
 .profile-modal.open .profile-card {
@@ -2876,7 +2882,7 @@ button:focus-visible, input:focus-visible {
 .profile-header {
   position: relative;
   height: 120px;
-  background: var(--gradient-primary);
+  background: linear-gradient(120deg, var(--profile-accent), var(--profile-accent2));
   overflow: hidden;
 }
 
@@ -2886,7 +2892,7 @@ button:focus-visible, input:focus-visible {
   inset: 0;
   background: 
     radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 50%, rgba(0,240,255,0.2) 0%, transparent 50%);
+    radial-gradient(circle at 80% 50%, rgba(var(--profile-accent-rgb),0.24) 0%, transparent 55%);
   animation: headerGlow 5s ease-in-out infinite alternate;
 }
 
@@ -2931,8 +2937,8 @@ button:focus-visible, input:focus-visible {
   width: 100px;
   height: 100px;
   border-radius: 50%;
-  background: var(--gradient-primary);
-  border: 4px solid var(--surface-solid);
+  background: linear-gradient(120deg, var(--profile-accent), var(--profile-accent2));
+  border: 4px solid rgba(var(--profile-accent-rgb), 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3604,30 +3610,43 @@ button:focus-visible, input:focus-visible {
 
 /* Community User Card */
 .community-user {
+  --community-accent: #7f00ff;
+  --community-accent2: #00f0ff;
   display: flex;
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md);
-  background: var(--surface-hover);
+  background: linear-gradient(120deg, rgba(18, 20, 30, 0.95), rgba(18, 20, 30, 0.94));
   border-radius: var(--radius-md);
   margin-bottom: var(--space-sm);
   cursor: pointer;
   transition: all 0.2s;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.community-user::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, var(--community-accent), var(--community-accent2));
+  pointer-events: none;
+  opacity: 0.16;
 }
 
 .community-user:hover {
-  background: var(--surface);
-  border-color: var(--border);
+  border-color: rgba(255,255,255,0.18);
   transform: translateX(4px);
 }
 
 .community-user-avatar {
   position: relative;
+  z-index: 1;
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--gradient-primary);
+  background: linear-gradient(120deg, var(--community-accent), var(--community-accent2));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3664,6 +3683,8 @@ button:focus-visible, input:focus-visible {
 .community-user-info {
   flex: 1;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .community-user-name {
@@ -3711,6 +3732,8 @@ button:focus-visible, input:focus-visible {
 }
 
 .community-user-stats {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: var(--space-sm);
   font-size: 0.75rem;
