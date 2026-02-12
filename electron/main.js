@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, session, nativeImage } = require('electron'
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 const path = require('path');
-const { spawn } = require('child_process');
 
 /* =========================
    CONFIGURACIÓN INICIAL
@@ -11,8 +10,9 @@ const { spawn } = require('child_process');
 let mainWindow = null;
 let splash = null;
 let updateWindow = null;
-let importBackendProcess = null;
-let importBackendStarting = null;
+
+const rendererDir = path.join(__dirname, '..', 'public');
+const rendererAssetsDir = path.join(rendererDir, 'assets');
 
 // Configuración de Logs
 autoUpdater.logger = log;
@@ -39,7 +39,7 @@ function createUpdateWindow(info) {
         modal: true,
         parent: mainWindow, 
         alwaysOnTop: true,
-        icon: path.join(__dirname, 'assets', 'icon.ico'),
+        icon: path.join(rendererAssetsDir, 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -47,7 +47,7 @@ function createUpdateWindow(info) {
         }
     });
 
-    updateWindow.loadFile('update.html');
+    updateWindow.loadFile(path.join(rendererDir, 'update.html'));
 
     // Enviamos la info de versiones cuando el HTML esté listo
     updateWindow.webContents.on('did-finish-load', () => {
@@ -74,26 +74,25 @@ function createWindow() {
         frame: false,
         transparent: true,
         alwaysOnTop: true,
-        icon: path.join(__dirname, 'assets', 'icon.ico')
+        icon: path.join(rendererAssetsDir, 'icon.ico')
     });
-    splash.loadFile('splash.html');
+    splash.loadFile(path.join(rendererDir, 'splash.html'));
 
     // Ventana Principal
     mainWindow = new BrowserWindow({
         width: 1000,
         height: 800,
         show: false,
-        icon: path.join(__dirname, 'assets', 'icon.ico'),
+        icon: path.join(rendererAssetsDir, 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false,
-            backgroundThrottling: false,
             webSecurity: false // Nota: Ten cuidado con esto en apps que cargan contenido externo
         }
     });
 
-    mainWindow.loadFile('index.html');
+    mainWindow.loadFile(path.join(rendererDir, 'index.html'));
 
     mainWindow.on('close', (e) => {
         // Si queremos una salida limpia con animación
@@ -187,55 +186,6 @@ ipcMain.on('update-thumbar', (_, isPlaying) => {
     updateThumbarButtons(isPlaying);
 });
 
-ipcMain.handle('start-import-backend', async (_, options = {}) => {
-    const port = options.port || 8000;
-    if (importBackendProcess && !importBackendProcess.killed) {
-        return { status: 'running', port };
-    }
-    if (importBackendStarting) {
-        return importBackendStarting;
-    }
-
-    importBackendStarting = new Promise((resolve) => {
-        const serverPath = path.join(__dirname, 'backend', 'server.py');
-        const env = {
-            ...process.env,
-            JODIFY_STATIC_ROOT: __dirname
-        };
-
-        const trySpawn = (cmd, fallbackCmd) => {
-            const child = spawn(cmd, [serverPath], {
-                env,
-                stdio: 'ignore'
-            });
-
-            child.once('error', (err) => {
-                if (fallbackCmd) {
-                    return trySpawn(fallbackCmd, null);
-                }
-                resolve({ status: 'error', error: err.message });
-            });
-
-            child.once('spawn', () => {
-                importBackendProcess = child;
-                resolve({ status: 'started', port });
-            });
-
-            child.once('exit', () => {
-                if (importBackendProcess === child) {
-                    importBackendProcess = null;
-                }
-            });
-        };
-
-        trySpawn(process.env.JODIFY_PYTHON || 'python3', 'python');
-    }).finally(() => {
-        importBackendStarting = null;
-    });
-
-    return importBackendStarting;
-});
-
 /* =========================
    CONTROLES DE BARRA (THUMBAR)
 ========================= */
@@ -245,7 +195,7 @@ function updateThumbarButtons(isPlaying) {
 
     const getIcon = (file) =>
         nativeImage
-            .createFromPath(path.join(__dirname, 'assets', file))
+            .createFromPath(path.join(rendererAssetsDir, file))
             .resize({ width: 16, height: 16 });
 
     mainWindow.setThumbarButtons([

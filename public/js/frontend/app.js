@@ -50,7 +50,6 @@ const appState = {
     analyser: null,
     source: null,
     eqFilters: [],
-    customEqPresets: JSON.parse(localStorage.getItem("customEqPresets") || "{}"),
     searchTerm: "",
     currentSort: "recent",
     isShuffle: false,
@@ -68,7 +67,6 @@ const appState = {
     userVolume: parseFloat(localStorage.getItem("userVolume")) || 0.5,
     fadeEnabled: localStorage.getItem("fadeEnabled") === "true",
     fadeDuration: parseInt(localStorage.getItem("fadeDuration"), 10) || 4,
-    focusMode: localStorage.getItem("focusMode") === "true",
     isFading: false,
     playCount: parseInt(localStorage.getItem("playCount")) || 0,
     discord: JSON.parse(localStorage.getItem("discordProfile")) || null,
@@ -82,47 +80,20 @@ const appState = {
     jamSessionId: localStorage.getItem("jamSessionId") || null,
     jamMembersInterval: null,
     jamSessionInterval: null,
-    lastJamSongId: null,
-    sessionSeconds: 0,
-    sessionInterval: null,
-    sleepTimer: {
-        endAt: null,
-        mode: "off",
-        timeoutId: null,
-        intervalId: null,
-        triggered: false,
-        durationMinutes: null
-    }
+    lastJamSongId: null
 };
 
 // =========================================
 // EQUALIZER PRESETS
 // =========================================
-const DEFAULT_EQ_PRESETS = {
+const EQ_PRESETS = {
     flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     bass: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0],
     treble: [0, 0, 0, 0, 0, 2, 4, 5, 6, 6],
     vocal: [-2, -1, 0, 2, 4, 4, 2, 0, -1, -2],
     rock: [4, 3, 1, 0, -1, 0, 2, 3, 4, 4],
-    electronic: [5, 4, 1, 0, -2, 0, 1, 4, 5, 5],
-    podcast: [-3, -2, -1, 2, 4, 5, 4, 2, 1, 0],
-    dance: [5, 4, 2, 0, -1, 1, 3, 4, 5, 5],
-    classical: [2, 1, 0, -1, 0, 2, 3, 4, 3, 2],
-    night: [4, 3, 1, 0, 0, 1, 2, 2, 1, 0]
+    electronic: [5, 4, 1, 0, -2, 0, 1, 4, 5, 5]
 };
-
-const COMMUNITY_ICONS = {
-    PLAYED: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>`,
-    DOWNLOADS: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
-    LIKES: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`
-};
-
-function isUserActive(user) {
-    if (!user) return false;
-    if (user.is_online !== 1 || !user.last_seen) return false;
-    const diff = Date.now() - new Date(user.last_seen).getTime();
-    return diff >= 0 && diff < 90000;
-}
 
 // =========================================
 // INITIALIZATION
@@ -139,25 +110,17 @@ window.onload = async () => {
     const disableBg = localStorage.getItem('disableDynamicBg') === 'true';
     document.body.classList.toggle('no-visual', disableVis);
     document.body.classList.toggle('no-dynamic-bg', disableBg);
-    document.body.classList.toggle('focus-mode', appState.focusMode);
     
     const disableVisualizer = document.getElementById("disableVisualizer");
     const disableDynamicBg = document.getElementById("disableDynamicBg");
-    const enableFocusMode = document.getElementById("enableFocusMode");
     const enableFade = document.getElementById("enableFade");
     const fadeDuration = document.getElementById("fadeDuration");
     const fadeDurationValue = document.getElementById("fadeDurationValue");
     if (disableVisualizer) disableVisualizer.checked = disableVis;
     if (disableDynamicBg) disableDynamicBg.checked = disableBg;
-    if (enableFocusMode) enableFocusMode.checked = appState.focusMode;
     if (enableFade) enableFade.checked = appState.fadeEnabled;
     if (fadeDuration) fadeDuration.value = appState.fadeDuration;
     if (fadeDurationValue) fadeDurationValue.textContent = `${appState.fadeDuration}s`;
-
-    restoreSleepTimerFromStorage();
-    startSessionTimer();
-    updateQueueIndicator();
-    updateSmartMixAvailability();
     
     // Initialize keyboard shortcuts
     initKeyboardShortcuts();
@@ -230,20 +193,11 @@ const uploadBadge = document.getElementById("uploadBadge");
 const badgeText = document.getElementById("badgeText");
 const sortOptions = document.getElementById("sortOptions");
 const addSongContainer = document.querySelector(".add-song");
-const addActions = document.querySelector(".add-actions");
 const playlistEl = document.querySelector('.playlist');
 const btnOpenPlaylist = document.getElementById('btnOpenPlaylist');
 const btnOpenRegister = document.getElementById("btnOpenRegister");
 const registerModal = document.getElementById("registerModal");
 const closeRegisterBtn = document.getElementById("closeRegisterBtn");
-const smartMixBtn = document.getElementById("smartMixBtn");
-const sessionTimeEl = document.getElementById("sessionTime");
-const sleepTimerBadge = document.getElementById("sleepTimerBadge");
-const queueCount = document.getElementById("queueCount");
-const sleepTimerSelect = document.getElementById("sleepTimerSelect");
-const applySleepTimerBtn = document.getElementById("applySleepTimer");
-const sleepTimerStatus = document.getElementById("sleepTimerStatus");
-const toastContainer = document.getElementById("toastContainer");
 
 // Queue elements
 const queueBtn = document.getElementById("queueBtn");
@@ -256,9 +210,6 @@ const closeQueue = document.getElementById("closeQueue");
 const eqBtn = document.getElementById("eqBtn");
 const equalizerModal = document.getElementById("equalizerModal");
 const closeEq = document.getElementById("closeEq");
-const eqPresetList = document.getElementById("eqPresetList");
-const eqPresetNameInput = document.getElementById("eqPresetName");
-const saveEqPresetBtn = document.getElementById("saveEqPresetBtn");
 
 // Shortcuts elements
 const shortcutsModal = document.getElementById("shortcutsModal");
@@ -435,7 +386,6 @@ function toggleTheme() {
 
 function toggleShortcutsModal() {
     shortcutsModal.classList.toggle('open');
-    refreshModalScrollLock();
 }
 
 function closeAllModals() {
@@ -447,177 +397,7 @@ function closeAllModals() {
     settingsModal.style.display = 'none';
     uploadModal.style.display = 'none';
     registerModal.style.display = 'none';
-    if (communityModal) communityModal.classList.remove('open');
-    if (userDetailModal) userDetailModal.classList.remove('open');
     toggleMobilePlaylist(false);
-    refreshModalScrollLock();
-}
-
-function showToast(message, type = "info") {
-    if (!toastContainer) return;
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <span>${message}</span>
-    `;
-    toastContainer.appendChild(toast);
-    setTimeout(() => {
-        toast.remove();
-    }, 3500);
-}
-
-function formatDuration(totalSeconds) {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-    if (hours > 0) {
-        return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-function startSessionTimer() {
-    if (appState.sessionInterval) clearInterval(appState.sessionInterval);
-    const startedAt = Date.now();
-    appState.sessionInterval = setInterval(() => {
-        appState.sessionSeconds = Math.floor((Date.now() - startedAt) / 1000);
-        if (sessionTimeEl) sessionTimeEl.textContent = formatDuration(appState.sessionSeconds);
-    }, 1000);
-}
-
-function updateQueueIndicator() {
-    if (queueCount) queueCount.textContent = appState.queue.length.toString();
-}
-
-function updateSmartMixAvailability() {
-    if (!smartMixBtn) return;
-    const list = appState.currentFilteredList?.length ? appState.currentFilteredList : appState.playlist;
-    smartMixBtn.disabled = !list || list.length === 0;
-}
-
-function updateSleepTimerUI() {
-    if (!sleepTimerBadge && !sleepTimerStatus) return;
-    if (appState.sleepTimer.mode === "off") {
-        if (sleepTimerBadge) sleepTimerBadge.textContent = "Off";
-        if (sleepTimerStatus) sleepTimerStatus.textContent = "Sin temporizador activo";
-        if (sleepTimerSelect) sleepTimerSelect.value = "0";
-        return;
-    }
-    if (appState.sleepTimer.mode === "end") {
-        if (sleepTimerBadge) sleepTimerBadge.textContent = "Fin canción";
-        if (sleepTimerStatus) sleepTimerStatus.textContent = "Se detendrá al finalizar la canción";
-        if (sleepTimerSelect) sleepTimerSelect.value = "end";
-        return;
-    }
-    if (appState.sleepTimer.mode === "timer" && appState.sleepTimer.endAt) {
-        const remaining = Math.max(0, Math.floor((appState.sleepTimer.endAt - Date.now()) / 1000));
-        const formatted = formatDuration(remaining);
-        if (sleepTimerBadge) sleepTimerBadge.textContent = formatted;
-        if (sleepTimerStatus) sleepTimerStatus.textContent = `Quedan ${formatted}`;
-        if (sleepTimerSelect && appState.sleepTimer.durationMinutes) {
-            sleepTimerSelect.value = String(appState.sleepTimer.durationMinutes);
-        }
-    }
-}
-
-function clearSleepTimer(options = { silent: false }) {
-    if (appState.sleepTimer.timeoutId) clearTimeout(appState.sleepTimer.timeoutId);
-    if (appState.sleepTimer.intervalId) clearInterval(appState.sleepTimer.intervalId);
-    appState.sleepTimer = { endAt: null, mode: "off", timeoutId: null, intervalId: null, triggered: false, durationMinutes: null };
-    localStorage.removeItem("sleepTimerData");
-    updateSleepTimerUI();
-    if (!options.silent) showToast("Temporizador desactivado", "warning");
-}
-
-function triggerSleepTimer(message) {
-    appState.sleepTimer.triggered = true;
-    if (!audio.paused) audio.pause();
-    clearSleepTimer({ silent: true });
-    showToast(message, "warning");
-}
-
-function scheduleSleepTimer(endAt, durationMinutes = null) {
-    if (!endAt) return;
-    appState.sleepTimer.endAt = endAt;
-    appState.sleepTimer.mode = "timer";
-    appState.sleepTimer.durationMinutes = durationMinutes;
-    appState.sleepTimer.triggered = false;
-    if (appState.sleepTimer.intervalId) clearInterval(appState.sleepTimer.intervalId);
-    appState.sleepTimer.intervalId = setInterval(updateSleepTimerUI, 1000);
-    if (appState.sleepTimer.timeoutId) clearTimeout(appState.sleepTimer.timeoutId);
-    appState.sleepTimer.timeoutId = setTimeout(() => {
-        triggerSleepTimer("Tiempo de sueño alcanzado");
-    }, Math.max(0, endAt - Date.now()));
-    updateSleepTimerUI();
-    localStorage.setItem("sleepTimerData", JSON.stringify({ mode: "timer", endAt, durationMinutes }));
-}
-
-function restoreSleepTimerFromStorage() {
-    const saved = localStorage.getItem("sleepTimerData");
-    if (!saved) {
-        updateSleepTimerUI();
-        return;
-    }
-    try {
-        const parsed = JSON.parse(saved);
-        if (parsed.mode === "end") {
-            appState.sleepTimer.mode = "end";
-            updateSleepTimerUI();
-            return;
-        }
-        if (parsed.mode === "timer" && parsed.endAt) {
-            if (parsed.endAt > Date.now()) {
-                scheduleSleepTimer(parsed.endAt, parsed.durationMinutes);
-                return;
-            }
-        }
-    } catch (e) {
-        console.warn("Sleep timer restore failed", e);
-    }
-    clearSleepTimer({ silent: true });
-}
-
-function setSleepTimerFromSelection(value) {
-    if (!value || value === "0") {
-        clearSleepTimer();
-        return;
-    }
-    if (value === "end") {
-        clearSleepTimer({ silent: true });
-        appState.sleepTimer.mode = "end";
-        appState.sleepTimer.durationMinutes = null;
-        appState.sleepTimer.triggered = false;
-        localStorage.setItem("sleepTimerData", JSON.stringify({ mode: "end" }));
-        updateSleepTimerUI();
-        showToast("Se detendrá al finalizar la canción actual", "success");
-        return;
-    }
-    const minutes = parseInt(value, 10);
-    if (Number.isNaN(minutes) || minutes <= 0) return;
-    const endAt = Date.now() + minutes * 60 * 1000;
-    scheduleSleepTimer(endAt, minutes);
-    showToast(`Temporizador activado: ${minutes} min`, "success");
-}
-
-function createSmartMix() {
-    const list = appState.currentFilteredList?.length ? appState.currentFilteredList : appState.playlist;
-    if (!list || list.length === 0) {
-        showToast("No hay canciones para mezclar", "warning");
-        return;
-    }
-    const currentId = appState.playlist[appState.currentIndex]?.id;
-    const existingIds = new Set(appState.queue.map(song => song.id));
-    const candidates = list.filter(song => song.id !== currentId && !existingIds.has(song.id));
-    if (!candidates.length) {
-        showToast("Tu cola ya tiene todas las canciones disponibles", "warning");
-        return;
-    }
-    const shuffled = [...candidates].sort(() => 0.5 - Math.random());
-    const size = Math.min(12, shuffled.length);
-    appState.queue.push(...shuffled.slice(0, size));
-    renderQueue();
-    updateQueueIndicator();
-    showToast(`Smart Mix listo: ${size} canciones a la cola`, "success");
 }
 
 // =========================================
@@ -675,7 +455,6 @@ function renderQueue() {
         queueList.appendChild(item);
         loadMetadata(song.url, `queue-cover-${song.id}`);
     });
-    updateQueueIndicator();
 }
 
 window.removeFromQueue = (songId) => {
@@ -685,7 +464,6 @@ window.removeFromQueue = (songId) => {
             appState.queue.splice(index, 1);
             renderQueue();
         }
-        updateQueueIndicator();
         return;
     }
     const index = appState.currentFilteredList.findIndex(s => s.id === songId);
@@ -693,7 +471,6 @@ window.removeFromQueue = (songId) => {
         appState.currentFilteredList.splice(index, 1);
         renderQueue();
     }
-    updateQueueIndicator();
 };
 
 window.addToQueue = (event, songId) => {
@@ -703,7 +480,6 @@ window.addToQueue = (event, songId) => {
     const exists = appState.queue.some(s => s.id === songId);
     if (!exists) {
         appState.queue.push(song);
-        updateQueueIndicator();
         if (queueDrawer.classList.contains('open')) {
             renderQueue();
         }
@@ -713,20 +489,12 @@ window.addToQueue = (event, songId) => {
 if (queueBtn) queueBtn.onclick = toggleQueue;
 if (closeQueue) closeQueue.onclick = toggleQueue;
 if (queueOverlay) queueOverlay.onclick = toggleQueue;
-if (smartMixBtn) smartMixBtn.onclick = createSmartMix;
-if (applySleepTimerBtn) {
-    applySleepTimerBtn.onclick = () => {
-        setSleepTimerFromSelection(sleepTimerSelect?.value);
-    };
-}
 
 // =========================================
 // EQUALIZER SYSTEM
 // =========================================
 function toggleEqualizer() {
-    if (!equalizerModal) return;
     equalizerModal.classList.toggle('open');
-    refreshModalScrollLock();
 }
 
 function initEqualizer() {
@@ -753,101 +521,40 @@ function initEqualizer() {
     }
 }
 
-function getAllEQPresets() {
-    return {
-        ...DEFAULT_EQ_PRESETS,
-        ...(appState.customEqPresets || {})
-    };
-}
-
-function renderEQPresets() {
-    if (!eqPresetList) return;
-    const presets = getAllEQPresets();
-    eqPresetList.innerHTML = Object.entries(presets).map(([key]) => {
-        const custom = !Object.prototype.hasOwnProperty.call(DEFAULT_EQ_PRESETS, key);
-        return `
-            <button class="eq-preset-btn" data-preset="${key}">
-                ${key}
-                ${custom ? `<span class="eq-remove" data-remove="${key}" title="Eliminar">×</span>` : ''}
-            </button>
-        `;
-    }).join('');
-
-    eqPresetList.querySelectorAll('.eq-preset-btn').forEach(btn => {
-        btn.onclick = (event) => {
-            const removeBtn = event.target.closest('.eq-remove');
-            if (removeBtn) {
-                event.stopPropagation();
-                removeCustomPreset(removeBtn.dataset.remove);
-                return;
-            }
-            applyEQPreset(btn.dataset.preset);
-        };
-    });
-}
-
 function applyEQPreset(preset) {
-    const values = getAllEQPresets()[preset] || DEFAULT_EQ_PRESETS.flat;
+    const values = EQ_PRESETS[preset] || EQ_PRESETS.flat;
     const sliders = document.querySelectorAll('.eq-band input');
-
+    
     sliders.forEach((slider, i) => {
-        slider.value = values[i] ?? 0;
+        slider.value = values[i];
         if (appState.eqFilters[i]) {
-            appState.eqFilters[i].gain.value = values[i] ?? 0;
+            appState.eqFilters[i].gain.value = values[i];
         }
     });
-
+    
+    // Update active button
     document.querySelectorAll('.eq-preset-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.preset === preset);
     });
-
+    
     localStorage.setItem('eqPreset', preset);
-    localStorage.setItem('eqCustomValues', JSON.stringify(values));
 }
 
-function saveCustomPreset() {
-    const name = (eqPresetNameInput?.value || '').trim().toLowerCase();
-    if (!name) {
-        showToast('Escribe un nombre para guardar el preset', 'warning');
-        return;
-    }
-    const values = Array.from(document.querySelectorAll('.eq-band input')).map(slider => parseFloat(slider.value || '0'));
-    appState.customEqPresets[name] = values;
-    localStorage.setItem('customEqPresets', JSON.stringify(appState.customEqPresets));
-    if (eqPresetNameInput) eqPresetNameInput.value = '';
-    renderEQPresets();
-    applyEQPreset(name);
-    showToast(`Preset "${name}" guardado`, 'success');
-}
+// EQ event listeners
+if (eqBtn) eqBtn.onclick = toggleEqualizer;
+if (closeEq) closeEq.onclick = toggleEqualizer;
 
-function removeCustomPreset(name) {
-    if (!name || Object.prototype.hasOwnProperty.call(DEFAULT_EQ_PRESETS, name)) return;
-    delete appState.customEqPresets[name];
-    localStorage.setItem('customEqPresets', JSON.stringify(appState.customEqPresets));
-    renderEQPresets();
-    const current = localStorage.getItem('eqPreset');
-    if (current === name) {
-        applyEQPreset('flat');
-    }
-}
-
-if (saveEqPresetBtn) saveEqPresetBtn.onclick = saveCustomPreset;
+document.querySelectorAll('.eq-preset-btn').forEach(btn => {
+    btn.onclick = () => applyEQPreset(btn.dataset.preset);
+});
 
 document.querySelectorAll('.eq-band input').forEach((slider, i) => {
     slider.oninput = (e) => {
-        const gain = parseFloat(e.target.value);
         if (appState.eqFilters[i]) {
-            appState.eqFilters[i].gain.value = gain;
+            appState.eqFilters[i].gain.value = parseFloat(e.target.value);
         }
-        const values = Array.from(document.querySelectorAll('.eq-band input')).map(item => parseFloat(item.value || '0'));
-        localStorage.setItem('eqCustomValues', JSON.stringify(values));
     };
 });
-
-renderEQPresets();
-
-if (eqBtn) eqBtn.addEventListener('click', toggleEqualizer);
-if (closeEq) closeEq.addEventListener('click', toggleEqualizer);
 
 // Shortcuts modal listeners
 if (closeShortcuts) closeShortcuts.onclick = toggleShortcutsModal;
@@ -969,12 +676,10 @@ function checkSavedSession() {
 function configurarInterfazPorRol(role) {
     if (role === 'dev' || role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
-        if (addActions) addActions.style.display = "flex";
         if (btnOpenRegister) btnOpenRegister.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
     } else {
         if (addSongContainer) addSongContainer.style.display = "none";
-        if (addActions) addActions.style.display = "none";
         if (btnOpenRegister) btnOpenRegister.style.display = "none";
         if (fileInput) fileInput.disabled = true;
     }
@@ -1309,8 +1014,7 @@ if (btnLogout) {
             if (songList) songList.innerHTML = "";
 
             if (addSongContainer) addSongContainer.style.display = "none";
-            if (addActions) addActions.style.display = "none";
-                    if (btnOpenRegister) btnOpenRegister.style.display = "none";
+            if (btnOpenRegister) btnOpenRegister.style.display = "none";
         } catch (err) {
             console.error("Logout error:", err);
             location.reload();
@@ -1330,17 +1034,14 @@ function handleLoginSuccess(role) {
     document.getElementById("loginScreen").style.display = "none";
 
     if (addSongContainer) addSongContainer.style.display = "none";
-    if (addActions) addActions.style.display = "none";
     if (btnOpenRegister) btnOpenRegister.style.display = "none";
 
     if (role === 'dev') {
         if (addSongContainer) addSongContainer.style.display = "flex";
-        if (addActions) addActions.style.display = "flex";
         if (btnOpenRegister) btnOpenRegister.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
     } else if (role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
-        if (addActions) addActions.style.display = "flex";
         if (fileInput) fileInput.disabled = false;
     } else {
         if (fileInput) fileInput.disabled = true;
@@ -1484,8 +1185,23 @@ function toggleModal(show) {
     uploadModal.style.display = show ? "flex" : "none";
 }
 
-async function startUploadSession(files) {
-    if (!files.length) return;
+if (uploadBadge) {
+    uploadBadge.onclick = () => {
+        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
+            toggleModal(true);
+        }
+    };
+}
+
+if (closeModal) {
+    closeModal.onclick = () => toggleModal(false);
+}
+
+fileInput.onchange = async (e) => {
+    if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') return;
+
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
 
     appState.isUploading = true;
     uploadBadge.style.display = "flex";
@@ -1548,28 +1264,7 @@ async function startUploadSession(files) {
     setTimeout(() => {
         if (!appState.isUploading) uploadBadge.style.display = "none";
     }, 5000);
-}
-
-if (uploadBadge) {
-    uploadBadge.onclick = () => {
-        if (appState.currentUserRole === 'admin' || appState.currentUserRole === 'dev') {
-            toggleModal(true);
-        }
-    };
-}
-
-if (closeModal) {
-    closeModal.onclick = () => toggleModal(false);
-}
-
-fileInput.onchange = async (e) => {
-    if (appState.currentUserRole !== 'admin' && appState.currentUserRole !== 'dev') return;
-
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    await startUploadSession(files);
 };
-
 
 async function processAndUpload(file, container, updateStats) {
     const sanitizedName = sanitizeFileName(file.name);
@@ -1860,7 +1555,6 @@ async function renderPlaylist() {
         const li = createSongElement(song, isCurrent, isDownloaded);
         songList.appendChild(li);
     });
-    updateSmartMixAvailability();
 }
 
 window.deleteDownload = async (event, songId) => {
@@ -2047,13 +1741,6 @@ audio.onended = () => {
     if (appState.fadePending) {
         return;
     }
-    if (appState.sleepTimer.mode === "end") {
-        triggerSleepTimer("Sleep timer completado");
-        return;
-    }
-    if (appState.sleepTimer.triggered) {
-        return;
-    }
     if (!appState.isLoop) {
         handleNextSong();
     }
@@ -2129,17 +1816,7 @@ async function startVisualizer() {
         
         // Load saved EQ preset
         const savedPreset = localStorage.getItem('eqPreset') || 'flat';
-        const customValues = JSON.parse(localStorage.getItem('eqCustomValues') || 'null');
-        if (savedPreset && getAllEQPresets()[savedPreset]) {
-            applyEQPreset(savedPreset);
-        } else if (Array.isArray(customValues) && customValues.length) {
-            document.querySelectorAll('.eq-band input').forEach((slider, i) => {
-                slider.value = customValues[i] ?? 0;
-            });
-            applyEQPreset('flat');
-        } else {
-            applyEQPreset('flat');
-        }
+        applyEQPreset(savedPreset);
         
         const bufferLength = appState.analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
@@ -2177,7 +1854,7 @@ audio.ontimeupdate = () => {
     const progressBar = document.getElementById('progress');
     if (progressBar && audio.duration) {
         const percent = (audio.currentTime / audio.duration) * 100;
-        setProgressVisual(percent);
+        progressBar.style.setProperty('--progress-percent', `${percent}%`);
     }
 
     if (audio.duration && shouldUseFade() && !appState.isLoop && !isChangingTrack && !audio.paused && !appState.fadePending) {
@@ -2246,21 +1923,7 @@ progress.oninput = () => {
         return;
     }
     audio.currentTime = progress.value;
-    if (audio.duration) {
-        const percent = (Number(progress.value) / Number(audio.duration)) * 100;
-        setProgressVisual(percent);
-    }
 };
-
-function setProgressVisual(rawPercent) {
-    const percent = Math.max(0, Math.min(100, Number(rawPercent) || 0));
-    progress.style.setProperty('--progress-percent', `${percent}%`);
-    progress.style.background = `linear-gradient(to right, var(--primary) 0%, var(--secondary) ${percent}%, var(--surface-hover) ${percent}%)`;
-}
-
-audio.addEventListener('loadedmetadata', () => {
-    setProgressVisual(0);
-});
 volume.oninput = (e) => setAppVolume(e.target.value);
 
 btnGlobal.onclick = () => {
@@ -2389,12 +2052,7 @@ window.onclick = (e) => {
     if (e.target === uploadModal) toggleModal(false);
     if (e.target === registerModal) registerModal.style.display = "none";
     if (e.target === equalizerModal) equalizerModal.classList.remove('open');
-    if (e.target === shortcutsModal) {
-        shortcutsModal.classList.remove('open');
-        refreshModalScrollLock();
-    }
-    if (e.target === communityModal) closeCommunityModal();
-    if (e.target === userDetailModal) closeUserDetailModal();
+    if (e.target === shortcutsModal) shortcutsModal.classList.remove('open');
 };
 
 // =========================================
@@ -2405,7 +2063,6 @@ const settingsModal = document.getElementById("settingsModal");
 const closeSettingsModal = document.getElementById("closeSettingsModal");
 const disableVisualizer = document.getElementById("disableVisualizer");
 const disableDynamicBg = document.getElementById("disableDynamicBg");
-const enableFocusMode = document.getElementById("enableFocusMode");
 const enableFade = document.getElementById("enableFade");
 const fadeDurationInput = document.getElementById("fadeDuration");
 const fadeDurationValue = document.getElementById("fadeDurationValue");
@@ -2432,18 +2089,14 @@ if (fadeDurationInput) {
 window.saveSettings = () => {
     const disableVis = disableVisualizer.checked;
     const disableBg = disableDynamicBg.checked;
-    const focusMode = enableFocusMode?.checked ?? false;
     const fadeEnabled = enableFade?.checked ?? false;
     const fadeDuration = parseInt(fadeDurationInput?.value, 10) || 4;
     localStorage.setItem('disableVisualizer', disableVis);
     localStorage.setItem('disableDynamicBg', disableBg);
-    localStorage.setItem('focusMode', focusMode);
     localStorage.setItem('fadeEnabled', fadeEnabled);
     localStorage.setItem('fadeDuration', fadeDuration);
     document.body.classList.toggle('no-visual', disableVis);
     document.body.classList.toggle('no-dynamic-bg', disableBg);
-    document.body.classList.toggle('focus-mode', focusMode);
-    appState.focusMode = focusMode;
     appState.fadeEnabled = fadeEnabled;
     appState.fadeDuration = fadeDuration;
     settingsModal.style.display = 'none';
@@ -2455,9 +2108,6 @@ window.saveSettings = () => {
 function cleanupBeforeExit() {
     try {
         if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
-        if (appState.sessionInterval) clearInterval(appState.sessionInterval);
-        if (appState.sleepTimer.timeoutId) clearTimeout(appState.sleepTimer.timeoutId);
-        if (appState.sleepTimer.intervalId) clearInterval(appState.sleepTimer.intervalId);
         if (appState.audioCtx) {
             appState.audioCtx.close();
             appState.audioCtx = null;
@@ -2509,14 +2159,13 @@ const closeProfileBtn = document.getElementById("closeProfileBtn");
 async function openProfileModal() {
     if (profileModal) {
         profileModal.classList.add('open');
-        refreshModalScrollLock();
         
         // First load user data from Supabase to get saved discord_id
         if (navigator.onLine && appState.usuarioActual && !appState.discord) {
             try {
                 const { data, error } = await supabaseClient
                     .from('users_access')
-                    .select('discord_id, discord_username')
+                    .select('discord_id, discord_username, total_likes, total_played, total_downloads')
                     .eq('username', appState.usuarioActual)
                     .single();
                 
@@ -2544,7 +2193,6 @@ function closeProfileModal() {
     if (profileModal) {
         profileModal.classList.remove('open');
     }
-    refreshModalScrollLock();
 }
 
 function updateProfileUI() {
@@ -2592,19 +2240,18 @@ function updateProfileStats() {
     if (statPlayed) statPlayed.textContent = appState.playCount;
     if (statDownloads) statDownloads.textContent = appState.downloadedIds.length;
     
-    // Stats de reproducción/descargas se mantienen localmente en esta versión.
-    // Para likes usamos la tabla user_likes si hay conexión.
+    // Save stats to Supabase for real-time community display
     if (navigator.onLine && appState.usuarioActual) {
         supabaseClient
-            .from('user_likes')
-            .select('id', { count: 'exact', head: true })
-            .eq('username', appState.usuarioActual)
-            .then(({ count, error }) => {
-                if (!error && statLikes && typeof count === 'number') {
-                    statLikes.textContent = count;
-                }
+            .from('users_access')
+            .update({ 
+                total_likes: appState.likedIds.length,
+                total_played: appState.playCount,
+                total_downloads: appState.downloadedIds.length
             })
-            .catch(e => console.warn('Error loading like stats:', e));
+            .eq('username', appState.usuarioActual)
+            .then(() => console.log('Stats updated in Supabase'))
+            .catch(e => console.warn('Error updating stats:', e));
     }
 }
 
@@ -2627,9 +2274,8 @@ function updateListeningActivity(song) {
                 const { error } = await supabaseClient
                     .from('users_access')
                     .update({ 
-                        current_song_id: song.id || null,
-                        current_song_name: songName,
-                        listening_since: new Date().toISOString()
+                        current_song: songName,
+                        current_song_time: new Date().toISOString()
                     })
                     .eq('username', appState.usuarioActual);
                 if (error) {
@@ -2647,7 +2293,7 @@ audio.addEventListener('pause', async () => {
     if (navigator.onLine && appState.usuarioActual) {
         const { error } = await supabaseClient
             .from('users_access')
-            .update({ current_song_id: null, current_song_name: null, listening_since: null })
+            .update({ current_song: null })
             .eq('username', appState.usuarioActual);
         if (error) {
             console.warn('Error clearing now playing:', error);
@@ -2656,7 +2302,7 @@ audio.addEventListener('pause', async () => {
 });
 
 audio.addEventListener('ended', () => {
-    // current song se actualiza cuando inicia la siguiente pista
+    // current_song will be updated when next song plays
 });
 
 // Ensure profile button event listener is attached after DOM is ready
@@ -2911,28 +2557,9 @@ const userDetailModal = document.getElementById('userDetailModal');
 let communityTab = 'online';
 let communityUsers = [];
 
-function setModalScrollLock(locked) {
-    document.body.style.overflow = locked ? 'hidden' : '';
-}
-
-function isAnyBlockingModalOpen() {
-    return Boolean(
-        profileModal?.classList.contains('open') ||
-        communityModal?.classList.contains('open') ||
-        userDetailModal?.classList.contains('open') ||
-        equalizerModal?.classList.contains('open') ||
-        shortcutsModal?.classList.contains('open')
-    );
-}
-
-function refreshModalScrollLock() {
-    setModalScrollLock(isAnyBlockingModalOpen());
-}
-
 window.openCommunityModal = async () => {
     if (communityModal) {
         communityModal.classList.add('open');
-        refreshModalScrollLock();
         await loadCommunityUsers();
     }
 };
@@ -2940,7 +2567,6 @@ window.openCommunityModal = async () => {
 window.closeCommunityModal = () => {
     if (communityModal) {
         communityModal.classList.remove('open');
-        refreshModalScrollLock();
     }
 };
 
@@ -2955,40 +2581,26 @@ window.switchCommunityTab = (tab) => {
 async function loadCommunityUsers() {
     const list = document.getElementById('communityList');
     list.innerHTML = `<div class="community-loading"><div class="spinner-log"></div><p>Cargando usuarios...</p></div>`;
-
+    
     try {
+        // Fetch REAL data from Supabase
         if (navigator.onLine) {
             const { data, error } = await supabaseClient
                 .from('users_access')
-                .select('id, username, role, is_online, last_seen, discord_id, current_song_id, current_song_name, listening_since')
+                .select('*')
                 .order('is_online', { ascending: false });
-
+            
             if (!error && data) {
-                let likesByUser = {};
-                const likesResponse = await supabaseClient
-                    .from('user_likes')
-                    .select('username');
-
-                if (!likesResponse.error && Array.isArray(likesResponse.data)) {
-                    likesByUser = likesResponse.data.reduce((acc, row) => {
-                        const key = row.username;
-                        acc[key] = (acc[key] || 0) + 1;
-                        return acc;
-                    }, {});
-                }
-
-                communityUsers = data.map(u => {
-                    const currentSongName = u.current_song_name || null;
-                    const currentSongSince = u.listening_since || null;
-                    return {
-                        ...u,
-                        likes: likesByUser[u.username] || 0,
-                        played: Number(u.play_count ?? u.played_count ?? 0),
-                        downloads: Number(u.download_count ?? u.downloaded_count ?? 0),
-                        currentSong: currentSongName ? { name: currentSongName, time: currentSongSince } : null
-                    };
-                });
-
+                // Use REAL data from database
+                communityUsers = data.map(u => ({
+                    ...u,
+                    likes: u.total_likes || 0,
+                    played: u.total_played || 0,
+                    downloads: u.total_downloads || 0,
+                    currentSong: u.current_song ? { name: u.current_song, time: '' } : null
+                }));
+                
+                // Also fetch Discord avatars for users with discord_id
                 for (const user of communityUsers) {
                     if (user.discord_id) {
                         try {
@@ -3002,25 +2614,18 @@ async function loadCommunityUsers() {
                         }
                     }
                 }
-
+                
                 renderCommunityUsers();
                 return;
             }
         }
-
+        
+        // Fallback to local users for offline mode
         communityUsers = [
-            {
-                username: appState.usuarioActual || 'admin',
-                role: appState.currentUserRole || 'user',
-                is_online: 1,
-                likes: appState.likedIds.length,
-                played: appState.playCount,
-                downloads: appState.downloadedIds.length,
-                currentSong: null
-            }
+            { username: appState.usuarioActual || 'admin', role: appState.currentUserRole || 'user', is_online: 1, likes: appState.likedIds.length, played: appState.playCount, downloads: appState.downloadedIds.length, currentSong: null }
         ];
         renderCommunityUsers();
-
+        
     } catch (e) {
         console.error('Error loading community:', e);
         list.innerHTML = `<div class="community-empty">Error al cargar usuarios</div>`;
@@ -3075,9 +2680,8 @@ function renderCommunityUsers() {
     list.innerHTML = filtered.map(user => {
         const initial = user.username.charAt(0).toUpperCase();
         const isOnline = user.is_online === 1;
-        const isActive = isUserActive(user);
         const hasDiscord = user.discord_avatar || user.discord_username;
-        const isListening = user.currentSong && user.currentSong.name;
+        const isListening = user.currentSong;
         
         // Use REAL Discord avatar if available
         const avatarUrl = user.discord_avatar 
@@ -3099,13 +2703,12 @@ function renderCommunityUsers() {
                         ${isListening ? `
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                             ${isListening.name}
-                        ` : (isActive ? 'Activo ahora' : (isOnline ? 'Conectado inactivo' : 'Desconectado'))}
+                        ` : (isOnline ? 'En línea' : 'Desconectado')}
                     </div>
                 </div>
                 <div class="community-user-stats">
-                    <span title="Reproducciones">${COMMUNITY_ICONS.PLAYED} ${user.played || 0}</span>
-                    <span title="Descargadas">${COMMUNITY_ICONS.DOWNLOADS} ${user.downloads || 0}</span>
-                    <span title="Canciones favoritas">${COMMUNITY_ICONS.LIKES} ${user.likes || 0}</span>
+                    <span title="Likes">❤️ ${user.likes || 0}</span>
+                    <span title="Canciones escuchadas">🎵 ${user.played || 0}</span>
                 </div>
             </div>
         `;
@@ -3118,7 +2721,6 @@ window.openUserDetail = (username) => {
     
     if (userDetailModal) {
         userDetailModal.classList.add('open');
-        refreshModalScrollLock();
         
         // Update avatar - use REAL Discord avatar if available
         const avatar = document.getElementById('userDetailAvatar');
@@ -3137,10 +2739,9 @@ window.openUserDetail = (username) => {
         
         // Update status
         const isOnline = user.is_online === 1;
-        const isActive = isUserActive(user);
         document.getElementById('userStatusBadge').innerHTML = `
             <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
-            <span>${isActive ? 'Activo ahora' : (isOnline ? 'Conectado inactivo' : 'Desconectado')}</span>
+            <span>${isOnline ? 'En línea' : 'Desconectado'}</span>
         `;
         
         // Update name and role
@@ -3151,13 +2752,11 @@ window.openUserDetail = (username) => {
         
         // Now playing - show REAL current song
         const nowPlaying = document.getElementById('userNowPlaying');
-        if (user.currentSong || user.current_song_name) {
+        if (user.currentSong || user.current_song) {
             nowPlaying.style.display = 'block';
-            const songName = user.currentSong?.name || user.current_song_name;
-            const listeningSince = user.currentSong?.time || user.listening_since || null;
-            const since = listeningSince ? new Date(listeningSince).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const songName = user.currentSong?.name || user.current_song;
             document.getElementById('userNowPlayingTitle').textContent = songName;
-            document.getElementById('userNowPlayingTime').textContent = since ? `desde ${since}` : '';
+            document.getElementById('userNowPlayingTime').textContent = user.currentSong?.time || '';
         } else {
             nowPlaying.style.display = 'none';
         }
@@ -3172,9 +2771,9 @@ window.openUserDetail = (username) => {
         }
         
         // Stats - use REAL data
-        document.getElementById('userStatLikes').textContent = user.likes || 0;
-        document.getElementById('userStatPlayed').textContent = user.played || 0;
-        document.getElementById('userStatDownloads').textContent = user.downloads || 0;
+        document.getElementById('userStatLikes').textContent = user.likes || user.total_likes || 0;
+        document.getElementById('userStatPlayed').textContent = user.played || user.total_played || 0;
+        document.getElementById('userStatDownloads').textContent = user.downloads || user.total_downloads || 0;
         
         // Member since
         const date = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Ene 2025';
@@ -3185,7 +2784,6 @@ window.openUserDetail = (username) => {
 window.closeUserDetailModal = () => {
     if (userDetailModal) {
         userDetailModal.classList.remove('open');
-        refreshModalScrollLock();
     }
 };
 
@@ -3202,9 +2800,7 @@ async function updateListeningStatus() {
             .from('users_access')
             .update({
                 is_online: 1,
-                current_song_id: isPlaying ? (currentSong?.id || null) : null,
-                current_song_name: isPlaying ? songName : null,
-                listening_since: isPlaying ? new Date().toISOString() : null,
+                current_song: isPlaying ? songName : null,
                 last_seen: new Date().toISOString()
             })
             .eq('username', appState.usuarioActual);
@@ -3284,3 +2880,5 @@ window.addEventListener('click', (e) => {
         closeProfileModal();
     }
 });
+
+console.log("JodiFy v2.1 - Profile & Discord ready");
