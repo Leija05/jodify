@@ -2781,6 +2781,7 @@ async function loadCommunityUsers() {
                             if (discordData) {
                                 user.discord_avatar = discordData.avatar;
                                 user.discord_username = discordData.username;
+                                user.discord_status = discordData.status;
                             }
                         } catch (e) {
                             // Silently fail for individual users
@@ -2931,12 +2932,14 @@ function renderCommunityUsers() {
             ? user.discord_avatar
             : (hasDiscord ? `https://cdn.discordapp.com/embed/avatars/${user.username.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 5}.png` : null);
         const theme = resolveCommunityTheme(user, avatarUrl);
+        const presence = normalizeDiscordPresence(user.discord_status || (isOnline ? 'online' : 'offline'));
+        const statusClass = presence === 'active' ? 'online' : presence;
 
         return `
             <div class="community-user" style="--community-accent:${theme.c1};--community-accent2:${theme.c2};" onclick="openUserDetail('${user.username}')" data-testid="user-${user.username}">
-                <div class="community-user-avatar">
+                <div class="community-user-avatar presence-${presence}">
                     ${avatarUrl ? `<img src="${avatarUrl}" alt="" crossorigin="anonymous">` : initial}
-                    <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+                    <span class="status-indicator ${statusClass}"></span>
                 </div>
                 <div class="community-user-info">
                     <div class="community-user-name">
@@ -2983,8 +2986,10 @@ window.openUserDetail = (username) => {
 
         // Update status
         const isOnline = user.is_online === 1;
+        const detailPresence = normalizeDiscordPresence(user.discord_status || (isOnline ? 'online' : 'offline'));
+        const detailStatusClass = detailPresence === 'active' ? 'online' : detailPresence;
         document.getElementById('userStatusBadge').innerHTML = `
-            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+            <span class="status-dot ${detailStatusClass}"></span>
             <span>${isOnline ? 'En línea' : 'Desconectado'}</span>
         `;
 

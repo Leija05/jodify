@@ -3757,6 +3757,7 @@ async function loadCommunityUsers() {
                         if (discordData) {
                             user.discord_avatar = discordData.avatar;
                             user.discord_username = discordData.username;
+                            user.discord_status = discordData.status;
                             return;
                         }
                     } catch (e) {
@@ -3922,12 +3923,14 @@ function renderCommunityUsers() {
                 ? `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.discord_id || 0) % 6n)}.png`
                 : null);
         const theme = resolveCommunityTheme(user, avatarUrl);
+        const presence = normalizeDiscordPresence(user.discord_status || (isOnline ? 'online' : 'offline'));
+        const statusClass = presence === 'active' ? 'online' : presence;
 
         return `
             <div class="community-user" style="--community-accent:${theme.c1};--community-accent2:${theme.c2};" onclick="openUserDetail('${user.username}')" data-testid="user-${user.username}">
-                <div class="community-user-avatar">
+                <div class="community-user-avatar presence-${presence}">
                     ${avatarUrl ? `<img src="${avatarUrl}" alt="" crossorigin="anonymous">` : initial}
-                    <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+                    <span class="status-indicator ${statusClass}"></span>
                 </div>
                 <div class="community-user-info">
                     <div class="community-user-name">
@@ -3977,8 +3980,10 @@ window.openUserDetail = (username) => {
         // Update status
         const isOnline = user.is_online === 1;
         const isActive = isUserActive(user);
+        const detailPresence = normalizeDiscordPresence(user.discord_status || (isOnline ? 'online' : 'offline'));
+        const detailStatusClass = detailPresence === 'active' ? 'online' : detailPresence;
         document.getElementById('userStatusBadge').innerHTML = `
-            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+            <span class="status-dot ${detailStatusClass}"></span>
             <span>${isActive ? 'Activo ahora' : (isOnline ? 'Conectado inactivo' : 'Desconectado')}</span>
         `;
 
