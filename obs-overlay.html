@@ -115,6 +115,11 @@
     const statusEl = document.getElementById('status');
     const rootEl = document.getElementById('overlayRoot');
 
+    const SB_URL = 'https://wgwafnndqhqlmwvrgiqt.supabase.co';
+    const SB_KEY = 'sb_publishable_lIo5RKzxB7pVAHdBx5aejQ_IeooCEj1';
+    const qs = new URLSearchParams(location.search);
+    const overlayUsername = qs.get('u');
+
     function applyState(state) {
       if (!state) return;
       titleEl.textContent = state.title || 'Sin reproducción';
@@ -135,14 +140,43 @@
       } catch {}
     }
 
+    async function readRemoteState() {
+      if (!overlayUsername) {
+        readState();
+        return;
+      }
+      try {
+        const url = `${SB_URL}/rest/v1/users_access?select=current_song_name,listening_since,username&username=eq.${encodeURIComponent(overlayUsername)}&limit=1`;
+        const res = await fetch(url, {
+          headers: {
+            apikey: SB_KEY,
+            Authorization: `Bearer ${SB_KEY}`
+          }
+        });
+        const rows = await res.json();
+        const row = Array.isArray(rows) ? rows[0] : null;
+        const title = row?.current_song_name || 'Sin reproducción';
+        applyState({
+          title,
+          addedBy: row?.username || overlayUsername,
+          cover: 'assets/default-cover.png',
+          currentTime: 0,
+          duration: 0,
+          isPlaying: Boolean(row?.current_song_name)
+        });
+      } catch (e) {
+        readState();
+      }
+    }
+
     window.addEventListener('storage', (e) => {
       if (e.key === 'jodify_obs_overlay_state' && e.newValue) {
         try { applyState(JSON.parse(e.newValue)); } catch {}
       }
     });
 
-    readState();
-    setInterval(readState, 500);
+    readRemoteState();
+    setInterval(readRemoteState, 2000);
   </script>
 </body>
 </html>

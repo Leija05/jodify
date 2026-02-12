@@ -1382,6 +1382,40 @@ if (btnLogout) {
 // =========================================
 const registerForm = document.getElementById("registerForm");
 
+async function refreshProfileForCurrentUser() {
+    updateProfileUI();
+    updateProfileStats();
+
+    if (!navigator.onLine || !appState.usuarioActual) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('users_access')
+            .select('discord_id')
+            .eq('username', appState.usuarioActual)
+            .single();
+
+        if (error) throw error;
+
+        if (data?.discord_id) {
+            try {
+                const discordUser = await fetchDiscordUser(data.discord_id);
+                appState.discord = discordUser;
+                localStorage.setItem('discordProfile', JSON.stringify(discordUser));
+            } catch (discordErr) {
+                appState.discord = null;
+                localStorage.removeItem('discordProfile');
+            }
+        } else {
+            appState.discord = null;
+            localStorage.removeItem('discordProfile');
+        }
+        updateProfileUI();
+    } catch (e) {
+        console.warn('No se pudo refrescar el perfil al iniciar sesión', e);
+    }
+}
+
 function handleLoginSuccess(role) {
     appState.currentUserRole = role;
     document.getElementById("loginScreen").style.display = "none";
@@ -1391,6 +1425,9 @@ function handleLoginSuccess(role) {
     if (btnOpenRegister) btnOpenRegister.style.display = "none";
     if (openDeleteSongsModalBtn) openDeleteSongsModalBtn.style.display = "none";
     if (adminActions) adminActions.style.display = "none";
+
+    appState.discord = null;
+    localStorage.removeItem('discordProfile');
 
     if (role === 'dev') {
         if (addSongContainer) addSongContainer.style.display = "flex";
@@ -1411,6 +1448,7 @@ function handleLoginSuccess(role) {
     }
 
     startHeartbeat(appState.usuarioActual);
+    refreshProfileForCurrentUser();
     initApp();
 }
 
@@ -1524,11 +1562,18 @@ function formatDisplayName(name) {
 
 function getObsOverlayUrl(options = {}) {
     const preferPublic = options.preferPublic ?? false;
+    const includeUser = options.includeUser ?? true;
 
     const localBase = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}`;
     const localUrl = `${localBase}obs-overlay.html`;
 
-    if (!preferPublic) return localUrl;
+    const withUserParam = (url) => {
+        if (!includeUser || !appState.usuarioActual) return url;
+        const sep = url.includes('?') ? '&' : '?';
+        return `${url}${sep}u=${encodeURIComponent(appState.usuarioActual)}`;
+    };
+
+    if (!preferPublic) return withUserParam(localUrl);
 
     const savedBase = (obsOverlayBaseUrlInput?.value || localStorage.getItem('obsOverlayPublicBaseUrl') || '').trim();
     const fallbackBase = 'https://leija05.github.io/jodify';
@@ -1540,7 +1585,7 @@ function getObsOverlayUrl(options = {}) {
         obsOverlayBaseUrlInput.value = normalized;
     }
 
-    return `${normalized}/obs-overlay.html`;
+    return withUserParam(`${normalized}/obs-overlay.html`);
 }
 
 function syncObsOverlayState() {
