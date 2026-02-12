@@ -376,10 +376,12 @@
                 </h3>
                 <button class="close-btn" id="closeEq" data-testid="close-eq">&times;</button>
             </div>
+            <p class="eq-subtitle">Ajusta bandas en tiempo real y guarda tus presets.</p>
             <div class="eq-presets" id="eqPresetList" data-testid="eq-presets"></div>
             <div class="eq-custom-controls">
                 <input type="text" id="eqPresetName" placeholder="Nombre de ecualización (ej. Fiesta)">
                 <button id="saveEqPresetBtn" class="btn-secondary">Guardar preset</button>
+                <button id="resetEqBtn" class="btn-secondary">Reset</button>
             </div>
             <div class="eq-sliders" data-testid="eq-sliders">
                 <div class="eq-band">
@@ -850,9 +852,27 @@
                     </svg>
                     Comunidad JodiFy
                 </h3>
-                <button class="close-btn" onclick="closeCommunityModal()">&times;</button>
+                <div class="community-header-actions">
+                    <button class="community-refresh-btn" onclick="refreshCommunityNow()" title="Actualizar comunidad" data-testid="community-refresh">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                    </button>
+                    <button class="close-btn" onclick="closeCommunityModal()">&times;</button>
+                </div>
             </div>
             
+            <div class="community-live-toggle">
+                <label>
+                    <input type="checkbox" id="communityAutoRefresh" checked>
+                    Actualizar en vivo
+                </label>
+            </div>
+
+
+            <div class="community-insights" id="communityInsights" data-testid="community-insights" style="display:none;"></div>
             <div class="community-tabs">
                 <button class="community-tab active" onclick="switchCommunityTab('online')" data-testid="tab-online">
                     <span class="online-dot"></span> En línea

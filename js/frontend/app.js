@@ -117,6 +117,27 @@ const COMMUNITY_ICONS = {
     LIKES: `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`
 };
 
+function sanitizeSongName(value) {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    if (!normalized) return null;
+    if (normalized.toLowerCase() === 'undefined' || normalized.toLowerCase() === 'null') return null;
+    return normalized;
+}
+
+function formatListeningElapsed(timestamp) {
+    if (!timestamp) return '';
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    if (Number.isNaN(diffMs) || diffMs < 0) return '';
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return ' · hace un momento';
+    if (minutes < 60) return ` · hace ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return ` · hace ${hours} h`;
+    const days = Math.floor(hours / 24);
+    return ` · hace ${days} d`;
+}
+
 function isUserActive(user) {
     if (!user) return false;
     if (user.is_online !== 1 || !user.last_seen) return false;
@@ -259,6 +280,7 @@ const closeEq = document.getElementById("closeEq");
 const eqPresetList = document.getElementById("eqPresetList");
 const eqPresetNameInput = document.getElementById("eqPresetName");
 const saveEqPresetBtn = document.getElementById("saveEqPresetBtn");
+const resetEqBtn = document.getElementById("resetEqBtn");
 
 // Shortcuts elements
 const shortcutsModal = document.getElementById("shortcutsModal");
@@ -448,7 +470,9 @@ function closeAllModals() {
     uploadModal.style.display = 'none';
     registerModal.style.display = 'none';
     if (communityModal) communityModal.classList.remove('open');
+    stopCommunityAutoRefresh();
     if (userDetailModal) userDetailModal.classList.remove('open');
+    if (discordLinkModal) discordLinkModal.classList.remove('open');
     toggleMobilePlaylist(false);
     refreshModalScrollLock();
 }
@@ -791,9 +815,12 @@ function applyEQPreset(preset) {
     const sliders = document.querySelectorAll('.eq-band input');
 
     sliders.forEach((slider, i) => {
-        slider.value = values[i] ?? 0;
+        const gainValue = values[i] ?? 0;
+        slider.value = gainValue;
+        const parent = slider.closest('.eq-band');
+        if (parent) parent.dataset.gain = `${gainValue > 0 ? '+' : ''}${gainValue}dB`;
         if (appState.eqFilters[i]) {
-            appState.eqFilters[i].gain.value = values[i] ?? 0;
+            appState.eqFilters[i].gain.value = gainValue;
         }
     });
 
@@ -832,6 +859,7 @@ function removeCustomPreset(name) {
 }
 
 if (saveEqPresetBtn) saveEqPresetBtn.onclick = saveCustomPreset;
+if (resetEqBtn) resetEqBtn.onclick = () => applyEQPreset('flat');
 
 document.querySelectorAll('.eq-band input').forEach((slider, i) => {
     slider.oninput = (e) => {
@@ -839,6 +867,8 @@ document.querySelectorAll('.eq-band input').forEach((slider, i) => {
         if (appState.eqFilters[i]) {
             appState.eqFilters[i].gain.value = gain;
         }
+        const parent = slider.closest('.eq-band');
+        if (parent) parent.dataset.gain = `${gain > 0 ? '+' : ''}${gain}dB`;
         const values = Array.from(document.querySelectorAll('.eq-band input')).map(item => parseFloat(item.value || '0'));
         localStorage.setItem('eqCustomValues', JSON.stringify(values));
     };
@@ -1452,7 +1482,8 @@ function sanitizeFileName(name) {
 }
 
 function formatDisplayName(name) {
-    return name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ").trim();
+    if (typeof name !== 'string') return 'Sin título';
+    return name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ").trim() || 'Sin título';
 }
 
 async function getGradientColors(imgElement) {
@@ -1925,9 +1956,20 @@ window.downloadSong = async (event, songId) => {
             putReq.onerror = reject;
         });
         
+        if (navigator.onLine && appState.usuarioActual) {
+            try {
+                await supabaseClient
+                    .from('user_downloads')
+                    .upsert({ username: appState.usuarioActual, song_id: songId }, { onConflict: 'username,song_id' });
+            } catch (syncErr) {
+                console.warn('Download sync error:', syncErr);
+            }
+        }
+
         addSystemLog('info', `Descargó: "${formatDisplayName(song.name)}"`);
         notificationSound.play().catch(() => {});
         await syncDownloadedSongs();
+        updateProfileStats();
         renderPlaylist();
     } catch (err) {
         btn.innerHTML = originalHTML;
@@ -1983,6 +2025,7 @@ async function playSong(index, options = {}) {
         localStorage.setItem("playCount", appState.playCount);
         updateProfileStats();
         updateListeningActivity(song);
+        logListeningHistory(song);
         if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
             jam.broadcastJamState('jam-play');
         }
@@ -2325,6 +2368,20 @@ window.toggleLike = async (e, id) => {
     if (!appState.offlineMode) {
         try {
             await supabaseClient.from('songs').update({ likes: song.likes }).eq('id', id);
+
+            if (navigator.onLine && appState.usuarioActual) {
+                if (wasLiked) {
+                    await supabaseClient
+                        .from('user_likes')
+                        .delete()
+                        .eq('username', appState.usuarioActual)
+                        .eq('song_id', id);
+                } else {
+                    await supabaseClient
+                        .from('user_likes')
+                        .upsert({ username: appState.usuarioActual, song_id: id }, { onConflict: 'username,song_id' });
+                }
+            }
         } catch (e) {
             console.error("Like sync error:", e);
         }
@@ -2358,17 +2415,57 @@ if (sortOptions) {
 // MOBILE PLAYLIST
 // =========================================
 const overlay = document.createElement('div');
+overlay.className = 'playlist-overlay';
+overlay.setAttribute('data-testid', 'playlist-overlay');
 
 document.body.appendChild(overlay);
 
 function toggleMobilePlaylist(show) {
     playlistEl.classList.toggle('show', show);
     overlay.classList.toggle('active', show);
+    if (!show) {
+        playlistEl.style.transform = '';
+    }
     document.body.style.overflow = show ? 'hidden' : '';
 }
 
 if (btnOpenPlaylist) btnOpenPlaylist.onclick = () => toggleMobilePlaylist(true);
 overlay.onclick = () => toggleMobilePlaylist(false);
+
+let mobilePlaylistTouchStartY = 0;
+let mobilePlaylistTouchStartX = 0;
+let mobilePlaylistDragging = false;
+
+playlistEl?.addEventListener('touchstart', (event) => {
+    if (window.innerWidth > 768 || !playlistEl.classList.contains('show')) return;
+    const touch = event.touches[0];
+    mobilePlaylistTouchStartY = touch.clientY;
+    mobilePlaylistTouchStartX = touch.clientX;
+    mobilePlaylistDragging = true;
+}, { passive: true });
+
+playlistEl?.addEventListener('touchmove', (event) => {
+    if (!mobilePlaylistDragging || window.innerWidth > 768) return;
+    const touch = event.touches[0];
+    const deltaY = touch.clientY - mobilePlaylistTouchStartY;
+    const deltaX = Math.abs(touch.clientX - mobilePlaylistTouchStartX);
+    if (deltaY <= 0 || deltaY < deltaX) return;
+    playlistEl.style.transform = `translateY(${Math.min(deltaY, 260)}px)`;
+}, { passive: true });
+
+playlistEl?.addEventListener('touchend', (event) => {
+    if (!mobilePlaylistDragging || window.innerWidth > 768) return;
+    const touch = event.changedTouches[0];
+    const deltaY = touch.clientY - mobilePlaylistTouchStartY;
+    const deltaX = Math.abs(touch.clientX - mobilePlaylistTouchStartX);
+    mobilePlaylistDragging = false;
+
+    if (deltaY > 90 && deltaY > deltaX) {
+        toggleMobilePlaylist(false);
+        return;
+    }
+    playlistEl.style.transform = '';
+}, { passive: true });
 
 // =========================================
 // FILTER LOGS
@@ -2388,13 +2485,17 @@ window.filterLogs = () => {
 window.onclick = (e) => {
     if (e.target === uploadModal) toggleModal(false);
     if (e.target === registerModal) registerModal.style.display = "none";
-    if (e.target === equalizerModal) equalizerModal.classList.remove('open');
+    if (e.target === equalizerModal) {
+        equalizerModal.classList.remove('open');
+        refreshModalScrollLock();
+    }
     if (e.target === shortcutsModal) {
         shortcutsModal.classList.remove('open');
         refreshModalScrollLock();
     }
     if (e.target === communityModal) closeCommunityModal();
     if (e.target === userDetailModal) closeUserDetailModal();
+    if (e.target === discordLinkModal) closeDiscordModal();
 };
 
 // =========================================
@@ -2452,7 +2553,7 @@ window.saveSettings = () => {
 // =========================================
 // CLEANUP
 // =========================================
-function cleanupBeforeExit() {
+async function cleanupBeforeExit() {
     try {
         if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
         if (appState.sessionInterval) clearInterval(appState.sessionInterval);
@@ -2470,9 +2571,9 @@ function cleanupBeforeExit() {
             URL.revokeObjectURL(appState.currentBlobUrl);
         }
         if (appState.usuarioActual && navigator.onLine) {
-            supabaseClient
+            await supabaseClient
                 .from('users_access')
-                .update({ is_online: 0 })
+                .update({ is_online: 0, current_song_id: null, current_song_name: null, listening_since: null })
                 .eq('username', appState.usuarioActual);
         }
     } catch (e) {
@@ -2481,7 +2582,12 @@ function cleanupBeforeExit() {
 }
 
 if (window.electronAPI?.onAppClose) {
-    window.electronAPI.onAppClose(() => cleanupBeforeExit());
+    window.electronAPI.onAppClose(async () => {
+        await cleanupBeforeExit();
+        if (window.electronAPI?.notifyAppCloseDone) {
+            window.electronAPI.notifyAppCloseDone();
+        }
+    });
 }
 
 // DOMContentLoaded for session recovery
@@ -2605,6 +2711,35 @@ function updateProfileStats() {
                 }
             })
             .catch(e => console.warn('Error loading like stats:', e));
+
+        supabaseClient
+            .from('user_downloads')
+            .select('id', { count: 'exact', head: true })
+            .eq('username', appState.usuarioActual)
+            .then(({ count, error }) => {
+                if (!error && statDownloads && typeof count === 'number') {
+                    statDownloads.textContent = count;
+                }
+            })
+            .catch(e => console.warn('Error loading download stats:', e));
+    }
+}
+
+async function logListeningHistory(song) {
+    if (!navigator.onLine || !appState.usuarioActual || !song) return;
+
+    const songName = sanitizeSongName(formatDisplayName(song.name)) || 'Sin título';
+    try {
+        await supabaseClient
+            .from('listening_history')
+            .insert({
+                username: appState.usuarioActual,
+                song_id: song.id || null,
+                song_name: songName,
+                played_at: new Date().toISOString()
+            });
+    } catch (e) {
+        console.warn('Error writing listening history:', e);
     }
 }
 
@@ -2740,6 +2875,7 @@ window.openDiscordModal = () => {
         }
         document.getElementById('discordPreview').style.display = 'none';
         document.getElementById('discordLinkError').textContent = '';
+        refreshModalScrollLock();
     }
 };
 
@@ -2747,6 +2883,7 @@ window.closeDiscordModal = () => {
     if (discordLinkModal) {
         discordLinkModal.classList.remove('open');
     }
+    refreshModalScrollLock();
 };
 
 // Fetch Discord user by ID using Lanyard API (REAL DATA)
@@ -2910,6 +3047,7 @@ const communityModal = document.getElementById('communityModal');
 const userDetailModal = document.getElementById('userDetailModal');
 let communityTab = 'online';
 let communityUsers = [];
+let communityRefreshInterval = null;
 
 function setModalScrollLock(locked) {
     document.body.style.overflow = locked ? 'hidden' : '';
@@ -2921,7 +3059,8 @@ function isAnyBlockingModalOpen() {
         communityModal?.classList.contains('open') ||
         userDetailModal?.classList.contains('open') ||
         equalizerModal?.classList.contains('open') ||
-        shortcutsModal?.classList.contains('open')
+        shortcutsModal?.classList.contains('open') ||
+        discordLinkModal?.classList.contains('open')
     );
 }
 
@@ -2929,17 +3068,101 @@ function refreshModalScrollLock() {
     setModalScrollLock(isAnyBlockingModalOpen());
 }
 
+function startCommunityAutoRefresh() {
+    const toggle = document.getElementById('communityAutoRefresh');
+    if (!toggle || !toggle.checked) return;
+    if (communityRefreshInterval) clearInterval(communityRefreshInterval);
+    communityRefreshInterval = setInterval(() => {
+        if (communityModal?.classList.contains('open')) {
+            loadCommunityUsers();
+            loadCommunityInsights();
+        }
+    }, 15000);
+}
+
+function stopCommunityAutoRefresh() {
+    if (communityRefreshInterval) {
+        clearInterval(communityRefreshInterval);
+        communityRefreshInterval = null;
+    }
+}
+
+window.refreshCommunityNow = async () => {
+    await loadCommunityUsers();
+    await loadCommunityInsights();
+};
+
+async function loadCommunityInsights() {
+    const insights = document.getElementById('communityInsights');
+    if (!insights) return;
+
+    insights.style.display = 'none';
+
+    if (!navigator.onLine) return;
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    try {
+        const { data, error } = await supabaseClient
+            .from('listening_history')
+            .select('song_name, username, played_at')
+            .gte('played_at', since)
+            .order('played_at', { ascending: false })
+            .limit(250);
+
+        if (error || !Array.isArray(data) || !data.length) return;
+
+        const grouped = data.reduce((acc, row) => {
+            const key = sanitizeSongName(row.song_name) || 'Sin título';
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+
+        const top = Object.entries(grouped)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+
+        if (!top.length) return;
+
+        insights.style.display = 'block';
+        insights.innerHTML = `
+            <div class="community-insights-title">Tendencias últimas 24h</div>
+            <div class="community-insights-list">
+                ${top.map(([name, plays], idx) => `
+                    <div class="community-insight-item">
+                        <span>${idx + 1}. ${name}</span>
+                        <strong>${plays} plays</strong>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (e) {
+        console.warn('Error loading community insights:', e);
+    }
+}
+
+
 window.openCommunityModal = async () => {
     if (communityModal) {
         communityModal.classList.add('open');
         refreshModalScrollLock();
+
+        const toggle = document.getElementById('communityAutoRefresh');
+        if (toggle) {
+            toggle.onchange = () => {
+                if (toggle.checked) startCommunityAutoRefresh();
+                else stopCommunityAutoRefresh();
+            };
+        }
+
         await loadCommunityUsers();
+        await loadCommunityInsights();
+        startCommunityAutoRefresh();
     }
 };
 
 window.closeCommunityModal = () => {
     if (communityModal) {
         communityModal.classList.remove('open');
+        stopCommunityAutoRefresh();
         refreshModalScrollLock();
     }
 };
@@ -2977,14 +3200,40 @@ async function loadCommunityUsers() {
                     }, {});
                 }
 
+                let downloadsByUser = {};
+                const downloadsResponse = await supabaseClient
+                    .from('user_downloads')
+                    .select('username');
+
+                if (!downloadsResponse.error && Array.isArray(downloadsResponse.data)) {
+                    downloadsByUser = downloadsResponse.data.reduce((acc, row) => {
+                        const key = row.username;
+                        acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {});
+                }
+
+                let playedByUser = {};
+                const playedResponse = await supabaseClient
+                    .from('listening_history')
+                    .select('username');
+
+                if (!playedResponse.error && Array.isArray(playedResponse.data)) {
+                    playedByUser = playedResponse.data.reduce((acc, row) => {
+                        const key = row.username;
+                        acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {});
+                }
+
                 communityUsers = data.map(u => {
-                    const currentSongName = u.current_song_name || null;
+                    const currentSongName = sanitizeSongName(u.current_song_name);
                     const currentSongSince = u.listening_since || null;
                     return {
                         ...u,
                         likes: likesByUser[u.username] || 0,
-                        played: Number(u.play_count ?? u.played_count ?? 0),
-                        downloads: Number(u.download_count ?? u.downloaded_count ?? 0),
+                        played: playedByUser[u.username] || Number(u.play_count ?? u.played_count ?? 0),
+                        downloads: downloadsByUser[u.username] || Number(u.download_count ?? u.downloaded_count ?? 0),
                         currentSong: currentSongName ? { name: currentSongName, time: currentSongSince } : null
                     };
                 });
@@ -3077,7 +3326,8 @@ function renderCommunityUsers() {
         const isOnline = user.is_online === 1;
         const isActive = isUserActive(user);
         const hasDiscord = user.discord_avatar || user.discord_username;
-        const isListening = user.currentSong && user.currentSong.name;
+        const listeningName = sanitizeSongName(user.currentSong?.name || user.current_song_name);
+        const isListening = Boolean(listeningName);
         
         // Use REAL Discord avatar if available
         const avatarUrl = user.discord_avatar 
@@ -3098,7 +3348,7 @@ function renderCommunityUsers() {
                     <div class="community-user-status ${isListening ? 'listening' : ''}">
                         ${isListening ? `
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                            ${isListening.name}
+                            ${listeningName}${formatListeningElapsed(user.currentSong?.time || user.listening_since)}
                         ` : (isActive ? 'Activo ahora' : (isOnline ? 'Conectado inactivo' : 'Desconectado'))}
                     </div>
                 </div>
@@ -3153,7 +3403,7 @@ window.openUserDetail = (username) => {
         const nowPlaying = document.getElementById('userNowPlaying');
         if (user.currentSong || user.current_song_name) {
             nowPlaying.style.display = 'block';
-            const songName = user.currentSong?.name || user.current_song_name;
+            const songName = sanitizeSongName(user.currentSong?.name || user.current_song_name) || 'Sin título';
             const listeningSince = user.currentSong?.time || user.listening_since || null;
             const since = listeningSince ? new Date(listeningSince).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
             document.getElementById('userNowPlayingTitle').textContent = songName;
@@ -3284,3 +3534,5 @@ window.addEventListener('click', (e) => {
         closeProfileModal();
     }
 });
+
+console.log("JodiFy v2.1 - Profile & Discord ready");

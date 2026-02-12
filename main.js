@@ -95,16 +95,25 @@ function createWindow() {
 
     mainWindow.loadFile('index.html');
 
+    let closingInProgress = false;
     mainWindow.on('close', (e) => {
-        // Si queremos una salida limpia con animación
-        if (mainWindow) {
-            e.preventDefault();
-            mainWindow.webContents.send('app-close');
-            setTimeout(() => {
-                mainWindow = null;
-                app.quit();
-            }, 300);
-        }
+        if (!mainWindow || closingInProgress) return;
+        e.preventDefault();
+        closingInProgress = true;
+
+        const finishClose = () => {
+            if (!mainWindow) return;
+            mainWindow = null;
+            app.quit();
+        };
+
+        const timeoutId = setTimeout(finishClose, 1800);
+        ipcMain.once('app-close-done', () => {
+            clearTimeout(timeoutId);
+            finishClose();
+        });
+
+        mainWindow.webContents.send('app-close');
     });
 
     mainWindow.once('ready-to-show', () => {
