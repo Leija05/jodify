@@ -48,8 +48,7 @@
                 </button>
 
                 <div class="local-users-hint" data-testid="local-users-hint">
-                    <p>Usuario de Invitado disponible:</p>
-                    <p>Usuario  /  Contraseña</p>
+                    <p>Usuarios locales disponibles:</p>
                     <code>user / user123</code>
                 </div>
             </form>
@@ -144,7 +143,6 @@
                         <div>
                             <label><input type="checkbox" id="disableVisualizer" data-testid="disable-visualizer"> Desactivar Visualizer</label>
                             <label><input type="checkbox" id="disableDynamicBg" data-testid="disable-bg"> Desactivar Fondo Dinámico</label>
-                            <label><input type="checkbox" id="enableFocusMode" data-testid="enable-focus-mode"> Modo enfoque (menos distracciones)</label>
                             <label><input type="checkbox" id="enableFade" data-testid="enable-fade"> Activar Fade entre canciones</label>
                             <div class="settings-range">
                                 <div class="range-labels">
@@ -152,36 +150,6 @@
                                     <span id="fadeDurationValue">4s</span>
                                 </div>
                                 <input type="range" id="fadeDuration" min="2" max="12" step="1" value="4" data-testid="fade-duration">
-                            </div>
-                            <div class="settings-timer">
-                                <div class="settings-timer-header">
-                                    <span>Temporizador de sueño</span>
-                                    <span id="sleepTimerStatus" class="settings-hint">Sin temporizador activo</span>
-                                </div>
-                                <div class="settings-timer-controls">
-                                    <select id="sleepTimerSelect" data-testid="sleep-timer-select">
-                                        <option value="0">Desactivado</option>
-                                        <option value="15">15 min</option>
-                                        <option value="30">30 min</option>
-                                        <option value="45">45 min</option>
-                                        <option value="60">1 hora</option>
-                                        <option value="end">Al finalizar canción</option>
-                                    </select>
-                                    <button type="button" id="applySleepTimer" class="btn-secondary" data-testid="sleep-timer-apply">Programar</button>
-                                </div>
-                            </div>
-                            <div class="settings-timer" style="margin-top: 10px;">
-                                <div class="settings-timer-header">
-                                    <span>Overlay para OBS</span>
-                                    <span class="settings-hint">Genera un link web para Browser Source</span>
-                                </div>
-                                <div class="settings-timer-controls" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
-                                    <input type="text" id="obsOverlayBaseUrl" placeholder="https://tudominio.com o URL de GitHub Pages" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-hover);color:var(--text);" />
-                                    <div style="display:flex;gap:8px;">
-                                        <button type="button" id="copyObsOverlayUrl" class="btn-secondary">Copiar URL overlay</button>
-                                        <button type="button" id="openObsOverlay" class="btn-secondary">Abrir preview</button>
-                                    </div>
-                                </div>
                             </div>
                             <button onclick="saveSettings()" data-testid="save-settings">Guardar</button>
                         </div>
@@ -223,22 +191,6 @@
                 </select>
             </div>
 
-            <div class="playlist-actions" data-testid="playlist-actions">
-                <button id="smartMixBtn" class="smart-mix-btn" data-testid="smart-mix">
-                    <span class="mix-icon">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M16 3h5v5"></path>
-                            <path d="M21 3l-7 7"></path>
-                            <path d="M4 20h5v-5"></path>
-                            <path d="M3 21l7-7"></path>
-                            <circle cx="6" cy="6" r="2"></circle>
-                            <circle cx="18" cy="18" r="2"></circle>
-                        </svg>
-                    </span>
-                    Smart Mix
-                </button>
-            </div>
-
             <button id="downloadAllBtn" class="download-all-btn" style="display:none;" data-testid="download-all">
                 Descargar todos mis favoritos
             </button>
@@ -246,30 +198,11 @@
             <!-- SONG LIST -->
             <ul id="songList" data-testid="song-list"></ul>
 
-            <div class="playlist-insights" data-testid="playlist-insights">
-                <div class="insight-items">
-                    <div class="insight-card">
-                        <span class="insight-label">Sesión</span>
-                        <strong id="sessionTime" class="insight-value">00:00</strong>
-                    </div>
-                    <div class="insight-card">
-                        <span class="insight-label">Sleep</span>
-                        <strong id="sleepTimerBadge" class="insight-value">Off</strong>
-                    </div>
-                    <div class="insight-card">
-                        <span class="insight-label">Cola</span>
-                        <strong id="queueCount" class="insight-value">0</strong>
-                    </div>
-                </div>
-            </div>
-
             <!-- ADD SONG (ADMIN ONLY) -->
-            <div class="add-actions" data-testid="add-actions">
-                <label class="add-song" data-testid="add-song">
-                    + Añadir y Compartir
-                    <input type="file" id="fileInput" accept="audio/*" multiple hidden>
-                </label>
-            </div>
+            <label class="add-song" data-testid="add-song">
+                + Añadir y Compartir
+                <input type="file" id="fileInput" accept="audio/*" multiple hidden>
+            </label>
 
             <div id="uploadStatus"></div>
         </aside>
@@ -390,12 +323,13 @@
                 </h3>
                 <button class="close-btn" id="closeEq" data-testid="close-eq">&times;</button>
             </div>
-            <p class="eq-subtitle">Ajusta bandas en tiempo real y guarda tus presets.</p>
-            <div class="eq-presets" id="eqPresetList" data-testid="eq-presets"></div>
-            <div class="eq-custom-controls">
-                <input type="text" id="eqPresetName" placeholder="Nombre de ecualización (ej. Fiesta)">
-                <button id="saveEqPresetBtn" class="btn-secondary">Guardar preset</button>
-                <button id="resetEqBtn" class="btn-secondary">Reset</button>
+            <div class="eq-presets" data-testid="eq-presets">
+                <button class="eq-preset-btn active" data-preset="flat">Plano</button>
+                <button class="eq-preset-btn" data-preset="bass">Bass Boost</button>
+                <button class="eq-preset-btn" data-preset="treble">Treble</button>
+                <button class="eq-preset-btn" data-preset="vocal">Vocal</button>
+                <button class="eq-preset-btn" data-preset="rock">Rock</button>
+                <button class="eq-preset-btn" data-preset="electronic">Electro</button>
             </div>
             <div class="eq-sliders" data-testid="eq-sliders">
                 <div class="eq-band">
@@ -688,26 +622,15 @@
         <span id="badgeText">Subiendo archivos...</span>
     </div>
 
-    <!-- DEV & DELETE FLOATING ACTIONS -->
-    <div class="admin-actions" id="adminActions" style="display:none;">
-        <button id="openDeleteSongsModal" class="dev-only-btn delete-floating-btn" style="display: none;" title="Eliminar canciones" data-testid="open-delete-songs">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-            <span>Eliminar</span>
-        </button>
-
-        <button id="btnOpenRegister" class="dev-only-btn" style="display: none;" title="Panel Developer" data-testid="dev-btn">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <line x1="19" y1="8" x2="19" y2="14"></line>
-                <line x1="16" y1="11" x2="22" y2="11"></line>
-            </svg>
-            <span>Dev</span>
-        </button>
-    </div>
+    <!-- DEV BUTTON -->
+    <button id="btnOpenRegister" class="dev-only-btn" style="display: none;" title="Panel Developer" data-testid="dev-btn">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <line x1="19" y1="8" x2="19" y2="14"></line>
+            <line x1="16" y1="11" x2="22" y2="11"></line>
+        </svg>
+    </button>
 
     <!-- DEVELOPER CENTER MODAL -->
     <div id="registerModal" class="modal" data-testid="dev-modal">
@@ -808,31 +731,6 @@
         </div>
     </div>
 
-    <div id="deleteSongsModal" class="modal" data-testid="delete-songs-modal">
-        <div class="modal-content delete-songs-modal-content">
-            <div class="modal-header">
-                <h3>Modo eliminar canciones</h3>
-                <button id="closeDeleteSongsModal" class="close-btn" data-testid="close-delete-songs">&times;</button>
-            </div>
-            <p class="delete-songs-help">Selecciona una o varias canciones para eliminarlas permanentemente de la base de datos.</p>
-            <div class="delete-songs-filters">
-                <div class="delete-filter-input">
-                    <input type="text" id="deleteSongsSearch" placeholder="Buscar por nombre..." data-testid="delete-search-name">
-                </div>
-                <div class="delete-filter-input">
-                    <input type="text" id="deleteSongsAddedBy" placeholder="Filtrar por usuario que agregó" data-testid="delete-search-user">
-                </div>
-            </div>
-            <div id="deleteSongsList" class="delete-songs-list"></div>
-            <div class="delete-songs-actions">
-                <span id="deleteSongsCounter">0 seleccionadas</span>
-                <button id="confirmDeleteSongs" class="btn-delete-confirm" data-testid="confirm-delete-songs" disabled>
-                    Confirmar eliminación
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- LOGOUT LOADING -->
     <div id="logoutLoading" class="logout-overlay" style="display: none;" data-testid="logout-loading">
         <div class="loader-content">
@@ -902,27 +800,9 @@
                     </svg>
                     Comunidad JodiFy
                 </h3>
-                <div class="community-header-actions">
-                    <button class="community-refresh-btn" onclick="refreshCommunityNow()" title="Actualizar comunidad" data-testid="community-refresh">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="23 4 23 10 17 10"></polyline>
-                            <polyline points="1 20 1 14 7 14"></polyline>
-                            <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0 0 20.49 15"></path>
-                        </svg>
-                    </button>
-                    <button class="close-btn" onclick="closeCommunityModal()">&times;</button>
-                </div>
+                <button class="close-btn" onclick="closeCommunityModal()">&times;</button>
             </div>
             
-            <div class="community-live-toggle">
-                <label>
-                    <input type="checkbox" id="communityAutoRefresh" checked>
-                    Actualizar en vivo
-                </label>
-            </div>
-
-
-            <div class="community-insights" id="communityInsights" data-testid="community-insights" style="display:none;"></div>
             <div class="community-tabs">
                 <button class="community-tab active" onclick="switchCommunityTab('online')" data-testid="tab-online">
                     <span class="online-dot"></span> En línea
@@ -1016,8 +896,6 @@
             </div>
         </div>
     </div>
-
-    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
     <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

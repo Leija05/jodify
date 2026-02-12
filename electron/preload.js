@@ -18,10 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     onAppClose: (callback) =>
         ipcRenderer.on('app-close', callback),
-    notifyAppCloseDone: () =>
-        ipcRenderer.send('app-close-done'),
-    onControlCommand: (callback) => ipcRenderer.on('control', (_, command) => callback(command)),
-    startImportBackend: (options) => ipcRenderer.invoke('start-import-backend', options)
+    onControlCommand: (callback) => ipcRenderer.on('control', (_, command) => callback(command))
 });
 
 window.addEventListener('DOMContentLoaded', () => {
