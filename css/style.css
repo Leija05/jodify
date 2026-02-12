@@ -441,7 +441,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  margin: var(--space-md) 0 var(--space-lg);
+  margin: var(--space-sm) 0 var(--space-sm);
   flex-wrap: wrap;
 }
 
@@ -514,7 +514,7 @@ h1, h2, h3, h4, h5, h6 {
 .add-actions {
   display: flex;
   width: 100%;
-  margin-top: var(--space-md);
+  margin-top: 6px;
 }
 
 

@@ -1,55 +1,117 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JodiFy Splash</title>
     <style>
+        * { box-sizing: border-box; }
         body {
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
             height: 100vh;
-            background: #121212; /* Color oscuro de tu app */
-            color: white;
-            font-family: sans-serif;
-            border-radius: 20px;
-        }
-        img {
-            width: 150px;
-            margin-bottom: 20px;
-            /* Animación de pulso para el logo */
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-        .loader {
-            width: 200px;
-            height: 4px;
-            background: #333;
-            border-radius: 2px;
+            display: grid;
+            place-items: center;
+            background: radial-gradient(1200px 600px at 20% -10%, rgba(127, 0, 255, 0.35), transparent 60%),
+                        radial-gradient(900px 500px at 90% 100%, rgba(0, 240, 255, 0.2), transparent 65%),
+                        #08090f;
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             overflow: hidden;
         }
-        .progress {
-            width: 100%;
-            height: 100%;
-            background: #2ecc71; /* Tu color verde */
-            animation: load 3s forwards;
+
+        .splash-card {
+            width: 330px;
+            padding: 30px 24px;
+            border-radius: 24px;
+            text-align: center;
+            background: rgba(12, 14, 24, 0.82);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 24px 55px rgba(0, 0, 0, 0.45), 0 0 35px rgba(127, 0, 255, 0.22);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
         }
+
+        .logo-wrap {
+            width: 92px;
+            height: 92px;
+            margin: 0 auto 14px;
+            border-radius: 24px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(127, 0, 255, 0.28), rgba(0, 240, 255, 0.18));
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            animation: float 2.5s ease-in-out infinite;
+        }
+
+        .logo-wrap img {
+            width: 58px;
+            height: 58px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            margin: 6px 0 18px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.65);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .loader {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            overflow: hidden;
+        }
+
+        .progress {
+            width: 40%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #8b5cf6, #22d3ee, #8b5cf6);
+            background-size: 220% 100%;
+            animation: load 2.2s ease-in-out infinite, shimmer 1.8s linear infinite;
+        }
+
+        .hint {
+            margin-top: 12px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.72);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
         @keyframes load {
-            0% { width: 0%; }
-            100% { width: 100%; }
+            0% { transform: translateX(-120%); }
+            100% { transform: translateX(250%); }
+        }
+
+        @keyframes shimmer {
+            from { background-position: 0 0; }
+            to { background-position: 220% 0; }
         }
     </style>
 </head>
 <body>
-    <img src="assets/icon.ico" alt="Logo JodiFy">
-    <h2>JodiFy</h2>
-    <p style="color: #888; font-size: 12px;">Loading Music</p>
-    <div class="loader">
-        <div class="progress"></div>
+    <div class="splash-card">
+        <div class="logo-wrap">
+            <img src="assets/icon.ico" alt="Logo JodiFy">
+        </div>
+        <h1>JodiFy</h1>
+        <p class="subtitle">Free Music For Friends</p>
+        <div class="loader"><div class="progress"></div></div>
+        <p class="hint">Cargando experiencia musical…</p>
     </div>
 </body>
 </html>
