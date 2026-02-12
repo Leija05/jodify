@@ -1,75 +1,109 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Actualizando JodiFy</title>
-
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-        }
+        * { box-sizing: border-box; user-select: none; }
 
         body {
             margin: 0;
             height: 100vh;
-            background: radial-gradient(circle at top, #1c1c1c, #0d0d0d);
+            display: grid;
+            place-items: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             color: #fff;
-            font-family: system-ui, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background:
+                radial-gradient(900px 500px at 12% -10%, rgba(127, 0, 255, 0.35), transparent 60%),
+                radial-gradient(700px 420px at 100% 100%, rgba(0, 240, 255, 0.2), transparent 65%),
+                #090b12;
         }
 
         .window {
-            width: 360px;
-            padding: 30px;
-            border-radius: 18px;
-            background: rgba(20, 20, 20, .92);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, .75);
+            width: 390px;
+            padding: 28px;
+            border-radius: 22px;
+            background: rgba(14, 16, 28, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 30px 65px rgba(0, 0, 0, 0.5), 0 0 30px rgba(127, 0, 255, 0.2);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             text-align: center;
-            animation: fadeIn .6s ease;
+            animation: fadeIn .45s ease;
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(.96);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+            from { opacity: 0; transform: translateY(8px) scale(.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        @keyframes fadeOut {
-            to {
-                opacity: 0;
-                transform: scale(.96);
-            }
+        h2 { margin: 0; font-size: 30px; letter-spacing: 0.3px; }
+        .subtitle {
+            margin: 6px 0 8px;
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 13px;
         }
 
-        img {
-            width: 96px;
-            margin: 14px 0;
+        #versionText {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.52);
+            margin-bottom: 14px;
+        }
+
+        .logo-wrap {
+            width: 88px;
+            height: 88px;
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, rgba(127, 0, 255, 0.28), rgba(0, 240, 255, 0.18));
+            border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        .logo-wrap img {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        #statusText {
+            margin: 0 0 12px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.92);
         }
 
         .progress-container {
             width: 100%;
             height: 10px;
-            background: #2a2a2a;
-            border-radius: 6px;
+            border-radius: 999px;
             overflow: hidden;
-            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 10px;
         }
 
         .progress-bar {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #1abc9c, #2ecc71, #1abc9c);
+            border-radius: inherit;
+            background: linear-gradient(90deg, #8b5cf6, #22d3ee, #8b5cf6);
+            background-size: 220% 100%;
             transition: width .35s ease;
+            animation: glow 1.8s linear infinite;
+        }
+
+        @keyframes glow {
+            from { background-position: 0 0; }
+            to { background-position: 220% 0; }
+        }
+
+        #percentText {
+            margin-bottom: 14px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
         }
 
         .buttons {
@@ -79,19 +113,26 @@
 
         button {
             flex: 1;
-            padding: 9px;
-            border-radius: 10px;
-            border: none;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid transparent;
             cursor: pointer;
+            font-weight: 700;
+            font-size: 13px;
+            transition: transform 0.15s ease, opacity 0.15s ease;
         }
 
+        button:hover { transform: translateY(-1px); }
+
         .btn-update {
-            background: #2ecc71;
+            background: linear-gradient(135deg, #7f00ff, #00d4ff);
+            color: #fff;
         }
 
         .btn-later {
-            background: #333;
-            color: #bbb;
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.86);
+            border-color: rgba(255, 255, 255, 0.18);
         }
 
         .btn-disabled {
@@ -100,14 +141,15 @@
         }
     </style>
 </head>
-
 <body>
     <div class="window">
         <h2>JodiFy</h2>
-        <p>Free Music For Broke People</p>
-        <p id="versionText" style="font-size:12px;color:#777">Versión</p>
+        <p class="subtitle">Nueva actualización disponible</p>
+        <p id="versionText">Versión</p>
 
-        <img src="assets/icon.ico" />
+        <div class="logo-wrap">
+            <img src="assets/icon.ico" alt="JodiFy logo" />
+        </div>
 
         <p id="statusText">Hay una nueva versión disponible</p>
 
@@ -125,5 +167,4 @@
 
     <script src="js/update.js"></script>
 </body>
-
 </html>

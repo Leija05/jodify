@@ -257,6 +257,15 @@ const btnOpenPlaylist = document.getElementById('btnOpenPlaylist');
 const btnOpenRegister = document.getElementById("btnOpenRegister");
 const registerModal = document.getElementById("registerModal");
 const closeRegisterBtn = document.getElementById("closeRegisterBtn");
+const openDeleteSongsModalBtn = document.getElementById("openDeleteSongsModal");
+const deleteSongsModal = document.getElementById("deleteSongsModal");
+const closeDeleteSongsModalBtn = document.getElementById("closeDeleteSongsModal");
+const deleteSongsListEl = document.getElementById("deleteSongsList");
+const deleteSongsCounterEl = document.getElementById("deleteSongsCounter");
+const confirmDeleteSongsBtn = document.getElementById("confirmDeleteSongs");
+const deleteSongsSearchInput = document.getElementById("deleteSongsSearch");
+const deleteSongsAddedByInput = document.getElementById("deleteSongsAddedBy");
+const adminActions = document.getElementById("adminActions");
 const smartMixBtn = document.getElementById("smartMixBtn");
 const sessionTimeEl = document.getElementById("sessionTime");
 const sleepTimerBadge = document.getElementById("sleepTimerBadge");
@@ -469,6 +478,7 @@ function closeAllModals() {
     settingsModal.style.display = 'none';
     uploadModal.style.display = 'none';
     registerModal.style.display = 'none';
+    if (deleteSongsModal) deleteSongsModal.style.display = 'none';
     if (communityModal) communityModal.classList.remove('open');
     stopCommunityAutoRefresh();
     if (userDetailModal) userDetailModal.classList.remove('open');
@@ -953,8 +963,14 @@ const togglePassword = document.getElementById("togglePassword");
 window.switchDevPanel = (panelId) => {
     document.querySelectorAll('.dev-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.dev-nav-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(panelId).classList.add('active');
-    event.currentTarget.classList.add('active');
+    document.getElementById(panelId)?.classList.add('active');
+    const panelToBtn = {
+        'panel-register': '[data-testid="dev-register-tab"]',
+        'panel-manage': '[data-testid="dev-manage-tab"]',
+        'panel-logs': '[data-testid="dev-logs-tab"]'
+    };
+    const btn = document.querySelector(panelToBtn[panelId] || '');
+    if (btn) btn.classList.add('active');
 };
 
 window.loadUsersList = async () => {
@@ -1000,12 +1016,16 @@ function configurarInterfazPorRol(role) {
     if (role === 'dev' || role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (addActions) addActions.style.display = "flex";
-        if (btnOpenRegister) btnOpenRegister.style.display = "flex";
+        if (adminActions) adminActions.style.display = "flex";
+        if (openDeleteSongsModalBtn) openDeleteSongsModalBtn.style.display = "inline-flex";
+        if (btnOpenRegister) btnOpenRegister.style.display = role === 'dev' ? "inline-flex" : "none";
         if (fileInput) fileInput.disabled = false;
     } else {
         if (addSongContainer) addSongContainer.style.display = "none";
         if (addActions) addActions.style.display = "none";
         if (btnOpenRegister) btnOpenRegister.style.display = "none";
+        if (openDeleteSongsModalBtn) openDeleteSongsModalBtn.style.display = "none";
+        if (adminActions) adminActions.style.display = "none";
         if (fileInput) fileInput.disabled = true;
     }
 }
@@ -1340,7 +1360,9 @@ if (btnLogout) {
 
             if (addSongContainer) addSongContainer.style.display = "none";
             if (addActions) addActions.style.display = "none";
-                    if (btnOpenRegister) btnOpenRegister.style.display = "none";
+            if (btnOpenRegister) btnOpenRegister.style.display = "none";
+            if (openDeleteSongsModalBtn) openDeleteSongsModalBtn.style.display = "none";
+            if (adminActions) adminActions.style.display = "none";
         } catch (err) {
             console.error("Logout error:", err);
             location.reload();
@@ -1362,15 +1384,22 @@ function handleLoginSuccess(role) {
     if (addSongContainer) addSongContainer.style.display = "none";
     if (addActions) addActions.style.display = "none";
     if (btnOpenRegister) btnOpenRegister.style.display = "none";
+    if (openDeleteSongsModalBtn) openDeleteSongsModalBtn.style.display = "none";
+    if (adminActions) adminActions.style.display = "none";
 
     if (role === 'dev') {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (addActions) addActions.style.display = "flex";
-        if (btnOpenRegister) btnOpenRegister.style.display = "flex";
+        if (adminActions) adminActions.style.display = "flex";
+        if (btnOpenRegister) btnOpenRegister.style.display = "inline-flex";
+        if (openDeleteSongsModalBtn) openDeleteSongsModalBtn.style.display = "inline-flex";
         if (fileInput) fileInput.disabled = false;
     } else if (role === 'admin') {
         if (addSongContainer) addSongContainer.style.display = "flex";
         if (addActions) addActions.style.display = "flex";
+        if (adminActions) adminActions.style.display = "flex";
+        if (openDeleteSongsModalBtn) openDeleteSongsModalBtn.style.display = "inline-flex";
+        if (btnOpenRegister) btnOpenRegister.style.display = "none";
         if (fileInput) fileInput.disabled = false;
     } else {
         if (fileInput) fileInput.disabled = true;
@@ -2467,6 +2496,186 @@ playlistEl?.addEventListener('touchend', (event) => {
     playlistEl.style.transform = '';
 }, { passive: true });
 
+
+function updateDeleteSongsCounter() {
+    if (deleteSongsCounterEl) {
+        deleteSongsCounterEl.textContent = `${selectedSongsToDelete.size} seleccionadas`;
+    }
+    if (confirmDeleteSongsBtn) {
+        confirmDeleteSongsBtn.disabled = selectedSongsToDelete.size === 0;
+    }
+}
+
+function getDeleteSongsFilters() {
+    const byName = (deleteSongsSearchInput?.value || '').trim().toLowerCase();
+    const byAdded = (deleteSongsAddedByInput?.value || '').trim().toLowerCase();
+    return { byName, byAdded };
+}
+
+function renderDeleteSongsList() {
+    if (!deleteSongsListEl) return;
+    const { byName, byAdded } = getDeleteSongsFilters();
+    const filtered = deleteSongsSource.filter(song => {
+        const name = formatDisplayName(song.name).toLowerCase();
+        const addedBy = (song.added_by || 'system').toLowerCase();
+        const matchName = !byName || name.includes(byName);
+        const matchAdded = !byAdded || addedBy.includes(byAdded);
+        return matchName && matchAdded;
+    });
+
+    if (!filtered.length) {
+        deleteSongsListEl.innerHTML = '<div class="community-empty">No hay canciones con esos filtros.</div>';
+        updateDeleteSongsCounter();
+        return;
+    }
+
+    deleteSongsListEl.innerHTML = filtered.map(song => {
+        const checked = selectedSongsToDelete.has(song.id) ? 'checked' : '';
+        return `
+            <label class="delete-song-item" data-song-id="${song.id}">
+                <input type="checkbox" value="${song.id}" ${checked}>
+                <img class="delete-song-cover" id="delete-song-cover-${song.id}" src="assets/default-cover.png" alt="cover">
+                <div class="delete-song-content">
+                    <div class="delete-song-name">${formatDisplayName(song.name)}</div>
+                    <div class="delete-song-meta">Subida por: ${song.added_by || 'System'} · ID ${song.id}</div>
+                </div>
+            </label>
+        `;
+    }).join('');
+
+    filtered.forEach(song => {
+        if (song.url) {
+            loadMetadata(song.url, `delete-song-cover-${song.id}`);
+        }
+    });
+
+    deleteSongsListEl.querySelectorAll('input[type="checkbox"]').forEach(input => {
+        input.addEventListener('change', () => {
+            const id = Number(input.value);
+            if (input.checked) selectedSongsToDelete.add(id);
+            else selectedSongsToDelete.delete(id);
+            updateDeleteSongsCounter();
+        });
+    });
+
+    updateDeleteSongsCounter();
+}
+
+async function loadDeleteSongsList() {
+    if (!deleteSongsListEl) return;
+    deleteSongsListEl.innerHTML = `<div class="community-loading"><div class="spinner-log"></div><p>Cargando canciones...</p></div>`;
+    try {
+        const { data, error } = await supabaseClient
+            .from('songs')
+            .select('id, name, added_by, url')
+            .order('id', { ascending: false });
+        if (error) throw error;
+        deleteSongsSource = data || [];
+        if (!deleteSongsSource.length) {
+            deleteSongsListEl.innerHTML = '<div class="community-empty">No hay canciones para eliminar.</div>';
+            updateDeleteSongsCounter();
+            return;
+        }
+        renderDeleteSongsList();
+    } catch (error) {
+        deleteSongsListEl.innerHTML = `<div class="community-empty">No se pudo cargar canciones: ${error.message}</div>`;
+    }
+}
+
+function openDeleteSongsModal() {
+    if (!deleteSongsModal) return;
+    selectedSongsToDelete.clear();
+    deleteSongsSource = [];
+    if (deleteSongsSearchInput) deleteSongsSearchInput.value = '';
+    if (deleteSongsAddedByInput) deleteSongsAddedByInput.value = '';
+    deleteSongsModal.style.display = 'flex';
+    updateDeleteSongsCounter();
+    loadDeleteSongsList();
+}
+
+function closeDeleteSongsModal() {
+    if (!deleteSongsModal) return;
+    deleteSongsModal.style.display = 'none';
+    selectedSongsToDelete.clear();
+    deleteSongsSource = [];
+}
+
+if (deleteSongsSearchInput) {
+    deleteSongsSearchInput.addEventListener('input', renderDeleteSongsList);
+}
+
+if (deleteSongsAddedByInput) {
+    deleteSongsAddedByInput.addEventListener('input', renderDeleteSongsList);
+}
+
+window.playCommunitySong = (event, songId, encodedSongName = '') => {
+    event?.stopPropagation();
+    const decodedName = encodedSongName ? decodeURIComponent(encodedSongName) : '';
+
+    let song = null;
+    if (songId) {
+        song = appState.playlist.find(s => Number(s.id) === Number(songId));
+    }
+    if (!song && decodedName) {
+        song = appState.playlist.find(s => formatDisplayName(s.name).toLowerCase() === decodedName.toLowerCase());
+    }
+
+    if (!song) {
+        showToast('Esa canción no está disponible en tu playlist.', 'warning');
+        return;
+    }
+
+    const masterIndex = appState.playlist.findIndex(s => s.id === song.id);
+    if (masterIndex >= 0) {
+        playSong(masterIndex);
+    }
+};
+
+if (openDeleteSongsModalBtn) {
+    openDeleteSongsModalBtn.onclick = () => openDeleteSongsModal();
+}
+
+if (closeDeleteSongsModalBtn) {
+    closeDeleteSongsModalBtn.onclick = () => closeDeleteSongsModal();
+}
+
+if (confirmDeleteSongsBtn) {
+    confirmDeleteSongsBtn.onclick = async () => {
+        if (!selectedSongsToDelete.size) return;
+        const total = selectedSongsToDelete.size;
+        if (!confirm(`¿Eliminar ${total} canción(es) permanentemente? Esta acción no se puede deshacer.`)) return;
+
+        confirmDeleteSongsBtn.disabled = true;
+        try {
+            const songIds = Array.from(selectedSongsToDelete);
+            const songsToDelete = appState.playlist.filter(song => songIds.includes(song.id));
+
+            for (const song of songsToDelete) {
+                const marker = '/object/public/Canciones/';
+                if (song.url && song.url.includes(marker)) {
+                    const storagePath = decodeURIComponent(song.url.split(marker)[1] || '');
+                    if (storagePath) {
+                        await supabaseClient.storage.from('Canciones').remove([storagePath]);
+                    }
+                }
+            }
+
+            const { error } = await supabaseClient.from('songs').delete().in('id', songIds);
+            if (error) throw error;
+
+            appState.playlist = appState.playlist.filter(song => !songIds.includes(song.id));
+            renderPlaylist();
+            closeDeleteSongsModal();
+            showToast(`${total} canción(es) eliminadas permanentemente.`, 'success');
+        } catch (error) {
+            showToast(`No se pudieron eliminar las canciones: ${error.message}`, 'error');
+        } finally {
+            confirmDeleteSongsBtn.disabled = false;
+            updateDeleteSongsCounter();
+        }
+    };
+}
+
 // =========================================
 // FILTER LOGS
 // =========================================
@@ -2485,6 +2694,7 @@ window.filterLogs = () => {
 window.onclick = (e) => {
     if (e.target === uploadModal) toggleModal(false);
     if (e.target === registerModal) registerModal.style.display = "none";
+    if (e.target === deleteSongsModal) closeDeleteSongsModal();
     if (e.target === equalizerModal) {
         equalizerModal.classList.remove('open');
         refreshModalScrollLock();
@@ -3048,6 +3258,8 @@ const userDetailModal = document.getElementById('userDetailModal');
 let communityTab = 'online';
 let communityUsers = [];
 let communityRefreshInterval = null;
+let selectedSongsToDelete = new Set();
+let deleteSongsSource = [];
 
 function setModalScrollLock(locked) {
     document.body.style.overflow = locked ? 'hidden' : '';
@@ -3348,7 +3560,7 @@ function renderCommunityUsers() {
                     <div class="community-user-status ${isListening ? 'listening' : ''}">
                         ${isListening ? `
                             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                            ${listeningName}${formatListeningElapsed(user.currentSong?.time || user.listening_since)}
+                            <button class="community-song-link" onclick="playCommunitySong(event, ${user.current_song_id || 'null'}, '${encodeURIComponent(listeningName)}')" title="Reproducir canción">${listeningName}</button>${formatListeningElapsed(user.currentSong?.time || user.listening_since)}
                         ` : (isActive ? 'Activo ahora' : (isOnline ? 'Conectado inactivo' : 'Desconectado'))}
                     </div>
                 </div>
@@ -3406,7 +3618,8 @@ window.openUserDetail = (username) => {
             const songName = sanitizeSongName(user.currentSong?.name || user.current_song_name) || 'Sin título';
             const listeningSince = user.currentSong?.time || user.listening_since || null;
             const since = listeningSince ? new Date(listeningSince).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-            document.getElementById('userNowPlayingTitle').textContent = songName;
+            const nowPlayingTitle = document.getElementById('userNowPlayingTitle');
+            nowPlayingTitle.innerHTML = `<button class="community-song-link" onclick="playCommunitySong(event, ${user.current_song_id || 'null'}, '${encodeURIComponent(songName)}')">${songName}</button>`;
             document.getElementById('userNowPlayingTime').textContent = since ? `desde ${since}` : '';
         } else {
             nowPlaying.style.display = 'none';
