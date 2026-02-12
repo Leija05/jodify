@@ -11,8 +11,8 @@
     body { font-family: 'Segoe UI', system-ui, sans-serif; }
 
     .overlay {
-      --accent: #8b5cf6;
-      --accent2: #22d3ee;
+      --accent-rgb: 139,92,246;
+      --accent2-rgb: 34,211,238;
       position: fixed;
       left: 26px;
       bottom: 22px;
@@ -21,18 +21,28 @@
       gap: 14px;
       padding: 12px 14px;
       border-radius: 16px;
-      background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 18%, rgba(8,10,18,.72)), color-mix(in oklab, var(--accent2) 16%, rgba(8,10,18,.72)));
-      border: 1px solid color-mix(in oklab, var(--accent) 30%, rgba(255,255,255,0.14));
+      background: linear-gradient(135deg, rgba(8,10,18,.82), rgba(10,12,22,.78));
+      border: 1px solid rgba(255,255,255,0.14);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       min-width: 340px;
       max-width: 540px;
-      box-shadow: 0 16px 34px rgba(0,0,0,0.35), 0 0 26px color-mix(in oklab, var(--accent) 38%, transparent);
+      box-shadow: 0 16px 34px rgba(0,0,0,0.35), 0 0 26px rgba(var(--accent-rgb), .32);
       transition: background .4s ease, border-color .4s ease, box-shadow .4s ease;
+      overflow: hidden;
     }
 
-    .cover { width: 58px; height: 58px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.16); }
-    .meta { flex: 1; min-width: 0; }
+    .overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(120deg, rgba(var(--accent-rgb), .24), rgba(var(--accent2-rgb), .14));
+    }
+
+    .cover { width: 58px; height: 58px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.16); position: relative; z-index: 1; }
+    .meta { flex: 1; min-width: 0; position: relative; z-index: 1; }
     .title { color: #fff; font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .subtitle { color: rgba(255,255,255,0.75); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -48,7 +58,7 @@
       width: 0%;
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      background: linear-gradient(90deg, rgba(var(--accent-rgb),1), rgba(var(--accent2-rgb),1));
       transition: width .25s linear;
     }
     .badge {
@@ -63,6 +73,8 @@
       padding: 8px 10px;
       background: rgba(255,255,255,0.14);
       border: 1px solid rgba(255,255,255,0.2);
+      position: relative;
+      z-index: 1;
     }
 
     .paused .badge { background: rgba(255, 184, 0, 0.2); }
@@ -122,6 +134,7 @@
     const SB_KEY = 'sb_publishable_lIo5RKzxB7pVAHdBx5aejQ_IeooCEj1';
     const qs = new URLSearchParams(location.search);
     const overlayUsername = qs.get('u');
+    const coverCache = new Map();
 
     function applyState(state) {
       if (!state) return;
@@ -147,13 +160,43 @@
       let hash = 0;
       for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
       const hue = Math.abs(hash) % 360;
-      return [`hsl(${hue} 82% 60%)`, `hsl(${(hue + 55) % 360} 82% 58%)`];
+      return [
+        `hsl(${hue}, 82%, 60%)`,
+        `hsl(${(hue + 55) % 360}, 82%, 58%)`
+      ];
+    }
+
+    function hslToRgb(hsl) {
+      const m = /hsl\((\d+),\s*([\d.]+)%\s*,\s*([\d.]+)%\)/i.exec(hsl);
+      if (!m) return '139,92,246';
+      let h = Number(m[1]) / 360;
+      const s = Number(m[2]) / 100;
+      const l = Number(m[3]) / 100;
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      let r, g, b;
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+      return `${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)}`;
     }
 
     function applyDynamicTheme(seed, imageEl) {
       const [c1, c2] = getAccentFromString(seed || titleEl.textContent || 'jodify');
-      rootEl.style.setProperty('--accent', c1);
-      rootEl.style.setProperty('--accent2', c2);
+      rootEl.style.setProperty('--accent-rgb', hslToRgb(c1));
+      rootEl.style.setProperty('--accent2-rgb', hslToRgb(c2));
 
       if (!imageEl) return;
       imageEl.onload = () => {
@@ -166,8 +209,8 @@
           let r=0,g=0,b=0,n=0;
           for (let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; }
           r=Math.round(r/n); g=Math.round(g/n); b=Math.round(b/n);
-          rootEl.style.setProperty('--accent', `rgb(${r},${g},${b})`);
-          rootEl.style.setProperty('--accent2', `rgb(${Math.min(255,r+35)},${Math.min(255,g+35)},${Math.min(255,b+35)})`);
+          rootEl.style.setProperty('--accent-rgb', `${r},${g},${b}`);
+          rootEl.style.setProperty('--accent2-rgb', `${Math.min(255,r+35)},${Math.min(255,g+35)},${Math.min(255,b+35)}`);
         } catch {}
       };
       if (imageEl.complete) imageEl.onload();
@@ -183,6 +226,29 @@
       return res.json();
     }
 
+
+    function looksLikeImageUrl(url) {
+      return /\.(png|jpe?g|gif|webp|avif)(\?|#|$)/i.test(url || '');
+    }
+
+    async function fetchCoverFromTitle(songTitle) {
+      const clean = (songTitle || '').trim();
+      if (!clean) return null;
+      if (coverCache.has(clean)) return coverCache.get(clean);
+
+      const term = encodeURIComponent(clean.replace(/\.(mp3|wav|flac|m4a|ogg)$/i, ''));
+      try {
+        const data = await fetchJson(`https://itunes.apple.com/search?term=${term}&entity=song&limit=1`);
+        const artwork = data?.results?.[0]?.artworkUrl100?.replace('100x100bb', '300x300bb');
+        const resolved = looksLikeImageUrl(artwork) ? artwork : null;
+        coverCache.set(clean, resolved);
+        return resolved;
+      } catch {
+        coverCache.set(clean, null);
+        return null;
+      }
+    }
+
     async function readRemoteState() {
       if (!overlayUsername) {
         readState();
@@ -195,11 +261,18 @@
         const row = Array.isArray(rows) ? rows[0] : null;
 
         let coverUrl = 'assets/default-cover.png';
-        if (row?.current_song_id) {
+        if (row?.current_song_cover && looksLikeImageUrl(row.current_song_cover)) {
+          coverUrl = row.current_song_cover;
+        } else if (row?.current_song_id) {
           const songUrl = `${SB_URL}/rest/v1/songs?select=url&id=eq.${row.current_song_id}&limit=1`;
           const songs = await fetchJson(songUrl);
           const song = Array.isArray(songs) ? songs[0] : null;
-          if (song?.url) coverUrl = song.url;
+          if (looksLikeImageUrl(song?.url)) coverUrl = song.url;
+        }
+
+        if (coverUrl === 'assets/default-cover.png') {
+          const detected = await fetchCoverFromTitle(row?.current_song_name || '');
+          if (detected) coverUrl = detected;
         }
 
         const title = row?.current_song_name || 'Sin reproducción';
@@ -226,6 +299,10 @@
 
     readRemoteState();
     setInterval(readRemoteState, 1000);
+
+    coverEl.addEventListener('error', () => {
+      coverEl.src = 'assets/default-cover.png';
+    });
   </script>
 </body>
 </html>
