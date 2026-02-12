@@ -2444,6 +2444,31 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 // =========================================
 const DISCORD_CLIENT_ID = '1234567890'; // Replace with actual Discord app ID
 
+
+function normalizeDiscordPresence(status) {
+    const value = String(status || '').toLowerCase();
+    if (value === 'online' || value === 'active') return 'active';
+    if (value === 'idle' || value === 'ausente') return 'idle';
+    if (value === 'dnd' || value === 'no_molestar' || value === 'donotdisturb') return 'dnd';
+    return 'offline';
+}
+
+function applyProfilePresenceStatus(status) {
+    const profileAvatarLarge = document.getElementById('profileAvatarLarge');
+    const indicator = profileAvatarLarge?.querySelector('.online-indicator');
+    if (!profileAvatarLarge || !indicator) return;
+
+    const presence = normalizeDiscordPresence(status);
+    profileAvatarLarge.classList.remove('presence-active', 'presence-idle', 'presence-dnd', 'presence-offline');
+    profileAvatarLarge.classList.add(`presence-${presence}`);
+
+    indicator.classList.remove('online', 'idle', 'dnd', 'offline');
+    if (presence === 'active') indicator.classList.add('online');
+    else if (presence === 'idle') indicator.classList.add('idle');
+    else if (presence === 'dnd') indicator.classList.add('dnd');
+    else indicator.classList.add('offline');
+}
+
 function updateDiscordUI() {
     const notLinked = document.getElementById('discordNotLinked');
     const linked = document.getElementById('discordLinked');
@@ -2461,9 +2486,11 @@ function updateDiscordUI() {
         }
         if (discordName) discordName.textContent = appState.discord.username || 'Usuario';
         if (discordTag) discordTag.textContent = appState.discord.discriminator ? `#${appState.discord.discriminator}` : '';
+        applyProfilePresenceStatus(appState.discord.status);
     } else {
         if (notLinked) notLinked.style.display = 'block';
         if (linked) linked.style.display = 'none';
+        applyProfilePresenceStatus('offline');
     }
 }
 
@@ -2482,6 +2509,7 @@ function updateAvatarWithDiscord() {
         const onlineIndicator = profileAvatarLarge.querySelector('.online-indicator');
         profileAvatarLarge.innerHTML = `<img src="${appState.discord.avatar}" alt="" crossorigin="anonymous">`;
         if (onlineIndicator) profileAvatarLarge.appendChild(onlineIndicator);
+        applyProfilePresenceStatus(appState.discord.status);
     }
 }
 
@@ -2684,6 +2712,7 @@ window.unlinkDiscord = async () => {
         }
 
         updateDiscordUI();
+        applyProfilePresenceStatus('offline');
         applyProfileThemeFromSeed(appState.usuarioActual || 'jodify');
         showToast('Discord desvinculado de users_access', 'success');
     } catch (e) {
@@ -2752,6 +2781,7 @@ async function loadCommunityUsers() {
                             if (discordData) {
                                 user.discord_avatar = discordData.avatar;
                                 user.discord_username = discordData.username;
+                                user.discord_status = discordData.status;
                             }
                         } catch (e) {
                             // Silently fail for individual users
@@ -2902,12 +2932,14 @@ function renderCommunityUsers() {
             ? user.discord_avatar
             : (hasDiscord ? `https://cdn.discordapp.com/embed/avatars/${user.username.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 5}.png` : null);
         const theme = resolveCommunityTheme(user, avatarUrl);
+        const presence = normalizeDiscordPresence(user.discord_status || (isOnline ? 'online' : 'offline'));
+        const statusClass = presence === 'active' ? 'online' : presence;
 
         return `
             <div class="community-user" style="--community-accent:${theme.c1};--community-accent2:${theme.c2};" onclick="openUserDetail('${user.username}')" data-testid="user-${user.username}">
-                <div class="community-user-avatar">
+                <div class="community-user-avatar presence-${presence}">
                     ${avatarUrl ? `<img src="${avatarUrl}" alt="" crossorigin="anonymous">` : initial}
-                    <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
+                    <span class="status-indicator ${statusClass}"></span>
                 </div>
                 <div class="community-user-info">
                     <div class="community-user-name">
@@ -2954,8 +2986,10 @@ window.openUserDetail = (username) => {
 
         // Update status
         const isOnline = user.is_online === 1;
+        const detailPresence = normalizeDiscordPresence(user.discord_status || (isOnline ? 'online' : 'offline'));
+        const detailStatusClass = detailPresence === 'active' ? 'online' : detailPresence;
         document.getElementById('userStatusBadge').innerHTML = `
-            <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+            <span class="status-dot ${detailStatusClass}"></span>
             <span>${isOnline ? 'En línea' : 'Desconectado'}</span>
         `;
 
