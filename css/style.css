@@ -513,10 +513,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .add-actions {
   display: flex;
-  gap: var(--space-sm);
-  align-items: center;
+  width: 100%;
   margin-top: var(--space-md);
-  flex-wrap: wrap;
 }
 
 
@@ -681,23 +679,26 @@ h1, h2, h3, h4, h5, h6 {
 /* Botón añadir canción */
 .add-song {
   display: none;
+  width: 100%;
   margin-top: var(--space-md);
-  padding: var(--space-md);
+  padding: 14px 16px;
   text-align: center;
-  background: transparent;
+  background: linear-gradient(135deg, rgba(127, 0, 255, 0.18), rgba(0, 240, 255, 0.12));
   border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  border: 2px dashed var(--border);
-  transition: all 0.3s var(--ease-out);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  border: 1px solid rgba(127, 0, 255, 0.45);
+  transition: all 0.25s var(--ease-out);
+  box-shadow: 0 10px 22px rgba(127, 0, 255, 0.2);
 }
 
 .add-song:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(127, 0, 255, 0.05);
+  border-color: rgba(0, 240, 255, 0.7);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(0, 240, 255, 0.22);
 }
 
 /* =========================================
@@ -2152,27 +2153,39 @@ h1, h2, h3, h4, h5, h6 {
 /* =========================================
    15. DEVELOPER CENTER
 ========================================= */
-.dev-only-btn {
+.admin-actions {
   position: fixed;
-  bottom: 100px;
+  top: 84px;
   right: var(--space-lg);
-  width: 48px;
-  height: 48px;
+  display: none;
+  gap: 10px;
+  z-index: var(--z-sticky);
+}
+
+.dev-only-btn {
+  min-height: 42px;
   border-radius: var(--radius-full);
   background: var(--gradient-accent);
   color: white;
   border: none;
   cursor: pointer;
-  z-index: var(--z-sticky);
   box-shadow: var(--shadow-glow-accent);
   display: none;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-weight: 700;
   transition: all 0.2s var(--ease-out);
 }
 
 .dev-only-btn:hover {
-  transform: scale(1.1);
+  transform: translateY(-1px) scale(1.02);
+}
+
+.delete-floating-btn {
+  background: linear-gradient(135deg, #ff4d6d, #d90452);
+  box-shadow: 0 0 24px rgba(255, 77, 109, 0.35);
 }
 
 #registerModal .modal-content {
@@ -4287,26 +4300,10 @@ body.focus-mode #lyricsBox p.active {
 }
 
 
-.btn-delete-mode {
-  border: 1px solid rgba(255, 80, 120, 0.5);
-  background: rgba(255, 80, 120, 0.12);
-  color: var(--text);
-  border-radius: var(--radius-md);
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 700;
-  transition: all 0.2s ease;
-}
-
-.btn-delete-mode:hover {
-  border-color: rgba(255, 80, 120, 0.9);
-  background: rgba(255, 80, 120, 0.2);
-  transform: translateY(-1px);
-}
-
-.delete-songs-modal-content {
-  max-width: 720px;
-  width: min(720px, calc(100vw - 40px));
+ .delete-songs-modal-content {
+  max-width: 820px;
+  width: min(820px, calc(100vw - 30px));
+  border-radius: 18px;
 }
 
 .delete-songs-help {
@@ -4314,25 +4311,48 @@ body.focus-mode #lyricsBox p.active {
   color: var(--text-muted);
 }
 
+.delete-songs-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.delete-filter-input input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.delete-filter-input input:focus {
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.15);
+}
+
 .delete-songs-list {
-  max-height: 360px;
+  max-height: 420px;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 8px;
+  padding: 10px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
   background: var(--surface);
 }
 
 .delete-song-item {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 20px 52px 1fr;
+  gap: 12px;
   align-items: center;
   padding: 10px;
   border-radius: 12px;
   border: 1px solid transparent;
-  background: rgba(0,0,0,0.08);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .delete-song-item:hover {
@@ -4341,6 +4361,14 @@ body.focus-mode #lyricsBox p.active {
 
 .delete-song-item input {
   accent-color: var(--error);
+}
+
+.delete-song-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border);
 }
 
 .delete-song-name {
@@ -4415,4 +4443,22 @@ body.focus-mode #lyricsBox p.active {
 
 .community-song-link:hover {
   color: var(--secondary);
+}
+
+@media (max-width: 768px) {
+  .admin-actions {
+    top: 70px;
+    right: 12px;
+    gap: 8px;
+  }
+
+  .dev-only-btn {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 0.85rem;
+  }
+
+  .delete-songs-filters {
+    grid-template-columns: 1fr;
+  }
 }

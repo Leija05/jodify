@@ -255,9 +255,6 @@
                     + Añadir y Compartir
                     <input type="file" id="fileInput" accept="audio/*" multiple hidden>
                 </label>
-                <button id="openDeleteSongsModal" class="btn-delete-mode" style="display: none;" data-testid="open-delete-songs">
-                    Eliminar canciones
-                </button>
             </div>
 
             <div id="uploadStatus"></div>
@@ -677,15 +674,26 @@
         <span id="badgeText">Subiendo archivos...</span>
     </div>
 
-    <!-- DEV BUTTON -->
-    <button id="btnOpenRegister" class="dev-only-btn" style="display: none;" title="Panel Developer" data-testid="dev-btn">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <line x1="19" y1="8" x2="19" y2="14"></line>
-            <line x1="16" y1="11" x2="22" y2="11"></line>
-        </svg>
-    </button>
+    <!-- DEV & DELETE FLOATING ACTIONS -->
+    <div class="admin-actions" id="adminActions" style="display:none;">
+        <button id="openDeleteSongsModal" class="dev-only-btn delete-floating-btn" style="display: none;" title="Eliminar canciones" data-testid="open-delete-songs">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <span>Eliminar</span>
+        </button>
+
+        <button id="btnOpenRegister" class="dev-only-btn" style="display: none;" title="Panel Developer" data-testid="dev-btn">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <line x1="19" y1="8" x2="19" y2="14"></line>
+                <line x1="16" y1="11" x2="22" y2="11"></line>
+            </svg>
+            <span>Dev</span>
+        </button>
+    </div>
 
     <!-- DEVELOPER CENTER MODAL -->
     <div id="registerModal" class="modal" data-testid="dev-modal">
@@ -793,6 +801,14 @@
                 <button id="closeDeleteSongsModal" class="close-btn" data-testid="close-delete-songs">&times;</button>
             </div>
             <p class="delete-songs-help">Selecciona una o varias canciones para eliminarlas permanentemente de la base de datos.</p>
+            <div class="delete-songs-filters">
+                <div class="delete-filter-input">
+                    <input type="text" id="deleteSongsSearch" placeholder="Buscar por nombre..." data-testid="delete-search-name">
+                </div>
+                <div class="delete-filter-input">
+                    <input type="text" id="deleteSongsAddedBy" placeholder="Filtrar por usuario que agregó" data-testid="delete-search-user">
+                </div>
+            </div>
             <div id="deleteSongsList" class="delete-songs-list"></div>
             <div class="delete-songs-actions">
                 <span id="deleteSongsCounter">0 seleccionadas</span>
