@@ -310,6 +310,7 @@ const jam = initJam({
 // Audio events for Electron
 audio.addEventListener('play', () => {
     syncObsOverlayState();
+    updateListeningStatus();
     if (window.electronAPI && window.electronAPI.updateThumbar) {
         window.electronAPI.updateThumbar(true);
     }
@@ -320,6 +321,7 @@ audio.addEventListener('play', () => {
 
 audio.addEventListener('pause', () => {
     syncObsOverlayState();
+    updateListeningStatus();
     if (window.electronAPI && window.electronAPI.updateThumbar) {
         window.electronAPI.updateThumbar(false);
     }
@@ -2165,6 +2167,7 @@ async function playSong(index, options = {}) {
     }
     
     updateLikeBtn();
+    updateListeningStatus();
 }
 
 async function handleNextSong(options = {}) {
@@ -3574,19 +3577,23 @@ async function loadCommunityUsers() {
                     };
                 });
 
-                for (const user of communityUsers) {
-                    if (user.discord_id) {
-                        try {
-                            const discordData = await fetchDiscordUserSilent(user.discord_id);
-                            if (discordData) {
-                                user.discord_avatar = discordData.avatar;
-                                user.discord_username = discordData.username;
-                            }
-                        } catch (e) {
-                            // Silently fail for individual users
+                await Promise.all(communityUsers.map(async (user) => {
+                    if (!user.discord_id) return;
+                    try {
+                        const discordData = await fetchDiscordUserSilent(user.discord_id);
+                        if (discordData) {
+                            user.discord_avatar = discordData.avatar;
+                            user.discord_username = discordData.username;
+                            return;
                         }
+                    } catch (e) {
+                        // fallback abajo
                     }
-                }
+                    // fallback visual si la API de Discord/Lanyard falla
+                    const fallbackNum = Number(BigInt(user.discord_id) % 6n);
+                    user.discord_avatar = `https://cdn.discordapp.com/embed/avatars/${fallbackNum}.png`;
+                    user.discord_username = user.discord_username || user.username;
+                }));
 
                 renderCommunityUsers();
                 return;
@@ -3661,14 +3668,16 @@ function renderCommunityUsers() {
         const initial = user.username.charAt(0).toUpperCase();
         const isOnline = user.is_online === 1;
         const isActive = isUserActive(user);
-        const hasDiscord = user.discord_avatar || user.discord_username;
+        const hasDiscord = user.discord_avatar || user.discord_username || user.discord_id;
         const listeningName = sanitizeSongName(user.currentSong?.name || user.current_song_name);
         const isListening = Boolean(listeningName);
         
         // Use REAL Discord avatar if available
-        const avatarUrl = user.discord_avatar 
-            ? user.discord_avatar 
-            : (hasDiscord ? `https://cdn.discordapp.com/embed/avatars/${user.username.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 5}.png` : null);
+        const avatarUrl = user.discord_avatar
+            ? user.discord_avatar
+            : (hasDiscord
+                ? `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.discord_id || 0) % 6n)}.png`
+                : null);
         
         return `
             <div class="community-user" onclick="openUserDetail('${user.username}')" data-testid="user-${user.username}">
@@ -3800,8 +3809,8 @@ async function updateListeningStatus() {
     }
 }
 
-// Update status every 30 seconds
-setInterval(updateListeningStatus, 30000);
+// Update status frequently for OBS/community sync
+setInterval(updateListeningStatus, 5000);
 
 window.exportStats = () => {
     const stats = {
