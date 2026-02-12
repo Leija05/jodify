@@ -282,7 +282,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Botones de acción pequeños */
 .btn-icon {
-  background: var(--surface-hover);
+  background: linear-gradient(to right, var(--primary) 0%, var(--secondary) 0%, var(--surface-hover) 0%);
   border: 1px solid var(--border);
   color: var(--text);
   width: 36px;
@@ -511,25 +511,6 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
-.link-import-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: 10px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border);
-  background: var(--surface-hover);
-  color: var(--text);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-out);
-}
-
-.link-import-btn:hover {
-  border-color: var(--primary);
-  box-shadow: var(--shadow-glow);
-}
-
 .add-actions {
   display: flex;
   gap: var(--space-sm);
@@ -538,21 +519,6 @@ h1, h2, h3, h4, h5, h6 {
   flex-wrap: wrap;
 }
 
-.link-import-secondary {
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-full);
-  border: 1px dashed var(--border);
-  background: transparent;
-  color: var(--text);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-out);
-}
-
-.link-import-secondary:hover {
-  border-color: var(--secondary);
-  color: var(--secondary);
-}
 
 /* Lista de canciones */
 #songList {
@@ -842,7 +808,7 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1;
   height: 6px;
   border-radius: var(--radius-full);
-  background: var(--surface-hover);
+  background: linear-gradient(to right, var(--primary) 0%, var(--secondary) 0%, var(--surface-hover) 0%);
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
@@ -1199,12 +1165,14 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition: all 0.3s var(--ease-out);
 }
 
 .equalizer-modal.open {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 .equalizer-content {
@@ -1416,6 +1384,27 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text);
 }
 
+
+.eq-custom-controls {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.eq-custom-controls input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.eq-remove {
+  margin-left: 6px;
+  color: var(--danger);
+  font-weight: 700;
+}
 .eq-sliders {
   display: flex;
   justify-content: space-between;
@@ -1469,6 +1458,7 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition: all 0.3s var(--ease-out);
 }
 
@@ -1977,86 +1967,6 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.8rem;
 }
 
-/* Link Import Modal */
-#linkModal .modal-content {
-  max-width: 460px;
-}
-
-.link-modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.link-modal-body label {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.link-modal-body input[type="url"] {
-  width: 100%;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border);
-  background: var(--surface-hover);
-  color: var(--text);
-  outline: none;
-}
-
-.link-modal-body input[type="url"]:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(127, 0, 255, 0.2);
-}
-
-.link-modal-hint {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.link-server-row {
-  display: flex;
-  gap: var(--space-sm);
-  align-items: center;
-}
-
-.link-server-row .btn-secondary {
-  padding: 8px 14px;
-  margin-top: 0;
-  flex-shrink: 0;
-}
-
-.link-modal-actions {
-  display: flex;
-  gap: var(--space-sm);
-  margin-top: var(--space-sm);
-}
-
-.link-modal-actions .btn-primary {
-  flex: 1;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-full);
-  border: none;
-  background: var(--gradient-primary);
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.link-modal-actions .btn-secondary {
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.link-import-status {
-  min-height: 18px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
 
 #settingsModal .range-labels {
   display: flex;
@@ -2859,6 +2769,7 @@ button:focus-visible, input:focus-visible {
   z-index: var(--z-toast);
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition: all 0.3s var(--ease-out);
 }
 
@@ -3412,12 +3323,14 @@ body.focus-mode #lyricsBox p.active {
   justify-content: center;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition: all 0.3s var(--ease-out);
 }
 
 .discord-modal.open {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 .discord-modal-content {
@@ -3642,12 +3555,14 @@ body.focus-mode #lyricsBox p.active {
   justify-content: center;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition: all 0.3s var(--ease-out);
 }
 
 .community-modal.open {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 .community-content {
@@ -3691,6 +3606,39 @@ body.focus-mode #lyricsBox p.active {
 .community-header .close-btn {
   background: rgba(255,255,255,0.2);
   color: white;
+}
+
+
+.community-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.community-refresh-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.community-live-toggle {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.community-live-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .community-tabs {
@@ -3870,7 +3818,12 @@ body.focus-mode #lyricsBox p.active {
 .community-user-stats span {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
+}
+
+.community-user-stats svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* Btn Community in profile */
@@ -3914,12 +3867,14 @@ body.focus-mode #lyricsBox p.active {
   justify-content: center;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition: all 0.3s var(--ease-out);
 }
 
 .user-detail-modal.open {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 .user-detail-content {
@@ -4168,4 +4123,104 @@ body.focus-mode #lyricsBox p.active {
   text-align: center;
   padding: var(--space-2xl);
   color: var(--text-muted);
+}
+
+
+.community-insights {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+
+.community-insights-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.community-insights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.community-insight-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .community-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+  }
+
+  .community-header .close-btn,
+  .community-refresh-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .community-tab {
+    padding: 12px 10px;
+    font-size: 0.95rem;
+  }
+
+  .community-user {
+    padding: 14px;
+  }
+}
+
+
+.eq-subtitle {
+  margin-top: -8px;
+  margin-bottom: var(--space-md);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.equalizer-content {
+  box-shadow: 0 20px 50px rgba(0,0,0,0.45), 0 0 24px rgba(127,0,255,0.25);
+}
+
+.eq-custom-controls .btn-secondary {
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  padding: 8px 12px;
+}
+
+.eq-band {
+  position: relative;
+  min-width: 42px;
+}
+
+.eq-band::after {
+  content: attr(data-gain);
+  font-size: 0.65rem;
+  color: var(--secondary);
+}
+
+@media (max-width: 768px) {
+  .equalizer-content {
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .eq-sliders {
+    overflow-x: auto;
+    padding-bottom: 12px;
+  }
 }
