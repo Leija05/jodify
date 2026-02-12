@@ -152,16 +152,16 @@ window.onload = async () => {
     const savedVolume = parseFloat(localStorage.getItem("userVolume")) || 0.5;
     appState.userVolume = savedVolume;
     setAppVolume(savedVolume);
-    
+
     const savedTheme = localStorage.getItem("theme") || "dark";
     applyTheme(savedTheme);
-    
+
     const disableVis = localStorage.getItem('disableVisualizer') === 'true';
     const disableBg = localStorage.getItem('disableDynamicBg') === 'true';
     document.body.classList.toggle('no-visual', disableVis);
     document.body.classList.toggle('no-dynamic-bg', disableBg);
     document.body.classList.toggle('focus-mode', appState.focusMode);
-    
+
     const disableVisualizer = document.getElementById("disableVisualizer");
     const disableDynamicBg = document.getElementById("disableDynamicBg");
     const enableFocusMode = document.getElementById("enableFocusMode");
@@ -179,13 +179,13 @@ window.onload = async () => {
     startSessionTimer();
     updateQueueIndicator();
     updateSmartMixAvailability();
-    
+
     // Initialize keyboard shortcuts
     initKeyboardShortcuts();
-    
+
     // Show shortcut hint
     showShortcutHint();
-    
+
     checkSavedSession();
     if (appState.usuarioActual) {
         startHeartbeat(appState.usuarioActual);
@@ -195,7 +195,7 @@ window.onload = async () => {
     }
 
     jam.initJamFromStorage();
-    
+
     console.log(`JodiFy v2.0 - Volume: ${Math.round(savedVolume * 100)}%`);
 };
 
@@ -345,9 +345,9 @@ function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         // Ignore if typing in input
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        
+
         const key = e.key.toLowerCase();
-        
+
         switch(key) {
             case ' ':
                 e.preventDefault();
@@ -678,11 +678,11 @@ function renderQueue() {
     const upcoming = appState.queue.length
         ? [currentSong, ...appState.queue].filter(Boolean)
         : appState.currentFilteredList.slice(
-            appState.currentFilteredList.findIndex(s => 
+            appState.currentFilteredList.findIndex(s =>
                 appState.playlist[appState.currentIndex]?.id === s.id
             )
         );
-    
+
     upcoming.forEach((song, index) => {
         const item = document.createElement('div');
         item.className = `queue-item ${index === 0 ? 'current' : ''}`;
@@ -701,7 +701,7 @@ function renderQueue() {
                 </button>
             ` : ''}
         `;
-        
+
         item.addEventListener('click', (e) => {
             if (!e.target.closest('.queue-item-remove')) {
                 if (appState.offlineMode) {
@@ -712,7 +712,7 @@ function renderQueue() {
                 }
             }
         });
-        
+
         queueList.appendChild(item);
         loadMetadata(song.url, `queue-cover-${song.id}`);
     });
@@ -781,12 +781,12 @@ function initEqualizer() {
         filter.gain.value = 0;
         return filter;
     });
-    
+
     appState.eqFilters.reduce((prev, curr) => {
         prev.connect(curr);
         return curr;
     });
-    
+
     if (appState.source && appState.analyser) {
         appState.source.disconnect();
         appState.source.connect(appState.eqFilters[0]);
@@ -1086,44 +1086,44 @@ function showOfflineModal() {
 window.enableOfflineMode = async () => {
     const modal = document.getElementById('offlineModal');
     if (modal) modal.style.display = 'none';
-    
+
     appState.offlineMode = true;
     appState.currentTab = "personal";
-    
+
     if (btnGlobal) btnGlobal.style.display = "none";
     if (btnPersonal) {
         btnPersonal.classList.add("active");
         btnGlobal.classList.remove("active");
     }
-    
+
     document.body.classList.add('offline-mode-active');
-    
+
     // Load songs from IndexedDB
     await loadOfflineSongs();
     renderPlaylist();
-    
+
     console.log("Offline mode enabled with", appState.downloadedIds.length, "songs");
 };
 
 async function loadOfflineSongs() {
     return new Promise((resolve) => {
         if (!appState.db) return resolve();
-        
+
         const transaction = appState.db.transaction(["songs"], "readonly");
         const store = transaction.objectStore("songs");
         const request = store.getAll();
-        
+
         request.onsuccess = () => {
             const offlineSongs = request.result || [];
             appState.downloadedIds = offlineSongs.map(s => s.id);
-            
+
             // Merge offline songs into playlist if not already there
             offlineSongs.forEach(song => {
                 if (!appState.playlist.find(s => s.id === song.id)) {
                     appState.playlist.push(song);
                 }
             });
-            
+
             resolve();
         };
         request.onerror = () => resolve();
@@ -1273,7 +1273,7 @@ if (loginForm) {
         try {
             // Primero intentar validación local
             const localUser = validateLocalUser(userIn, passIn);
-            
+
             if (localUser) {
                 // Usuario local válido
                 console.log("Login local exitoso:", localUser.username);
@@ -1345,7 +1345,7 @@ if (btnLogout) {
 
                 await addSystemLog('info', `Cerró sesión.`);
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 500));
 
             if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
@@ -1826,16 +1826,16 @@ window.cancelUpload = (id) => {
 async function fetchSongs() {
     try {
         const { data, error } = await supabaseClient.from('songs').select('*').order('id', { ascending: false });
-        
+
         if (error) {
             console.error("Fetch error:", error);
             showOfflineModal();
             return;
         }
-        
+
         appState.playlist = data || [];
         appState.availableUsers = [...new Set(data.map(s => s.added_by).filter(Boolean))];
-        
+
         if (sortOptions) {
             sortOptions.innerHTML = `
                 <option value="recent">Recientes</option>
@@ -1844,7 +1844,7 @@ async function fetchSongs() {
                 ${appState.availableUsers.map(u => `<option value="user-${u}">${u}</option>`).join('')}
             `;
         }
-        
+
         renderPlaylist();
     } catch (e) {
         console.error("Fetch songs error:", e);
@@ -1854,21 +1854,21 @@ async function fetchSongs() {
 
 function getFilteredList() {
     let list;
-    
+
     if (appState.offlineMode) {
         // In offline mode, get songs from IndexedDB
         list = appState.playlist.filter(s => appState.downloadedIds.includes(s.id));
     } else {
-        list = appState.currentTab === "global" 
-            ? [...appState.playlist] 
+        list = appState.currentTab === "global"
+            ? [...appState.playlist]
             : appState.playlist.filter(s => appState.likedIds.includes(s.id));
     }
-    
+
     // Apply search filter
     if (appState.searchTerm) {
         list = list.filter(s => formatDisplayName(s.name).toLowerCase().includes(appState.searchTerm));
     }
-    
+
     // Apply sorting
     switch (appState.currentSort) {
         case 'old':
@@ -1880,12 +1880,12 @@ function getFilteredList() {
         default:
             list.sort((a, b) => b.id - a.id);
     }
-    
+
     // Apply user filter
     if (appState.userFilter !== 'all') {
         list = list.filter(s => s.added_by === appState.userFilter);
     }
-    
+
     return list;
 }
 
@@ -1907,29 +1907,29 @@ function createSongElement(song, isCurrent, isDownloaded) {
                 </div>
             </div>
             <div class="song-actions">
-                <button class="queue-add-btn" 
-                        onclick="addToQueue(event, ${song.id})" 
+                <button class="queue-add-btn"
+                        onclick="addToQueue(event, ${song.id})"
                         title="Añadir a la cola"
                         data-testid="queue-add-${song.id}"
                         aria-label="Añadir a la cola">
                     ${ICONS.PLUS}
                 </button>
                 ${!appState.offlineMode ? `
-                    <button class="like-btn ${appState.likedIds.includes(song.id) ? 'active' : ''}" 
-                            onclick="toggleLike(event, ${song.id})" 
+                    <button class="like-btn ${appState.likedIds.includes(song.id) ? 'active' : ''}"
+                            onclick="toggleLike(event, ${song.id})"
                             data-testid="like-btn-${song.id}"
                             aria-label="${appState.likedIds.includes(song.id) ? 'Quitar de favoritos' : 'Añadir a favoritos'}">
                         ${appState.likedIds.includes(song.id) ? ICONS.HEART_F : ICONS.HEART_E}
                     </button>
                     ${isDownloaded ? `
-                        <button class="download-btn downloaded" 
-                                onclick="deleteDownload(event, ${song.id})" 
+                        <button class="download-btn downloaded"
+                                onclick="deleteDownload(event, ${song.id})"
                                 title="Eliminar descarga"
                                 data-testid="delete-download-${song.id}">
                             ${ICONS.SUCCESS}
                         </button>
                     ` : `
-                        <button class="download-btn" 
+                        <button class="download-btn"
                                 onclick="downloadSong(event, ${song.id})"
                                 data-testid="download-btn-${song.id}">
                             ${ICONS.DOWNLOAD}
@@ -1948,7 +1948,7 @@ function createSongElement(song, isCurrent, isDownloaded) {
 
     li.onclick = (e) => {
         if (e.target.closest('button')) return;
-        
+
         if (appState.offlineMode) {
             playOfflineSongById(song.id);
         } else {
@@ -1956,7 +1956,7 @@ function createSongElement(song, isCurrent, isDownloaded) {
             playSong(masterIndex);
         }
     };
-    
+
     return li;
 }
 
@@ -1966,11 +1966,11 @@ async function playOfflineSongById(songId, options = {}) {
         alert("Solo el host puede cambiar la canción en una Jam.");
         return;
     }
-    
+
     const transaction = appState.db.transaction(["songs"], "readonly");
     const store = transaction.objectStore("songs");
     const request = store.get(songId);
-    
+
     request.onsuccess = async () => {
         const song = request.result;
         if (song && song.blob) {
@@ -1979,13 +1979,13 @@ async function playOfflineSongById(songId, options = {}) {
             }
             const blobUrl = URL.createObjectURL(song.blob);
             appState.currentBlobUrl = blobUrl;
-            
+
             if (isChangingTrack) return;
             isChangingTrack = true;
             appState.currentIndex = appState.playlist.findIndex(s => s.id === song.id);
             songTitle.textContent = formatDisplayName(song.name);
     syncObsOverlayState();
-            
+
             try {
                 await startSongPlayback(song, blobUrl, options);
             } finally {
@@ -1994,7 +1994,7 @@ async function playOfflineSongById(songId, options = {}) {
             if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
                 jam.broadcastJamState('jam-play');
             }
-            
+
             loadMetadata(blobUrl, "cover", true);
             renderPlaylist();
             updateLikeBtn();
@@ -2020,14 +2020,14 @@ async function renderPlaylist() {
 window.deleteDownload = async (event, songId) => {
     event.stopPropagation();
     if (!confirm("¿Eliminar esta descarga?")) return;
-    
+
     if (!appState.db) return;
-    
+
     const transaction = appState.db.transaction(["songs"], "readwrite");
     const store = transaction.objectStore("songs");
-    
+
     store.delete(songId);
-    
+
     transaction.oncomplete = async () => {
         await syncDownloadedSongs();
         renderPlaylist();
@@ -2050,12 +2050,12 @@ function extractCoverFromBlob(blob, imgElementId) {
 
 window.downloadSong = async (event, songId) => {
     event.stopPropagation();
-    
+
     if (!appState.db) {
         alert("Base de datos no disponible");
         return;
     }
-    
+
     const song = appState.playlist.find(s => s.id === songId);
     if (!song) return;
 
@@ -2067,7 +2067,7 @@ window.downloadSong = async (event, songId) => {
     try {
         const response = await fetch(song.url);
         if (!response.ok) throw new Error("Network error");
-        
+
         const blob = await response.blob();
 
         const transaction = appState.db.transaction(["songs"], "readwrite");
@@ -2078,7 +2078,7 @@ window.downloadSong = async (event, songId) => {
             putReq.onsuccess = resolve;
             putReq.onerror = reject;
         });
-        
+
         if (navigator.onLine && appState.usuarioActual) {
             try {
                 await supabaseClient
@@ -2136,11 +2136,11 @@ async function playSong(index, options = {}) {
         alert("Solo el host puede cambiar la canción en una Jam.");
         return;
     }
-    
+
     isChangingTrack = true;
     appState.currentIndex = index;
     const song = appState.playlist[index];
-    
+
     try {
         await startSongPlayback(song, song.url, options);
         // Incrementar contador de reproducción
@@ -2155,24 +2155,24 @@ async function playSong(index, options = {}) {
     } finally {
         isChangingTrack = false;
     }
-    
+
     songTitle.textContent = formatDisplayName(song.name);
     syncObsOverlayState();
     loadMetadata(song.url, "cover", true);
     loadLRC(song.name);
     renderPlaylist();
-    
+
     if (window.innerWidth <= 768) {
         setTimeout(() => toggleMobilePlaylist(false), 300);
     }
-    
+
     updateLikeBtn();
     updateListeningStatus();
 }
 
 async function handleNextSong(options = {}) {
     if (appState.currentFilteredList.length === 0) return;
-    
+
     let next;
     if (appState.queue.length > 0) {
         next = appState.queue.shift();
@@ -2186,7 +2186,7 @@ async function handleNextSong(options = {}) {
             next = appState.currentFilteredList[(idx + 1) % appState.currentFilteredList.length];
         }
     }
-    
+
     if (appState.offlineMode) {
         playOfflineSongById(next.id, options);
     } else {
@@ -2197,12 +2197,12 @@ async function handleNextSong(options = {}) {
 
 async function handlePrevSong() {
     if (appState.currentFilteredList.length === 0) return;
-    
+
     const currentId = appState.playlist[appState.currentIndex]?.id;
     const idx = appState.currentFilteredList.findIndex(s => s.id === currentId);
     const prevIdx = (idx - 1 + appState.currentFilteredList.length) % appState.currentFilteredList.length;
     const fadeOptions = { fadeOutMs: getFadeDurationMs() / 2, fadeInMs: getFadeDurationMs() / 2 };
-    
+
     if (appState.offlineMode) {
         playOfflineSongById(appState.currentFilteredList[prevIdx].id, fadeOptions);
     } else {
@@ -2251,11 +2251,11 @@ async function loadLRC(name) {
     lyricsBox.innerHTML = "<p>Buscando letra...</p>";
     appState.lyrics = [];
     appState.currentLine = -1;
-    
+
     try {
         const res = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(formatDisplayName(name))}`);
         const data = await res.json();
-        
+
         if (data?.[0]?.syncedLyrics) {
             lyricsBox.innerHTML = "";
             data[0].syncedLyrics.split("\n").forEach(line => {
@@ -2282,19 +2282,19 @@ async function loadLRC(name) {
 // =========================================
 async function startVisualizer() {
     if (appState.audioCtx) return;
-    
+
     try {
         appState.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         appState.analyser = appState.audioCtx.createAnalyser();
         appState.source = appState.audioCtx.createMediaElementSource(audio);
-        
+
         appState.source.connect(appState.analyser);
         appState.analyser.connect(appState.audioCtx.destination);
         appState.analyser.fftSize = 64;
-        
+
         // Initialize equalizer
         initEqualizer();
-        
+
         // Load saved EQ preset
         const savedPreset = localStorage.getItem('eqPreset') || 'flat';
         const customValues = JSON.parse(localStorage.getItem('eqCustomValues') || 'null');
@@ -2308,21 +2308,21 @@ async function startVisualizer() {
         } else {
             applyEQPreset('flat');
         }
-        
+
         const bufferLength = appState.analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
-        
+
         function draw() {
             requestAnimationFrame(draw);
             appState.analyser.getByteFrequencyData(dataArray);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
             gradient.addColorStop(0, '#7F00FF');
             gradient.addColorStop(0.5, '#00F0FF');
             gradient.addColorStop(1, '#FF0080');
             ctx.fillStyle = gradient;
-            
+
             let x = 0;
             const barWidth = (canvas.width / bufferLength) * 1.5;
             for (let i = 0; i < bufferLength; i++) {
@@ -2360,13 +2360,13 @@ audio.ontimeupdate = () => {
             return;
         }
     }
-    
+
     if (appState.isLoop && audio.duration > 0 && audio.currentTime > audio.duration - 0.5) {
         audio.currentTime = 0;
         audio.play();
         return;
     }
-    
+
     progress.value = audio.currentTime;
     progress.max = audio.duration || 0;
     currentTimeEl.textContent = formatTime(audio.currentTime);
@@ -2465,12 +2465,12 @@ function updateLikeBtn() {
 
 window.toggleLike = async (e, id) => {
     if (e) e.stopPropagation();
-    
+
     const song = appState.playlist.find(s => s.id === id);
     if (!song) return;
-    
+
     const wasLiked = appState.likedIds.includes(id);
-    
+
     if (wasLiked) {
         appState.likedIds = appState.likedIds.filter(likedId => likedId !== id);
         song.likes = Math.max(0, (song.likes || 1) - 1);
@@ -2478,11 +2478,11 @@ window.toggleLike = async (e, id) => {
         appState.likedIds.push(id);
         song.likes = (song.likes || 0) + 1;
     }
-    
+
     localStorage.setItem("likedSongs", JSON.stringify(appState.likedIds));
     renderPlaylist();
     updateLikeBtn();
-    
+
     if (!wasLiked) {
         const likeBtn = document.getElementById("likeBtn");
         if (likeBtn) {
@@ -2490,7 +2490,7 @@ window.toggleLike = async (e, id) => {
             setTimeout(() => likeBtn.classList.remove('animate-like'), 500);
         }
     }
-    
+
     if (!appState.offlineMode) {
         try {
             await supabaseClient.from('songs').update({ likes: song.likes }).eq('id', id);
@@ -2953,16 +2953,16 @@ async function openProfileModal() {
     if (profileModal) {
         profileModal.classList.add('open');
         refreshModalScrollLock();
-        
+
         // First load user data from Supabase to get saved discord_id
         if (navigator.onLine && appState.usuarioActual && !appState.discord) {
             try {
                 const { data, error } = await supabaseClient
                     .from('users_access')
-                    .select('discord_id, discord_username')
+                    .select('discord_id')
                     .eq('username', appState.usuarioActual)
                     .single();
-                
+
                 if (!error && data && data.discord_id) {
                     // User has a discord_id saved, fetch their real Discord profile
                     try {
@@ -2977,7 +2977,7 @@ async function openProfileModal() {
                 console.warn('Error loading user data:', e);
             }
         }
-        
+
         updateProfileUI();
         updateProfileStats();
     }
@@ -2994,19 +2994,19 @@ function updateProfileUI() {
     const username = appState.usuarioActual || 'Usuario';
     const role = appState.currentUserRole || 'user';
     const initial = username.charAt(0).toUpperCase();
-    
+
     // Update button
     const avatarInitial = document.getElementById('avatarInitial');
     const profileUsername = document.getElementById('profileUsername');
     if (avatarInitial) avatarInitial.textContent = initial;
     if (profileUsername) profileUsername.textContent = username;
-    
+
     // Update modal
     const avatarInitialLarge = document.getElementById('avatarInitialLarge');
     const profileUsernameLarge = document.getElementById('profileUsernameLarge');
     const profileRoleText = document.getElementById('profileRoleText');
     const profileRole = document.getElementById('profileRole');
-    
+
     if (avatarInitialLarge) avatarInitialLarge.textContent = initial;
     if (profileUsernameLarge) profileUsernameLarge.textContent = username;
     if (profileRoleText) {
@@ -3016,12 +3016,12 @@ function updateProfileUI() {
     if (profileRole) {
         profileRole.className = `profile-role ${role}`;
     }
-    
+
     // Update avatar if Discord is linked
     if (appState.discord && appState.discord.avatar) {
         updateAvatarWithDiscord();
     }
-    
+
     // Update Discord section
     updateDiscordUI();
 }
@@ -3030,11 +3030,11 @@ function updateProfileStats() {
     const statLikes = document.getElementById('statLikes');
     const statPlayed = document.getElementById('statPlayed');
     const statDownloads = document.getElementById('statDownloads');
-    
+
     if (statLikes) statLikes.textContent = appState.likedIds.length;
     if (statPlayed) statPlayed.textContent = appState.playCount;
     if (statDownloads) statDownloads.textContent = appState.downloadedIds.length;
-    
+
     // Stats de reproducción/descargas se mantienen localmente en esta versión.
     // Para likes usamos la tabla user_likes si hay conexión.
     if (navigator.onLine && appState.usuarioActual) {
@@ -3084,21 +3084,21 @@ function updateListeningActivity(song) {
     const activity = document.getElementById('listeningActivity');
     const activityTitle = document.getElementById('activityTitle');
     const activityCover = document.getElementById('activityCover');
-    
+
     if (activity && song) {
         activity.style.display = 'block';
         if (activityTitle) activityTitle.textContent = formatDisplayName(song.name);
         if (activityCover && song.url) {
             loadMetadata(song.url, 'activityCover');
         }
-        
+
         // Update current song in Supabase so others can see what we're listening to
         if (navigator.onLine && appState.usuarioActual) {
             const songName = formatDisplayName(song.name);
             (async () => {
                 const { error } = await supabaseClient
                     .from('users_access')
-                    .update({ 
+                    .update({
                         current_song_id: song.id || null,
                         current_song_name: songName,
                         listening_since: new Date().toISOString()
@@ -3135,7 +3135,7 @@ audio.addEventListener('ended', () => {
 document.addEventListener('DOMContentLoaded', () => {
     const profileBtnElement = document.getElementById("profileBtn");
     const closeProfileBtnElement = document.getElementById("closeProfileBtn");
-    
+
     if (profileBtnElement) {
         profileBtnElement.addEventListener('click', openProfileModal);
         console.log('Profile button event listener attached');
@@ -3159,15 +3159,15 @@ const DISCORD_CLIENT_ID = '1234567890'; // Replace with actual Discord app ID
 function updateDiscordUI() {
     const notLinked = document.getElementById('discordNotLinked');
     const linked = document.getElementById('discordLinked');
-    
+
     if (appState.discord) {
         if (notLinked) notLinked.style.display = 'none';
         if (linked) linked.style.display = 'flex';
-        
+
         const discordAvatar = document.getElementById('discordAvatar');
         const discordName = document.getElementById('discordName');
         const discordTag = document.getElementById('discordTag');
-        
+
         if (discordAvatar && appState.discord.avatar) {
             discordAvatar.src = appState.discord.avatar;
         }
@@ -3181,13 +3181,13 @@ function updateDiscordUI() {
 
 function updateAvatarWithDiscord() {
     if (!appState.discord || !appState.discord.avatar) return;
-    
+
     // Update profile button avatar
     const profileAvatar = document.getElementById('profileAvatar');
     if (profileAvatar) {
         profileAvatar.innerHTML = `<img src="${appState.discord.avatar}" alt="">`;
     }
-    
+
     // Update large avatar in modal
     const profileAvatarLarge = document.getElementById('profileAvatarLarge');
     if (profileAvatarLarge) {
@@ -3229,14 +3229,14 @@ async function fetchDiscordUser(userId) {
         // Use Lanyard API to get real Discord user data
         const response = await fetch(`https://api.lanyard.rest/v1/users/${userId}`);
         const data = await response.json();
-        
+
         if (!data.success || !data.data) {
             throw new Error('Usuario no encontrado en Lanyard. Asegúrate de estar en el servidor de Lanyard Discord.');
         }
-        
+
         const discordUser = data.data.discord_user;
         const discordStatus = data.data.discord_status;
-        
+
         // Build avatar URL
         let avatarUrl;
         if (discordUser.avatar) {
@@ -3244,12 +3244,12 @@ async function fetchDiscordUser(userId) {
             avatarUrl = `https://cdn.discordapp.com/avatars/${userId}/${discordUser.avatar}.${ext}?size=256`;
         } else {
             // Default avatar based on discriminator or user id
-            const defaultNum = discordUser.discriminator === '0' 
-                ? (BigInt(userId) >> 22n) % 6n 
+            const defaultNum = discordUser.discriminator === '0'
+                ? (BigInt(userId) >> 22n) % 6n
                 : parseInt(discordUser.discriminator) % 5;
             avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultNum}.png`;
         }
-        
+
         return {
             id: userId,
             username: discordUser.global_name || discordUser.username,
@@ -3272,21 +3272,21 @@ if (discordUserIdInput) {
         const userId = e.target.value.trim();
         const preview = document.getElementById('discordPreview');
         const error = document.getElementById('discordLinkError');
-        
+
         if (userId.length < 17) {
             preview.style.display = 'none';
             error.textContent = userId.length > 0 ? 'El User ID debe tener al menos 17 dígitos' : '';
             return;
         }
-        
+
         if (!/^\d+$/.test(userId)) {
             preview.style.display = 'none';
             error.textContent = 'El User ID solo debe contener números';
             return;
         }
-        
+
         error.textContent = '';
-        
+
         debounceTimer = setTimeout(async () => {
             try {
                 const user = await fetchDiscordUser(userId);
@@ -3302,38 +3302,56 @@ if (discordUserIdInput) {
     });
 }
 
+async function persistDiscordLinkInUsersAccess(userId) {
+    if (!appState.usuarioActual) {
+        throw new Error('No hay sesión activa para guardar Discord ID');
+    }
+
+    if (!navigator.onLine) {
+        throw new Error('Debes estar en línea para guardar tu Discord ID en la base de datos');
+    }
+
+    const { data, error } = await supabaseClient
+        .from('users_access')
+        .update({
+            discord_id: userId
+        })
+        .eq('username', appState.usuarioActual)
+        .select('id')
+        .limit(1);
+
+    if (error) throw error;
+    if (!Array.isArray(data) || data.length === 0) {
+        throw new Error('No se encontró tu usuario en users_access para guardar Discord ID');
+    }
+}
+
 window.confirmLinkDiscord = async () => {
     const userId = discordUserIdInput?.value.trim();
     const error = document.getElementById('discordLinkError');
     const btn = document.getElementById('btnConfirmDiscord');
-    
+
     if (!userId || userId.length < 17) {
         error.textContent = 'Ingresa un User ID válido';
         return;
     }
-    
+
     btn.disabled = true;
     btn.innerHTML = `${ICONS.LOADING} Vinculando...`;
-    
+
     try {
         const user = await fetchDiscordUser(userId);
-        
+        await persistDiscordLinkInUsersAccess(userId);
+
         appState.discord = user;
         localStorage.setItem('discordProfile', JSON.stringify(user));
-        
-        // Update user in Supabase if online
-        if (navigator.onLine) {
-            await supabaseClient
-                .from('users_access')
-                .update({ discord_id: userId, discord_username: user.username })
-                .eq('username', appState.usuarioActual);
-        }
-        
+
         updateDiscordUI();
         updateAvatarWithDiscord();
         closeDiscordModal();
+        showToast('Discord ID guardado en users_access', 'success');
         notificationSound.play().catch(() => {});
-        
+
     } catch (e) {
         error.textContent = 'Error al vincular: ' + e.message;
     } finally {
@@ -3346,35 +3364,44 @@ window.linkDiscord = async () => {
     openDiscordModal();
 };
 
-window.unlinkDiscord = () => {
+window.unlinkDiscord = async () => {
     if (!confirm('¿Desvincular tu cuenta de Discord?')) return;
-    
-    appState.discord = null;
-    localStorage.removeItem('discordProfile');
-    
-    // Reset avatars
-    const profileAvatar = document.getElementById('profileAvatar');
-    if (profileAvatar) {
-        profileAvatar.innerHTML = `<span id="avatarInitial">${appState.usuarioActual.charAt(0).toUpperCase()}</span>`;
+
+    if (!navigator.onLine) {
+        showToast('Debes estar en línea para actualizar users_access', 'error');
+        return;
     }
-    
-    const profileAvatarLarge = document.getElementById('profileAvatarLarge');
-    if (profileAvatarLarge) {
-        profileAvatarLarge.innerHTML = `
-            <span id="avatarInitialLarge">${appState.usuarioActual.charAt(0).toUpperCase()}</span>
-            <span class="online-indicator"></span>
-        `;
-    }
-    
-    // Update Supabase
-    if (navigator.onLine) {
-        supabaseClient
+
+    try {
+        const { error } = await supabaseClient
             .from('users_access')
-            .update({ discord_id: null, discord_username: null })
+            .update({ discord_id: null })
             .eq('username', appState.usuarioActual);
+
+        if (error) throw error;
+
+        appState.discord = null;
+        localStorage.removeItem('discordProfile');
+
+        // Reset avatars
+        const profileAvatar = document.getElementById('profileAvatar');
+        if (profileAvatar) {
+            profileAvatar.innerHTML = `<span id="avatarInitial">${appState.usuarioActual.charAt(0).toUpperCase()}</span>`;
+        }
+
+        const profileAvatarLarge = document.getElementById('profileAvatarLarge');
+        if (profileAvatarLarge) {
+            profileAvatarLarge.innerHTML = `
+                <span id="avatarInitialLarge">${appState.usuarioActual.charAt(0).toUpperCase()}</span>
+                <span class="online-indicator"></span>
+            `;
+        }
+
+        updateDiscordUI();
+        showToast('Discord desvinculado de users_access', 'success');
+    } catch (e) {
+        showToast('No se pudo desvincular en users_access', 'error');
     }
-    
-    updateDiscordUI();
 };
 
 // =========================================
@@ -3624,22 +3651,22 @@ async function fetchDiscordUserSilent(userId) {
     try {
         const response = await fetch(`https://api.lanyard.rest/v1/users/${userId}`);
         const data = await response.json();
-        
+
         if (!data.success || !data.data) return null;
-        
+
         const discordUser = data.data.discord_user;
         let avatarUrl;
-        
+
         if (discordUser.avatar) {
             const ext = discordUser.avatar.startsWith('a_') ? 'gif' : 'png';
             avatarUrl = `https://cdn.discordapp.com/avatars/${userId}/${discordUser.avatar}.${ext}?size=128`;
         } else {
-            const defaultNum = discordUser.discriminator === '0' 
-                ? (BigInt(userId) >> 22n) % 6n 
+            const defaultNum = discordUser.discriminator === '0'
+                ? (BigInt(userId) >> 22n) % 6n
                 : parseInt(discordUser.discriminator) % 5;
             avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultNum}.png`;
         }
-        
+
         return {
             id: userId,
             username: discordUser.global_name || discordUser.username,
@@ -3653,17 +3680,17 @@ async function fetchDiscordUserSilent(userId) {
 
 function renderCommunityUsers() {
     const list = document.getElementById('communityList');
-    
+
     let filtered = communityUsers;
     if (communityTab === 'online') {
         filtered = communityUsers.filter(u => u.is_online === 1);
     }
-    
+
     if (filtered.length === 0) {
         list.innerHTML = `<div class="community-empty">No hay usuarios ${communityTab === 'online' ? 'en línea' : ''}</div>`;
         return;
     }
-    
+
     list.innerHTML = filtered.map(user => {
         const initial = user.username.charAt(0).toUpperCase();
         const isOnline = user.is_online === 1;
@@ -3671,14 +3698,14 @@ function renderCommunityUsers() {
         const hasDiscord = user.discord_avatar || user.discord_username || user.discord_id;
         const listeningName = sanitizeSongName(user.currentSong?.name || user.current_song_name);
         const isListening = Boolean(listeningName);
-        
+
         // Use REAL Discord avatar if available
         const avatarUrl = user.discord_avatar
             ? user.discord_avatar
             : (hasDiscord
                 ? `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.discord_id || 0) % 6n)}.png`
                 : null);
-        
+
         return `
             <div class="community-user" onclick="openUserDetail('${user.username}')" data-testid="user-${user.username}">
                 <div class="community-user-avatar">
@@ -3710,15 +3737,15 @@ function renderCommunityUsers() {
 window.openUserDetail = (username) => {
     const user = communityUsers.find(u => u.username === username);
     if (!user) return;
-    
+
     if (userDetailModal) {
         userDetailModal.classList.add('open');
         refreshModalScrollLock();
-        
+
         // Update avatar - use REAL Discord avatar if available
         const avatar = document.getElementById('userDetailAvatar');
         const initial = username.charAt(0).toUpperCase();
-        
+
         if (user.discord_avatar) {
             // Use real Discord avatar
             avatar.innerHTML = `<img src="${user.discord_avatar}" alt="">`;
@@ -3729,7 +3756,7 @@ window.openUserDetail = (username) => {
         } else {
             avatar.innerHTML = `<span>${initial}</span>`;
         }
-        
+
         // Update status
         const isOnline = user.is_online === 1;
         const isActive = isUserActive(user);
@@ -3737,13 +3764,13 @@ window.openUserDetail = (username) => {
             <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
             <span>${isActive ? 'Activo ahora' : (isOnline ? 'Conectado inactivo' : 'Desconectado')}</span>
         `;
-        
+
         // Update name and role
         document.getElementById('userDetailName').textContent = username;
         const roleNames = { admin: 'Administrador', dev: 'Developer', user: 'Usuario' };
         document.getElementById('userDetailRole').textContent = roleNames[user.role] || 'Usuario';
         document.getElementById('userDetailRole').className = `user-detail-role ${user.role}`;
-        
+
         // Now playing - show REAL current song
         const nowPlaying = document.getElementById('userNowPlaying');
         if (user.currentSong || user.current_song_name) {
@@ -3757,7 +3784,7 @@ window.openUserDetail = (username) => {
         } else {
             nowPlaying.style.display = 'none';
         }
-        
+
         // Discord
         const discordSection = document.getElementById('userDiscordSection');
         if (user.discord_username || user.discord_id) {
@@ -3766,12 +3793,12 @@ window.openUserDetail = (username) => {
         } else {
             discordSection.style.display = 'none';
         }
-        
+
         // Stats - use REAL data
         document.getElementById('userStatLikes').textContent = user.likes || 0;
         document.getElementById('userStatPlayed').textContent = user.played || 0;
         document.getElementById('userStatDownloads').textContent = user.downloads || 0;
-        
+
         // Member since
         const date = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Ene 2025';
         document.getElementById('userMemberSince').textContent = date;
@@ -3788,11 +3815,11 @@ window.closeUserDetailModal = () => {
 // Update listening status periodically
 async function updateListeningStatus() {
     if (!appState.usuarioActual || !navigator.onLine) return;
-    
+
     const currentSong = appState.playlist[appState.currentIndex];
     const songName = currentSong ? formatDisplayName(currentSong.name) : null;
     const isPlaying = !audio.paused;
-    
+
     try {
         await supabaseClient
             .from('users_access')
@@ -3823,7 +3850,7 @@ window.exportStats = () => {
         discord: appState.discord ? appState.discord.username : null,
         exportedAt: new Date().toISOString()
     };
-    
+
     const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -3836,7 +3863,7 @@ window.exportStats = () => {
 window.handleLogout = async () => {
     closeProfileModal();
     document.getElementById('logoutLoading').style.display = 'flex';
-    
+
     try {
         if (appState.usuarioActual && navigator.onLine) {
             await supabaseClient
@@ -3844,7 +3871,7 @@ window.handleLogout = async () => {
                 .update({ is_online: 0 })
                 .eq('username', appState.usuarioActual);
         }
-        
+
         await new Promise(resolve => setTimeout(resolve, 500));
 
         if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
