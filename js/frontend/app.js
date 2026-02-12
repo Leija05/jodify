@@ -276,6 +276,7 @@ const sleepTimerStatus = document.getElementById("sleepTimerStatus");
 const toastContainer = document.getElementById("toastContainer");
 const copyObsOverlayUrlBtn = document.getElementById("copyObsOverlayUrl");
 const openObsOverlayBtn = document.getElementById("openObsOverlay");
+const obsOverlayBaseUrlInput = document.getElementById("obsOverlayBaseUrl");
 
 // Queue elements
 const queueBtn = document.getElementById("queueBtn");
@@ -1521,9 +1522,25 @@ function formatDisplayName(name) {
 }
 
 
-function getObsOverlayUrl() {
-    const base = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}`;
-    return `${base}obs-overlay.html`;
+function getObsOverlayUrl(options = {}) {
+    const preferPublic = options.preferPublic ?? false;
+
+    const localBase = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}`;
+    const localUrl = `${localBase}obs-overlay.html`;
+
+    if (!preferPublic) return localUrl;
+
+    const savedBase = (obsOverlayBaseUrlInput?.value || localStorage.getItem('obsOverlayPublicBaseUrl') || '').trim();
+    const fallbackBase = 'https://leija05.github.io/jodify';
+    const selectedBase = savedBase || fallbackBase;
+    const normalized = selectedBase.replace(/\/$/, '');
+
+    localStorage.setItem('obsOverlayPublicBaseUrl', normalized);
+    if (obsOverlayBaseUrlInput && obsOverlayBaseUrlInput.value.trim() !== normalized) {
+        obsOverlayBaseUrlInput.value = normalized;
+    }
+
+    return `${normalized}/obs-overlay.html`;
 }
 
 function syncObsOverlayState() {
@@ -2764,10 +2781,21 @@ if (closeSettingsModal) {
         settingsModal.style.display = 'none';
     };
 }
+if (obsOverlayBaseUrlInput) {
+    const savedBase = localStorage.getItem('obsOverlayPublicBaseUrl');
+    obsOverlayBaseUrlInput.value = savedBase || 'https://leija05.github.io/jodify';
+    obsOverlayBaseUrlInput.addEventListener('change', () => {
+        const clean = obsOverlayBaseUrlInput.value.trim().replace(/\/$/, '');
+        if (!clean) return;
+        obsOverlayBaseUrlInput.value = clean;
+        localStorage.setItem('obsOverlayPublicBaseUrl', clean);
+    });
+}
+
 
 if (copyObsOverlayUrlBtn) {
     copyObsOverlayUrlBtn.onclick = async () => {
-        const url = getObsOverlayUrl();
+        const url = getObsOverlayUrl({ preferPublic: true });
         try {
             await navigator.clipboard.writeText(url);
             showToast('URL del overlay copiada para OBS', 'success');
