@@ -2990,6 +2990,115 @@ function closeProfileModal() {
     refreshModalScrollLock();
 }
 
+function getProfileThemeTargets() {
+    return {
+        card: document.querySelector('.profile-card'),
+        header: document.querySelector('.profile-header'),
+        avatarLarge: document.getElementById('profileAvatarLarge')
+    };
+}
+
+function seedToProfileColors(seed = '') {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    const hue = Math.abs(hash) % 360;
+    return {
+        c1: `hsl(${hue}, 82%, 54%)`,
+        c2: `hsl(${(hue + 65) % 360}, 84%, 58%)`
+    };
+}
+
+function rgbString(r, g, b) {
+    return `${Math.max(0, Math.min(255, Math.round(r)))}, ${Math.max(0, Math.min(255, Math.round(g)))}, ${Math.max(0, Math.min(255, Math.round(b)))}`;
+}
+
+function applyProfileThemeColors(c1, c2, rgb = null) {
+    const { card, header, avatarLarge } = getProfileThemeTargets();
+    const targets = [card, header, avatarLarge].filter(Boolean);
+    if (targets.length === 0) return;
+
+    let rgbValue = rgb;
+    if (!rgbValue) {
+        const m = /hsl\((\d+),\s*([\d.]+)%\s*,\s*([\d.]+)%\)/i.exec(c1 || '');
+        if (m) {
+            const h = Number(m[1]) / 360;
+            const s = Number(m[2]) / 100;
+            const l = Number(m[3]) / 100;
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1 / 6) return p + (q - p) * 6 * t;
+                if (t < 1 / 2) return q;
+                if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                return p;
+            };
+            if (s === 0) {
+                rgbValue = rgbString(l * 255, l * 255, l * 255);
+            } else {
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                rgbValue = rgbString(hue2rgb(p, q, h + 1 / 3) * 255, hue2rgb(p, q, h) * 255, hue2rgb(p, q, h - 1 / 3) * 255);
+            }
+        }
+    }
+
+    const finalRgb = rgbValue || '127, 0, 255';
+    targets.forEach((el) => {
+        el.style.setProperty('--profile-accent', c1);
+        el.style.setProperty('--profile-accent2', c2);
+        el.style.setProperty('--profile-accent-rgb', finalRgb);
+    });
+}
+
+function applyProfileThemeFromSeed(seed) {
+    const { c1, c2 } = seedToProfileColors(seed || appState.usuarioActual || 'jodify');
+    applyProfileThemeColors(c1, c2);
+}
+
+function applyProfileThemeFromDiscordAvatar(avatarUrl) {
+    if (!avatarUrl) {
+        applyProfileThemeFromSeed(appState.usuarioActual || 'jodify');
+        return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = 12;
+            canvas.height = 12;
+            ctx.drawImage(img, 0, 0, 12, 12);
+            const data = ctx.getImageData(0, 0, 12, 12).data;
+
+            let r = 0, g = 0, b = 0, n = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const alpha = data[i + 3];
+                if (alpha < 24) continue;
+                r += data[i];
+                g += data[i + 1];
+                b += data[i + 2];
+                n++;
+            }
+
+            if (!n) {
+                applyProfileThemeFromSeed(appState.discord?.id || appState.usuarioActual || 'jodify');
+                return;
+            }
+
+            r /= n; g /= n; b /= n;
+            const c1 = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+            const c2 = `rgb(${Math.min(255, Math.round(r + 48))}, ${Math.min(255, Math.round(g + 42))}, ${Math.min(255, Math.round(b + 52))})`;
+            applyProfileThemeColors(c1, c2, rgbString(r, g, b));
+        } catch {
+            applyProfileThemeFromSeed(appState.discord?.id || appState.usuarioActual || 'jodify');
+        }
+    };
+    img.onerror = () => applyProfileThemeFromSeed(appState.discord?.id || appState.usuarioActual || 'jodify');
+    img.src = avatarUrl;
+}
+
 function updateProfileUI() {
     const username = appState.usuarioActual || 'Usuario';
     const role = appState.currentUserRole || 'user';
@@ -3017,9 +3126,12 @@ function updateProfileUI() {
         profileRole.className = `profile-role ${role}`;
     }
 
-    // Update avatar if Discord is linked
+    // Update avatar/theme if Discord is linked
     if (appState.discord && appState.discord.avatar) {
         updateAvatarWithDiscord();
+        applyProfileThemeFromDiscordAvatar(appState.discord.avatar);
+    } else {
+        applyProfileThemeFromSeed(username);
     }
 
     // Update Discord section
@@ -3185,14 +3297,14 @@ function updateAvatarWithDiscord() {
     // Update profile button avatar
     const profileAvatar = document.getElementById('profileAvatar');
     if (profileAvatar) {
-        profileAvatar.innerHTML = `<img src="${appState.discord.avatar}" alt="">`;
+        profileAvatar.innerHTML = `<img src="${appState.discord.avatar}" alt="" crossorigin="anonymous">`;
     }
 
     // Update large avatar in modal
     const profileAvatarLarge = document.getElementById('profileAvatarLarge');
     if (profileAvatarLarge) {
         const onlineIndicator = profileAvatarLarge.querySelector('.online-indicator');
-        profileAvatarLarge.innerHTML = `<img src="${appState.discord.avatar}" alt="">`;
+        profileAvatarLarge.innerHTML = `<img src="${appState.discord.avatar}" alt="" crossorigin="anonymous">`;
         if (onlineIndicator) profileAvatarLarge.appendChild(onlineIndicator);
     }
 }
@@ -3398,6 +3510,7 @@ window.unlinkDiscord = async () => {
         }
 
         updateDiscordUI();
+        applyProfileThemeFromSeed(appState.usuarioActual || 'jodify');
         showToast('Discord desvinculado de users_access', 'success');
     } catch (e) {
         showToast('No se pudo desvincular en users_access', 'error');
