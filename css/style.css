@@ -2155,16 +2155,19 @@ h1, h2, h3, h4, h5, h6 {
 ========================================= */
 .admin-actions {
   position: fixed;
-  top: 84px;
-  right: var(--space-lg);
+  top: 20px;
+  left: 16px;
+  right: auto;
   display: none;
   gap: 10px;
   z-index: var(--z-sticky);
 }
 
 .dev-only-btn {
-  min-height: 42px;
-  border-radius: var(--radius-full);
+  width: 46px;
+  height: 46px;
+  min-height: 46px;
+  border-radius: 50%;
   background: var(--gradient-accent);
   color: white;
   border: none;
@@ -2173,14 +2176,18 @@ h1, h2, h3, h4, h5, h6 {
   display: none;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0 14px;
-  font-weight: 700;
+  padding: 0;
   transition: all 0.2s var(--ease-out);
+}
+
+.dev-only-btn span {
+  display: none;
 }
 
 .dev-only-btn svg {
   flex-shrink: 0;
+  width: 18px;
+  height: 18px;
 }
 
 .dev-only-btn:hover {
@@ -2752,6 +2759,35 @@ h1, h2, h3, h4, h5, h6 {
   .playlist-cover {
     width: 52px;
     height: 52px;
+  }
+
+  [data-theme="light"] .playlist {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(243, 247, 255, 0.98) 100%);
+    border-color: rgba(108, 92, 231, 0.24);
+    box-shadow: 0 -16px 36px rgba(16, 24, 40, 0.18), 0 0 20px rgba(108, 92, 231, 0.14);
+  }
+
+  [data-theme="light"] .playlist > div:first-child {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+  }
+
+  [data-theme="light"] #songList {
+    background: rgba(255, 255, 255, 0.78);
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  [data-theme="light"] .song-container {
+    background: rgba(255, 255, 255, 0.62);
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  [data-theme="light"] .song-metadatos {
+    color: rgba(0, 0, 0, 0.62);
+  }
+
+  [data-theme="light"] .insight-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.08);
   }
   
   .playlist-overlay {
@@ -4461,21 +4497,9 @@ body.focus-mode #lyricsBox p.active {
     width: 44px;
     height: 44px;
     min-height: 44px;
-    padding: 0;
-    border-radius: 50%;
-    font-size: 0;
     border: 1px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-  }
-
-  .dev-only-btn span {
-    display: none;
-  }
-
-  .dev-only-btn svg {
-    width: 18px;
-    height: 18px;
   }
 
   .delete-floating-btn {
