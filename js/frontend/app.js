@@ -274,6 +274,9 @@ const sleepTimerSelect = document.getElementById("sleepTimerSelect");
 const applySleepTimerBtn = document.getElementById("applySleepTimer");
 const sleepTimerStatus = document.getElementById("sleepTimerStatus");
 const toastContainer = document.getElementById("toastContainer");
+const copyObsOverlayUrlBtn = document.getElementById("copyObsOverlayUrl");
+const openObsOverlayBtn = document.getElementById("openObsOverlay");
+const obsOverlayBaseUrlInput = document.getElementById("obsOverlayBaseUrl");
 
 // Queue elements
 const queueBtn = document.getElementById("queueBtn");
@@ -306,6 +309,7 @@ const jam = initJam({
 
 // Audio events for Electron
 audio.addEventListener('play', () => {
+    syncObsOverlayState();
     if (window.electronAPI && window.electronAPI.updateThumbar) {
         window.electronAPI.updateThumbar(true);
     }
@@ -315,6 +319,7 @@ audio.addEventListener('play', () => {
 });
 
 audio.addEventListener('pause', () => {
+    syncObsOverlayState();
     if (window.electronAPI && window.electronAPI.updateThumbar) {
         window.electronAPI.updateThumbar(false);
     }
@@ -1487,6 +1492,7 @@ async function initApp() {
     } else {
         fetchSongs();
     }
+    syncObsOverlayState();
 }
 
 async function syncDownloadedSongs() {
@@ -1513,6 +1519,46 @@ function sanitizeFileName(name) {
 function formatDisplayName(name) {
     if (typeof name !== 'string') return 'Sin título';
     return name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ").trim() || 'Sin título';
+}
+
+
+function getObsOverlayUrl(options = {}) {
+    const preferPublic = options.preferPublic ?? false;
+
+    const localBase = `${location.origin}${location.pathname.replace(/[^/]*$/, '')}`;
+    const localUrl = `${localBase}obs-overlay.html`;
+
+    if (!preferPublic) return localUrl;
+
+    const savedBase = (obsOverlayBaseUrlInput?.value || localStorage.getItem('obsOverlayPublicBaseUrl') || '').trim();
+    const fallbackBase = 'https://leija05.github.io/jodify';
+    const selectedBase = savedBase || fallbackBase;
+    const normalized = selectedBase.replace(/\/$/, '');
+
+    localStorage.setItem('obsOverlayPublicBaseUrl', normalized);
+    if (obsOverlayBaseUrlInput && obsOverlayBaseUrlInput.value.trim() !== normalized) {
+        obsOverlayBaseUrlInput.value = normalized;
+    }
+
+    return `${normalized}/obs-overlay.html`;
+}
+
+function syncObsOverlayState() {
+    try {
+        const currentSong = appState.playlist[appState.currentIndex] || null;
+        const payload = {
+            title: currentSong ? formatDisplayName(currentSong.name) : 'Sin reproducción',
+            addedBy: currentSong?.added_by || '',
+            cover: cover?.src || 'assets/default-cover.png',
+            currentTime: Number(audio?.currentTime || 0),
+            duration: Number(audio?.duration || 0),
+            isPlaying: audio ? !audio.paused : false,
+            updatedAt: Date.now()
+        };
+        localStorage.setItem('jodify_obs_overlay_state', JSON.stringify(payload));
+    } catch (e) {
+        // no-op
+    }
 }
 
 async function getGradientColors(imgElement) {
@@ -1891,6 +1937,7 @@ async function playOfflineSongById(songId, options = {}) {
             isChangingTrack = true;
             appState.currentIndex = appState.playlist.findIndex(s => s.id === song.id);
             songTitle.textContent = formatDisplayName(song.name);
+    syncObsOverlayState();
             
             try {
                 await startSongPlayback(song, blobUrl, options);
@@ -2063,6 +2110,7 @@ async function playSong(index, options = {}) {
     }
     
     songTitle.textContent = formatDisplayName(song.name);
+    syncObsOverlayState();
     loadMetadata(song.url, "cover", true);
     loadLRC(song.name);
     renderPlaylist();
@@ -2245,6 +2293,7 @@ async function startVisualizer() {
 // TIME UPDATE (with progress fill)
 // =========================================
 audio.ontimeupdate = () => {
+    syncObsOverlayState();
     // Update progress bar fill
     const progressBar = document.getElementById('progress');
     if (progressBar && audio.duration) {
@@ -2730,6 +2779,36 @@ if (settingsBtn) {
 if (closeSettingsModal) {
     closeSettingsModal.onclick = () => {
         settingsModal.style.display = 'none';
+    };
+}
+if (obsOverlayBaseUrlInput) {
+    const savedBase = localStorage.getItem('obsOverlayPublicBaseUrl');
+    obsOverlayBaseUrlInput.value = savedBase || 'https://leija05.github.io/jodify';
+    obsOverlayBaseUrlInput.addEventListener('change', () => {
+        const clean = obsOverlayBaseUrlInput.value.trim().replace(/\/$/, '');
+        if (!clean) return;
+        obsOverlayBaseUrlInput.value = clean;
+        localStorage.setItem('obsOverlayPublicBaseUrl', clean);
+    });
+}
+
+
+if (copyObsOverlayUrlBtn) {
+    copyObsOverlayUrlBtn.onclick = async () => {
+        const url = getObsOverlayUrl({ preferPublic: true });
+        try {
+            await navigator.clipboard.writeText(url);
+            showToast('URL del overlay copiada para OBS', 'success');
+        } catch (e) {
+            prompt('Copia esta URL para OBS:', url);
+        }
+    };
+}
+
+if (openObsOverlayBtn) {
+    openObsOverlayBtn.onclick = () => {
+        const url = getObsOverlayUrl();
+        window.open(url, '_blank', 'width=960,height=540');
     };
 }
 

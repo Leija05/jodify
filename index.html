@@ -169,6 +169,19 @@
                                     <button type="button" id="applySleepTimer" class="btn-secondary" data-testid="sleep-timer-apply">Programar</button>
                                 </div>
                             </div>
+                            <div class="settings-timer" style="margin-top: 10px;">
+                                <div class="settings-timer-header">
+                                    <span>Overlay para OBS</span>
+                                    <span class="settings-hint">Genera un link web para Browser Source</span>
+                                </div>
+                                <div class="settings-timer-controls" style="display:flex;flex-direction:column;gap:8px;align-items:stretch;">
+                                    <input type="text" id="obsOverlayBaseUrl" placeholder="https://tudominio.com o URL de GitHub Pages" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-hover);color:var(--text);" />
+                                    <div style="display:flex;gap:8px;">
+                                        <button type="button" id="copyObsOverlayUrl" class="btn-secondary">Copiar URL overlay</button>
+                                        <button type="button" id="openObsOverlay" class="btn-secondary">Abrir preview</button>
+                                    </div>
+                                </div>
+                            </div>
                             <button onclick="saveSettings()" data-testid="save-settings">Guardar</button>
                         </div>
                     </div>

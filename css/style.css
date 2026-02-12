@@ -2830,6 +2830,182 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+
+
+@media (max-width: 480px) {
+  .app {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .playlist {
+    height: 86vh;
+    padding: 12px;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .playlist h3 {
+    font-size: 1.05rem;
+  }
+
+  .playlist-actions {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .btn-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .tab-btn {
+    font-size: 0.8rem;
+    padding: 8px 10px;
+  }
+
+  #searchInput,
+  .sort-select {
+    font-size: 0.82rem;
+    min-height: 36px;
+  }
+
+  #songList {
+    min-height: 44vh;
+    padding: 6px;
+  }
+
+  .song-container {
+    padding: 8px 10px;
+    gap: 10px;
+  }
+
+  .playlist-cover {
+    width: 44px;
+    height: 44px;
+  }
+
+  .song-name {
+    font-size: 0.88rem;
+  }
+
+  .song-metadatos {
+    font-size: 0.7rem;
+    gap: 6px;
+  }
+
+  .insight-items {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .insight-card {
+    min-width: 0;
+    padding: 6px 8px;
+  }
+
+  .insight-value {
+    font-size: 0.95rem;
+  }
+
+  .smart-mix-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 14px;
+  }
+
+  .add-song {
+    margin-top: 8px;
+    padding: 11px 12px;
+    font-size: 0.88rem;
+  }
+
+  .admin-actions {
+    top: 10px;
+    left: 10px;
+    gap: 8px;
+  }
+
+  .dev-only-btn {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .player {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .song-left {
+    gap: 8px;
+  }
+
+  .song-left #cover {
+    width: 40px;
+    height: 40px;
+  }
+
+  .controls {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .controls button,
+  .play-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .timeline {
+    gap: 8px;
+  }
+
+  .timeline span {
+    font-size: 0.72rem;
+    min-width: 32px;
+  }
+}
+
+@media (max-width: 360px) {
+  .playlist {
+    height: 88vh;
+    padding: 10px;
+  }
+
+  .playlist-actions {
+    gap: 6px;
+  }
+
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .song-name {
+    font-size: 0.82rem;
+  }
+
+  .song-metadatos {
+    font-size: 0.66rem;
+  }
+
+  .insight-label {
+    font-size: 0.64rem;
+  }
+
+  .insight-value {
+    font-size: 0.85rem;
+  }
+
+  .dev-only-btn {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+}
+
 @media (min-width: 769px) {
   #btnOpenPlaylist {
     display: none !important;
