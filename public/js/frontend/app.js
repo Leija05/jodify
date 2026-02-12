@@ -2199,7 +2199,9 @@ function getProfileThemeTargets() {
     return {
         card: document.querySelector('.profile-card'),
         header: document.querySelector('.profile-header'),
-        avatarLarge: document.getElementById('profileAvatarLarge')
+        avatarLarge: document.getElementById('profileAvatarLarge'),
+        profileBtn: document.getElementById('profileBtn'),
+        profileBtnAvatar: document.querySelector('#profileBtn .avatar')
     };
 }
 
@@ -2218,8 +2220,8 @@ function rgbString(r, g, b) {
 }
 
 function applyProfileThemeColors(c1, c2, rgb = null) {
-    const { card, header, avatarLarge } = getProfileThemeTargets();
-    const targets = [card, header, avatarLarge].filter(Boolean);
+    const { card, header, avatarLarge, profileBtn, profileBtnAvatar } = getProfileThemeTargets();
+    const targets = [card, header, avatarLarge, profileBtn, profileBtnAvatar].filter(Boolean);
     if (targets.length === 0) return;
 
     let rgbValue = rgb;
@@ -2696,6 +2698,8 @@ const communityModal = document.getElementById('communityModal');
 const userDetailModal = document.getElementById('userDetailModal');
 let communityTab = 'online';
 let communityUsers = [];
+const communityThemeCache = new Map();
+const communityThemePending = new Set();
 
 window.openCommunityModal = async () => {
     if (communityModal) {
@@ -2804,6 +2808,76 @@ async function fetchDiscordUserSilent(userId) {
     }
 }
 
+
+
+function getCommunityThemeKey(user) {
+    return String(user?.discord_id || user?.username || 'jodify');
+}
+
+function getCommunityThemeFromSeed(user) {
+    const { c1, c2 } = seedToProfileColors(getCommunityThemeKey(user));
+    return { c1, c2, sampled: false };
+}
+
+function sampleCommunityThemeFromAvatar(user, avatarUrl) {
+    if (!avatarUrl) return;
+    const key = getCommunityThemeKey(user);
+    const cached = communityThemeCache.get(key);
+    if (communityThemePending.has(key) || cached?.sampled) return;
+
+    communityThemePending.add(key);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = 10;
+            canvas.height = 10;
+            ctx.drawImage(img, 0, 0, 10, 10);
+            const data = ctx.getImageData(0, 0, 10, 10).data;
+
+            let r = 0, g = 0, b = 0, n = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i + 3] < 24) continue;
+                r += data[i];
+                g += data[i + 1];
+                b += data[i + 2];
+                n++;
+            }
+
+            if (n > 0) {
+                r = Math.round(r / n);
+                g = Math.round(g / n);
+                b = Math.round(b / n);
+                communityThemeCache.set(key, {
+                    c1: `rgb(${r}, ${g}, ${b})`,
+                    c2: `rgb(${Math.min(255, r + 42)}, ${Math.min(255, g + 42)}, ${Math.min(255, b + 52)})`,
+                    sampled: true
+                });
+                if (communityModal?.classList.contains('open')) renderCommunityUsers();
+            }
+        } catch {}
+        communityThemePending.delete(key);
+    };
+    img.onerror = () => communityThemePending.delete(key);
+    img.src = avatarUrl;
+}
+
+function resolveCommunityTheme(user, avatarUrl) {
+    const key = getCommunityThemeKey(user);
+    const cached = communityThemeCache.get(key);
+    if (cached) {
+        if (avatarUrl && !cached.sampled) sampleCommunityThemeFromAvatar(user, avatarUrl);
+        return cached;
+    }
+
+    const fallback = getCommunityThemeFromSeed(user);
+    communityThemeCache.set(key, fallback);
+    if (avatarUrl) sampleCommunityThemeFromAvatar(user, avatarUrl);
+    return fallback;
+}
+
 function renderCommunityUsers() {
     const list = document.getElementById('communityList');
 
@@ -2827,11 +2901,12 @@ function renderCommunityUsers() {
         const avatarUrl = user.discord_avatar
             ? user.discord_avatar
             : (hasDiscord ? `https://cdn.discordapp.com/embed/avatars/${user.username.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 5}.png` : null);
+        const theme = resolveCommunityTheme(user, avatarUrl);
 
         return `
-            <div class="community-user" onclick="openUserDetail('${user.username}')" data-testid="user-${user.username}">
+            <div class="community-user" style="--community-accent:${theme.c1};--community-accent2:${theme.c2};" onclick="openUserDetail('${user.username}')" data-testid="user-${user.username}">
                 <div class="community-user-avatar">
-                    ${avatarUrl ? `<img src="${avatarUrl}" alt="">` : initial}
+                    ${avatarUrl ? `<img src="${avatarUrl}" alt="" crossorigin="anonymous">` : initial}
                     <span class="status-indicator ${isOnline ? 'online' : 'offline'}"></span>
                 </div>
                 <div class="community-user-info">
