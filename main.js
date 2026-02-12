@@ -88,6 +88,7 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false,
+            backgroundThrottling: false,
             webSecurity: false // Nota: Ten cuidado con esto en apps que cargan contenido externo
         }
     });
