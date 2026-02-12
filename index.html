@@ -255,6 +255,9 @@
                     + Añadir y Compartir
                     <input type="file" id="fileInput" accept="audio/*" multiple hidden>
                 </label>
+                <button id="openDeleteSongsModal" class="btn-delete-mode" style="display: none;" data-testid="open-delete-songs">
+                    Eliminar canciones
+                </button>
             </div>
 
             <div id="uploadStatus"></div>
@@ -779,6 +782,23 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteSongsModal" class="modal" data-testid="delete-songs-modal">
+        <div class="modal-content delete-songs-modal-content">
+            <div class="modal-header">
+                <h3>Modo eliminar canciones</h3>
+                <button id="closeDeleteSongsModal" class="close-btn" data-testid="close-delete-songs">&times;</button>
+            </div>
+            <p class="delete-songs-help">Selecciona una o varias canciones para eliminarlas permanentemente de la base de datos.</p>
+            <div id="deleteSongsList" class="delete-songs-list"></div>
+            <div class="delete-songs-actions">
+                <span id="deleteSongsCounter">0 seleccionadas</span>
+                <button id="confirmDeleteSongs" class="btn-delete-confirm" data-testid="confirm-delete-songs" disabled>
+                    Confirmar eliminación
+                </button>
             </div>
         </div>
     </div>

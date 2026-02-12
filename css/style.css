@@ -4285,3 +4285,134 @@ body.focus-mode #lyricsBox p.active {
     padding-bottom: 12px;
   }
 }
+
+
+.btn-delete-mode {
+  border: 1px solid rgba(255, 80, 120, 0.5);
+  background: rgba(255, 80, 120, 0.12);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-mode:hover {
+  border-color: rgba(255, 80, 120, 0.9);
+  background: rgba(255, 80, 120, 0.2);
+  transform: translateY(-1px);
+}
+
+.delete-songs-modal-content {
+  max-width: 720px;
+  width: min(720px, calc(100vw - 40px));
+}
+
+.delete-songs-help {
+  margin: 4px 0 12px;
+  color: var(--text-muted);
+}
+
+.delete-songs-list {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+  background: var(--surface);
+}
+
+.delete-song-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: rgba(0,0,0,0.08);
+}
+
+.delete-song-item:hover {
+  border-color: var(--border);
+}
+
+.delete-song-item input {
+  accent-color: var(--error);
+}
+
+.delete-song-name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.delete-song-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.delete-songs-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-delete-confirm {
+  border: 1px solid rgba(255, 70, 110, 0.7);
+  background: linear-gradient(135deg, rgba(255, 70, 110, 0.95), rgba(215, 48, 91, 0.95));
+  color: #fff;
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-delete-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme="light"] .community-content,
+[data-theme="light"] .community-user,
+[data-theme="light"] .user-detail-content,
+[data-theme="light"] .profile-card,
+[data-theme="light"] .community-insights,
+[data-theme="light"] .community-tab {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .community-user:hover {
+  background: rgba(108, 92, 231, 0.08);
+}
+
+[data-theme="light"] .community-user-status {
+  color: rgba(45, 52, 54, 0.76);
+}
+
+[data-theme="light"] .community-user-name,
+[data-theme="light"] .community-header h3,
+[data-theme="light"] .user-detail-name,
+[data-theme="light"] .now-playing-title {
+  color: #1f2328;
+}
+
+
+.community-song-link {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.community-song-link:hover {
+  color: var(--secondary);
+}
