@@ -2179,6 +2179,10 @@ h1, h2, h3, h4, h5, h6 {
   transition: all 0.2s var(--ease-out);
 }
 
+.dev-only-btn svg {
+  flex-shrink: 0;
+}
+
 .dev-only-btn:hover {
   transform: translateY(-1px) scale(1.02);
 }
@@ -4447,15 +4451,55 @@ body.focus-mode #lyricsBox p.active {
 
 @media (max-width: 768px) {
   .admin-actions {
-    top: 70px;
-    right: 12px;
-    gap: 8px;
+    top: 16px;
+    left: 12px;
+    right: auto;
+    gap: 10px;
   }
 
   .dev-only-btn {
-    min-height: 38px;
-    padding: 0 12px;
-    font-size: 0.85rem;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .dev-only-btn span {
+    display: none;
+  }
+
+  .dev-only-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .delete-floating-btn {
+    background: linear-gradient(135deg, #ff3f75, #ff0044);
+    box-shadow: 0 10px 24px rgba(255, 0, 68, 0.38);
+  }
+
+  [data-theme="light"] .dev-only-btn {
+    border-color: rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  }
+
+  [data-theme="light"] .delete-floating-btn {
+    background: linear-gradient(135deg, #ff4d6d, #d90452);
+    box-shadow: 0 10px 22px rgba(217, 4, 82, 0.35);
+  }
+
+  [data-theme="light"] #btnOpenRegister.dev-only-btn {
+    background: linear-gradient(135deg, #6c5ce7, #8f7cff);
+  }
+
+  [data-theme="dark"] #btnOpenRegister.dev-only-btn,
+  :root #btnOpenRegister.dev-only-btn {
+    box-shadow: 0 10px 22px rgba(127, 0, 255, 0.35);
   }
 
   .delete-songs-filters {
