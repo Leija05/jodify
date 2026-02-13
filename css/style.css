@@ -4859,3 +4859,65 @@ body.focus-mode #lyricsBox p.active {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* System dialog modal (replaces alert/confirm/prompt) */
+.system-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.system-dialog-overlay.open {
+  display: flex;
+}
+
+.system-dialog-card {
+  width: min(420px, 100%);
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 18px;
+}
+
+.system-dialog-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.system-dialog-message {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.system-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.system-dialog-btn {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.system-dialog-btn.primary {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  color: #fff;
+}

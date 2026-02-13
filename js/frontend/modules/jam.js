@@ -90,9 +90,12 @@ export function initJam({
         updateJamUI();
     }
 
-    function joinJam() {
+    async function joinJam() {
         const code = jamJoinInput?.value.trim().toUpperCase();
-        if (!code) return;
+        if (!code) {
+            if (window.showSystemNotice) await window.showSystemNotice('Ingresa un código de Jam para unirte.', 'Jam');
+            return;
+        }
         initializeJamSession({ asHost: false, code });
     }
 
@@ -169,7 +172,7 @@ export function initJam({
 
     async function initializeJamSession({ asHost, code = null }) {
         if (!navigator.onLine) {
-            alert("Se requiere conexión para iniciar una Jam.");
+            if (window.showSystemNotice) await window.showSystemNotice("Se requiere conexión para iniciar una Jam.", "Jam");
             return;
         }
         const username = appState.usuarioActual || 'Invitado';
@@ -192,20 +195,20 @@ export function initJam({
                         jamCode = null;
                         continue;
                     }
-                    alert('No se pudo crear la Jam. Revisa las políticas de Supabase.');
+                    if (window.showSystemNotice) await window.showSystemNotice('No se pudo crear la Jam. Revisa las políticas de Supabase.', 'Jam');
                     return;
                 }
                 createdSession = data;
             }
             if (!createdSession) {
-                alert('No se pudo crear la Jam. Intenta de nuevo.');
+                if (window.showSystemNotice) await window.showSystemNotice('No se pudo crear la Jam. Intenta de nuevo.', 'Jam');
                 return;
             }
             appState.jamSessionId = createdSession.id;
         } else {
             const session = await fetchJamSessionByCode(jamCode);
             if (!session) {
-                alert('Código de Jam inválido o inactivo.');
+                if (window.showSystemNotice) await window.showSystemNotice('Código de Jam inválido o inactivo.', 'Jam');
                 return;
             }
             appState.jamSessionId = session.id;
@@ -275,15 +278,35 @@ export function initJam({
 
     async function upsertJamMember({ username, isHost }) {
         if (!appState.jamSessionId) return;
-        const { error } = await supabaseClient
+        const payload = {
+            jam_id: appState.jamSessionId,
+            username,
+            is_host: isHost,
+            active: true,
+            last_seen: new Date().toISOString()
+        };
+
+        let { error } = await supabaseClient
             .from('jam_members')
-            .upsert([{
-                jam_id: appState.jamSessionId,
-                username,
-                is_host: isHost,
-                active: true,
-                last_seen: new Date().toISOString()
-            }], { onConflict: 'jam_id,username' });
+            .upsert([payload], { onConflict: 'jam_id,username' });
+
+        if (error) {
+            const updateResult = await supabaseClient
+                .from('jam_members')
+                .update({ is_host: isHost, active: true, last_seen: payload.last_seen })
+                .eq('jam_id', appState.jamSessionId)
+                .eq('username', username);
+
+            if (updateResult.error) {
+                const insertResult = await supabaseClient
+                    .from('jam_members')
+                    .insert([payload]);
+                error = insertResult.error;
+            } else {
+                error = null;
+            }
+        }
+
         if (error) {
             const errorMessage = error?.message || JSON.stringify(error);
             console.warn('Error registrando miembro de Jam:', errorMessage);
@@ -341,17 +364,37 @@ export function initJam({
         appState.jamSessionInterval = setInterval(async () => {
             if (!appState.jamActive || appState.jamHost || !appState.jamCode) return;
             const session = await fetchJamSessionByCode(appState.jamCode);
-            if (!session) return;
+            if (!session || appState.jamSyncInProgress) return;
+
             const songId = session.current_song_id;
-            if (songId && songId !== appState.lastJamSongId && !appState.jamSyncInProgress) {
+            const sessionTime = Number(session.current_time || 0);
+            const sessionPlaying = Boolean(session.is_playing);
+
+            if (!songId) return;
+
+            const currentSong = appState.playlist[appState.currentIndex];
+            const currentSongId = currentSong ? String(currentSong.id) : null;
+            const sameSong = currentSongId && currentSongId === String(songId);
+            const timeDrift = Math.abs((audio.currentTime || 0) - sessionTime);
+
+            if (!sameSong) {
                 appState.lastJamSongId = songId;
-                applyJamSync({
-                    songId,
-                    time: session.current_time || 0,
-                    isPlaying: session.is_playing
-                });
+                applyJamSync({ songId, time: sessionTime, isPlaying: sessionPlaying });
+                return;
             }
-        }, 4000);
+
+            if (sessionPlaying !== !audio.paused) {
+                if (sessionPlaying) {
+                    audio.play().catch(() => {});
+                } else {
+                    audio.pause();
+                }
+            }
+
+            if (timeDrift > 1.2) {
+                audio.currentTime = sessionTime;
+            }
+        }, 2000);
     }
 
     async function syncFromJamSession() {
@@ -372,7 +415,7 @@ export function initJam({
         const songId = payload.songId;
         const targetTime = payload.time || 0;
         const isPlaying = payload.isPlaying;
-        const songIndex = appState.playlist.findIndex(s => s.id === songId);
+        const songIndex = appState.playlist.findIndex(s => String(s.id) === String(songId));
         if (songIndex === -1) return;
 
         appState.jamSyncInProgress = true;
@@ -394,16 +437,19 @@ export function initJam({
             return;
         }
 
-        playSong(songIndex, { fadeOutMs: 0, fadeInMs: 0 });
-        setTimeout(() => {
-            audio.currentTime = targetTime;
-            if (isPlaying) {
-                audio.play();
-            } else {
-                audio.pause();
-            }
-            finishSync();
-        }, 600);
+        Promise.resolve(playSong(songIndex, { fadeOutMs: 0, fadeInMs: 0 }))
+            .catch(() => {})
+            .finally(() => {
+                setTimeout(() => {
+                    audio.currentTime = targetTime;
+                    if (isPlaying) {
+                        audio.play().catch(() => {});
+                    } else {
+                        audio.pause();
+                    }
+                    finishSync();
+                }, 350);
+            });
     }
 
     function applyJamPause(payload) {
@@ -526,7 +572,7 @@ export function initJam({
                 await navigator.clipboard.writeText(appState.jamCode);
             } catch (err) {
                 console.warn('No se pudo copiar el código:', err);
-                alert('No se pudo copiar el código. Cópialo manualmente.');
+                if (window.showSystemNotice) await window.showSystemNotice('No se pudo copiar el código. Cópialo manualmente.', 'Jam');
             }
         };
     }

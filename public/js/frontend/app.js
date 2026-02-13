@@ -31,6 +31,87 @@ const ICONS = {
 const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 notificationSound.volume = 0.25;
 
+
+function ensureSystemDialog() {
+    let root = document.getElementById('systemDialogRoot');
+    if (root) return root;
+
+    root = document.createElement('div');
+    root.id = 'systemDialogRoot';
+    root.className = 'system-dialog-overlay';
+    root.innerHTML = `
+        <div class="system-dialog-card">
+            <h3 id="systemDialogTitle" class="system-dialog-title">Aviso</h3>
+            <p id="systemDialogMessage" class="system-dialog-message"></p>
+            <div class="system-dialog-actions">
+                <button id="systemDialogCancel" class="system-dialog-btn secondary" style="display:none;">Cancelar</button>
+                <button id="systemDialogOk" class="system-dialog-btn primary">Aceptar</button>
+            </div>
+        </div>
+    `;
+    root.addEventListener('click', (e) => {
+        if (e.target === root) {
+            const cancelBtn = document.getElementById('systemDialogCancel');
+            if (cancelBtn?.style.display !== 'none') cancelBtn.click();
+        }
+    });
+    document.body.appendChild(root);
+    return root;
+}
+
+function showSystemNotice(message, title = 'Aviso') {
+    return new Promise((resolve) => {
+        const root = ensureSystemDialog();
+        const titleEl = document.getElementById('systemDialogTitle');
+        const msgEl = document.getElementById('systemDialogMessage');
+        const okBtn = document.getElementById('systemDialogOk');
+        const cancelBtn = document.getElementById('systemDialogCancel');
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        cancelBtn.style.display = 'none';
+        okBtn.textContent = 'Aceptar';
+
+        const close = () => {
+            root.classList.remove('open');
+            okBtn.onclick = null;
+            resolve();
+        };
+
+        okBtn.onclick = close;
+        root.classList.add('open');
+    });
+}
+
+function showSystemConfirm(message, title = 'Confirmación', confirmText = 'Aceptar') {
+    return new Promise((resolve) => {
+        const root = ensureSystemDialog();
+        const titleEl = document.getElementById('systemDialogTitle');
+        const msgEl = document.getElementById('systemDialogMessage');
+        const okBtn = document.getElementById('systemDialogOk');
+        const cancelBtn = document.getElementById('systemDialogCancel');
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        cancelBtn.style.display = 'inline-flex';
+        okBtn.textContent = confirmText;
+
+        const close = (result) => {
+            root.classList.remove('open');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            resolve(result);
+        };
+
+        okBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        root.classList.add('open');
+    });
+}
+
+window.showSystemNotice = showSystemNotice;
+window.showSystemConfirm = showSystemConfirm;
+
 // =========================================
 // APP STATE
 // =========================================
@@ -333,7 +414,7 @@ function showShortcutHint() {
 
 function togglePlay() {
     if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
-        alert("Solo el host puede controlar la reproducción en una Jam.");
+        showSystemNotice("Solo el host puede controlar la reproducción en una Jam.", "Jam");
         return;
     }
     if (audio.paused) {
@@ -853,11 +934,11 @@ window.clearLogs = () => {
 
 window.deleteUserRecord = async (id, role, name) => {
     if (role.toLowerCase() === 'dev') {
-        alert("No se puede eliminar usuarios dev.");
+        await showSystemNotice("No se puede eliminar usuarios dev.", "Acción bloqueada");
         return;
     }
 
-    if (!confirm(`¿Eliminar a "${name}"?`)) return;
+    if (!await showSystemConfirm(`¿Eliminar a "${name}"?`, "Eliminar usuario", "Eliminar")) return;
 
     try {
         const { error } = await supabaseClient.from('users_access').delete().eq('id', id);
@@ -865,7 +946,7 @@ window.deleteUserRecord = async (id, role, name) => {
         addSystemLog('warn', `Eliminó al usuario: ${name}`);
         window.loadUsersList();
     } catch (err) {
-        alert("Error: " + err.message);
+        await showSystemNotice("Error: " + err.message, "Error");
     }
 };
 
@@ -980,7 +1061,7 @@ const logoutLoading = document.getElementById("logoutLoading");
 
 if (btnLogout) {
     btnLogout.onclick = async () => {
-        if (!confirm("¿Cerrar sesión?")) return;
+        if (!await showSystemConfirm("¿Cerrar sesión?", "Cerrar sesión", "Salir")) return;
 
         logoutLoading.style.display = "flex";
 
@@ -1505,7 +1586,7 @@ function createSongElement(song, isCurrent, isDownloaded) {
 async function playOfflineSongById(songId, options = {}) {
     if (!appState.db) return;
     if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
-        alert("Solo el host puede cambiar la canción en una Jam.");
+        showSystemNotice("Solo el host puede cambiar la canción en una Jam.", "Jam");
         return;
     }
 
@@ -1559,7 +1640,7 @@ async function renderPlaylist() {
 
 window.deleteDownload = async (event, songId) => {
     event.stopPropagation();
-    if (!confirm("¿Eliminar esta descarga?")) return;
+    if (!await showSystemConfirm("¿Eliminar esta descarga?", "Eliminar descarga", "Eliminar")) return;
 
     if (!appState.db) return;
 
@@ -1592,7 +1673,7 @@ window.downloadSong = async (event, songId) => {
     event.stopPropagation();
 
     if (!appState.db) {
-        alert("Base de datos no disponible");
+        await showSystemNotice("Base de datos no disponible", "Error");
         return;
     }
 
@@ -1626,7 +1707,7 @@ window.downloadSong = async (event, songId) => {
     } catch (err) {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
-        alert("Error al descargar: " + err.message);
+        await showSystemNotice("Error al descargar: " + err.message, "Error");
     }
 };
 
@@ -1662,7 +1743,7 @@ async function playSong(index, options = {}) {
     if (index < 0 || index >= appState.playlist.length) return;
     if (isChangingTrack) return;
     if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
-        alert("Solo el host puede cambiar la canción en una Jam.");
+        showSystemNotice("Solo el host puede cambiar la canción en una Jam.", "Jam");
         return;
     }
 
@@ -1919,7 +2000,7 @@ prevBtn.onclick = handlePrevSong;
 
 progress.oninput = () => {
     if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
-        alert("Solo el host puede adelantar la canción en una Jam.");
+        showSystemNotice("Solo el host puede adelantar la canción en una Jam.", "Jam");
         return;
     }
     audio.currentTime = progress.value;
@@ -2679,7 +2760,7 @@ window.linkDiscord = async () => {
 };
 
 window.unlinkDiscord = async () => {
-    if (!confirm('¿Desvincular tu cuenta de Discord?')) return;
+    if (!await showSystemConfirm('¿Desvincular tu cuenta de Discord?', 'Discord', 'Desvincular')) return;
 
     if (!navigator.onLine) {
         showToast('Debes estar en línea para actualizar users_access', 'error');
