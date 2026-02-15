@@ -366,9 +366,30 @@ export function initJam({
         renderJamUsers();
     }
 
+
+    async function getActiveJamIdsByCode() {
+        if (!appState.jamCode) return appState.jamSessionId ? [appState.jamSessionId] : [];
+        const { data, error } = await supabaseClient
+            .from('jam_sessions')
+            .select('id')
+            .eq('code', appState.jamCode)
+            .eq('is_active', true);
+        if (error || !data?.length) return appState.jamSessionId ? [appState.jamSessionId] : [];
+        const ids = [...new Set(data.map(row => row.id).filter(Boolean))];
+        if (appState.jamSessionId && !ids.includes(appState.jamSessionId)) ids.push(appState.jamSessionId);
+        return ids;
+    }
+
     async function refreshJamMembers() {
-        if (!appState.jamSessionId) return;
-        const { data, error } = await supabaseClient.from('jam_members').select('username,is_host,active').eq('jam_id', appState.jamSessionId).eq('active', true).order('is_host', { ascending: false });
+        if (!appState.jamSessionId && !appState.jamCode) return;
+        const jamIds = await getActiveJamIdsByCode();
+        if (!jamIds.length) return;
+        const { data, error } = await supabaseClient
+            .from('jam_members')
+            .select('username,is_host,active,jam_id')
+            .in('jam_id', jamIds)
+            .eq('active', true)
+            .order('is_host', { ascending: false });
         if (error) return;
         const mappedMembers = (data || []).map(member => ({ username: member.username, isHost: member.is_host }));
         applyJamUsers(mappedMembers);
