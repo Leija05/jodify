@@ -5026,23 +5026,24 @@ body.focus-mode #lyricsBox p.active {
 }
 
 .fullscreen-content {
-  width: min(980px, 92vw);
-  display: flex;
-  flex-direction: column;
+  width: min(1100px, 94vw);
+  display: grid;
+  grid-template-columns: minmax(280px, 520px) minmax(320px, 1fr);
+  gap: 36px;
   align-items: center;
-  gap: 20px;
 }
 
 .fullscreen-title {
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
   font-weight: 800;
   color: #fff;
-  text-align: center;
+  text-align: left;
+  margin-bottom: 12px;
 }
 
 .fullscreen-cover {
-  width: min(62vh, 560px);
-  height: min(62vh, 560px);
+  width: min(56vh, 500px);
+  height: min(56vh, 500px);
   object-fit: cover;
   border-radius: 18px;
   box-shadow: 0 28px 60px rgba(0,0,0,0.45);
@@ -5050,16 +5051,46 @@ body.focus-mode #lyricsBox p.active {
 
 .fullscreen-controls {
   display: flex;
-  gap: 16px;
+  gap: 14px;
+  margin: 14px 0;
 }
 
 .fullscreen-controls button {
+  width: 52px;
+  height: 52px;
   border: 1px solid rgba(255,255,255,0.22);
   background: rgba(0,0,0,0.35);
   color: #fff;
   border-radius: 999px;
-  padding: 10px 14px;
-  font-size: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .2s ease, background .2s ease;
+}
+
+.fullscreen-controls button:hover {
+  transform: translateY(-1px) scale(1.03);
+  background: rgba(255,255,255,0.16);
+}
+
+.fullscreen-controls #fullscreenPlay {
+  width: 66px;
+  height: 66px;
+  background: #fff;
+  color: #111;
+}
+
+.fullscreen-controls #fullscreenPlay.is-pause svg rect {
+  fill: currentColor;
+}
+
+.fullscreen-right-panel {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px;
+  padding: 26px;
+  backdrop-filter: blur(6px);
 }
 
 .fullscreen-timeline {
@@ -5076,6 +5107,8 @@ body.focus-mode #lyricsBox p.active {
 }
 
 @media (max-width: 768px) {
-  .fullscreen-title { font-size: 1.25rem; }
-  .fullscreen-cover { width: min(72vw, 360px); height: min(72vw, 360px); }
+  .fullscreen-content { grid-template-columns: 1fr; gap: 18px; }
+  .fullscreen-right-panel { padding: 16px; }
+  .fullscreen-title { font-size: 1.25rem; text-align: center; }
+  .fullscreen-cover { width: min(72vw, 360px); height: min(72vw, 360px); justify-self: center; }
 }

@@ -372,17 +372,33 @@
     <div id="fullscreenPlayer" class="fullscreen-player" data-testid="fullscreen-player">
         <button id="closeFullscreenBtn" class="fullscreen-close" aria-label="Cerrar pantalla completa">&times;</button>
         <div class="fullscreen-content">
-            <p id="fullscreenSongTitle" class="fullscreen-title">Selecciona una canción</p>
             <img id="fullscreenCover" class="fullscreen-cover" src="assets/default-cover.png" alt="cover fullscreen">
-            <div class="fullscreen-controls">
-                <button id="fullscreenPrev" aria-label="Anterior">⏮</button>
-                <button id="fullscreenPlay" aria-label="Play/Pausa">⏯</button>
-                <button id="fullscreenNext" aria-label="Siguiente">⏭</button>
-            </div>
-            <div class="fullscreen-timeline">
-                <span id="fullscreenCurrentTime">0:00</span>
-                <input type="range" id="fullscreenProgress" min="0" max="0" value="0">
-                <span id="fullscreenDuration">0:00</span>
+            <div class="fullscreen-right-panel">
+                <p id="fullscreenSongTitle" class="fullscreen-title">Selecciona una canción</p>
+                <div class="fullscreen-controls">
+                    <button id="fullscreenPrev" aria-label="Anterior">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                            <rect x="5" y="4" width="2" height="16"></rect>
+                        </svg>
+                    </button>
+                    <button id="fullscreenPlay" class="is-play" aria-label="Play/Pausa">
+                        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                    </button>
+                    <button id="fullscreenNext" aria-label="Siguiente">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                            <rect x="17" y="4" width="2" height="16"></rect>
+                        </svg>
+                    </button>
+                </div>
+                <div class="fullscreen-timeline">
+                    <span id="fullscreenCurrentTime">0:00</span>
+                    <input type="range" id="fullscreenProgress" min="0" max="0" value="0">
+                    <span id="fullscreenDuration">0:00</span>
+                </div>
             </div>
         </div>
     </div>

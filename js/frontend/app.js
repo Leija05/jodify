@@ -2190,7 +2190,22 @@ window.downloadSong = async (event, songId) => {
 // PLAYBACK CONTROLS
 // =========================================
 function getSongCoverCandidate(song) {
-    return song?.cover_url || song?.cover || song?.image_url || song?.thumbnail || 'assets/default-cover.png';
+    const candidates = [
+        song?.cover_url,
+        song?.coverUrl,
+        song?.cover,
+        song?.image_url,
+        song?.imageUrl,
+        song?.thumbnail,
+        song?.thumbnail_url,
+        song?.artwork,
+        song?.artwork_url,
+        song?.photo,
+        song?.picture
+    ].map(value => String(value || '').trim()).filter(Boolean);
+
+    const validCandidate = candidates.find(value => value !== 'null' && value !== 'undefined');
+    return validCandidate || 'assets/default-cover.png';
 }
 
 function openFullscreenPlayer() {
@@ -2213,6 +2228,13 @@ function updateFullscreenUI() {
     if (fullscreenProgress) {
         fullscreenProgress.max = Number(audio.duration) || 0;
         fullscreenProgress.value = Number(audio.currentTime) || 0;
+    }
+    if (fullscreenPlay) {
+        fullscreenPlay.classList.toggle('is-pause', !audio.paused);
+        fullscreenPlay.classList.toggle('is-play', audio.paused);
+        fullscreenPlay.innerHTML = audio.paused
+            ? `<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`
+            : `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
     }
 }
 
@@ -2396,6 +2418,12 @@ function loadMetadata(url, elId, isMain = false, fallbackSrc = "assets/default-c
     const cached = metadataCoverCache.get(url);
     if (cached) {
         assignCover(cached);
+        return;
+    }
+
+    if (fallbackSrc && fallbackSrc !== 'assets/default-cover.png') {
+        assignCover(fallbackSrc);
+        metadataCoverCache.set(url, fallbackSrc);
         return;
     }
 
@@ -2592,6 +2620,7 @@ function updatePlayIcon(isPlaying) {
             ? `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`
             : `<polygon points="5 3 19 12 5 21 5 3"></polygon>`;
     }
+    updateFullscreenUI();
 }
 
 // =========================================
