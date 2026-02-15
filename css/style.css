@@ -818,6 +818,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .timeline input[type="range"]#progress::-webkit-slider-thumb {
   -webkit-appearance: none;
+  margin-top: -4px;
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -859,6 +860,7 @@ h1, h2, h3, h4, h5, h6 {
 .timeline input[type="range"]#progress::-moz-range-thumb {
   width: 14px;
   height: 14px;
+  transform: translateY(-1px);
   border-radius: 50%;
   background: var(--text);
   border: none;
@@ -873,6 +875,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .controls button {
+  position: relative;
   background: none;
   border: none;
   color: var(--text);
@@ -1371,6 +1374,30 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-glow);
 }
 
+
+.jam-permissions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-hover);
+}
+
+.jam-permissions label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.jam-permissions button {
+  margin-top: var(--space-xs);
+  width: fit-content;
+}
+
 .jam-join {
   display: flex;
   gap: var(--space-sm);
@@ -1421,12 +1448,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .eq-band input[type="range"] {
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  width: 8px;
-  height: 120px;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 8px;
   background: var(--surface-hover);
   border-radius: var(--radius-full);
+  transform: rotate(-90deg);
 }
 
 .eq-band input[type="range"]::-webkit-slider-thumb {
