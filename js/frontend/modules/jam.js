@@ -74,7 +74,7 @@ export function initJam({
             jamPermissions.style.display = 'none';
         }
         if (jamRecommendAction) {
-            jamRecommendAction.style.display = 'none';
+            jamRecommendAction.style.display = appState.jamActive && !appState.jamHost ? 'inline-flex' : 'none';
         }
         if (jamAllowQueueAdd) jamAllowQueueAdd.checked = appState.jamPermissions?.allowQueueAdd !== false;
         if (jamAllowQueueRemove) jamAllowQueueRemove.checked = appState.jamPermissions?.allowQueueRemove !== false;
@@ -622,7 +622,9 @@ export function initJam({
     }
 
     function maybeRecommendInstead() {
-        return false;
+        if (!appState.jamActive || appState.jamHost) return false;
+        openRecommendModal();
+        return true;
     }
 
     function initJamFromStorage() {
@@ -675,7 +677,10 @@ export function initJam({
     if (jamAllowQueueRemove) jamAllowQueueRemove.onchange = null;
     if (jamAllowPlaybackControl) jamAllowPlaybackControl.onchange = null;
     if (jamRecommendCurrent) jamRecommendCurrent.onclick = null;
-    if (jamRecommendAction) jamRecommendAction.onclick = null;
+    if (jamRecommendAction) jamRecommendAction.onclick = () => {
+        if (!appState.jamActive || appState.jamHost) return;
+        openRecommendModal();
+    };
 
     if (closeJamRecommendModalBtn) closeJamRecommendModalBtn.onclick = closeRecommendModal;
     if (jamRecommendSearch) jamRecommendSearch.oninput = renderRecommendList;
