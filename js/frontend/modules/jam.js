@@ -71,10 +71,10 @@ export function initJam({
             ? 'Jam activa. Comparte el código para sumar gente.'
             : 'Crea una Jam para compartir la cola con tus amigos.';
         if (jamPermissions) {
-            jamPermissions.style.display = appState.jamActive && appState.jamHost ? 'flex' : 'none';
+            jamPermissions.style.display = 'none';
         }
         if (jamRecommendAction) {
-            jamRecommendAction.style.display = appState.jamActive && !appState.jamHost ? 'inline-flex' : 'none';
+            jamRecommendAction.style.display = 'none';
         }
         if (jamAllowQueueAdd) jamAllowQueueAdd.checked = appState.jamPermissions?.allowQueueAdd !== false;
         if (jamAllowQueueRemove) jamAllowQueueRemove.checked = appState.jamPermissions?.allowQueueRemove !== false;
@@ -622,9 +622,7 @@ export function initJam({
     }
 
     function maybeRecommendInstead() {
-        if (!appState.jamActive || appState.jamHost) return false;
-        openRecommendModal();
-        return true;
+        return false;
     }
 
     function initJamFromStorage() {
@@ -673,11 +671,11 @@ export function initJam({
     }
 
     if (jamJoinBtn) jamJoinBtn.onclick = joinJam;
-    if (jamAllowQueueAdd) jamAllowQueueAdd.onchange = () => { if (appState.jamHost) { appState.jamPermissions.allowQueueAdd = jamAllowQueueAdd.checked; broadcastJamConfig(); } };
-    if (jamAllowQueueRemove) jamAllowQueueRemove.onchange = () => { if (appState.jamHost) { appState.jamPermissions.allowQueueRemove = jamAllowQueueRemove.checked; broadcastJamConfig(); } };
-    if (jamAllowPlaybackControl) jamAllowPlaybackControl.onchange = () => { if (appState.jamHost) { appState.jamPermissions.allowPlaybackControl = jamAllowPlaybackControl.checked; broadcastJamConfig(); } };
-    if (jamRecommendCurrent) jamRecommendCurrent.onclick = recommendCurrentSong;
-    if (jamRecommendAction) jamRecommendAction.onclick = openRecommendModal;
+    if (jamAllowQueueAdd) jamAllowQueueAdd.onchange = null;
+    if (jamAllowQueueRemove) jamAllowQueueRemove.onchange = null;
+    if (jamAllowPlaybackControl) jamAllowPlaybackControl.onchange = null;
+    if (jamRecommendCurrent) jamRecommendCurrent.onclick = null;
+    if (jamRecommendAction) jamRecommendAction.onclick = null;
 
     if (closeJamRecommendModalBtn) closeJamRecommendModalBtn.onclick = closeRecommendModal;
     if (jamRecommendSearch) jamRecommendSearch.oninput = renderRecommendList;
@@ -707,9 +705,9 @@ export function initJam({
         broadcastJamState,
         initJamFromStorage,
         updateJamMembersCurrentSong,
-        canUserAddToQueue: () => appState.jamHost || !appState.jamActive || appState.jamPermissions?.allowQueueAdd !== false,
-        canUserRemoveFromQueue: () => appState.jamHost || !appState.jamActive || appState.jamPermissions?.allowQueueRemove !== false,
-        canUserControlPlayback: () => appState.jamHost || !appState.jamActive || appState.jamPermissions?.allowPlaybackControl !== false,
+        canUserAddToQueue: () => !appState.jamActive || appState.jamHost,
+        canUserRemoveFromQueue: () => !appState.jamActive || appState.jamHost,
+        canUserControlPlayback: () => !appState.jamActive || appState.jamHost,
         maybeRecommendInstead,
         openRecommendModal,
         broadcastQueueAdd,
