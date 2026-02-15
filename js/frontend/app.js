@@ -40,7 +40,7 @@ const appState = {
     currentUserRole: null,
     playlist: [],
     queue: [],
-    likedIds: JSON.parse(localStorage.getItem("likedSongs")) || [],
+    likedIds: [],
     downloadedIds: [],
     currentTab: "global",
     currentIndex: -1,
@@ -70,7 +70,7 @@ const appState = {
     fadeDuration: parseInt(localStorage.getItem("fadeDuration"), 10) || 4,
     focusMode: localStorage.getItem("focusMode") === "true",
     isFading: false,
-    playCount: parseInt(localStorage.getItem("playCount")) || 0,
+    playCount: 0,
     discord: JSON.parse(localStorage.getItem("discordProfile")) || null,
     jamActive: localStorage.getItem("jamActive") === "true",
     jamCode: localStorage.getItem("jamCode") || "",
@@ -83,6 +83,7 @@ const appState = {
     jamMembersInterval: null,
     jamSessionInterval: null,
     lastJamSongId: null,
+    jamPermissions: { allowQueueAdd: true, allowQueueRemove: true },
     sessionSeconds: 0,
     sessionInterval: null,
     sleepTimer: {
@@ -152,6 +153,9 @@ window.onload = async () => {
     const savedVolume = parseFloat(localStorage.getItem("userVolume")) || 0.5;
     appState.userVolume = savedVolume;
     setAppVolume(savedVolume);
+
+    localStorage.removeItem("likedSongs");
+    localStorage.removeItem("playCount");
 
     const savedTheme = localStorage.getItem("theme") || "dark";
     applyTheme(savedTheme);
@@ -244,6 +248,7 @@ const themeToggle = document.getElementById("themeToggle");
 
 const btnGlobal = document.getElementById("btnGlobal");
 const btnPersonal = document.getElementById("btnPersonal");
+const btnDownloads = document.getElementById("btnDownloads");
 const uploadModal = document.getElementById("uploadModal");
 const uploadList = document.getElementById("uploadList");
 const closeModal = document.getElementById("closeModal");
@@ -720,6 +725,10 @@ function renderQueue() {
 }
 
 window.removeFromQueue = (songId) => {
+    if (appState.jamActive && !jam.canUserRemoveFromQueue()) {
+        showToast("El host bloqueó quitar canciones de la cola.", "warning");
+        return;
+    }
     if (appState.queue.length) {
         const index = appState.queue.findIndex(s => s.id === songId);
         if (index >= 0) {
@@ -739,6 +748,10 @@ window.removeFromQueue = (songId) => {
 
 window.addToQueue = (event, songId) => {
     event?.stopPropagation();
+    if (appState.jamActive && !jam.canUserAddToQueue()) {
+        showToast("El host bloqueó agregar canciones a la cola.", "warning");
+        return;
+    }
     const song = appState.playlist.find(s => s.id === songId);
     if (!song) return;
     const exists = appState.queue.some(s => s.id === songId);
@@ -1515,6 +1528,7 @@ if (registerForm) {
 // =========================================
 async function initApp() {
     await syncDownloadedSongs();
+    await loadUserCloudData();
 
     // Electron controls
     if (window.electronAPI && window.electronAPI.onControlCommand) {
@@ -1547,6 +1561,30 @@ async function syncDownloadedSongs() {
         };
         request.onerror = () => resolve();
     });
+}
+
+
+async function loadUserCloudData() {
+    if (!navigator.onLine || !appState.usuarioActual) return;
+    try {
+        const [{ data: likesData }, { data: userRow }] = await Promise.all([
+            supabaseClient.from('user_likes').select('song_id').eq('username', appState.usuarioActual),
+            supabaseClient.from('users_access').select('play_count').eq('username', appState.usuarioActual).single()
+        ]);
+        appState.likedIds = (likesData || []).map(row => row.song_id);
+        appState.playCount = Number(userRow?.play_count || 0);
+    } catch (e) {
+        console.warn('Error loading cloud user data:', e);
+    }
+}
+
+async function incrementRemotePlayCount() {
+    if (!navigator.onLine || !appState.usuarioActual) return;
+    const nextValue = appState.playCount;
+    await supabaseClient
+        .from('users_access')
+        .update({ play_count: nextValue })
+        .eq('username', appState.usuarioActual);
 }
 
 // =========================================
@@ -1859,9 +1897,13 @@ function getFilteredList() {
         // In offline mode, get songs from IndexedDB
         list = appState.playlist.filter(s => appState.downloadedIds.includes(s.id));
     } else {
-        list = appState.currentTab === "global"
-            ? [...appState.playlist]
-            : appState.playlist.filter(s => appState.likedIds.includes(s.id));
+        if (appState.currentTab === "personal") {
+            list = appState.playlist.filter(s => appState.likedIds.includes(s.id));
+        } else if (appState.currentTab === "downloads") {
+            list = appState.playlist.filter(s => appState.downloadedIds.includes(s.id));
+        } else {
+            list = [...appState.playlist];
+        }
     }
 
     // Apply search filter
@@ -2029,7 +2071,15 @@ window.deleteDownload = async (event, songId) => {
     store.delete(songId);
 
     transaction.oncomplete = async () => {
+        if (navigator.onLine && appState.usuarioActual) {
+            await supabaseClient
+                .from('user_downloads')
+                .delete()
+                .eq('username', appState.usuarioActual)
+                .eq('song_id', songId);
+        }
         await syncDownloadedSongs();
+        updateProfileStats();
         renderPlaylist();
     };
 };
@@ -2143,9 +2193,8 @@ async function playSong(index, options = {}) {
 
     try {
         await startSongPlayback(song, song.url, options);
-        // Incrementar contador de reproducción
         appState.playCount++;
-        localStorage.setItem("playCount", appState.playCount);
+        incrementRemotePlayCount().catch(() => {});
         updateProfileStats();
         updateListeningActivity(song);
         logListeningHistory(song);
@@ -2171,7 +2220,10 @@ async function playSong(index, options = {}) {
 }
 
 async function handleNextSong(options = {}) {
-    if (appState.currentFilteredList.length === 0) return;
+    if (appState.currentFilteredList.length === 0) {
+        appState.fadePending = false;
+        return;
+    }
 
     let next;
     if (appState.queue.length > 0) {
@@ -2185,6 +2237,11 @@ async function handleNextSong(options = {}) {
         } else {
             next = appState.currentFilteredList[(idx + 1) % appState.currentFilteredList.length];
         }
+    }
+
+    if (!next) {
+        appState.fadePending = false;
+        return;
     }
 
     if (appState.offlineMode) {
@@ -2223,7 +2280,7 @@ audio.onended = () => {
         return;
     }
     if (!appState.isLoop) {
-        handleNextSong();
+        handleNextSong({ fadeOutMs: 0, fadeInMs: 0 });
     }
 };
 
@@ -2432,19 +2489,17 @@ audio.addEventListener('loadedmetadata', () => {
 });
 volume.oninput = (e) => setAppVolume(e.target.value);
 
-btnGlobal.onclick = () => {
-    appState.currentTab = "global";
-    btnGlobal.classList.add("active");
-    btnPersonal.classList.remove("active");
+function setActiveTab(tabName) {
+    appState.currentTab = tabName;
+    btnGlobal?.classList.toggle("active", tabName === "global");
+    btnPersonal?.classList.toggle("active", tabName === "personal");
+    btnDownloads?.classList.toggle("active", tabName === "downloads");
     renderPlaylist();
-};
+}
 
-btnPersonal.onclick = () => {
-    appState.currentTab = "personal";
-    btnPersonal.classList.add("active");
-    btnGlobal.classList.remove("active");
-    renderPlaylist();
-};
+if (btnGlobal) btnGlobal.onclick = () => setActiveTab("global");
+if (btnPersonal) btnPersonal.onclick = () => setActiveTab("personal");
+if (btnDownloads) btnDownloads.onclick = () => setActiveTab("downloads");
 
 searchInput.oninput = (e) => {
     appState.searchTerm = e.target.value.toLowerCase();
@@ -2479,7 +2534,6 @@ window.toggleLike = async (e, id) => {
         song.likes = (song.likes || 0) + 1;
     }
 
-    localStorage.setItem("likedSongs", JSON.stringify(appState.likedIds));
     renderPlaylist();
     updateLikeBtn();
 
@@ -2757,9 +2811,21 @@ if (confirmDeleteSongsBtn) {
                 }
             }
 
+            await supabaseClient.from('user_likes').delete().in('song_id', songIds);
+            await supabaseClient.from('user_downloads').delete().in('song_id', songIds);
+
             const { error } = await supabaseClient.from('songs').delete().in('id', songIds);
             if (error) throw error;
 
+            if (appState.db) {
+                const tx = appState.db.transaction(['songs'], 'readwrite');
+                const store = tx.objectStore('songs');
+                songIds.forEach(id => store.delete(id));
+                await new Promise(resolve => { tx.oncomplete = resolve; tx.onerror = resolve; });
+            }
+
+            appState.likedIds = appState.likedIds.filter(id => !songIds.includes(id));
+            await syncDownloadedSongs();
             appState.playlist = appState.playlist.filter(song => !songIds.includes(song.id));
             renderPlaylist();
             closeDeleteSongsModal();
@@ -3149,8 +3215,6 @@ function updateProfileStats() {
     if (statPlayed) statPlayed.textContent = appState.playCount;
     if (statDownloads) statDownloads.textContent = appState.downloadedIds.length;
 
-    // Stats de reproducción/descargas se mantienen localmente en esta versión.
-    // Para likes usamos la tabla user_likes si hay conexión.
     if (navigator.onLine && appState.usuarioActual) {
         supabaseClient
             .from('user_likes')
@@ -3173,6 +3237,19 @@ function updateProfileStats() {
                 }
             })
             .catch(e => console.warn('Error loading download stats:', e));
+
+        supabaseClient
+            .from('users_access')
+            .select('play_count')
+            .eq('username', appState.usuarioActual)
+            .single()
+            .then(({ data, error }) => {
+                if (!error && statPlayed) {
+                    appState.playCount = Number(data?.play_count || 0);
+                    statPlayed.textContent = appState.playCount;
+                }
+            })
+            .catch(e => console.warn('Error loading play stats:', e));
     }
 }
 
@@ -3575,6 +3652,8 @@ function isAnyBlockingModalOpen() {
         discordLinkModal?.classList.contains('open')
     );
 }
+
+window.showToast = showToast;
 
 function refreshModalScrollLock() {
     setModalScrollLock(isAnyBlockingModalOpen());

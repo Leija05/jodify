@@ -205,6 +205,14 @@
                     </svg>
                     Favoritas
                 </button>
+                <button id="btnDownloads" class="tab-btn" data-testid="tab-downloads">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Descargadas
+                </button>
             </div>
 
             <!-- SEARCH BAR -->
@@ -469,6 +477,11 @@
                 <div class="jam-actions">
                     <button id="jamToggle" class="jam-primary" data-testid="jam-toggle">Iniciar Jam</button>
                     <button id="jamCopy" class="jam-secondary" data-testid="jam-copy">Copiar código</button>
+                </div>
+                <div class="jam-permissions" id="jamPermissions">
+                    <label><input type="checkbox" id="jamAllowQueueAdd" checked> Permitir agregar canciones a la cola</label>
+                    <label><input type="checkbox" id="jamAllowQueueRemove" checked> Permitir eliminar canciones de la cola</label>
+                    <button id="jamRecommendCurrent" class="jam-secondary" data-testid="jam-recommend">Recomendar canción actual</button>
                 </div>
                 <div class="jam-join">
                     <input type="text" id="jamJoinInput" placeholder="Ingresa un código para unirte" data-testid="jam-join-input">
