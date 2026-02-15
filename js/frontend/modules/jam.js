@@ -31,6 +31,7 @@ export function initJam({
     const jamHostRecommendationsList = document.getElementById("jamHostRecommendationsList");
 
     const pendingRecommendations = [];
+    let knownHostUsername = null;
 
     function notify(message, type = 'info') {
         if (typeof window.showToast === 'function') {
@@ -119,6 +120,7 @@ export function initJam({
 
     function startJam() {
         appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true, allowPlaybackControl: true };
+        knownHostUsername = appState.usuarioActual || 'Invitado';
         initializeJamSession({ asHost: true });
     }
 
@@ -140,6 +142,7 @@ export function initJam({
         appState.jamHost = false;
         appState.jamSessionId = null;
         appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true, allowPlaybackControl: true };
+        knownHostUsername = null;
         leaveJamChannel();
         updateJamUI();
     }
@@ -156,6 +159,7 @@ export function initJam({
         appState.jamHost = false;
         appState.jamSessionId = null;
         appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true, allowPlaybackControl: true };
+        knownHostUsername = null;
         localStorage.setItem('jamActive', 'false');
         localStorage.removeItem('jamCode');
         localStorage.removeItem('jamHost');
@@ -263,6 +267,7 @@ export function initJam({
                 return;
             }
             appState.jamSessionId = createdSession.id;
+            knownHostUsername = username;
         } else {
             const session = await fetchJamSessionByCode(jamCode);
             if (!session) {
@@ -270,6 +275,7 @@ export function initJam({
                 return;
             }
             appState.jamSessionId = session.id;
+            knownHostUsername = session.host_username || knownHostUsername;
         }
 
         appState.jamActive = true;
@@ -323,44 +329,54 @@ export function initJam({
         await supabaseClient.from('jam_sessions').update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', sessionId);
     }
 
+    function normalizeJamUsers(candidates = []) {
+        const merged = new Map();
+
+        const pushUser = (username, isHost = false) => {
+            const cleanName = String(username || '').trim();
+            if (!cleanName) return;
+            const existing = merged.get(cleanName);
+            merged.set(cleanName, {
+                username: cleanName,
+                isHost: Boolean(isHost) || Boolean(existing?.isHost)
+            });
+        };
+
+        appState.jamUsers.forEach(user => pushUser(user.username, user.isHost));
+        candidates.forEach(user => pushUser(user.username, user.isHost));
+
+        const presenceState = appState.jamChannel?.presenceState?.() || {};
+        Object.values(presenceState).forEach(entries => {
+            (entries || []).forEach(entry => pushUser(entry?.username, entry?.isHost));
+        });
+
+        pushUser(knownHostUsername, true);
+        pushUser(appState.usuarioActual || 'Invitado', appState.jamHost);
+
+        return [...merged.values()].sort((a, b) => {
+            if (a.isHost !== b.isHost) return a.isHost ? -1 : 1;
+            return a.username.localeCompare(b.username, 'es');
+        });
+    }
+
+    function applyJamUsers(candidates = []) {
+        const users = normalizeJamUsers(candidates);
+        if (!users.length) return;
+        appState.jamUsers = users;
+        renderJamUsers();
+    }
+
     async function refreshJamMembers() {
         if (!appState.jamSessionId) return;
         const { data, error } = await supabaseClient.from('jam_members').select('username,is_host,active').eq('jam_id', appState.jamSessionId).eq('active', true).order('is_host', { ascending: false });
         if (error) return;
         const mappedMembers = (data || []).map(member => ({ username: member.username, isHost: member.is_host }));
-        const hasHost = mappedMembers.some(member => member.isHost);
-        const currentUsername = appState.usuarioActual || 'Invitado';
-        const seemsPartialList = mappedMembers.length === 1 && mappedMembers[0].username === currentUsername;
-        if (!hasHost && appState.jamUsers.some(user => user.isHost)) return;
-        if (seemsPartialList && appState.jamUsers.length > 1) return;
-        appState.jamUsers = mappedMembers;
-        renderJamUsers();
+        applyJamUsers(mappedMembers);
     }
 
     function syncJamUsersFromPresence(channel = appState.jamChannel) {
         if (!channel) return;
-        const state = channel.presenceState?.() || {};
-        const byUsername = new Map();
-
-        Object.values(state).forEach(entries => {
-            (entries || []).forEach(entry => {
-                if (!entry?.username) return;
-                const existing = byUsername.get(entry.username);
-                byUsername.set(entry.username, {
-                    username: entry.username,
-                    isHost: Boolean(entry.isHost) || Boolean(existing?.isHost)
-                });
-            });
-        });
-
-        const users = [...byUsername.values()].sort((a, b) => {
-            if (a.isHost !== b.isHost) return a.isHost ? -1 : 1;
-            return a.username.localeCompare(b.username, 'es');
-        });
-
-        if (!users.length) return;
-        appState.jamUsers = users;
-        renderJamUsers();
+        applyJamUsers();
     }
 
     function startJamMembersPolling() {
@@ -630,6 +646,9 @@ export function initJam({
     function initJamFromStorage() {
         if (!appState.jamActive || !appState.jamCode) return;
         if (appState.jamSessionId) {
+            if (appState.jamHost && !knownHostUsername) {
+                knownHostUsername = appState.usuarioActual || 'Invitado';
+            }
             connectToJam(appState.jamCode, appState.jamHost);
             updateJamUI();
             return;
@@ -646,6 +665,7 @@ export function initJam({
                 return;
             }
             appState.jamSessionId = session.id;
+            knownHostUsername = session.host_username || knownHostUsername;
             localStorage.setItem('jamSessionId', appState.jamSessionId);
             connectToJam(appState.jamCode, appState.jamHost);
             updateJamUI();
