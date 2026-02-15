@@ -20,6 +20,7 @@ export function initJam({
     const jamAllowQueueRemove = document.getElementById("jamAllowQueueRemove");
     const jamAllowPlaybackControl = document.getElementById("jamAllowPlaybackControl");
     const jamRecommendCurrent = document.getElementById("jamRecommendCurrent");
+    const jamRecommendAction = document.getElementById("jamRecommendAction");
     const jamRecommendModal = document.getElementById("jamRecommendModal");
     const closeJamRecommendModalBtn = document.getElementById("closeJamRecommendModal");
     const jamRecommendSearch = document.getElementById("jamRecommendSearch");
@@ -71,6 +72,9 @@ export function initJam({
             : 'Crea una Jam para compartir la cola con tus amigos.';
         if (jamPermissions) {
             jamPermissions.style.display = appState.jamActive && appState.jamHost ? 'flex' : 'none';
+        }
+        if (jamRecommendAction) {
+            jamRecommendAction.style.display = appState.jamActive && !appState.jamHost ? 'inline-flex' : 'none';
         }
         if (jamAllowQueueAdd) jamAllowQueueAdd.checked = appState.jamPermissions?.allowQueueAdd !== false;
         if (jamAllowQueueRemove) jamAllowQueueRemove.checked = appState.jamPermissions?.allowQueueRemove !== false;
@@ -211,6 +215,9 @@ export function initJam({
         channel.on('broadcast', { event: 'jam-queue-add' }, payload => applyJamQueueAdd(payload));
         channel.on('broadcast', { event: 'jam-queue-remove' }, payload => applyJamQueueRemove(payload));
         channel.on('broadcast', { event: 'jam-recommend-request' }, payload => applyRecommendationRequest(payload));
+        channel.on('presence', { event: 'sync' }, () => syncJamUsersFromPresence(channel));
+        channel.on('presence', { event: 'join' }, () => syncJamUsersFromPresence(channel));
+        channel.on('presence', { event: 'leave' }, () => syncJamUsersFromPresence(channel));
 
         channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
@@ -320,7 +327,39 @@ export function initJam({
         if (!appState.jamSessionId) return;
         const { data, error } = await supabaseClient.from('jam_members').select('username,is_host,active').eq('jam_id', appState.jamSessionId).eq('active', true).order('is_host', { ascending: false });
         if (error) return;
-        appState.jamUsers = (data || []).map(member => ({ username: member.username, isHost: member.is_host }));
+        const mappedMembers = (data || []).map(member => ({ username: member.username, isHost: member.is_host }));
+        const hasHost = mappedMembers.some(member => member.isHost);
+        const currentUsername = appState.usuarioActual || 'Invitado';
+        const seemsPartialList = mappedMembers.length === 1 && mappedMembers[0].username === currentUsername;
+        if (!hasHost && appState.jamUsers.some(user => user.isHost)) return;
+        if (seemsPartialList && appState.jamUsers.length > 1) return;
+        appState.jamUsers = mappedMembers;
+        renderJamUsers();
+    }
+
+    function syncJamUsersFromPresence(channel = appState.jamChannel) {
+        if (!channel) return;
+        const state = channel.presenceState?.() || {};
+        const byUsername = new Map();
+
+        Object.values(state).forEach(entries => {
+            (entries || []).forEach(entry => {
+                if (!entry?.username) return;
+                const existing = byUsername.get(entry.username);
+                byUsername.set(entry.username, {
+                    username: entry.username,
+                    isHost: Boolean(entry.isHost) || Boolean(existing?.isHost)
+                });
+            });
+        });
+
+        const users = [...byUsername.values()].sort((a, b) => {
+            if (a.isHost !== b.isHost) return a.isHost ? -1 : 1;
+            return a.username.localeCompare(b.username, 'es');
+        });
+
+        if (!users.length) return;
+        appState.jamUsers = users;
         renderJamUsers();
     }
 
@@ -638,6 +677,7 @@ export function initJam({
     if (jamAllowQueueRemove) jamAllowQueueRemove.onchange = () => { if (appState.jamHost) { appState.jamPermissions.allowQueueRemove = jamAllowQueueRemove.checked; broadcastJamConfig(); } };
     if (jamAllowPlaybackControl) jamAllowPlaybackControl.onchange = () => { if (appState.jamHost) { appState.jamPermissions.allowPlaybackControl = jamAllowPlaybackControl.checked; broadcastJamConfig(); } };
     if (jamRecommendCurrent) jamRecommendCurrent.onclick = recommendCurrentSong;
+    if (jamRecommendAction) jamRecommendAction.onclick = openRecommendModal;
 
     if (closeJamRecommendModalBtn) closeJamRecommendModalBtn.onclick = closeRecommendModal;
     if (jamRecommendSearch) jamRecommendSearch.oninput = renderRecommendList;

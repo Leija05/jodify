@@ -315,7 +315,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Tabs de Playlist */
 .playlist-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-xs);
   margin-bottom: var(--space-md);
   background: var(--surface-hover);
@@ -324,7 +325,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .tab-btn {
-  flex: 1;
+  min-width: 0;
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-full);
   border: none;
@@ -339,6 +340,9 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   gap: var(--space-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tab-btn svg {
@@ -1396,6 +1400,16 @@ h1, h2, h3, h4, h5, h6 {
 .jam-permissions button {
   margin-top: var(--space-xs);
   width: fit-content;
+}
+
+.jam-recommend-action {
+  display: none;
+  align-self: flex-start;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: var(--space-sm) var(--space-md);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .jam-join {
@@ -2819,6 +2833,19 @@ h1, h2, h3, h4, h5, h6 {
   .search-bar,
   .playlist-insights {
     margin-bottom: 10px;
+  }
+
+
+  .tab-btn {
+    font-size: 0.78rem;
+    padding: 8px 6px;
+    gap: 4px;
+  }
+
+  .tab-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
   }
 
   .playlist-insights {
