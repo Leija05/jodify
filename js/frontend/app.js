@@ -83,7 +83,8 @@ const appState = {
     jamMembersInterval: null,
     jamSessionInterval: null,
     lastJamSongId: null,
-    jamPermissions: { allowQueueAdd: true, allowQueueRemove: true },
+    jamPermissions: { allowQueueAdd: true, allowQueueRemove: true, allowPlaybackControl: true },
+    jamClientId: localStorage.getItem("jamClientId") || Math.random().toString(36).slice(2),
     sessionSeconds: 0,
     sessionInterval: null,
     sleepTimer: {
@@ -206,6 +207,10 @@ window.onload = async () => {
 // =========================================
 // INDEXED DB SETUP
 // =========================================
+if (!localStorage.getItem('jamClientId')) {
+    localStorage.setItem('jamClientId', appState.jamClientId);
+}
+
 const dbRequest = indexedDB.open("MusicOfflineDB", 1);
 dbRequest.onupgradeneeded = (e) => {
     appState.db = e.target.result;
@@ -319,7 +324,7 @@ audio.addEventListener('play', () => {
     if (window.electronAPI && window.electronAPI.updateThumbar) {
         window.electronAPI.updateThumbar(true);
     }
-    if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+    if (appState.jamActive && jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
         jam.broadcastJamState('jam-play');
     }
 });
@@ -330,13 +335,13 @@ audio.addEventListener('pause', () => {
     if (window.electronAPI && window.electronAPI.updateThumbar) {
         window.electronAPI.updateThumbar(false);
     }
-    if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+    if (appState.jamActive && jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
         jam.broadcastJamState('jam-pause');
     }
 });
 
 audio.addEventListener('seeked', () => {
-    if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+    if (appState.jamActive && jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
         jam.broadcastJamState('jam-seek');
     }
 });
@@ -424,8 +429,9 @@ function showShortcutHint() {
 }
 
 function togglePlay() {
-    if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
-        alert("Solo el host puede controlar la reproducción en una Jam.");
+    if (appState.jamActive && !jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
+        showToast("El host bloqueó el control de reproducción.", "warning");
+        if (!appState.jamHost) jam.maybeRecommendInstead();
         return;
     }
     if (audio.paused) {
@@ -727,12 +733,14 @@ function renderQueue() {
 window.removeFromQueue = (songId) => {
     if (appState.jamActive && !jam.canUserRemoveFromQueue()) {
         showToast("El host bloqueó quitar canciones de la cola.", "warning");
+        if (!appState.jamHost) jam.maybeRecommendInstead();
         return;
     }
     if (appState.queue.length) {
         const index = appState.queue.findIndex(s => s.id === songId);
         if (index >= 0) {
             appState.queue.splice(index, 1);
+            jam.broadcastQueueRemove(songId);
             renderQueue();
         }
         updateQueueIndicator();
@@ -750,6 +758,7 @@ window.addToQueue = (event, songId) => {
     event?.stopPropagation();
     if (appState.jamActive && !jam.canUserAddToQueue()) {
         showToast("El host bloqueó agregar canciones a la cola.", "warning");
+        if (!appState.jamHost) jam.maybeRecommendInstead();
         return;
     }
     const song = appState.playlist.find(s => s.id === songId);
@@ -757,10 +766,18 @@ window.addToQueue = (event, songId) => {
     const exists = appState.queue.some(s => s.id === songId);
     if (!exists) {
         appState.queue.push(song);
+        jam.broadcastQueueAdd(song);
         updateQueueIndicator();
         if (queueDrawer.classList.contains('open')) {
             renderQueue();
         }
+    }
+};
+
+window.renderQueueFromJam = () => {
+    updateQueueIndicator();
+    if (queueDrawer.classList.contains('open')) {
+        renderQueue();
     }
 };
 
@@ -2000,8 +2017,9 @@ function createSongElement(song, isCurrent, isDownloaded) {
 
 async function playOfflineSongById(songId, options = {}) {
     if (!appState.db) return;
-    if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
-        alert("Solo el host puede cambiar la canción en una Jam.");
+    if (appState.jamActive && !jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
+        showToast("El host bloqueó cambiar canciones.", "warning");
+        if (!appState.jamHost) jam.maybeRecommendInstead();
         return;
     }
 
@@ -2029,7 +2047,7 @@ async function playOfflineSongById(songId, options = {}) {
             } finally {
                 isChangingTrack = false;
             }
-            if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+            if (appState.jamActive && jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
                 jam.broadcastJamState('jam-play');
             }
 
@@ -2186,8 +2204,9 @@ async function startSongPlayback(song, sourceUrl, options = {}) {
 async function playSong(index, options = {}) {
     if (index < 0 || index >= appState.playlist.length) return;
     if (isChangingTrack) return;
-    if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
-        alert("Solo el host puede cambiar la canción en una Jam.");
+    if (appState.jamActive && !jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
+        showToast("El host bloqueó cambiar canciones.", "warning");
+        if (!appState.jamHost) jam.maybeRecommendInstead();
         return;
     }
 
@@ -2202,7 +2221,7 @@ async function playSong(index, options = {}) {
         updateProfileStats();
         updateListeningActivity(song);
         logListeningHistory(song);
-        if (appState.jamActive && appState.jamHost && !appState.jamSyncInProgress) {
+        if (appState.jamActive && jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
             jam.broadcastJamState('jam-play');
         }
     } finally {
@@ -2288,23 +2307,40 @@ audio.onended = () => {
     }
 };
 
+const metadataCoverCache = new Map();
+
 function loadMetadata(url, elId, isMain = false) {
+    const assignCover = (dataUrl) => {
+        const el = document.getElementById(elId);
+        if (el && dataUrl) el.src = dataUrl;
+        if (isMain && dataUrl) {
+            cover.src = dataUrl;
+            dynamicBg.style.backgroundImage = `url(${dataUrl})`;
+        }
+    };
+
+    if (!url) return;
+    const cached = metadataCoverCache.get(url);
+    if (cached) {
+        assignCover(cached);
+        return;
+    }
+
     jsmediatags.read(url, {
         onSuccess: (tag) => {
             const img = tag.tags.picture;
-            if (img) {
-                let b64 = "";
-                for (let i = 0; i < img.data.length; i++) b64 += String.fromCharCode(img.data[i]);
-                const dataUrl = `data:${img.format};base64,${window.btoa(b64)}`;
-                const el = document.getElementById(elId);
-                if (el) el.src = dataUrl;
-                if (isMain) {
-                    cover.src = dataUrl;
-                    dynamicBg.style.backgroundImage = `url(${dataUrl})`;
-                }
-            }
+            if (!img) return;
+            let b64 = "";
+            for (let i = 0; i < img.data.length; i++) b64 += String.fromCharCode(img.data[i]);
+            const dataUrl = `data:${img.format};base64,${window.btoa(b64)}`;
+            metadataCoverCache.set(url, dataUrl);
+            assignCover(dataUrl);
         },
-        onError: () => {}
+        onError: (error) => {
+            if (String(error?.info || error?.message || '').includes('429')) {
+                console.warn('Metadata rate limited (429), using default cover for now.');
+            }
+        }
     });
 }
 
@@ -2471,8 +2507,9 @@ nextBtn.onclick = handleNextSong;
 prevBtn.onclick = handlePrevSong;
 
 progress.oninput = () => {
-    if (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress) {
-        alert("Solo el host puede adelantar la canción en una Jam.");
+    if (appState.jamActive && !jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
+        showToast("El host bloqueó adelantar la canción.", "warning");
+        if (!appState.jamHost) jam.maybeRecommendInstead();
         return;
     }
     audio.currentTime = progress.value;

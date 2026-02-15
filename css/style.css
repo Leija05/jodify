@@ -1412,6 +1412,83 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text);
 }
 
+.jam-recommend-content {
+  width: min(560px, 94vw);
+}
+
+.jam-recommend-controls {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: var(--space-sm);
+}
+
+.jam-recommend-controls input,
+.jam-recommend-controls select {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.jam-recommend-list,
+.jam-host-rec-list {
+  margin-top: var(--space-sm);
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.jam-recommend-item {
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+
+.jam-recommend-item small,
+.jam-host-rec-item small {
+  color: var(--text-muted);
+}
+
+.jam-host-rec-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-hover);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.jam-host-rec-actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.jam-host-rec-actions button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.jam-empty {
+  color: var(--text-muted);
+  text-align: center;
+  margin: var(--space-sm) 0;
+}
+
 
 .eq-custom-controls {
   display: flex;

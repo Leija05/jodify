@@ -18,7 +18,26 @@ export function initJam({
     const jamPermissions = document.getElementById("jamPermissions");
     const jamAllowQueueAdd = document.getElementById("jamAllowQueueAdd");
     const jamAllowQueueRemove = document.getElementById("jamAllowQueueRemove");
+    const jamAllowPlaybackControl = document.getElementById("jamAllowPlaybackControl");
     const jamRecommendCurrent = document.getElementById("jamRecommendCurrent");
+    const jamRecommendModal = document.getElementById("jamRecommendModal");
+    const closeJamRecommendModalBtn = document.getElementById("closeJamRecommendModal");
+    const jamRecommendSearch = document.getElementById("jamRecommendSearch");
+    const jamRecommendCategory = document.getElementById("jamRecommendCategory");
+    const jamRecommendList = document.getElementById("jamRecommendList");
+    const jamHostRecommendationsModal = document.getElementById("jamHostRecommendationsModal");
+    const closeJamHostRecommendationsBtn = document.getElementById("closeJamHostRecommendations");
+    const jamHostRecommendationsList = document.getElementById("jamHostRecommendationsList");
+
+    const pendingRecommendations = [];
+
+    function notify(message, type = 'info') {
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+            return;
+        }
+        console[type === 'error' ? 'error' : 'log'](message);
+    }
 
     function generateJamCode() {
         return Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -55,6 +74,7 @@ export function initJam({
         }
         if (jamAllowQueueAdd) jamAllowQueueAdd.checked = appState.jamPermissions?.allowQueueAdd !== false;
         if (jamAllowQueueRemove) jamAllowQueueRemove.checked = appState.jamPermissions?.allowQueueRemove !== false;
+        if (jamAllowPlaybackControl) jamAllowPlaybackControl.checked = appState.jamPermissions?.allowPlaybackControl !== false;
         if (!appState.jamActive) {
             jamToggle.textContent = 'Iniciar Jam';
         } else if (appState.jamHost) {
@@ -74,8 +94,27 @@ export function initJam({
         jamModal?.classList.remove('open');
     }
 
+    function openRecommendModal() {
+        renderRecommendCategoryOptions();
+        renderRecommendList();
+        jamRecommendModal?.classList.add('open');
+    }
+
+    function closeRecommendModal() {
+        jamRecommendModal?.classList.remove('open');
+    }
+
+    function openHostRecommendationsModal() {
+        renderHostRecommendations();
+        jamHostRecommendationsModal?.classList.add('open');
+    }
+
+    function closeHostRecommendationsModal() {
+        jamHostRecommendationsModal?.classList.remove('open');
+    }
+
     function startJam() {
-        appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true };
+        appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true, allowPlaybackControl: true };
         initializeJamSession({ asHost: true });
     }
 
@@ -96,7 +135,7 @@ export function initJam({
         }
         appState.jamHost = false;
         appState.jamSessionId = null;
-        appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true };
+        appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true, allowPlaybackControl: true };
         leaveJamChannel();
         updateJamUI();
     }
@@ -112,7 +151,7 @@ export function initJam({
         appState.jamCode = '';
         appState.jamHost = false;
         appState.jamSessionId = null;
-        appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true };
+        appState.jamPermissions = { allowQueueAdd: true, allowQueueRemove: true, allowPlaybackControl: true };
         localStorage.setItem('jamActive', 'false');
         localStorage.removeItem('jamCode');
         localStorage.removeItem('jamHost');
@@ -140,6 +179,10 @@ export function initJam({
         renderJamUsers();
     }
 
+    function isOwnPayload(payload) {
+        return payload?.senderId && payload.senderId === appState.jamClientId;
+    }
+
     function connectToJam(code, isHost) {
         if (!code || !navigator.onLine) return;
         if (appState.jamChannel) {
@@ -147,38 +190,31 @@ export function initJam({
         }
         const username = appState.usuarioActual || 'Invitado';
         const channel = supabaseClient.channel(`jam-${code}`, {
-            config: {
-                presence: { key: username }
-            }
+            config: { presence: { key: `${username}-${appState.jamClientId}` } }
         });
         appState.jamChannel = channel;
 
         channel.on('broadcast', { event: 'jam-play' }, payload => {
-            if (appState.jamHost) return;
+            if (isOwnPayload(payload)) return;
             applyJamSync(payload);
         });
-
         channel.on('broadcast', { event: 'jam-pause' }, payload => {
-            if (appState.jamHost) return;
+            if (isOwnPayload(payload)) return;
             applyJamPause(payload);
         });
-
         channel.on('broadcast', { event: 'jam-seek' }, payload => {
-            if (appState.jamHost) return;
+            if (isOwnPayload(payload)) return;
             applyJamSeek(payload);
         });
-
-        channel.on('broadcast', { event: 'jam-config' }, payload => {
-            applyJamConfig(payload);
-        });
-
-        channel.on('broadcast', { event: 'jam-recommend' }, payload => {
-            applyJamRecommendation(payload);
-        });
+        channel.on('broadcast', { event: 'jam-config' }, payload => applyJamConfig(payload));
+        channel.on('broadcast', { event: 'jam-recommend' }, payload => applyJamRecommendation(payload));
+        channel.on('broadcast', { event: 'jam-queue-add' }, payload => applyJamQueueAdd(payload));
+        channel.on('broadcast', { event: 'jam-queue-remove' }, payload => applyJamQueueRemove(payload));
+        channel.on('broadcast', { event: 'jam-recommend-request' }, payload => applyRecommendationRequest(payload));
 
         channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
-                await channel.track({ username, isHost });
+                await channel.track({ username, isHost, clientId: appState.jamClientId });
                 startJamMembersPolling();
                 if (isHost) {
                     broadcastJamConfig();
@@ -191,7 +227,7 @@ export function initJam({
 
     async function initializeJamSession({ asHost, code = null }) {
         if (!navigator.onLine) {
-            alert("Se requiere conexión para iniciar una Jam.");
+            notify('Se requiere conexión para iniciar una Jam.', 'warning');
             return;
         }
         const username = appState.usuarioActual || 'Invitado';
@@ -203,31 +239,27 @@ export function initJam({
             while (!createdSession && attempts < 3) {
                 attempts += 1;
                 jamCode = jamCode || generateJamCode();
-                const { data, error } = await createJamSessionRecord({
-                    code: jamCode,
-                    hostUsername: username
-                });
+                const { data, error } = await createJamSessionRecord({ code: jamCode, hostUsername: username });
                 if (error) {
                     const errorMessage = error?.message || JSON.stringify(error);
-                    console.error('Error creando Jam:', errorMessage);
                     if (errorMessage.toLowerCase().includes('duplicate')) {
                         jamCode = null;
                         continue;
                     }
-                    alert('No se pudo crear la Jam. Revisa las políticas de Supabase.');
+                    notify('No se pudo crear la Jam. Revisa las políticas de Supabase.', 'error');
                     return;
                 }
                 createdSession = data;
             }
             if (!createdSession) {
-                alert('No se pudo crear la Jam. Intenta de nuevo.');
+                notify('No se pudo crear la Jam. Intenta de nuevo.', 'error');
                 return;
             }
             appState.jamSessionId = createdSession.id;
         } else {
             const session = await fetchJamSessionByCode(jamCode);
             if (!session) {
-                alert('Código de Jam inválido o inactivo.');
+                notify('Código de Jam inválido o inactivo.', 'warning');
                 return;
             }
             appState.jamSessionId = session.id;
@@ -236,61 +268,28 @@ export function initJam({
         appState.jamActive = true;
         appState.jamHost = asHost;
         appState.jamCode = jamCode;
+        appState.jamUsers = [{ username, isHost: asHost }];
         localStorage.setItem('jamActive', 'true');
         localStorage.setItem('jamCode', appState.jamCode);
         localStorage.setItem('jamHost', asHost ? 'true' : 'false');
         localStorage.setItem('jamSessionId', appState.jamSessionId);
 
         await upsertJamMember({ username, isHost: asHost });
-        if (!asHost) {
-            await syncFromJamSession();
-        }
+        if (!asHost) await syncFromJamSession();
         connectToJam(appState.jamCode, asHost);
         updateJamUI();
     }
 
     async function fetchJamSessionByCode(code) {
-        const { data, error } = await supabaseClient
-            .from('jam_sessions')
-            .select('*')
-            .eq('code', code)
-            .eq('is_active', true)
-            .single();
-        if (error) {
-            const errorMessage = error?.message || JSON.stringify(error);
-            console.warn('Jam session fetch error:', errorMessage);
-            return null;
-        }
+        const { data, error } = await supabaseClient.from('jam_sessions').select('*').eq('code', code).eq('is_active', true).single();
+        if (error) return null;
         return data;
     }
 
     async function createJamSessionRecord({ code, hostUsername }) {
-        const payload = {
-            code,
-            host_username: hostUsername,
-            is_active: true,
-            current_song_id: null,
-            current_time: 0,
-            is_playing: false
-        };
-        let response = await supabaseClient
-            .from('jam_sessions')
-            .insert([payload])
-            .select('id, code')
-            .single();
-        if (response.error?.message?.includes("current_time")) {
-            const minimalPayload = {
-                code,
-                host_username: hostUsername,
-                is_active: true,
-                current_song_id: null,
-                is_playing: false
-            };
-            response = await supabaseClient
-                .from('jam_sessions')
-                .insert([minimalPayload])
-                .select('id, code')
-                .single();
+        let response = await supabaseClient.from('jam_sessions').insert([{ code, host_username: hostUsername, is_active: true, current_song_id: null, current_time: 0, is_playing: false }]).select('id, code').single();
+        if (response.error?.message?.includes('current_time')) {
+            response = await supabaseClient.from('jam_sessions').insert([{ code, host_username: hostUsername, is_active: true, current_song_id: null, is_playing: false }]).select('id, code').single();
         }
         return response;
     }
@@ -298,81 +297,30 @@ export function initJam({
     async function upsertJamMember({ username, isHost }) {
         if (!appState.jamSessionId) return;
         const now = new Date().toISOString();
-        const { data: existing, error: findError } = await supabaseClient
-            .from('jam_members')
-            .select('id')
-            .eq('jam_id', appState.jamSessionId)
-            .eq('username', username)
-            .maybeSingle();
-
-        if (findError) {
-            const errorMessage = findError?.message || JSON.stringify(findError);
-            console.warn('Error consultando miembro de Jam:', errorMessage);
-            return;
-        }
-
+        const { data: existing } = await supabaseClient.from('jam_members').select('id').eq('jam_id', appState.jamSessionId).eq('username', username).maybeSingle();
         if (existing?.id) {
-            const { error } = await supabaseClient
-                .from('jam_members')
-                .update({ is_host: isHost, active: true, last_seen: now })
-                .eq('id', existing.id);
-            if (error) {
-                const errorMessage = error?.message || JSON.stringify(error);
-                console.warn('Error actualizando miembro de Jam:', errorMessage);
-            }
+            await supabaseClient.from('jam_members').update({ is_host: isHost, active: true, last_seen: now }).eq('id', existing.id);
             return;
         }
-
-        const { error } = await supabaseClient
-            .from('jam_members')
-            .insert({
-                jam_id: appState.jamSessionId,
-                username,
-                is_host: isHost,
-                active: true,
-                last_seen: now
-            });
-
-        if (error) {
-            const errorMessage = error?.message || JSON.stringify(error);
-            console.warn('Error registrando miembro de Jam:', errorMessage);
-        }
+        await supabaseClient.from('jam_members').insert({ jam_id: appState.jamSessionId, username, is_host: isHost, active: true, last_seen: now });
     }
 
     async function updateJamMemberStatus(active) {
         if (!appState.jamSessionId) return;
         const username = appState.usuarioActual || 'Invitado';
-        await supabaseClient
-            .from('jam_members')
-            .update({ active, last_seen: new Date().toISOString() })
-            .eq('jam_id', appState.jamSessionId)
-            .eq('username', username);
+        await supabaseClient.from('jam_members').update({ active, last_seen: new Date().toISOString() }).eq('jam_id', appState.jamSessionId).eq('username', username);
     }
 
     async function closeJamSessionIfHost(sessionId = appState.jamSessionId) {
         if (!sessionId) return;
-        await supabaseClient
-            .from('jam_sessions')
-            .update({ is_active: false, updated_at: new Date().toISOString() })
-            .eq('id', sessionId);
+        await supabaseClient.from('jam_sessions').update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', sessionId);
     }
 
     async function refreshJamMembers() {
         if (!appState.jamSessionId) return;
-        const { data, error } = await supabaseClient
-            .from('jam_members')
-            .select('username,is_host,active')
-            .eq('jam_id', appState.jamSessionId)
-            .eq('active', true)
-            .order('is_host', { ascending: false });
-        if (error) {
-            console.warn('Jam members fetch error:', error);
-            return;
-        }
-        appState.jamUsers = (data || []).map(member => ({
-            username: member.username,
-            isHost: member.is_host
-        }));
+        const { data, error } = await supabaseClient.from('jam_members').select('username,is_host,active').eq('jam_id', appState.jamSessionId).eq('active', true).order('is_host', { ascending: false });
+        if (error) return;
+        appState.jamUsers = (data || []).map(member => ({ username: member.username, isHost: member.is_host }));
         renderJamUsers();
     }
 
@@ -390,46 +338,42 @@ export function initJam({
         appState.jamSessionInterval = setInterval(async () => {
             if (!appState.jamActive || appState.jamHost || !appState.jamCode) return;
             const session = await fetchJamSessionByCode(appState.jamCode);
-            if (!session) return;
-            const songId = session.current_song_id;
-            if (songId && songId !== appState.lastJamSongId && !appState.jamSyncInProgress) {
-                appState.lastJamSongId = songId;
-                applyJamSync({
-                    songId,
-                    time: session.current_time || 0,
-                    isPlaying: session.is_playing
-                });
+            if (!session?.current_song_id || appState.jamSyncInProgress) return;
+            if (session.current_song_id !== appState.lastJamSongId) {
+                appState.lastJamSongId = session.current_song_id;
+                applyJamSync({ songId: session.current_song_id, time: session.current_time || 0, isPlaying: session.is_playing });
             }
         }, 4000);
     }
 
     async function syncFromJamSession() {
         const session = await fetchJamSessionByCode(appState.jamCode);
-        if (!session) return;
-        if (session.current_song_id) {
-            appState.lastJamSongId = session.current_song_id;
-            applyJamSync({
-                songId: session.current_song_id,
-                time: session.current_time || 0,
-                isPlaying: session.is_playing
-            });
-        }
+        if (!session?.current_song_id) return;
+        appState.lastJamSongId = session.current_song_id;
+        applyJamSync({ songId: session.current_song_id, time: session.current_time || 0, isPlaying: session.is_playing });
     }
 
     function applyJamConfig(payload) {
         if (!payload) return;
         appState.jamPermissions = {
             allowQueueAdd: payload.allowQueueAdd !== false,
-            allowQueueRemove: payload.allowQueueRemove !== false
+            allowQueueRemove: payload.allowQueueRemove !== false,
+            allowPlaybackControl: payload.allowPlaybackControl !== false
         };
         updateJamUI();
     }
 
     function applyJamRecommendation(payload) {
         if (!payload?.songName) return;
-        if (typeof window.showToast === 'function') {
-            window.showToast(`Recomendación del host: ${payload.songName}`, 'success');
-        }
+        notify(`Recomendación: ${payload.songName}`, 'success');
+    }
+
+    function applyRecommendationRequest(payload) {
+        if (!appState.jamHost || !payload?.songId || !payload.songName) return;
+        pendingRecommendations.unshift(payload);
+        renderHostRecommendations();
+        openHostRecommendationsModal();
+        notify(`Nueva recomendación de ${payload.username || 'usuario'}.`, 'info');
     }
 
     function broadcastJamConfig() {
@@ -439,74 +383,44 @@ export function initJam({
             event: 'jam-config',
             payload: {
                 allowQueueAdd: appState.jamPermissions?.allowQueueAdd !== false,
-                allowQueueRemove: appState.jamPermissions?.allowQueueRemove !== false
+                allowQueueRemove: appState.jamPermissions?.allowQueueRemove !== false,
+                allowPlaybackControl: appState.jamPermissions?.allowPlaybackControl !== false,
+                senderId: appState.jamClientId
             }
         });
     }
 
     function recommendCurrentSong() {
-        if (!appState.jamChannel || !appState.jamHost) return;
+        if (!appState.jamChannel) return;
         const currentSong = appState.playlist[appState.currentIndex];
         if (!currentSong) return;
-        appState.jamChannel.send({
-            type: 'broadcast',
-            event: 'jam-recommend',
-            payload: {
-                songId: currentSong.id,
-                songName: currentSong.name
-            }
-        });
-        if (typeof window.showToast === 'function') {
-            window.showToast('Recomendación enviada al Jam.', 'success');
-        }
+        appState.jamChannel.send({ type: 'broadcast', event: 'jam-recommend', payload: { songId: currentSong.id, songName: currentSong.name, senderId: appState.jamClientId } });
+        notify('Recomendación enviada al Jam.', 'success');
     }
 
     function applyJamSync(payload) {
         if (!payload?.songId) return;
-        const songId = payload.songId;
-        const targetTime = payload.time || 0;
-        const isPlaying = payload.isPlaying;
-        const songIndex = appState.playlist.findIndex(s => s.id === songId);
+        const songIndex = appState.playlist.findIndex(s => s.id === payload.songId);
         if (songIndex === -1) return;
-
         appState.jamSyncInProgress = true;
-        const finishSync = () => {
-            appState.jamSyncInProgress = false;
-        };
+        const finishSync = () => { appState.jamSyncInProgress = false; };
 
         if (appState.offlineMode) {
-            playOfflineSongById(songId, { fadeOutMs: 0, fadeInMs: 0 });
+            playOfflineSongById(payload.songId, { fadeOutMs: 0, fadeInMs: 0 });
             setTimeout(() => {
-                audio.currentTime = targetTime;
-                if (isPlaying) {
-                    audio.play();
-                } else {
-                    audio.pause();
-                }
+                audio.currentTime = payload.time || 0;
+                payload.isPlaying ? audio.play().catch(() => {}) : audio.pause();
                 finishSync();
-            }, 600);
+            }, 500);
             return;
         }
 
         playSong(songIndex, { fadeOutMs: 0, fadeInMs: 0 });
-        let syncApplied = false;
-        const applyTimeAndState = () => {
-            if (syncApplied) return;
-            syncApplied = true;
-            audio.currentTime = Math.max(0, targetTime);
-            if (isPlaying) {
-                audio.play().catch(() => {});
-            } else {
-                audio.pause();
-            }
+        setTimeout(() => {
+            audio.currentTime = Math.max(0, payload.time || 0);
+            payload.isPlaying ? audio.play().catch(() => {}) : audio.pause();
             finishSync();
-        };
-        if (audio.readyState >= 1) {
-            setTimeout(applyTimeAndState, 200);
-        } else {
-            audio.addEventListener('loadedmetadata', applyTimeAndState, { once: true });
-            setTimeout(applyTimeAndState, 1200);
-        }
+        }, 240);
     }
 
     function applyJamPause(payload) {
@@ -514,112 +428,198 @@ export function initJam({
         appState.jamSyncInProgress = true;
         audio.currentTime = payload.time || audio.currentTime;
         audio.pause();
-        setTimeout(() => {
-            appState.jamSyncInProgress = false;
-        }, 400);
+        setTimeout(() => { appState.jamSyncInProgress = false; }, 300);
     }
 
     function applyJamSeek(payload) {
         if (!payload) return;
         appState.jamSyncInProgress = true;
         audio.currentTime = payload.time || audio.currentTime;
-        setTimeout(() => {
-            appState.jamSyncInProgress = false;
-        }, 200);
+        setTimeout(() => { appState.jamSyncInProgress = false; }, 200);
     }
 
     async function updateJamSessionState(songId) {
         if (!appState.jamSessionId) return;
-        const payload = {
+        let response = await supabaseClient.from('jam_sessions').update({
             current_song_id: songId,
             current_time: audio.currentTime || 0,
             is_playing: !audio.paused,
             updated_at: new Date().toISOString()
-        };
-        let response = await supabaseClient
-            .from('jam_sessions')
-            .update(payload)
-            .eq('id', appState.jamSessionId);
-        if (response.error?.message?.includes("current_time")) {
-            const minimalPayload = {
+        }).eq('id', appState.jamSessionId);
+        if (response.error?.message?.includes('current_time')) {
+            response = await supabaseClient.from('jam_sessions').update({
                 current_song_id: songId,
                 is_playing: !audio.paused,
                 updated_at: new Date().toISOString()
-            };
-            response = await supabaseClient
-                .from('jam_sessions')
-                .update(minimalPayload)
-                .eq('id', appState.jamSessionId);
+            }).eq('id', appState.jamSessionId);
         }
     }
 
     async function updateJamMembersCurrentSong(songId) {
         if (!appState.jamSessionId || !appState.jamUsers.length) return;
         const usernames = appState.jamUsers.map(user => user.username);
-        const { error } = await supabaseClient
-            .from('users_access')
-            .update({ current_song_id: songId })
-            .in('username', usernames);
-        if (error) {
-            console.warn('Error updating jam users current song:', error);
-        }
+        await supabaseClient.from('users_access').update({ current_song_id: songId }).in('username', usernames);
     }
 
     function broadcastJamState(event) {
-        if (!appState.jamChannel || !appState.jamActive || !appState.jamHost) return;
+        if (!appState.jamChannel || !appState.jamActive) return;
         const currentSong = appState.playlist[appState.currentIndex];
         if (!currentSong) return;
         appState.lastJamSongId = currentSong.id;
         updateJamSessionState(currentSong.id).catch(() => {});
         updateJamMembersCurrentSong(currentSong.id).catch(() => {});
+        appState.jamChannel.send({ type: 'broadcast', event, payload: { songId: currentSong.id, time: audio.currentTime || 0, isPlaying: !audio.paused, senderId: appState.jamClientId } });
+    }
+
+    function broadcastQueueAdd(song) {
+        if (!song || !appState.jamChannel || !appState.jamActive) return;
+        appState.jamChannel.send({ type: 'broadcast', event: 'jam-queue-add', payload: { songId: song.id, senderId: appState.jamClientId } });
+    }
+
+    function applyJamQueueAdd(payload) {
+        if (isOwnPayload(payload) || !payload?.songId) return;
+        const song = appState.playlist.find(item => item.id === payload.songId);
+        if (!song) return;
+        const exists = appState.queue.some(item => item.id === song.id);
+        if (!exists) {
+            appState.queue.push(song);
+            if (typeof window.renderQueueFromJam === 'function') window.renderQueueFromJam();
+        }
+    }
+
+    function broadcastQueueRemove(songId) {
+        if (!songId || !appState.jamChannel || !appState.jamActive) return;
+        appState.jamChannel.send({ type: 'broadcast', event: 'jam-queue-remove', payload: { songId, senderId: appState.jamClientId } });
+    }
+
+    function applyJamQueueRemove(payload) {
+        if (isOwnPayload(payload) || !payload?.songId) return;
+        const index = appState.queue.findIndex(item => item.id === payload.songId);
+        if (index >= 0) {
+            appState.queue.splice(index, 1);
+            if (typeof window.renderQueueFromJam === 'function') window.renderQueueFromJam();
+        }
+    }
+
+    function sendRecommendation(song) {
+        if (!song || !appState.jamChannel || !appState.jamActive) return;
         appState.jamChannel.send({
             type: 'broadcast',
-            event,
-            payload: {
-                songId: currentSong.id,
-                time: audio.currentTime || 0,
-                isPlaying: !audio.paused
-            }
+            event: 'jam-recommend-request',
+            payload: { songId: song.id, songName: song.name, username: appState.usuarioActual || 'Invitado', senderId: appState.jamClientId }
         });
+        notify('Recomendación enviada al host.', 'success');
+    }
+
+    function getSongCategory(song) {
+        return song?.category || song?.genre || 'General';
+    }
+
+    function renderRecommendCategoryOptions() {
+        if (!jamRecommendCategory) return;
+        const categories = [...new Set(appState.playlist.map(getSongCategory))].sort((a, b) => a.localeCompare(b));
+        jamRecommendCategory.innerHTML = `<option value="all">Todas</option>${categories.map(category => `<option value="${category}">${category}</option>`).join('')}`;
+    }
+
+    function renderRecommendList() {
+        if (!jamRecommendList) return;
+        const search = jamRecommendSearch?.value?.trim().toLowerCase() || '';
+        const category = jamRecommendCategory?.value || 'all';
+        const matches = appState.playlist.filter(song => {
+            const inCategory = category === 'all' || getSongCategory(song) === category;
+            const inSearch = !search || song.name.toLowerCase().includes(search);
+            return inCategory && inSearch;
+        }).slice(0, 120);
+        jamRecommendList.innerHTML = matches.length
+            ? matches.map(song => `<button class="jam-recommend-item" data-song-id="${song.id}">${song.name}<small>${getSongCategory(song)}</small></button>`).join('')
+            : '<p class="jam-empty">No hay canciones con ese filtro.</p>';
+    }
+
+    function renderHostRecommendations() {
+        if (!jamHostRecommendationsList) return;
+        jamHostRecommendationsList.innerHTML = pendingRecommendations.length
+            ? pendingRecommendations.map((recommendation, index) => `
+                <div class="jam-host-rec-item">
+                    <div>
+                        <strong>${recommendation.songName}</strong>
+                        <small>${recommendation.username || 'Usuario'}</small>
+                    </div>
+                    <div class="jam-host-rec-actions">
+                        <button data-host-action="queue" data-host-index="${index}">Agregar a cola</button>
+                        <button data-host-action="play" data-host-index="${index}">Reproducir</button>
+                        <button data-host-action="reject" data-host-index="${index}">Descartar</button>
+                    </div>
+                </div>
+            `).join('')
+            : '<p class="jam-empty">No hay recomendaciones pendientes.</p>';
+    }
+
+    function resolveHostRecommendation(action, index) {
+        const recommendation = pendingRecommendations[index];
+        if (!recommendation) return;
+        const song = appState.playlist.find(item => item.id === recommendation.songId);
+
+        if (action === 'queue' && song) {
+            const exists = appState.queue.some(item => item.id === song.id);
+            if (!exists) {
+                appState.queue.push(song);
+                if (typeof window.renderQueueFromJam === 'function') window.renderQueueFromJam();
+                broadcastQueueAdd(song);
+            }
+            notify('Canción agregada a la cola.', 'success');
+        }
+
+        if (action === 'play' && song) {
+            const songIndex = appState.playlist.findIndex(item => item.id === song.id);
+            if (songIndex >= 0) {
+                playSong(songIndex, { fadeOutMs: 0, fadeInMs: 0 });
+                broadcastJamState('jam-play');
+            }
+            notify('Canción reproducida para toda la Jam.', 'success');
+        }
+
+        pendingRecommendations.splice(index, 1);
+        renderHostRecommendations();
+    }
+
+    function maybeRecommendInstead() {
+        if (!appState.jamActive || appState.jamHost) return false;
+        openRecommendModal();
+        return true;
     }
 
     function initJamFromStorage() {
-        if (appState.jamActive && appState.jamCode) {
-            if (appState.jamSessionId) {
-                connectToJam(appState.jamCode, appState.jamHost);
-                updateJamUI();
-            } else {
-                fetchJamSessionByCode(appState.jamCode).then(session => {
-                    if (session) {
-                        appState.jamSessionId = session.id;
-                        localStorage.setItem('jamSessionId', appState.jamSessionId);
-                        connectToJam(appState.jamCode, appState.jamHost);
-                        updateJamUI();
-                    } else {
-                        appState.jamActive = false;
-                        appState.jamCode = '';
-                        appState.jamHost = false;
-                        localStorage.setItem('jamActive', 'false');
-                        localStorage.removeItem('jamCode');
-                        localStorage.removeItem('jamHost');
-                        localStorage.removeItem('jamSessionId');
-                    }
-                });
-            }
+        if (!appState.jamActive || !appState.jamCode) return;
+        if (appState.jamSessionId) {
+            connectToJam(appState.jamCode, appState.jamHost);
+            updateJamUI();
+            return;
         }
+        fetchJamSessionByCode(appState.jamCode).then(session => {
+            if (!session) {
+                appState.jamActive = false;
+                appState.jamCode = '';
+                appState.jamHost = false;
+                localStorage.setItem('jamActive', 'false');
+                localStorage.removeItem('jamCode');
+                localStorage.removeItem('jamHost');
+                localStorage.removeItem('jamSessionId');
+                return;
+            }
+            appState.jamSessionId = session.id;
+            localStorage.setItem('jamSessionId', appState.jamSessionId);
+            connectToJam(appState.jamCode, appState.jamHost);
+            updateJamUI();
+        });
     }
 
     if (jamBtn) jamBtn.onclick = openJamModal;
     if (closeJam) closeJam.onclick = closeJamModal;
     if (jamToggle) {
         jamToggle.onclick = () => {
-            if (appState.jamActive && appState.jamHost) {
-                stopJam();
-            } else if (appState.jamActive) {
-                leaveJam();
-            } else {
-                startJam();
-            }
+            if (appState.jamActive && appState.jamHost) return stopJam();
+            if (appState.jamActive) return leaveJam();
+            startJam();
         };
     }
     if (jamCopy) {
@@ -627,32 +627,40 @@ export function initJam({
             if (!appState.jamCode) return;
             try {
                 await navigator.clipboard.writeText(appState.jamCode);
-            } catch (err) {
-                console.warn('No se pudo copiar el código:', err);
-                alert('No se pudo copiar el código. Cópialo manualmente.');
+            } catch {
+                notify('No se pudo copiar el código. Cópialo manualmente.', 'warning');
             }
         };
     }
+
     if (jamJoinBtn) jamJoinBtn.onclick = joinJam;
+    if (jamAllowQueueAdd) jamAllowQueueAdd.onchange = () => { if (appState.jamHost) { appState.jamPermissions.allowQueueAdd = jamAllowQueueAdd.checked; broadcastJamConfig(); } };
+    if (jamAllowQueueRemove) jamAllowQueueRemove.onchange = () => { if (appState.jamHost) { appState.jamPermissions.allowQueueRemove = jamAllowQueueRemove.checked; broadcastJamConfig(); } };
+    if (jamAllowPlaybackControl) jamAllowPlaybackControl.onchange = () => { if (appState.jamHost) { appState.jamPermissions.allowPlaybackControl = jamAllowPlaybackControl.checked; broadcastJamConfig(); } };
+    if (jamRecommendCurrent) jamRecommendCurrent.onclick = recommendCurrentSong;
 
-    if (jamAllowQueueAdd) {
-        jamAllowQueueAdd.onchange = () => {
-            if (!appState.jamHost) return;
-            appState.jamPermissions.allowQueueAdd = jamAllowQueueAdd.checked;
-            broadcastJamConfig();
+    if (closeJamRecommendModalBtn) closeJamRecommendModalBtn.onclick = closeRecommendModal;
+    if (jamRecommendSearch) jamRecommendSearch.oninput = renderRecommendList;
+    if (jamRecommendCategory) jamRecommendCategory.onchange = renderRecommendList;
+    if (jamRecommendList) {
+        jamRecommendList.onclick = (event) => {
+            const item = event.target.closest('[data-song-id]');
+            if (!item) return;
+            const songId = Number(item.getAttribute('data-song-id'));
+            const song = appState.playlist.find(entry => entry.id === songId);
+            if (!song) return;
+            sendRecommendation(song);
+            closeRecommendModal();
         };
     }
 
-    if (jamAllowQueueRemove) {
-        jamAllowQueueRemove.onchange = () => {
-            if (!appState.jamHost) return;
-            appState.jamPermissions.allowQueueRemove = jamAllowQueueRemove.checked;
-            broadcastJamConfig();
+    if (closeJamHostRecommendationsBtn) closeJamHostRecommendationsBtn.onclick = closeHostRecommendationsModal;
+    if (jamHostRecommendationsList) {
+        jamHostRecommendationsList.onclick = (event) => {
+            const button = event.target.closest('[data-host-action]');
+            if (!button) return;
+            resolveHostRecommendation(button.getAttribute('data-host-action'), Number(button.getAttribute('data-host-index')));
         };
-    }
-
-    if (jamRecommendCurrent) {
-        jamRecommendCurrent.onclick = recommendCurrentSong;
     }
 
     return {
@@ -660,6 +668,11 @@ export function initJam({
         initJamFromStorage,
         updateJamMembersCurrentSong,
         canUserAddToQueue: () => appState.jamHost || !appState.jamActive || appState.jamPermissions?.allowQueueAdd !== false,
-        canUserRemoveFromQueue: () => appState.jamHost || !appState.jamActive || appState.jamPermissions?.allowQueueRemove !== false
+        canUserRemoveFromQueue: () => appState.jamHost || !appState.jamActive || appState.jamPermissions?.allowQueueRemove !== false,
+        canUserControlPlayback: () => appState.jamHost || !appState.jamActive || appState.jamPermissions?.allowPlaybackControl !== false,
+        maybeRecommendInstead,
+        openRecommendModal,
+        broadcastQueueAdd,
+        broadcastQueueRemove
     };
 }

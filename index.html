@@ -481,6 +481,7 @@
                 <div class="jam-permissions" id="jamPermissions">
                     <label><input type="checkbox" id="jamAllowQueueAdd" checked> Permitir agregar canciones a la cola</label>
                     <label><input type="checkbox" id="jamAllowQueueRemove" checked> Permitir eliminar canciones de la cola</label>
+                    <label><input type="checkbox" id="jamAllowPlaybackControl" checked> Permitir cambiar/reproducir/adelantar canciones</label>
                     <button id="jamRecommendCurrent" class="jam-secondary" data-testid="jam-recommend">Recomendar canción actual</button>
                 </div>
                 <div class="jam-join">
@@ -488,6 +489,30 @@
                     <button id="jamJoinBtn" class="jam-secondary" data-testid="jam-join">Unirme</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="jam-modal" id="jamRecommendModal" data-testid="jam-recommend-modal">
+        <div class="jam-content jam-recommend-content">
+            <div class="jam-header">
+                <h3>Recomendar canción</h3>
+                <button class="close-btn" id="closeJamRecommendModal">&times;</button>
+            </div>
+            <div class="jam-recommend-controls">
+                <input type="text" id="jamRecommendSearch" placeholder="Buscar canción">
+                <select id="jamRecommendCategory"></select>
+            </div>
+            <div class="jam-recommend-list" id="jamRecommendList"></div>
+        </div>
+    </div>
+
+    <div class="jam-modal" id="jamHostRecommendationsModal" data-testid="jam-host-recommendations-modal">
+        <div class="jam-content jam-recommend-content">
+            <div class="jam-header">
+                <h3>Recomendaciones de la Jam</h3>
+                <button class="close-btn" id="closeJamHostRecommendations">&times;</button>
+            </div>
+            <div class="jam-host-rec-list" id="jamHostRecommendationsList"></div>
         </div>
     </div>
 
