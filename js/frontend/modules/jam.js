@@ -297,15 +297,42 @@ export function initJam({
 
     async function upsertJamMember({ username, isHost }) {
         if (!appState.jamSessionId) return;
+        const now = new Date().toISOString();
+        const { data: existing, error: findError } = await supabaseClient
+            .from('jam_members')
+            .select('id')
+            .eq('jam_id', appState.jamSessionId)
+            .eq('username', username)
+            .maybeSingle();
+
+        if (findError) {
+            const errorMessage = findError?.message || JSON.stringify(findError);
+            console.warn('Error consultando miembro de Jam:', errorMessage);
+            return;
+        }
+
+        if (existing?.id) {
+            const { error } = await supabaseClient
+                .from('jam_members')
+                .update({ is_host: isHost, active: true, last_seen: now })
+                .eq('id', existing.id);
+            if (error) {
+                const errorMessage = error?.message || JSON.stringify(error);
+                console.warn('Error actualizando miembro de Jam:', errorMessage);
+            }
+            return;
+        }
+
         const { error } = await supabaseClient
             .from('jam_members')
-            .upsert([{
+            .insert({
                 jam_id: appState.jamSessionId,
                 username,
                 is_host: isHost,
                 active: true,
-                last_seen: new Date().toISOString()
-            }], { onConflict: 'jam_id,username' });
+                last_seen: now
+            });
+
         if (error) {
             const errorMessage = error?.message || JSON.stringify(error);
             console.warn('Error registrando miembro de Jam:', errorMessage);

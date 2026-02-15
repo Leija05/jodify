@@ -1567,24 +1567,20 @@ async function syncDownloadedSongs() {
 async function loadUserCloudData() {
     if (!navigator.onLine || !appState.usuarioActual) return;
     try {
-        const [{ data: likesData }, { data: userRow }] = await Promise.all([
+        const [{ data: likesData }, playedResp] = await Promise.all([
             supabaseClient.from('user_likes').select('song_id').eq('username', appState.usuarioActual),
-            supabaseClient.from('users_access').select('play_count').eq('username', appState.usuarioActual).single()
+            supabaseClient.from('listening_history').select('id', { count: 'exact', head: true }).eq('username', appState.usuarioActual)
         ]);
         appState.likedIds = (likesData || []).map(row => row.song_id);
-        appState.playCount = Number(userRow?.play_count || 0);
+        appState.playCount = Number(playedResp?.count || 0);
     } catch (e) {
         console.warn('Error loading cloud user data:', e);
     }
 }
 
 async function incrementRemotePlayCount() {
-    if (!navigator.onLine || !appState.usuarioActual) return;
-    const nextValue = appState.playCount;
-    await supabaseClient
-        .from('users_access')
-        .update({ play_count: nextValue })
-        .eq('username', appState.usuarioActual);
+    // El conteo remoto de reproducidas se basa en listening_history (insertado por logListeningHistory).
+    return;
 }
 
 // =========================================
@@ -2131,9 +2127,17 @@ window.downloadSong = async (event, songId) => {
 
         if (navigator.onLine && appState.usuarioActual) {
             try {
-                await supabaseClient
+                const { data: existing, error: checkError } = await supabaseClient
                     .from('user_downloads')
-                    .upsert({ username: appState.usuarioActual, song_id: songId }, { onConflict: 'username,song_id' });
+                    .select('id')
+                    .eq('username', appState.usuarioActual)
+                    .eq('song_id', songId)
+                    .maybeSingle();
+                if (!checkError && !existing) {
+                    await supabaseClient
+                        .from('user_downloads')
+                        .insert({ username: appState.usuarioActual, song_id: songId });
+                }
             } catch (syncErr) {
                 console.warn('Download sync error:', syncErr);
             }
@@ -2557,9 +2561,17 @@ window.toggleLike = async (e, id) => {
                         .eq('username', appState.usuarioActual)
                         .eq('song_id', id);
                 } else {
-                    await supabaseClient
+                    const { data: existingLike, error: likeCheckError } = await supabaseClient
                         .from('user_likes')
-                        .upsert({ username: appState.usuarioActual, song_id: id }, { onConflict: 'username,song_id' });
+                        .select('id')
+                        .eq('username', appState.usuarioActual)
+                        .eq('song_id', id)
+                        .maybeSingle();
+                    if (!likeCheckError && !existingLike) {
+                        await supabaseClient
+                            .from('user_likes')
+                            .insert({ username: appState.usuarioActual, song_id: id });
+                    }
                 }
             }
         } catch (e) {
@@ -3239,13 +3251,12 @@ function updateProfileStats() {
             .catch(e => console.warn('Error loading download stats:', e));
 
         supabaseClient
-            .from('users_access')
-            .select('play_count')
+            .from('listening_history')
+            .select('id', { count: 'exact', head: true })
             .eq('username', appState.usuarioActual)
-            .single()
-            .then(({ data, error }) => {
+            .then(({ count, error }) => {
                 if (!error && statPlayed) {
-                    appState.playCount = Number(data?.play_count || 0);
+                    appState.playCount = Number(count || 0);
                     statPlayed.textContent = appState.playCount;
                 }
             })
@@ -3823,7 +3834,7 @@ async function loadCommunityUsers() {
                     return {
                         ...u,
                         likes: likesByUser[u.username] || 0,
-                        played: playedByUser[u.username] || Number(u.play_count ?? u.played_count ?? 0),
+                        played: playedByUser[u.username] || 0,
                         downloads: downloadsByUser[u.username] || Number(u.download_count ?? u.downloaded_count ?? 0),
                         currentSong: currentSongName ? { name: currentSongName, time: currentSongSince } : null
                     };
