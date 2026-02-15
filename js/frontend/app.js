@@ -46,6 +46,7 @@ const appState = {
     currentIndex: -1,
     lyrics: [],
     currentLine: -1,
+    lrcRequestId: 0,
     audioCtx: null,
     analyser: null,
     source: null,
@@ -2292,6 +2293,9 @@ async function handlePrevSong() {
 }
 
 audio.onended = () => {
+    if (appState.jamActive && !appState.jamHost) {
+        return;
+    }
     if (appState.fadePending) {
         return;
     }
@@ -2345,6 +2349,7 @@ function loadMetadata(url, elId, isMain = false) {
 }
 
 async function loadLRC(name) {
+    const requestId = ++appState.lrcRequestId;
     lyricsBox.innerHTML = "<p>Buscando letra...</p>";
     appState.lyrics = [];
     appState.currentLine = -1;
@@ -2353,23 +2358,30 @@ async function loadLRC(name) {
         const res = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(formatDisplayName(name))}`);
         const data = await res.json();
 
+        if (requestId !== appState.lrcRequestId) return;
+
         if (data?.[0]?.syncedLyrics) {
             lyricsBox.innerHTML = "";
             data[0].syncedLyrics.split("\n").forEach(line => {
                 const m = line.match(/\[(\d+):(\d+\.?\d*)\](.*)/);
-                if (m) {
-                    const time = parseInt(m[1]) * 60 + parseFloat(m[2]);
-                    const p = document.createElement("p");
-                    p.textContent = m[3].trim() || "•••";
-                    p.onclick = () => audio.currentTime = time;
-                    lyricsBox.appendChild(p);
-                    appState.lyrics.push({ time, element: p });
-                }
+                if (!m) return;
+                const time = parseInt(m[1]) * 60 + parseFloat(m[2]);
+                if (!Number.isFinite(time)) return;
+                const p = document.createElement("p");
+                p.textContent = m[3].trim() || "•••";
+                p.onclick = () => audio.currentTime = time;
+                lyricsBox.appendChild(p);
+                appState.lyrics.push({ time, element: p });
             });
+            appState.lyrics.sort((a, b) => a.time - b.time);
+            if (!appState.lyrics.length) {
+                lyricsBox.innerHTML = "<p>Letra no disponible</p>";
+            }
         } else {
             lyricsBox.innerHTML = "<p>Letra no disponible</p>";
         }
     } catch {
+        if (requestId !== appState.lrcRequestId) return;
         lyricsBox.innerHTML = "<p>Error de conexión</p>";
     }
 }
