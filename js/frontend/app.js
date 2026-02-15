@@ -47,6 +47,7 @@ const appState = {
     lyrics: [],
     currentLine: -1,
     lrcRequestId: 0,
+    playbackRecovering: false,
     audioCtx: null,
     analyser: null,
     source: null,
@@ -251,6 +252,17 @@ const nextBtn = document.getElementById("next");
 const shuffleBtn = document.getElementById("shuffle");
 const loopBtn = document.getElementById("repeat");
 const themeToggle = document.getElementById("themeToggle");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+const fullscreenPlayer = document.getElementById("fullscreenPlayer");
+const closeFullscreenBtn = document.getElementById("closeFullscreenBtn");
+const fullscreenCover = document.getElementById("fullscreenCover");
+const fullscreenSongTitle = document.getElementById("fullscreenSongTitle");
+const fullscreenPrev = document.getElementById("fullscreenPrev");
+const fullscreenPlay = document.getElementById("fullscreenPlay");
+const fullscreenNext = document.getElementById("fullscreenNext");
+const fullscreenProgress = document.getElementById("fullscreenProgress");
+const fullscreenCurrentTime = document.getElementById("fullscreenCurrentTime");
+const fullscreenDuration = document.getElementById("fullscreenDuration");
 
 const btnGlobal = document.getElementById("btnGlobal");
 const btnPersonal = document.getElementById("btnPersonal");
@@ -726,7 +738,7 @@ function renderQueue() {
         });
 
         queueList.appendChild(item);
-        loadMetadata(song.url, `queue-cover-${song.id}`);
+        loadMetadata(song.url, `queue-cover-${song.id}`, false, getSongCoverCandidate(song));
     });
     updateQueueIndicator();
 }
@@ -1999,7 +2011,7 @@ function createSongElement(song, isCurrent, isDownloaded) {
     if (isDownloaded && song.blob) {
         extractCoverFromBlob(song.blob, imgId);
     } else if (song.url) {
-        loadMetadata(song.url, imgId);
+        loadMetadata(song.url, imgId, false, getSongCoverCandidate(song));
     }
 
     li.onclick = (e) => {
@@ -2177,6 +2189,43 @@ window.downloadSong = async (event, songId) => {
 // =========================================
 // PLAYBACK CONTROLS
 // =========================================
+function getSongCoverCandidate(song) {
+    return song?.cover_url || song?.cover || song?.image_url || song?.thumbnail || 'assets/default-cover.png';
+}
+
+function openFullscreenPlayer() {
+    if (!fullscreenPlayer) return;
+    fullscreenPlayer.classList.add('open');
+    updateFullscreenUI();
+}
+
+function closeFullscreenPlayer() {
+    fullscreenPlayer?.classList.remove('open');
+}
+
+function updateFullscreenUI() {
+    if (!fullscreenPlayer) return;
+    const song = appState.playlist[appState.currentIndex];
+    if (fullscreenSongTitle) fullscreenSongTitle.textContent = song ? formatDisplayName(song.name) : 'Selecciona una canción';
+    if (fullscreenCover && cover) fullscreenCover.src = cover.src || 'assets/default-cover.png';
+    if (fullscreenCurrentTime) fullscreenCurrentTime.textContent = formatTime(audio.currentTime);
+    if (fullscreenDuration) fullscreenDuration.textContent = formatTime(audio.duration);
+    if (fullscreenProgress) {
+        fullscreenProgress.max = Number(audio.duration) || 0;
+        fullscreenProgress.value = Number(audio.currentTime) || 0;
+    }
+}
+
+async function recoverPlaybackAfterError() {
+    if (appState.playbackRecovering || (appState.jamActive && !appState.jamHost && !appState.jamSyncInProgress)) return;
+    appState.playbackRecovering = true;
+    try {
+        await handleNextSong({ fadeOutMs: 0, fadeInMs: 0 });
+    } finally {
+        appState.playbackRecovering = false;
+    }
+}
+
 async function startSongPlayback(song, sourceUrl, options = {}) {
     const useFade = shouldUseFade() && audio.src && !audio.paused;
     const fadeOutMs = useFade ? options.fadeOutMs ?? getFadeDurationMs() / 2 : 0;
@@ -2194,6 +2243,7 @@ async function startSongPlayback(song, sourceUrl, options = {}) {
         updatePlayIcon(true);
     } catch (e) {
         console.error("Play error:", e);
+        throw e;
     }
 
     if (useFade) {
@@ -2215,8 +2265,10 @@ async function playSong(index, options = {}) {
     appState.currentIndex = index;
     const song = appState.playlist[index];
 
+    let playbackStarted = false;
     try {
         await startSongPlayback(song, song.url, options);
+        playbackStarted = true;
         appState.playCount++;
         incrementRemotePlayCount().catch(() => {});
         updateProfileStats();
@@ -2225,15 +2277,21 @@ async function playSong(index, options = {}) {
         if (appState.jamActive && jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
             jam.broadcastJamState('jam-play');
         }
+    } catch (error) {
+        showToast('No se pudo reproducir esta canción. Pasando a la siguiente…', 'warning');
+        recoverPlaybackAfterError().catch(() => {});
     } finally {
         isChangingTrack = false;
     }
 
+    if (!playbackStarted) return;
+
     songTitle.textContent = formatDisplayName(song.name);
     syncObsOverlayState();
-    loadMetadata(song.url, "cover", true);
+    loadMetadata(song.url, "cover", true, getSongCoverCandidate(song));
     loadLRC(song.name);
     renderPlaylist();
+    updateFullscreenUI();
 
     if (window.innerWidth <= 768) {
         setTimeout(() => toggleMobilePlaylist(false), 300);
@@ -2292,6 +2350,11 @@ async function handlePrevSong() {
     }
 }
 
+audio.onerror = () => {
+    showToast('Error de audio detectado. Intentando continuar…', 'warning');
+    recoverPlaybackAfterError().catch(() => {});
+};
+
 audio.onended = () => {
     if (appState.jamActive && !appState.jamHost) {
         return;
@@ -2312,28 +2375,45 @@ audio.onended = () => {
 };
 
 const metadataCoverCache = new Map();
+const metadataCoverFailures = new Map();
 
-function loadMetadata(url, elId, isMain = false) {
+function loadMetadata(url, elId, isMain = false, fallbackSrc = "assets/default-cover.png") {
     const assignCover = (dataUrl) => {
+        const resolved = dataUrl || fallbackSrc || 'assets/default-cover.png';
         const el = document.getElementById(elId);
-        if (el && dataUrl) el.src = dataUrl;
-        if (isMain && dataUrl) {
-            cover.src = dataUrl;
-            dynamicBg.style.backgroundImage = `url(${dataUrl})`;
+        if (el) el.src = resolved;
+        if (isMain) {
+            cover.src = resolved;
+            dynamicBg.style.backgroundImage = `url(${resolved})`;
+            if (fullscreenCover) fullscreenCover.src = resolved;
         }
     };
 
-    if (!url) return;
+    if (!url) {
+        assignCover(fallbackSrc);
+        return;
+    }
     const cached = metadataCoverCache.get(url);
     if (cached) {
         assignCover(cached);
         return;
     }
 
+    const lastFailure = metadataCoverFailures.get(url) || 0;
+    if (Date.now() - lastFailure < 5 * 60 * 1000) {
+        assignCover(fallbackSrc);
+        return;
+    }
+
+    assignCover(fallbackSrc);
     jsmediatags.read(url, {
         onSuccess: (tag) => {
             const img = tag.tags.picture;
-            if (!img) return;
+            if (!img) {
+                metadataCoverFailures.set(url, Date.now());
+                assignCover(fallbackSrc);
+                return;
+            }
             let b64 = "";
             for (let i = 0; i < img.data.length; i++) b64 += String.fromCharCode(img.data[i]);
             const dataUrl = `data:${img.format};base64,${window.btoa(b64)}`;
@@ -2341,9 +2421,11 @@ function loadMetadata(url, elId, isMain = false) {
             assignCover(dataUrl);
         },
         onError: (error) => {
+            metadataCoverFailures.set(url, Date.now());
             if (String(error?.info || error?.message || '').includes('429')) {
-                console.warn('Metadata rate limited (429), using default cover for now.');
+                console.warn('Metadata rate limited (429), using fallback cover for now.');
             }
+            assignCover(fallbackSrc);
         }
     });
 }
@@ -2480,6 +2562,7 @@ audio.ontimeupdate = () => {
     progress.max = audio.duration || 0;
     currentTimeEl.textContent = formatTime(audio.currentTime);
     durationEl.textContent = formatTime(audio.duration);
+    updateFullscreenUI();
 
     // Lyrics sync
     if (appState.lyrics.length > 0) {
@@ -2517,6 +2600,12 @@ function updatePlayIcon(isPlaying) {
 playBtn.onclick = togglePlay;
 nextBtn.onclick = handleNextSong;
 prevBtn.onclick = handlePrevSong;
+if (fullscreenBtn) fullscreenBtn.onclick = openFullscreenPlayer;
+if (closeFullscreenBtn) closeFullscreenBtn.onclick = closeFullscreenPlayer;
+if (fullscreenPrev) fullscreenPrev.onclick = handlePrevSong;
+if (fullscreenPlay) fullscreenPlay.onclick = togglePlay;
+if (fullscreenNext) fullscreenNext.onclick = handleNextSong;
+if (fullscreenProgress) fullscreenProgress.oninput = () => { audio.currentTime = Number(fullscreenProgress.value) || 0; };
 
 progress.oninput = () => {
     if (appState.jamActive && !jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
@@ -2757,7 +2846,7 @@ function renderDeleteSongsList() {
 
     filtered.forEach(song => {
         if (song.url) {
-            loadMetadata(song.url, `delete-song-cover-${song.id}`);
+            loadMetadata(song.url, `delete-song-cover-${song.id}`, false, getSongCoverCandidate(song));
         }
     });
 
@@ -3340,7 +3429,7 @@ function updateListeningActivity(song) {
         activity.style.display = 'block';
         if (activityTitle) activityTitle.textContent = formatDisplayName(song.name);
         if (activityCover && song.url) {
-            loadMetadata(song.url, 'activityCover');
+            loadMetadata(song.url, 'activityCover', false, getSongCoverCandidate(song));
         }
 
         // Update current song in Supabase so others can see what we're listening to
@@ -4270,3 +4359,12 @@ window.addEventListener('click', (e) => {
 });
 
 console.log("JodiFy v2.1 - Profile & Discord ready");
+
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && fullscreenPlayer?.classList.contains('open')) closeFullscreenPlayer();
+    if ((event.key === 'f' || event.key === 'F') && !event.target.matches('input, textarea')) {
+        event.preventDefault();
+        if (fullscreenPlayer?.classList.contains('open')) closeFullscreenPlayer();
+        else openFullscreenPlayer();
+    }
+});

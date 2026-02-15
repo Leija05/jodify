@@ -4991,3 +4991,91 @@ body.focus-mode #lyricsBox p.active {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Fullscreen player (Spotify-like) */
+.fullscreen-player {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 4);
+  background: radial-gradient(circle at center, rgba(35, 24, 9, 0.88) 0%, rgba(10, 10, 10, 0.98) 75%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-player.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fullscreen-close {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.fullscreen-content {
+  width: min(980px, 92vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.fullscreen-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  text-align: center;
+}
+
+.fullscreen-cover {
+  width: min(62vh, 560px);
+  height: min(62vh, 560px);
+  object-fit: cover;
+  border-radius: 18px;
+  box-shadow: 0 28px 60px rgba(0,0,0,0.45);
+}
+
+.fullscreen-controls {
+  display: flex;
+  gap: 16px;
+}
+
+.fullscreen-controls button {
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 1.2rem;
+}
+
+.fullscreen-timeline {
+  width: min(720px, 90vw);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,0.85);
+}
+
+.fullscreen-timeline input {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .fullscreen-title { font-size: 1.25rem; }
+  .fullscreen-cover { width: min(72vw, 360px); height: min(72vw, 360px); }
+}

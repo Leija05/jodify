@@ -340,6 +340,14 @@
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                         </svg>
                     </button>
+                    <button id="fullscreenBtn" title="Pantalla completa (F)" data-testid="fullscreen-btn">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="8 3 3 3 3 8"></polyline>
+                            <polyline points="16 3 21 3 21 8"></polyline>
+                            <polyline points="8 21 3 21 3 16"></polyline>
+                            <polyline points="16 21 21 21 21 16"></polyline>
+                        </svg>
+                    </button>
                     <button id="btnOpenPlaylist" class="mobile-toggle-btn" data-testid="mobile-playlist-btn">
                         <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2">
                             <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -359,6 +367,24 @@
 
             <audio id="audio" crossorigin="anonymous"></audio>
         </footer>
+    </div>
+
+    <div id="fullscreenPlayer" class="fullscreen-player" data-testid="fullscreen-player">
+        <button id="closeFullscreenBtn" class="fullscreen-close" aria-label="Cerrar pantalla completa">&times;</button>
+        <div class="fullscreen-content">
+            <p id="fullscreenSongTitle" class="fullscreen-title">Selecciona una canción</p>
+            <img id="fullscreenCover" class="fullscreen-cover" src="assets/default-cover.png" alt="cover fullscreen">
+            <div class="fullscreen-controls">
+                <button id="fullscreenPrev" aria-label="Anterior">⏮</button>
+                <button id="fullscreenPlay" aria-label="Play/Pausa">⏯</button>
+                <button id="fullscreenNext" aria-label="Siguiente">⏭</button>
+            </div>
+            <div class="fullscreen-timeline">
+                <span id="fullscreenCurrentTime">0:00</span>
+                <input type="range" id="fullscreenProgress" min="0" max="0" value="0">
+                <span id="fullscreenDuration">0:00</span>
+            </div>
+        </div>
     </div>
 
     <!-- QUEUE DRAWER -->
