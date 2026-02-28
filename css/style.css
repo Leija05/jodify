@@ -1506,6 +1506,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .eq-custom-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   margin-top: var(--space-sm);
 }
@@ -1525,9 +1526,10 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 .eq-sliders {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-md);
+  display: grid;
+  grid-template-columns: repeat(10, minmax(42px, 1fr));
+  align-items: end;
+  gap: var(--space-sm);
   padding: var(--space-lg) 0;
 }
 
@@ -1536,16 +1538,16 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   align-items: center;
   gap: var(--space-sm);
+  min-width: 42px;
 }
 
 .eq-band input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 120px;
-  height: 8px;
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  width: 8px;
+  height: 140px;
   background: var(--surface-hover);
   border-radius: var(--radius-full);
-  transform: rotate(-90deg);
 }
 
 .eq-band input[type="range"]::-webkit-slider-thumb {
@@ -4780,6 +4782,7 @@ body.focus-mode #lyricsBox p.active {
 
 .eq-band::after {
   content: attr(data-gain);
+  min-height: 14px;
   font-size: 0.65rem;
   color: var(--secondary);
 }
@@ -4795,7 +4798,9 @@ body.focus-mode #lyricsBox p.active {
   }
 
   .eq-sliders {
+    display: flex;
     overflow-x: auto;
+    justify-content: flex-start;
     padding-bottom: 12px;
   }
 }
