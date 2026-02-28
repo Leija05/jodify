@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JodiFy Splash</title>
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             height: 100vh;
             display: grid;
             place-items: center;
             background: radial-gradient(1200px 600px at 20% -10%, rgba(127, 0, 255, 0.35), transparent 60%),
-                        radial-gradient(900px 500px at 90% 100%, rgba(0, 240, 255, 0.2), transparent 65%),
-                        #08090f;
+                radial-gradient(900px 500px at 90% 100%, rgba(0, 240, 255, 0.2), transparent 65%),
+                #08090f;
             color: #fff;
             font-family: 'Segoe UI', system-ui, sans-serif;
             overflow: hidden;
@@ -88,21 +92,39 @@
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-4px);
+            }
         }
 
         @keyframes load {
-            0% { transform: translateX(-120%); }
-            100% { transform: translateX(250%); }
+            0% {
+                transform: translateX(-120%);
+            }
+
+            100% {
+                transform: translateX(250%);
+            }
         }
 
         @keyframes shimmer {
-            from { background-position: 0 0; }
-            to { background-position: 220% 0; }
+            from {
+                background-position: 0 0;
+            }
+
+            to {
+                background-position: 220% 0;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="splash-card">
         <div class="logo-wrap">
@@ -110,8 +132,11 @@
         </div>
         <h1>JodiFy</h1>
         <p class="subtitle">Free Music For Friends</p>
-        <div class="loader"><div class="progress"></div></div>
+        <div class="loader">
+            <div class="progress"></div>
+        </div>
         <p class="hint">Cargando experiencia musical…</p>
     </div>
 </body>
+
 </html>

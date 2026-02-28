@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Actualizando JodiFy</title>
     <style>
-        * { box-sizing: border-box; user-select: none; }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
 
         body {
             margin: 0;
@@ -34,11 +38,23 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px) scale(.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from {
+                opacity: 0;
+                transform: translateY(8px) scale(.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
-        h2 { margin: 0; font-size: 30px; letter-spacing: 0.3px; }
+        h2 {
+            margin: 0;
+            font-size: 30px;
+            letter-spacing: 0.3px;
+        }
+
         .subtitle {
             margin: 6px 0 8px;
             color: rgba(255, 255, 255, 0.72);
@@ -66,13 +82,13 @@
             width: 56px;
             height: 56px;
             object-fit: contain;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
         }
 
         #statusText {
             margin: 0 0 12px;
             font-size: 14px;
-            color: rgba(255,255,255,0.92);
+            color: rgba(255, 255, 255, 0.92);
         }
 
         .progress-container {
@@ -96,8 +112,13 @@
         }
 
         @keyframes glow {
-            from { background-position: 0 0; }
-            to { background-position: 220% 0; }
+            from {
+                background-position: 0 0;
+            }
+
+            to {
+                background-position: 220% 0;
+            }
         }
 
         #percentText {
@@ -122,7 +143,9 @@
             transition: transform 0.15s ease, opacity 0.15s ease;
         }
 
-        button:hover { transform: translateY(-1px); }
+        button:hover {
+            transform: translateY(-1px);
+        }
 
         .btn-update {
             background: linear-gradient(135deg, #7f00ff, #00d4ff);
@@ -141,6 +164,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="window">
         <h2>JodiFy</h2>
@@ -167,4 +191,5 @@
 
     <script src="js/update.js"></script>
 </body>
+
 </html>

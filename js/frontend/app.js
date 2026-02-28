@@ -371,7 +371,7 @@ function initKeyboardShortcuts() {
 
         const key = e.key.toLowerCase();
 
-        switch(key) {
+        switch (key) {
             case ' ':
                 e.preventDefault();
                 togglePlay();
@@ -980,7 +980,7 @@ function rampVolume(target, durationMs) {
     }
 
     const clampedTarget = Math.max(0, Math.min(1, target));
-    
+
     if (durationMs <= 0) {
         audio.volume = clampedTarget;
         return Promise.resolve();
@@ -994,7 +994,7 @@ function rampVolume(target, durationMs) {
         const step = (now) => {
             const elapsed = now - startTime;
             const progress = Math.min(elapsed / durationMs, 1);
-            
+
             // 2. Cálculo con "Clamp" para evitar el DOMException
             const nextVolume = startVolume + (clampedTarget - startVolume) * progress;
             audio.volume = Math.max(0, Math.min(1, nextVolume));
@@ -1776,7 +1776,7 @@ async function startUploadSession(files) {
 
     appState.isUploading = false;
     if (stats.success > 0) {
-        notificationSound.play().catch(() => {});
+        notificationSound.play().catch(() => { });
         fetchSongs();
     }
 
@@ -2071,7 +2071,7 @@ async function playOfflineSongById(songId, options = {}) {
             isChangingTrack = true;
             appState.currentIndex = appState.playlist.findIndex(s => s.id === song.id);
             songTitle.textContent = formatDisplayName(song.name);
-    syncObsOverlayState();
+            syncObsOverlayState();
 
             try {
                 await startSongPlayback(song, blobUrl, options);
@@ -2139,7 +2139,7 @@ function extractCoverFromBlob(blob, imgElementId) {
                 if (el) el.src = `data:${pic.format};base64,${window.btoa(base64String)}`;
             }
         },
-        onError: () => {}
+        onError: () => { }
     });
 }
 
@@ -2193,7 +2193,7 @@ window.downloadSong = async (event, songId) => {
         }
 
         addSystemLog('info', `Descargó: "${formatDisplayName(song.name)}"`);
-        notificationSound.play().catch(() => {});
+        notificationSound.play().catch(() => { });
         await syncDownloadedSongs();
         updateProfileStats();
         renderPlaylist();
@@ -2310,7 +2310,7 @@ async function playSong(index, options = {}) {
         await startSongPlayback(song, song.url, options);
         playbackStarted = true;
         appState.playCount++;
-        incrementRemotePlayCount().catch(() => {});
+        incrementRemotePlayCount().catch(() => { });
         updateProfileStats();
         updateListeningActivity(song);
         logListeningHistory(song);
@@ -2319,7 +2319,7 @@ async function playSong(index, options = {}) {
         }
     } catch (error) {
         showToast('No se pudo reproducir esta canción. Pasando a la siguiente…', 'warning');
-        recoverPlaybackAfterError().catch(() => {});
+        recoverPlaybackAfterError().catch(() => { });
     } finally {
         isChangingTrack = false;
     }
@@ -2392,7 +2392,7 @@ async function handlePrevSong() {
 
 audio.onerror = () => {
     showToast('Error de audio detectado. Intentando continuar…', 'warning');
-    recoverPlaybackAfterError().catch(() => {});
+    recoverPlaybackAfterError().catch(() => { });
 };
 
 audio.onended = () => {
@@ -3764,7 +3764,7 @@ window.confirmLinkDiscord = async () => {
         updateAvatarWithDiscord();
         closeDiscordModal();
         showToast('Discord ID guardado en users_access', 'success');
-        notificationSound.play().catch(() => {});
+        notificationSound.play().catch(() => { });
 
     } catch (e) {
         error.textContent = 'Error al vincular: ' + e.message;
@@ -4148,7 +4148,7 @@ function sampleCommunityThemeFromAvatar(user, avatarUrl) {
                 });
                 if (communityModal?.classList.contains('open')) renderCommunityUsers();
             }
-        } catch {}
+        } catch { }
         communityThemePending.delete(key);
     };
     img.onerror = () => communityThemePending.delete(key);
