@@ -21,7 +21,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     notifyAppCloseDone: () =>
         ipcRenderer.send('app-close-done'),
     onControlCommand: (callback) => ipcRenderer.on('control', (_, command) => callback(command)),
-    startImportBackend: (options) => ipcRenderer.invoke('start-import-backend', options)
+    startImportBackend: (options) => ipcRenderer.invoke('start-import-backend', options),
+    enableDiscordPresence: () => ipcRenderer.invoke('discord-presence-enable'),
+    disableDiscordPresence: () => ipcRenderer.invoke('discord-presence-disable'),
+    updateDiscordPresence: (payload) => ipcRenderer.invoke('discord-presence-update', payload),
+    clearDiscordPresence: () => ipcRenderer.invoke('discord-presence-clear')
 });
 
 window.addEventListener('DOMContentLoaded', () => {

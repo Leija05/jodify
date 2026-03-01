@@ -74,6 +74,7 @@ const appState = {
     isFading: false,
     playCount: 0,
     discord: JSON.parse(localStorage.getItem("discordProfile")) || null,
+    discordPresenceEnabled: localStorage.getItem("discordPresenceEnabled") === "true",
     jamActive: localStorage.getItem("jamActive") === "true",
     jamCode: localStorage.getItem("jamCode") || "",
     jamHost: localStorage.getItem("jamHost") === "true",
@@ -342,6 +343,7 @@ audio.addEventListener('play', () => {
     if (appState.jamActive && jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
         jam.broadcastJamState('jam-play');
     }
+    syncDiscordPresence().catch(() => { });
 });
 
 audio.addEventListener('pause', () => {
@@ -353,6 +355,7 @@ audio.addEventListener('pause', () => {
     if (appState.jamActive && jam.canUserControlPlayback() && !appState.jamSyncInProgress) {
         jam.broadcastJamState('jam-pause');
     }
+    syncDiscordPresence().catch(() => { });
 });
 
 audio.addEventListener('seeked', () => {
@@ -2379,6 +2382,7 @@ async function playSong(index, options = {}) {
 
     updateLikeBtn();
     updateListeningStatus();
+    syncDiscordPresence().catch(() => { });
 }
 
 async function handleNextSong(options = {}) {
@@ -3283,6 +3287,9 @@ async function openProfileModal() {
 
         updateProfileUI();
         updateProfileStats();
+        if (appState.discord && appState.discordPresenceEnabled) {
+            applyDiscordPresenceSetting(true).catch(() => { });
+        }
     }
 }
 
@@ -3581,6 +3588,82 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 // DISCORD INTEGRATION
 // =========================================
 const DISCORD_CLIENT_ID = '1234567890'; // Replace with actual Discord app ID
+const discordPresenceToggle = document.getElementById('discordPresenceToggle');
+let discordPresenceWarningShown = false;
+
+function getDiscordPresencePayload() {
+    const currentSong = appState.playlist[appState.currentIndex];
+    if (!currentSong) return null;
+
+    const now = Date.now();
+    const durationMs = Number.isFinite(audio.duration) ? audio.duration * 1000 : 0;
+    const elapsedMs = Number.isFinite(audio.currentTime) ? audio.currentTime * 1000 : 0;
+    const payload = {
+        details: `🎵 ${formatDisplayName(currentSong.name)}`,
+        state: `👤 ${appState.usuarioActual || 'JodiFy User'}`,
+        largeImageKey: 'jodify-logo',
+        largeImageText: formatDisplayName(currentSong.name),
+        smallImageText: 'JodiFy',
+        smallImageKey: 'jodify-logo'
+    };
+
+    if (!audio.paused && durationMs > 0) {
+        payload.startTimestamp = now - elapsedMs;
+        payload.endTimestamp = now + Math.max(durationMs - elapsedMs, 0);
+    }
+
+    return payload;
+}
+
+async function syncDiscordPresence() {
+    if (!window.electronAPI?.updateDiscordPresence || !window.electronAPI?.clearDiscordPresence) return;
+
+    if (!appState.discordPresenceEnabled || !appState.discord) {
+        await window.electronAPI.clearDiscordPresence();
+        return;
+    }
+
+    const payload = getDiscordPresencePayload();
+    if (!payload || audio.paused) {
+        await window.electronAPI.clearDiscordPresence();
+        return;
+    }
+
+    const result = await window.electronAPI.updateDiscordPresence(payload);
+    if (!result?.ok && !discordPresenceWarningShown) {
+        discordPresenceWarningShown = true;
+        showToast('No se pudo actualizar Discord Rich Presence. Abre Discord para habilitarlo.', 'warning');
+    }
+}
+
+async function applyDiscordPresenceSetting(enabled) {
+    appState.discordPresenceEnabled = Boolean(enabled);
+    localStorage.setItem('discordPresenceEnabled', String(appState.discordPresenceEnabled));
+    if (discordPresenceToggle) {
+        discordPresenceToggle.checked = appState.discordPresenceEnabled;
+    }
+
+    if (!window.electronAPI?.enableDiscordPresence || !window.electronAPI?.disableDiscordPresence) return;
+
+    if (!appState.discordPresenceEnabled) {
+        await window.electronAPI.disableDiscordPresence();
+        await window.electronAPI.clearDiscordPresence();
+        return;
+    }
+
+    const result = await window.electronAPI.enableDiscordPresence();
+    if (!result?.ok) {
+        appState.discordPresenceEnabled = false;
+        localStorage.setItem('discordPresenceEnabled', 'false');
+        if (discordPresenceToggle) {
+            discordPresenceToggle.checked = false;
+        }
+        showToast('No fue posible conectar con Discord. Verifica que Discord esté abierto.', 'warning');
+        return;
+    }
+
+    await syncDiscordPresence();
+}
 
 
 function normalizeDiscordPresence(status) {
@@ -3630,6 +3713,16 @@ function updateDiscordUI() {
         if (linked) linked.style.display = 'none';
         applyProfilePresenceStatus('offline');
     }
+
+    const discordPresenceContainer = document.getElementById('discordPresenceContainer');
+    if (discordPresenceContainer) {
+        discordPresenceContainer.style.display = appState.discord ? 'flex' : 'none';
+    }
+
+    if (discordPresenceToggle) {
+        discordPresenceToggle.checked = Boolean(appState.discordPresenceEnabled);
+        discordPresenceToggle.disabled = !appState.discord;
+    }
 }
 
 function updateAvatarWithDiscord() {
@@ -3656,6 +3749,14 @@ function updateAvatarWithDiscord() {
 // =========================================
 const discordLinkModal = document.getElementById('discordLinkModal');
 const discordUserIdInput = document.getElementById('discordUserIdInput');
+
+if (discordPresenceToggle) {
+    discordPresenceToggle.addEventListener('change', () => {
+        applyDiscordPresenceSetting(discordPresenceToggle.checked).catch(() => {
+            discordPresenceToggle.checked = appState.discordPresenceEnabled;
+        });
+    });
+}
 
 window.openDiscordModal = () => {
     if (discordLinkModal) {
@@ -3802,6 +3903,9 @@ window.confirmLinkDiscord = async () => {
 
         updateDiscordUI();
         updateAvatarWithDiscord();
+        if (appState.discordPresenceEnabled) {
+            await applyDiscordPresenceSetting(true);
+        }
         closeDiscordModal();
         showToast('Discord ID guardado en users_access', 'success');
         notificationSound.play().catch(() => { });
@@ -3836,6 +3940,7 @@ window.unlinkDiscord = async () => {
 
         appState.discord = null;
         localStorage.removeItem('discordProfile');
+        await applyDiscordPresenceSetting(false);
 
         // Reset avatars
         const profileAvatar = document.getElementById('profileAvatar');
@@ -4411,6 +4516,7 @@ window.handleLogout = async () => {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         if (appState.heartbeatInterval) clearInterval(appState.heartbeatInterval);
+        await applyDiscordPresenceSetting(false);
         audio.pause();
         audio.src = "";
 
