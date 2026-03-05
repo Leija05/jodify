@@ -316,6 +316,8 @@ const eqPresetList = document.getElementById("eqPresetList");
 const eqPresetNameInput = document.getElementById("eqPresetName");
 const saveEqPresetBtn = document.getElementById("saveEqPresetBtn");
 const resetEqBtn = document.getElementById("resetEqBtn");
+const smoothEqBtn = document.getElementById("smoothEqBtn");
+const vibeEqBtn = document.getElementById("vibeEqBtn");
 
 // Shortcuts elements
 const shortcutsModal = document.getElementById("shortcutsModal");
@@ -872,6 +874,16 @@ function renderEQPresets() {
 
 function applyEQPreset(preset) {
     const values = getAllEQPresets()[preset] || DEFAULT_EQ_PRESETS.flat;
+    setEQValues(values);
+
+    document.querySelectorAll('.eq-preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === preset);
+    });
+
+    localStorage.setItem('eqPreset', preset);
+}
+
+function setEQValues(values) {
     const sliders = document.querySelectorAll('.eq-band input');
 
     sliders.forEach((slider, i) => {
@@ -883,13 +895,39 @@ function applyEQPreset(preset) {
             appState.eqFilters[i].gain.value = gainValue;
         }
     });
-
-    document.querySelectorAll('.eq-preset-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.preset === preset);
-    });
-
-    localStorage.setItem('eqPreset', preset);
     localStorage.setItem('eqCustomValues', JSON.stringify(values));
+}
+
+function smoothEQCurve() {
+    const sliders = Array.from(document.querySelectorAll('.eq-band input'));
+    const values = sliders.map(slider => parseFloat(slider.value || '0'));
+    const smoothValues = values.map((value, index, arr) => {
+        if (index === 0 || index === arr.length - 1) return value;
+        return Math.round(((arr[index - 1] + value + arr[index + 1]) / 3) * 10) / 10;
+    });
+    setEQValues(smoothValues);
+    localStorage.setItem('eqPreset', 'flat');
+    document.querySelectorAll('.eq-preset-btn').forEach(btn => btn.classList.remove('active'));
+    showToast('Curva suavizada ✨', 'success');
+}
+
+function applyVibeEQ() {
+    const vibePreset = [
+        4 + Math.round(Math.random() * 2),
+        3 + Math.round(Math.random() * 2),
+        1,
+        -1,
+        0,
+        2,
+        3 + Math.round(Math.random() * 2),
+        4 + Math.round(Math.random() * 2),
+        3,
+        2
+    ];
+    setEQValues(vibePreset);
+    localStorage.setItem('eqPreset', 'flat');
+    document.querySelectorAll('.eq-preset-btn').forEach(btn => btn.classList.remove('active'));
+    showToast('Modo Vibe activado 🎉', 'success');
 }
 
 function saveCustomPreset() {
@@ -920,6 +958,8 @@ function removeCustomPreset(name) {
 
 if (saveEqPresetBtn) saveEqPresetBtn.onclick = saveCustomPreset;
 if (resetEqBtn) resetEqBtn.onclick = () => applyEQPreset('flat');
+if (smoothEqBtn) smoothEqBtn.onclick = smoothEQCurve;
+if (vibeEqBtn) vibeEqBtn.onclick = applyVibeEQ;
 
 document.querySelectorAll('.eq-band input').forEach((slider, i) => {
     slider.oninput = (e) => {
@@ -2560,12 +2600,12 @@ async function startVisualizer() {
             gradient.addColorStop(1, '#FF0080');
             ctx.fillStyle = gradient;
 
-            let x = 0;
-            const barWidth = (canvas.width / bufferLength) * 1.5;
+            const gap = 2;
+            const barWidth = Math.max(2, (canvas.width - gap * (bufferLength - 1)) / bufferLength);
             for (let i = 0; i < bufferLength; i++) {
                 const h = (dataArray[i] / 255) * canvas.height;
+                const x = i * (barWidth + gap);
                 ctx.fillRect(x, canvas.height - h, barWidth - 1, h);
-                x += barWidth;
             }
         }
         draw();

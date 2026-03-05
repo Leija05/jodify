@@ -527,6 +527,8 @@ function applyEQPreset(preset) {
 
     sliders.forEach((slider, i) => {
         slider.value = values[i];
+        const parent = slider.closest('.eq-band');
+        if (parent) parent.dataset.gain = `${values[i] > 0 ? '+' : ''}${values[i]}dB`;
         if (appState.eqFilters[i]) {
             appState.eqFilters[i].gain.value = values[i];
         }
@@ -550,9 +552,12 @@ document.querySelectorAll('.eq-preset-btn').forEach(btn => {
 
 document.querySelectorAll('.eq-band input').forEach((slider, i) => {
     slider.oninput = (e) => {
+        const gain = parseFloat(e.target.value);
         if (appState.eqFilters[i]) {
-            appState.eqFilters[i].gain.value = parseFloat(e.target.value);
+            appState.eqFilters[i].gain.value = gain;
         }
+        const parent = slider.closest('.eq-band');
+        if (parent) parent.dataset.gain = `${gain > 0 ? '+' : ''}${gain}dB`;
     };
 });
 
@@ -1832,12 +1837,12 @@ async function startVisualizer() {
             gradient.addColorStop(1, '#FF0080');
             ctx.fillStyle = gradient;
 
-            let x = 0;
-            const barWidth = (canvas.width / bufferLength) * 1.5;
+            const gap = 2;
+            const barWidth = Math.max(2, (canvas.width - gap * (bufferLength - 1)) / bufferLength);
             for (let i = 0; i < bufferLength; i++) {
                 const h = (dataArray[i] / 255) * canvas.height;
+                const x = i * (barWidth + gap);
                 ctx.fillRect(x, canvas.height - h, barWidth - 1, h);
-                x += barWidth;
             }
         }
         draw();
