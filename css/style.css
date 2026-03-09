@@ -3726,6 +3726,84 @@ body.focus-mode #lyricsBox p.active {
   color: white;
 }
 
+.discord-presence-option {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.discord-presence-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.discord-presence-text strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.discord-presence-text span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  transition: .25s;
+  border-radius: 999px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  top: 3px;
+  background-color: white;
+  transition: .25s;
+  border-radius: 50%;
+}
+
+.switch input:checked + .slider {
+  background-color: #5865F2;
+  border-color: #5865F2;
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+.switch input:disabled + .slider {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* Profile Actions */
 .profile-actions {
   display: flex;
