@@ -19,10 +19,12 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
       equalizerApi.resume();
       const { broadcastPlaybackChange } = useJamStore.getState();
       broadcastPlaybackChange('play');
+      syncNowPlaying(usePlayerStore.getState().currentSong, true);
     };
     const onPause = () => {
       usePlayerStore.getState().setIsPlaying(false);
       useJamStore.getState().broadcastPlaybackChange('pause');
+      syncNowPlaying(usePlayerStore.getState().currentSong, false);
     };
     const onTimeUpdate = () => {
       usePlayerStore.getState().setCurrentTime(audio.currentTime);
@@ -94,6 +96,21 @@ export function useEqBinding(): void {
 
 function audioElement(): HTMLAudioElement | null {
   return document.querySelector('audio#jodify-audio');
+}
+
+let lastNowPlayingSync = 0;
+
+function syncNowPlaying(song: { id: number | string; name: string } | null, playing: boolean): void {
+  const username = localStorage.getItem('currentUserName');
+  if (!username) return;
+  const now = Date.now();
+  if (now - lastNowPlayingSync < 1500) return;
+  lastNowPlayingSync = now;
+  import('../services/users.service').then(({ usersService }) => {
+    usersService
+      .updateNowPlaying(username, playing && song ? song.id : null, playing && song ? song.name : null)
+      .catch(() => undefined);
+  });
 }
 
 export function useSettingsBinding(): void {

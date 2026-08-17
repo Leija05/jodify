@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import App from './App';
 import { usePlayerStore } from './store/player.store';
 import { useLibraryStore } from './store/library.store';
@@ -48,6 +48,7 @@ function resetStores(): void {
 describe('smoke render de la app completa', () => {
   beforeEach(() => {
     resetStores();
+    window.history.pushState({}, '', '/');
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = new URL(String(input), 'http://local.test').pathname;
       const method = (init?.method ?? 'GET').toUpperCase();
@@ -57,9 +58,19 @@ describe('smoke render de la app completa', () => {
     }));
   });
 
-  it('renderiza el login sin sesión', () => {
+  it('renderiza la intro sin sesión y lleva al login', () => {
     render(<App />);
+    expect(screen.getByTestId('intro-screen')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('intro-login-cta'));
     expect(screen.getByTestId('login-screen')).toBeInTheDocument();
+  });
+
+  it('abre el panel de token con la combinación de teclas', () => {
+    render(<App />);
+    fireEvent.click(screen.getByTestId('intro-login-cta'));
+    fireEvent.keyDown(window, { key: 'd', ctrlKey: true, altKey: true });
+    expect(screen.getByTestId('dev-token-input')).toBeInTheDocument();
+    expect(screen.getByTestId('dev-token-validate')).toBeInTheDocument();
   });
 
   it('renderiza la app completa con sesión sin crashear (regresión #310/#520)', async () => {

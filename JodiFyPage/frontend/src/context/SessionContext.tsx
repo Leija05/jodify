@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Role } from '../lib/types';
+import { setAuthToken } from '../lib/api';
+import { saveToken } from '../lib/token';
 import { usersService } from '../services/users.service';
 import { useToastStore } from '../store/toast.store';
 
@@ -13,6 +15,9 @@ interface SessionContextValue {
   ready: boolean;
   login: (username: string, password: string, keepSession: boolean) => Promise<boolean>;
   devLogin: (devKey: string) => Promise<{ ok: boolean; error?: string }>;
+  tokenLogin: (token: string, save: boolean) => Promise<{ ok: boolean; error?: string; role?: Role }>;
+  savedTokenLogin: () => Promise<{ ok: boolean; error?: string }>;
+  applyDevAccess: (result: { token: string; username: string; role: string }, save: boolean) => void;
   redeem: (token: string, username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
@@ -78,23 +83,54 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, [session]);
 
-  const devLogin = useCallback(async (devKey: string): Promise<{ ok: boolean; error?: string }> => {
-    try {
-      const { devService } = await import('../services/dev.service');
-      const result = await devService.accessWithKey(devKey);
-      const { setAuthToken } = await import('../lib/api');
+  const applyDevAccess = useCallback(
+    (result: { token: string; username: string; role: string }, save: boolean): void => {
       setAuthToken(result.token);
       const role = (result.role ?? 'dev') as Role;
       setSession({ username: result.username, role });
       localStorage.setItem(USER_KEY, result.username);
       localStorage.setItem(ROLE_KEY, role);
       localStorage.setItem(SESSION_KEY, 'true');
+      if (save) saveToken(result.token);
+      usersService.heartbeat(result.username, true).catch(() => undefined);
+    },
+    [],
+  );
+
+  const devLogin = useCallback(async (devKey: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const { devService } = await import('../services/dev.service');
+      const result = await devService.accessWithKey(devKey);
+      applyDevAccess(result, false);
       return { ok: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo entrar al modo dev';
       return { ok: false, error: message };
     }
-  }, []);
+  }, [applyDevAccess]);
+
+  const tokenLogin = useCallback(
+    async (token: string, save: boolean): Promise<{ ok: boolean; error?: string; role?: Role }> => {
+      try {
+        const result = await devLogin(token);
+        if (!result.ok) return { ok: false, error: result.error };
+        const role = (localStorage.getItem(ROLE_KEY) as Role | null) ?? 'dev';
+        if (save) saveToken(token.trim());
+        return { ok: true, role };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'No se pudo validar el token';
+        return { ok: false, error: message };
+      }
+    },
+    [devLogin],
+  );
+
+  const savedTokenLogin = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
+    const { getSavedToken } = await import('../lib/token');
+    const saved = getSavedToken();
+    if (!saved) return { ok: false, error: 'No hay token guardado' };
+    return tokenLogin(saved, true);
+  }, [tokenLogin]);
 
   const redeem = useCallback(
     async (token: string, username: string, password: string): Promise<{ ok: boolean; error?: string }> => {
@@ -117,7 +153,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const value = useMemo(() => ({ session, ready, login, devLogin, redeem, logout }), [session, ready, login, devLogin, redeem, logout]);
+  const value = useMemo(
+    () => ({ session, ready, login, devLogin, tokenLogin, savedTokenLogin, applyDevAccess, redeem, logout }),
+    [session, ready, login, devLogin, tokenLogin, savedTokenLogin, applyDevAccess, redeem, logout],
+  );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

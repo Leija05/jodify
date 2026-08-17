@@ -1,0 +1,611 @@
+/* ============ Intro page ============ */
+.jf-intro {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+  overflow-x: hidden;
+}
+
+.jf-intro-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px var(--space-xl);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(var(--surface-rgb, 10, 12, 24), 0.55);
+  border-bottom: 1px solid var(--border);
+}
+
+.jf-intro-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jf-intro-nav-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.4);
+}
+
+.jf-intro-nav-name {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 17px;
+}
+
+.jf-intro-nav-name span,
+.jf-intro-footer span {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.jf-intro-main {
+  flex: 1;
+}
+
+.jf-intro-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(80px, 14vh, 160px) var(--space-xl) clamp(64px, 10vh, 120px);
+}
+
+.jf-intro-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--secondary);
+  border: 1px solid rgba(var(--secondary-rgb), 0.35);
+  background: rgba(var(--secondary-rgb), 0.08);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  margin-bottom: var(--space-lg);
+}
+
+.jf-intro-hero-title {
+  font-size: clamp(40px, 7vw, 76px);
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  margin: 0 0 var(--space-md);
+}
+
+.jf-intro-hero-title span {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.jf-intro-hero-text {
+  max-width: 620px;
+  margin: 0 auto var(--space-xl);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.jf-intro-hero-actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.jf-intro-hero-actions .jf-btn--lg {
+  padding: 13px 26px;
+  font-size: 14.5px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-intro-hero-actions a.jf-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Sections */
+.jf-intro-downloads,
+.jf-intro-features,
+.jf-intro-cta {
+  position: relative;
+  padding: var(--space-xl) var(--space-xl) clamp(56px, 9vh, 110px);
+}
+
+.jf-intro-section-head {
+  text-align: center;
+  margin-bottom: clamp(32px, 6vh, 56px);
+}
+
+.jf-intro-section-title {
+  font-size: clamp(26px, 3.6vw, 40px);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  margin: 0 0 var(--space-xs);
+}
+
+.jf-intro-section-sub {
+  color: var(--text-muted);
+  font-size: 14.5px;
+  margin: 0;
+}
+
+.jf-intro-download-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-lg);
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.jf-intro-download-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top-color: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.jf-intro-download-card:hover {
+  border-color: rgba(var(--primary-rgb), 0.5);
+  box-shadow: 0 18px 60px rgba(var(--primary-rgb), 0.18);
+}
+
+.jf-intro-download-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.jf-intro-download-icon--desktop {
+  background: linear-gradient(135deg, #7f00ff, #b44aff);
+  box-shadow: 0 10px 30px rgba(var(--primary-rgb), 0.4);
+}
+
+.jf-intro-download-icon--mobile {
+  background: linear-gradient(135deg, #00b8d9, #00f0ff);
+  box-shadow: 0 10px 30px rgba(var(--secondary-rgb), 0.35);
+}
+
+.jf-intro-download-card h3 {
+  font-size: 18px;
+  font-weight: 750;
+  margin: 0;
+}
+
+.jf-intro-download-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.jf-intro-download-cta {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--secondary);
+}
+
+.jf-intro-features-list {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.jf-intro-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  padding: var(--space-lg) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.jf-intro-feature:first-child {
+  border-top: 1px solid var(--border);
+}
+
+.jf-intro-feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--secondary);
+  background: rgba(var(--secondary-rgb), 0.1);
+  border: 1px solid rgba(var(--secondary-rgb), 0.28);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.jf-intro-feature-body {
+  min-width: 0;
+}
+
+.jf-intro-feature h3 {
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+}
+
+.jf-intro-feature p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+
+.jf-intro-cta {
+  display: flex;
+  justify-content: center;
+}
+
+.jf-intro-cta > div {
+  text-align: center;
+  padding: clamp(36px, 6vw, 64px);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(160deg, rgba(var(--primary-rgb), 0.18), rgba(var(--secondary-rgb), 0.12));
+  border: 1px solid rgba(var(--primary-rgb), 0.3);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+  max-width: 720px;
+  width: 100%;
+}
+
+.jf-intro-cta-title {
+  font-size: clamp(24px, 3.4vw, 38px);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  margin: 0 0 var(--space-xs);
+}
+
+.jf-intro-cta-text {
+  color: var(--text-muted);
+  margin: 0 0 var(--space-lg);
+  font-size: 14.5px;
+}
+
+.jf-intro-cta .jf-btn--lg {
+  padding: 13px 28px;
+  font-size: 14.5px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-intro-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: var(--space-lg);
+  border-top: 1px solid var(--border);
+  font-weight: 800;
+}
+
+.jf-intro-footer p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ============ Saved token login button ============ */
+.jf-saved-token-login {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: var(--space-md);
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--secondary);
+  background: rgba(var(--secondary-rgb), 0.09);
+  border: 1px dashed rgba(var(--secondary-rgb), 0.4);
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease, transform 0.15s var(--ease-out);
+}
+
+.jf-saved-token-login:hover:not(:disabled) {
+  background: rgba(var(--secondary-rgb), 0.16);
+}
+
+.jf-saved-token-login:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.jf-saved-token-login:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ============ Token panel ============ */
+.jf-token-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.jf-token-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 2px;
+  transition: color 0.18s ease;
+}
+
+.jf-token-back:hover {
+  color: var(--text);
+}
+
+.jf-token-entry-head,
+.jf-token-validate-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--space-sm);
+}
+
+.jf-token-entry-icon,
+.jf-token-validate-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--secondary);
+  background: rgba(var(--secondary-rgb), 0.12);
+  border: 1px solid rgba(var(--secondary-rgb), 0.3);
+  flex-shrink: 0;
+}
+
+.jf-token-validate-title {
+  font-size: 15.5px;
+  font-weight: 750;
+  margin: 0;
+}
+
+.jf-token-validate-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+/* Validation steps */
+.jf-token-steps {
+  list-style: none;
+  margin: var(--space-md) 0 var(--space-md);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.jf-token-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  transition: color 0.25s ease;
+}
+
+.jf-token-step-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  transition: all 0.25s var(--ease-out);
+}
+
+.jf-token-step--active {
+  color: var(--text);
+}
+
+.jf-token-step--active .jf-token-step-dot {
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+.jf-token-step--done {
+  color: var(--text-muted);
+}
+
+.jf-token-step--done .jf-token-step-dot {
+  border-color: rgba(var(--secondary-rgb), 0.5);
+  color: var(--secondary);
+  background: rgba(var(--secondary-rgb), 0.1);
+}
+
+.jf-token-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  border: 2px solid rgba(var(--secondary-rgb), 0.25);
+  border-top-color: var(--secondary);
+  animation: jf-token-spin 0.7s linear infinite;
+}
+
+@keyframes jf-token-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Result */
+.jf-token-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid;
+}
+
+.jf-token-result--ok {
+  border-color: rgba(var(--secondary-rgb), 0.4);
+  background: rgba(var(--secondary-rgb), 0.08);
+}
+
+.jf-token-result--error {
+  border-color: rgba(var(--error-rgb), 0.4);
+  background: rgba(var(--error-rgb), 0.08);
+}
+
+.jf-token-result-icon {
+  color: var(--secondary);
+}
+
+.jf-token-result--error .jf-token-result-icon {
+  color: var(--error);
+}
+
+.jf-token-result-title {
+  font-size: 15px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.jf-token-result-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.jf-token-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: center;
+  margin-top: var(--space-xs);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.jf-token-cancel:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.jf-token-mono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  word-break: break-all;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.jf-token-saved-chip {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  color: var(--secondary);
+  border: 1px solid rgba(var(--secondary-rgb), 0.4);
+  background: rgba(var(--secondary-rgb), 0.1);
+  white-space: nowrap;
+}
+
+/* ============ Settings token section ============ */
+.jf-settings-token {
+  margin-bottom: var(--space-md);
+}
+
+.jf-settings-count--mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.jf-settings-token-hint {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .jf-intro-nav {
+    padding: 12px var(--space-md);
+  }
+
+  .jf-intro-hero {
+    padding: 64px var(--space-md) 48px;
+  }
+
+  .jf-intro-downloads,
+  .jf-intro-features,
+  .jf-intro-cta {
+    padding: var(--space-lg) var(--space-md) 56px;
+  }
+}

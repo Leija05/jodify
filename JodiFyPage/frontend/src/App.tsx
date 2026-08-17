@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { IntroPage } from './pages/IntroPage';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { useAudioEngine, useVolumeBinding, useSettingsBinding, useEqBinding } from './hooks/useAudioEngine';
@@ -40,7 +41,7 @@ function Root() {
       <DynamicBackground />
       <Routes>
         <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={session ? <HomePage /> : isElectron ? <LoginPage /> : <IntroPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

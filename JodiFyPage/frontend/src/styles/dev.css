@@ -1,41 +1,4 @@
-/* ============ Login: modos de acceso ============ */
-.jf-login-modes {
-  display: flex;
-  gap: 4px;
-  background: var(--surface-active);
-  border-radius: var(--radius-full);
-  padding: 3px;
-  margin-bottom: var(--space-md);
-}
-
-.jf-login-mode {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  transition: all 0.18s ease;
-}
-
-.jf-login-mode:hover {
-  color: var(--text);
-}
-
-.jf-login-mode.is-active {
-  background: var(--surface-solid);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-}
-
-.jf-login-mode.is-active svg {
-  color: var(--primary);
-}
-
+/* ============ Login helpers ============ */
 .jf-input--mono {
   font-family: var(--font-mono);
   letter-spacing: 0.04em;

@@ -3,6 +3,7 @@ import {
   Copy,
   ArrowSquareOut,
   DownloadSimple,
+  Key as KeyIcon,
   SignOut,
   UserCircle,
   UserSwitch,
@@ -20,6 +21,7 @@ import { useSession } from '../../context/SessionContext';
 import { useOffline } from '../../hooks/useOffline';
 import { removeDownload } from '../../services/offline.service';
 import { obsService } from '../../services/obs.service';
+import { clearSavedToken, getSavedToken, hasSavedToken, maskToken } from '../../lib/token';
 
 export function SettingsModal() {
   const settings = useSettingsStore();
@@ -31,6 +33,7 @@ export function SettingsModal() {
   const [loginName, setLoginName] = useState('');
   const [loginPass, setLoginPass] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmTokenDelete, setConfirmTokenDelete] = useState(false);
 
   const applySleepTimer = () => {
     const minutes = Number(sleepMinutes);
@@ -81,6 +84,18 @@ export function SettingsModal() {
     useLibraryStore.getState().setCurrentTab('downloads');
     useToastStore.getState().show('Abriendo tu música descargada', 'info');
   };
+
+  const deleteSavedToken = () => {
+    if (!confirmTokenDelete) {
+      setConfirmTokenDelete(true);
+      return;
+    }
+    clearSavedToken();
+    setConfirmTokenDelete(false);
+    useToastStore.getState().show('Token guardado eliminado', 'success');
+  };
+
+  const savedToken = getSavedToken();
 
   return (
     <Modal name="settings" title="Ajustes" width={460}>
@@ -210,6 +225,29 @@ export function SettingsModal() {
               <TrashSimple size={14} /> {confirmClear ? '¿Confirmar borrado?' : 'Borrar descargas'}
             </Button>
           </div>
+        </div>
+
+        <div className="jf-settings-token">
+          <p className="jf-settings-timer-title">Token de desarrollo</p>
+          {hasSavedToken() && savedToken ? (
+            <div className="jf-settings-timer-row">
+              <span className="jf-settings-count jf-settings-count--mono">
+                <KeyIcon size={14} /> {maskToken(savedToken)}
+              </span>
+              <Button variant="danger" size="sm" onClick={deleteSavedToken}>
+                <TrashSimple size={14} /> {confirmTokenDelete ? '¿Confirmar borrado?' : 'Borrar token'}
+              </Button>
+            </div>
+          ) : (
+            <div className="jf-settings-timer-row">
+              <span className="jf-settings-count">
+                <KeyIcon size={14} /> No hay token guardado en este dispositivo
+              </span>
+            </div>
+          )}
+          <p className="jf-settings-token-hint">
+            El token guardado permite entrar con permisos de dev o admin desde la pantalla de inicio de sesión.
+          </p>
         </div>
 
         <div className="jf-settings-obs">

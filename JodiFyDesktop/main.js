@@ -33,6 +33,7 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: '#050505',
     title: 'JodiFy — Free Music For Friends',
+    icon: path.join(__dirname, 'assets', 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
