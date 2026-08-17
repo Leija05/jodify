@@ -29,6 +29,8 @@ Thumbs.db
 !JodiFyPage/frontend/.env.example
 !JodiFyPage/frontend/.env.production.example
 !JodiFyPage/frontend/.env.electron.example
+!JodiFyMovil/frontend/.env.example
+!JodiFyDesktop/.env.example
 
 # Copiado por JodiFyDesktop/scripts/sync-dist.mjs desde JodiFyPage/frontend
 JodiFyDesktop/dist-electron/

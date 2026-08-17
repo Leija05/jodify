@@ -7,8 +7,8 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
-      - key: MONGO_URI
-        value: mongodb+srv://TU_USUARIO:TU_PASSWORD@cluster0.xxxxx.mongodb.net/jodify
+      - key: MONGO_URL
+        value: mongodb+srv://Leija_Admin:fPUXn0QjUHKzfOXy@cluster0.jxwxczd.mongodb.net/
         sync: false
       - key: MONGO_DB
         value: jodify
