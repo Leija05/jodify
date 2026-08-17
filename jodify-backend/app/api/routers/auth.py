@@ -2,12 +2,29 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 
+from ...core.config import DEV_MODE, DEV_USERNAME
 from ...core.database import col
 from ...core.security import create_token, hash_password, verify_password
 from ..dependencies import CurrentUser
 from ...models.schemas import AuthResponse, LoginRequest, RegisterRequest
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+@router.post("/dev-login", response_model=AuthResponse)
+async def dev_login() -> AuthResponse:
+    """Acceso directo al modo dev con la cuenta configurada en .env. Solo activo si DEV_MODE=true."""
+    if not DEV_MODE:
+        raise HTTPException(status_code=404, detail="Modo dev desactivado")
+    doc = await col("users").find_one({"username": DEV_USERNAME})
+    if doc is None:
+        raise HTTPException(status_code=503, detail="Cuenta dev no encontrada; reiniciá el backend para sembrarla")
+    role = doc.get("role", "dev")
+    return AuthResponse(
+        token=create_token(doc["username"], role),
+        username=doc["username"],
+        role=role,
+    )
 
 
 @router.post("/login", response_model=AuthResponse)

@@ -9,14 +9,13 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from ..core.config import SEED_AUDIO_DIR
+from ..core.config import DEV_MODE, DEV_PASSWORD, DEV_ROLE, DEV_USERNAME, SEED_AUDIO_DIR
 from ..core.database import col
 from ..core.security import hash_password
 
 logger = logging.getLogger("jodify.seed")
 
 DEFAULT_USERS = [
-    ("dev", "dev123", "dev"),
     ("admin", "admin123", "admin"),
     ("user", "user123", "user"),
 ]
@@ -55,7 +54,33 @@ def fetch_cover_url(artist: str, title: str, retries: int = 2) -> str | None:
     return None
 
 
+async def seed_dev_user() -> None:
+    """Crea o actualiza la cuenta dev con las credenciales de .env (DEV_USERNAME/DEV_PASSWORD/DEV_ROLE)."""
+    salt, password_hash = hash_password(DEV_PASSWORD)
+    values = {
+        "salt": salt,
+        "password_hash": password_hash,
+        "role": DEV_ROLE,
+        "is_online": 0,
+        "last_seen": None,
+        "discord_id": None,
+        "current_song_id": None,
+        "current_song_name": None,
+        "listening_since": None,
+        "created_at": datetime.now().isoformat(),
+    }
+    doc = await col("users").find_one({"username": DEV_USERNAME})
+    if doc is None:
+        await col("users").insert_one({"username": DEV_USERNAME, **values})
+        logger.info("Cuenta dev creada: %s (%s)", DEV_USERNAME, DEV_ROLE)
+    else:
+        await col("users").update_one({"username": DEV_USERNAME}, {"$set": values})
+        logger.info("Cuenta dev actualizada: %s (%s)", DEV_USERNAME, DEV_ROLE)
+
+
 async def seed_users() -> None:
+    if DEV_MODE:
+        await seed_dev_user()
     for username, password, role in DEFAULT_USERS:
         exists = await col("users").find_one({"username": username})
         if exists:
