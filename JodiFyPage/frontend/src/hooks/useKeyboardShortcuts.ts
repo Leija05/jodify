@@ -13,6 +13,13 @@ export function useKeyboardShortcuts(): void {
       const ui = useUiStore.getState();
       const settings = useSettingsStore.getState();
 
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        const role = localStorage.getItem('jodify_user_role');
+        if (role === 'dev') ui.toggle('devCenter');
+        return;
+      }
+
       switch (e.key.toLowerCase()) {
         case ' ':
           e.preventDefault();

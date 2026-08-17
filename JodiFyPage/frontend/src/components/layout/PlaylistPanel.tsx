@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { MagnifyingGlass, Queue, SlidersHorizontal, UsersThree, Users, GearSix, ArrowDown, Shuffle, MusicNotes } from '@phosphor-icons/react';
+import { MagnifyingGlass, Queue, SlidersHorizontal, TerminalWindow, UsersThree, Users, GearSix, ArrowDown, Shuffle, MusicNotes } from '@phosphor-icons/react';
 import { Segmented } from '../ui/Segmented';
 import { IconButton } from '../ui/IconButton';
 import { Button } from '../ui/Button';
@@ -12,7 +12,7 @@ import { useUiStore } from '../../store/ui.store';
 import { useLibraryStore, selectFilteredSongs } from '../../store/library.store';
 import { useQueueStore } from '../../store/queue.store';
 import { useSettingsStore } from '../../store/settings.store';
-import { useIsAdmin, useSession } from '../../context/SessionContext';
+import { useIsAdmin, useIsDev, useSession } from '../../context/SessionContext';
 import type { Tab } from '../../lib/types';
 import { formatTime } from '../../lib/utils';
 import { useSleepTimer } from '../../hooks/useSleepTimer';
@@ -22,6 +22,7 @@ const ease = [0.16, 1, 0.3, 1] as const;
 
 export function PlaylistPanel() {
   const isAdmin = useIsAdmin();
+  const isDev = useIsDev();
   const ui = useUiStore();
   const { session } = useSession();
   const library = useLibraryStore();
@@ -102,6 +103,15 @@ export function PlaylistPanel() {
           <IconButton size="sm" icon={Users} label="Miembros" active={ui.modal === 'community'} onClick={() => ui.toggle('community')} />
           <IconButton size="sm" icon={SlidersHorizontal} label="Ecualizador" active={ui.modal === 'equalizer'} onClick={() => ui.toggle('equalizer')} />
           <IconButton size="sm" icon={GearSix} label="Ajustes" onClick={() => ui.toggle('settings')} />
+          {isDev && (
+            <IconButton
+              size="sm"
+              icon={TerminalWindow}
+              label="Panel dev"
+              active={ui.modal === 'devCenter'}
+              onClick={() => ui.toggle('devCenter')}
+            />
+          )}
         </div>
       </motion.header>
 

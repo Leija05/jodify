@@ -32,3 +32,9 @@ async def require_admin(user: CurrentUser) -> dict:
     if user.get("role") not in ("admin", "dev"):
         raise HTTPException(status_code=403, detail="Se requieren permisos de administrador")
     return user
+
+
+async def require_dev(user: CurrentUser) -> dict:
+    if user.get("role") != "dev":
+        raise HTTPException(status_code=403, detail="Se requieren permisos de desarrollo")
+    return user

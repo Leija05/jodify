@@ -1,7 +1,66 @@
-export type Role = 'dev' | 'admin' | 'user';
+export type Role = 'dev' | 'admin' | 'mod' | 'user';
 export type Tab = 'global' | 'personal' | 'downloads';
 export type SortMode = 'recent' | 'old' | 'popular' | 'artist' | 'name';
 export type Presence = 'online' | 'idle' | 'dnd' | 'offline';
+
+export interface DevToken {
+  id: string;
+  role: 'admin' | 'mod';
+  label: string;
+  max_uses: number;
+  uses: number;
+  created_by: string;
+  created_at: string;
+  expires_at: string | null;
+  revoked: boolean;
+  status: 'active' | 'expired' | 'used' | 'revoked';
+  token?: string;
+  redeemed_by?: Array<{ username: string; at: string }>;
+}
+
+export interface DevOverview {
+  users: number;
+  online: number;
+  songs: number;
+  likes: number;
+  downloads: number;
+  plays_24h: number;
+  plays_7d: number;
+  plays_total: number;
+  jams_active: number;
+  jam_members: number;
+  logs_total: number;
+  tokens_active: number;
+  top_songs: Array<{ song_name: string; count: number }>;
+  storage: { data_size: number; fs_used: number };
+  maintenance: { enabled: boolean; message: string; set_by?: string; set_at?: string };
+  server_time: string;
+}
+
+export interface DevState {
+  dev_mode: boolean;
+  dev_username: string;
+  maintenance: { enabled: boolean; message: string; set_by?: string; set_at?: string };
+  token_roles: string[];
+  jwt_expires_minutes: number;
+}
+
+export interface DevLogEvent {
+  type: string;
+  event_type?: string;
+  message: string;
+  admin_user?: string | null;
+  ts?: string;
+}
+
+export interface DevUserRow {
+  id: string;
+  username: string;
+  role: Role;
+  is_online: number;
+  last_seen?: string | null;
+  created_at?: string | null;
+}
 
 export interface Song {
   id: number | string;

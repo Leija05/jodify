@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routers import auth, jam, logs, social, songs, users
+from .api.routers import auth, dev, jam, logs, social, songs, users
 from .core import database as dbmod
 from .core.config import CORS_ORIGINS
 from .core.database import connect, create_indexes
@@ -37,6 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(dev.router)
 app.include_router(users.router)
 app.include_router(songs.router)
 app.include_router(social.router)

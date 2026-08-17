@@ -13,7 +13,7 @@ import { JamHistoryModal } from '../components/jam/JamHistoryModal';
 import { SettingsModal } from '../components/settings/SettingsModal';
 import { ShortcutsModal } from '../components/settings/ShortcutsModal';
 import { UploadModal } from '../components/admin/UploadModal';
-import { DevCenter } from '../components/admin/DevCenter';
+import { DevView } from '../components/dev/DevView';
 import { DeleteSongsModal } from '../components/admin/DeleteSongsModal';
 import { CommunityModal } from '../components/social/CommunityModal';
 import { ProfileModal } from '../components/social/ProfileModal';
@@ -52,7 +52,7 @@ export function HomePage() {
       <SettingsModal />
       <ShortcutsModal />
       <UploadModal />
-      <DevCenter />
+      <DevView />
       <DeleteSongsModal />
       <CommunityModal />
       <ProfileModal />

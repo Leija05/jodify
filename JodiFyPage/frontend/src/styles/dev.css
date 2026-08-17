@@ -1,0 +1,1255 @@
+/* ============ Login: modos de acceso ============ */
+.jf-login-modes {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-active);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  margin-bottom: var(--space-md);
+}
+
+.jf-login-mode {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.18s ease;
+}
+
+.jf-login-mode:hover {
+  color: var(--text);
+}
+
+.jf-login-mode.is-active {
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.jf-login-mode.is-active svg {
+  color: var(--primary);
+}
+
+.jf-input--mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+/* ============ Dev View (full-screen panel) ============ */
+.jf-devview {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+/* --- Rail --- */
+.jf-devview-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-lg) var(--space-md);
+  background: var(--surface-solid);
+  border-right: 1px solid var(--border);
+}
+
+.jf-devview-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px;
+}
+
+.jf-devview-brand-mark {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 1), rgba(var(--secondary-rgb), 0.85));
+  box-shadow: var(--shadow-glow);
+}
+
+.jf-devview-brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.jf-devview-brand-copy strong {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  letter-spacing: -0.02em;
+}
+
+.jf-devview-brand-copy span {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.jf-devview-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.jf-devview-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: left;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.jf-devview-nav-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.jf-devview-nav-btn.is-active {
+  background: rgba(var(--primary-rgb), 0.14);
+  color: var(--text);
+}
+
+.jf-devview-nav-btn.is-active svg {
+  color: var(--primary);
+}
+
+.jf-devview-rail-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.jf-devview-session {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.jf-devview-session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.jf-devview-session-name {
+  font-family: var(--font-mono);
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jf-devview-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px;
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: all 0.16s ease;
+}
+
+.jf-devview-close:hover {
+  color: var(--error);
+  border-color: rgba(var(--error-rgb), 0.4);
+  background: rgba(var(--error-rgb), 0.06);
+}
+
+/* --- Main --- */
+.jf-devview-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.jf-devview-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-xl);
+  border-bottom: 1px solid var(--border);
+}
+
+.jf-devview-title {
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+
+.jf-devview-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.jf-devview-top-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.jf-devview-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--success);
+}
+
+.jf-devview-maintenance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--warning);
+  background: rgba(255, 184, 0, 0.1);
+  border: 1px solid rgba(255, 184, 0, 0.3);
+}
+
+.jf-devview-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg) var(--space-xl) var(--space-2xl);
+}
+
+/* --- Panels & sections --- */
+.jf-dev-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.jf-dev-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.jf-dev-section-title {
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.jf-dev-section-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.jf-dev-section-meta svg {
+  color: var(--success);
+}
+
+.jf-dev-grid {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.jf-dev-grid--stats {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.jf-dev-cols {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: var(--space-md);
+  align-items: start;
+}
+
+.jf-dev-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.jf-dev-card--danger {
+  border-color: rgba(var(--error-rgb), 0.25);
+}
+
+.jf-dev-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.jf-dev-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+}
+
+.jf-dev-card-title svg {
+  color: var(--primary);
+}
+
+.jf-dev-card-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.jf-dev-card--sync {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jf-dev-card--sync > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* --- Stat tiles --- */
+.jf-dev-stat {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  min-height: 62px;
+  overflow: hidden;
+}
+
+.jf-dev-stat-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.1);
+}
+
+.jf-dev-stat.is-live .jf-dev-stat-icon {
+  color: var(--success);
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.jf-dev-stat.is-warn .jf-dev-stat-icon {
+  color: var(--warning);
+  background: rgba(255, 184, 0, 0.1);
+}
+
+.jf-dev-stat-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.jf-dev-stat-body strong {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.jf-dev-stat-body span {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.jf-dev-stat .jf-pulse-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* --- Sparkline --- */
+.jf-dev-spark {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jf-dev-spark-copy {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.jf-dev-spark-total {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.jf-dev-spark-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.jf-dev-spark-peak {
+  display: flex;
+  gap: var(--space-sm);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  padding-bottom: 2px;
+}
+
+.jf-dev-spark svg {
+  width: 100%;
+  height: 64px;
+}
+
+/* --- Top list --- */
+.jf-dev-toplist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jf-dev-toprow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+}
+
+.jf-dev-toprow:hover {
+  background: var(--surface-hover);
+}
+
+.jf-dev-rank {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface-active);
+}
+
+.jf-dev-rank.is-top {
+  color: var(--warning);
+  background: rgba(255, 184, 0, 0.12);
+}
+
+.jf-dev-topname {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-dev-topbar {
+  flex: 0 0 80px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--surface-active);
+  overflow: hidden;
+}
+
+.jf-dev-topbar span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--gradient-primary);
+  transition: width 0.3s var(--ease-out);
+}
+
+.jf-dev-topcount {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  min-width: 30px;
+  text-align: right;
+}
+
+/* --- Forms --- */
+.jf-dev-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.jf-dev-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.jf-dev-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jf-dev-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.jf-dev-form-error {
+  font-size: 12px;
+  color: var(--error);
+}
+
+.jf-dev-seg {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-active);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  width: fit-content;
+}
+
+.jf-dev-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.16s ease;
+}
+
+.jf-dev-seg-btn.is-active {
+  background: var(--surface-solid);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.jf-dev-seg-btn.is-active svg {
+  color: var(--primary);
+}
+
+/* --- Access / tokens --- */
+.jf-dev-tokens {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-sm);
+}
+
+.jf-dev-token {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: border-color 0.16s ease;
+}
+
+.jf-dev-token.is-active {
+  border-color: rgba(0, 255, 136, 0.28);
+}
+
+.jf-dev-token.is-revoked {
+  opacity: 0.55;
+}
+
+.jf-dev-token-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.jf-dev-token-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-dev-token-status {
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.jf-dev-token-status.is-active {
+  color: var(--success);
+}
+
+.jf-dev-token-status.is-revoked {
+  color: var(--error);
+}
+
+.jf-dev-token-status.is-expired,
+.jf-dev-token-status.is-used {
+  color: var(--warning);
+}
+
+.jf-dev-token-label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.jf-dev-token-code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-dev-token-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  user-select: all;
+}
+
+.jf-dev-token-mono--masked {
+  color: var(--text-muted);
+}
+
+.jf-dev-token-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 3px 6px 3px 2px;
+  transition: background 0.16s ease;
+}
+
+.jf-dev-token-copy:hover {
+  background: var(--surface-hover);
+}
+
+.jf-dev-token-copy .is-copied {
+  display: none;
+  color: var(--success);
+}
+
+.jf-dev-token-copy:hover .is-idle {
+  color: var(--primary);
+}
+
+.jf-dev-token-copy.is-just-copied .is-copied {
+  display: inline-flex;
+}
+
+.jf-dev-token-copy.is-just-copied .is-idle {
+  display: none;
+}
+
+.jf-dev-token-reveal {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  color: var(--primary);
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.16s ease;
+}
+
+.jf-dev-token-reveal:hover {
+  background: rgba(var(--primary-rgb), 0.1);
+}
+
+.jf-dev-token-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.jf-dev-token-redeemed {
+  color: var(--secondary);
+}
+
+.jf-dev-token-revoke {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: var(--text-muted);
+  transition: all 0.16s ease;
+}
+
+.jf-dev-token-revoke:hover {
+  color: var(--error);
+  background: rgba(var(--error-rgb), 0.08);
+}
+
+.jf-dev-keycard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-active);
+}
+
+.jf-dev-keycard-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 99px;
+  background: var(--border-strong);
+}
+
+.jf-dev-keycard-dot.is-on {
+  background: var(--success);
+  box-shadow: 0 0 10px var(--success);
+}
+
+.jf-dev-keycard strong {
+  display: block;
+  font-size: 12.5px;
+}
+
+.jf-dev-keycard span:not(.jf-dev-keycard-dot):not(.jf-dev-keycard-mono) {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+}
+
+.jf-dev-keycard-mono {
+  font-family: var(--font-mono);
+  color: var(--secondary);
+}
+
+.jf-dev-hint {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* --- Users table --- */
+.jf-dev-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.jf-dev-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-dev-toolbar-count {
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.jf-dev-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  width: min(320px, 100%);
+  transition: border-color 0.16s ease;
+}
+
+.jf-dev-search:focus-within {
+  border-color: rgba(var(--primary-rgb), 0.5);
+}
+
+.jf-dev-search svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.jf-dev-search input {
+  border: none;
+  background: none;
+  outline: none;
+  width: 100%;
+  font-size: 12.5px;
+}
+
+.jf-dev-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.jf-dev-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.jf-dev-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-solid) 60%, transparent);
+}
+
+.jf-dev-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.jf-dev-table tr:last-child td {
+  border-bottom: none;
+}
+
+.jf-dev-table tbody tr:hover td {
+  background: var(--surface-hover);
+}
+
+.jf-dev-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.jf-dev-user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--border-strong);
+  flex-shrink: 0;
+}
+
+.jf-dev-user-dot.is-online {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.jf-dev-user-dev {
+  font-size: 9px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+
+.jf-dev-state {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.jf-dev-state.is-online {
+  color: var(--success);
+}
+
+.jf-dev-table-muted {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.jf-dev-row-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- Console --- */
+.jf-dev-filters {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.jf-dev-filter {
+  padding: 5px 11px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  transition: all 0.16s ease;
+}
+
+.jf-dev-filter:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.jf-dev-filter.is-active {
+  color: var(--text);
+  background: rgba(var(--primary-rgb), 0.14);
+  border-color: rgba(var(--primary-rgb), 0.35);
+}
+
+.jf-dev-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--success);
+  padding-right: 4px;
+}
+
+.jf-dev-terminal {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  background: var(--background-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) 0;
+  height: min(480px, 60vh);
+  overflow-y: auto;
+}
+
+.jf-dev-terminal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  text-align: center;
+  padding: var(--space-lg);
+}
+
+.jf-dev-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 14px;
+  white-space: nowrap;
+}
+
+.jf-dev-line:hover {
+  background: var(--surface-hover);
+}
+
+.jf-dev-line-time {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  flex-shrink: 0;
+}
+
+.jf-dev-line-arrow {
+  color: var(--secondary);
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.jf-dev-line-msg {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-dev-line-user {
+  color: var(--accent);
+  font-size: 10.5px;
+  flex-shrink: 0;
+}
+
+.jf-dev-line.is-token .jf-dev-line-msg {
+  color: var(--secondary);
+}
+
+.jf-dev-line.is-role .jf-dev-line-msg {
+  color: var(--primary);
+}
+
+.jf-dev-line.is-warning .jf-dev-line-msg {
+  color: var(--warning);
+}
+
+.jf-dev-line.is-user .jf-dev-line-msg {
+  color: var(--success);
+}
+
+.jf-dev-line.is-dev .jf-dev-line-msg {
+  color: var(--accent);
+}
+
+.jf-dev-terminal-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.jf-dev-terminal-foot svg {
+  color: var(--success);
+}
+
+/* --- Control / maintenance --- */
+.jf-dev-maintenance-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-active);
+}
+
+.jf-dev-maintenance-row > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jf-dev-maintenance-row strong {
+  font-size: 12.5px;
+}
+
+.jf-dev-switch {
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 99px;
+  background: var(--border-strong);
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.jf-dev-switch.is-on {
+  background: var(--warning);
+}
+
+.jf-dev-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 99px;
+  background: #fff;
+  transition: transform 0.2s var(--ease-out);
+}
+
+.jf-dev-switch.is-on .jf-dev-switch-knob {
+  transform: translateX(18px);
+}
+
+.jf-dev-risky {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(var(--error-rgb), 0.05);
+  border: 1px solid rgba(var(--error-rgb), 0.18);
+}
+
+.jf-dev-risky > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jf-dev-risky strong {
+  font-size: 12.5px;
+}
+
+/* --- Empty / skeleton --- */
+.jf-dev-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--space-xl) var(--space-md);
+  text-align: center;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.jf-dev-empty svg {
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.jf-dev-empty strong {
+  color: var(--text);
+  font-size: 13.5px;
+}
+
+.jf-dev-empty span {
+  font-size: 12px;
+  max-width: 300px;
+}
+
+.jf-dev-skeleton {
+  display: none;
+}
+
+.jf-dev-skeleton-row {
+  height: 56px;
+  border-radius: var(--radius-md);
+}
+
+/* --- Role badge for mod --- */
+.jf-role-badge--mod {
+  background: rgba(0, 240, 255, 0.12);
+  color: var(--secondary);
+}
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+  .jf-devview {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .jf-devview-rail {
+    flex-direction: row;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    gap: var(--space-sm);
+  }
+
+  .jf-devview-brand-copy {
+    display: none;
+  }
+
+  .jf-devview-nav {
+    flex-direction: row;
+    flex: 1;
+    overflow-x: auto;
+  }
+
+  .jf-devview-nav-btn {
+    padding: 7px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .jf-devview-rail-foot {
+    flex-direction: row;
+  }
+
+  .jf-devview-session {
+    display: none;
+  }
+
+  .jf-devview-close {
+    padding: 8px;
+  }
+
+  .jf-devview-close {
+    font-size: 0;
+    gap: 0;
+  }
+
+  .jf-dev-cols {
+    grid-template-columns: 1fr;
+  }
+
+  .jf-devview-content {
+    padding: var(--space-md);
+  }
+
+  .jf-devview-topbar {
+    padding: var(--space-sm) var(--space-md);
+  }
+}

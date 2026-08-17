@@ -16,6 +16,9 @@ DEV_MODE = os.getenv("DEV_MODE", "true").strip().lower() in ("1", "true", "yes",
 DEV_USERNAME = os.getenv("DEV_USERNAME", "dev").strip()
 DEV_PASSWORD = os.getenv("DEV_PASSWORD", "dev123")
 DEV_ROLE = os.getenv("DEV_ROLE", "dev").strip()
+# Clave única del dev: con ella se entra al modo dev sin contraseña de cuenta
+# (POST /api/auth/dev-access). Solo funciona si DEV_MODE=true.
+DEV_KEY = os.getenv("DEV_KEY", "").strip()
 
 JWT_SECRET = os.getenv("JWT_SECRET", "jodify-dev-secret-change-me")
 JWT_ALGORITHM = "HS256"

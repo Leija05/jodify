@@ -12,6 +12,8 @@ interface SessionContextValue {
   session: Session | null;
   ready: boolean;
   login: (username: string, password: string, keepSession: boolean) => Promise<boolean>;
+  devLogin: (devKey: string) => Promise<{ ok: boolean; error?: string }>;
+  redeem: (token: string, username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -76,7 +78,46 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, [session]);
 
-  const value = useMemo(() => ({ session, ready, login, logout }), [session, ready, login, logout]);
+  const devLogin = useCallback(async (devKey: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const { devService } = await import('../services/dev.service');
+      const result = await devService.accessWithKey(devKey);
+      const { setAuthToken } = await import('../lib/api');
+      setAuthToken(result.token);
+      const role = (result.role ?? 'dev') as Role;
+      setSession({ username: result.username, role });
+      localStorage.setItem(USER_KEY, result.username);
+      localStorage.setItem(ROLE_KEY, role);
+      localStorage.setItem(SESSION_KEY, 'true');
+      return { ok: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo entrar al modo dev';
+      return { ok: false, error: message };
+    }
+  }, []);
+
+  const redeem = useCallback(
+    async (token: string, username: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        const { devService } = await import('../services/dev.service');
+        const result = await devService.redeemToken(token, username, password);
+        const { setAuthToken } = await import('../lib/api');
+        setAuthToken(result.token);
+        const role = (result.role ?? 'user') as Role;
+        setSession({ username: result.username, role });
+        localStorage.setItem(USER_KEY, result.username);
+        localStorage.setItem(ROLE_KEY, role);
+        localStorage.setItem(SESSION_KEY, 'true');
+        return { ok: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'No se pudo canjear el token';
+        return { ok: false, error: message };
+      }
+    },
+    [],
+  );
+
+  const value = useMemo(() => ({ session, ready, login, devLogin, redeem, logout }), [session, ready, login, devLogin, redeem, logout]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -82,3 +82,31 @@ class PlaybackRequest(BaseModel):
 class JamEventRequest(BaseModel):
     event: str
     payload: dict = {}
+
+
+# ---------- Dev ----------
+
+class DevAccessRequest(BaseModel):
+    dev_key: str
+
+
+class RedeemTokenRequest(BaseModel):
+    token: str
+    username: str
+    password: str
+
+
+class CreateDevTokenRequest(BaseModel):
+    role: str = "admin"  # "admin" | "mod"
+    label: str = ""
+    expires_in_days: int | None = 7
+    max_uses: int = 1
+
+
+class SetRoleRequest(BaseModel):
+    role: str
+
+
+class MaintenanceRequest(BaseModel):
+    enabled: bool = False
+    message: str = ""

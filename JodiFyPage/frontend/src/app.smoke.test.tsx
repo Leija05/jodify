@@ -49,10 +49,10 @@ describe('smoke render de la app completa', () => {
   beforeEach(() => {
     resetStores();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
+      const path = new URL(String(input), 'http://local.test').pathname;
       const method = (init?.method ?? 'GET').toUpperCase();
-      if (url.includes('/api/songs') && method === 'GET') return jsonResponse(200, songs);
-      if (url.includes('likes') || url.includes('downloads')) return jsonResponse(200, []);
+      if (path.endsWith('/songs') && method === 'GET') return jsonResponse(200, songs);
+      if (path.includes('likes') || path.includes('downloads')) return jsonResponse(200, []);
       return jsonResponse(200, {});
     }));
   });

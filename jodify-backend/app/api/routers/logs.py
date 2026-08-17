@@ -4,8 +4,21 @@ from fastapi import APIRouter, Query
 
 from ...core.database import col, sid
 from ...models.schemas import LogRequest
+from ...services import events
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])
+
+
+async def add_log_doc(event_type: str, message: str, admin_user: str | None = None) -> None:
+    """Inserta un log y lo emite en vivo por el stream del dev."""
+    doc = {
+        "event_type": event_type,
+        "message": message,
+        "admin_user": admin_user,
+        "created_at": datetime.now().isoformat(),
+    }
+    await col("logs").insert_one(doc)
+    await events.publish({"type": "log", "event_type": event_type, "message": message, "admin_user": admin_user, "ts": doc["created_at"]})
 
 
 @router.get("")
@@ -27,11 +40,4 @@ async def fetch_logs(limit: int = Query(50, ge=1, le=500)) -> list[dict]:
 
 @router.post("", status_code=201)
 async def add_log(body: LogRequest) -> None:
-    await col("logs").insert_one(
-        {
-            "event_type": body.event_type,
-            "message": body.message,
-            "admin_user": body.admin_user,
-            "created_at": datetime.now().isoformat(),
-        }
-    )
+    await add_log_doc(body.event_type, body.message, body.admin_user)

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from ...core.config import DEV_MODE, DEV_USERNAME
 from ...core.database import col
 from ...core.security import create_token, hash_password, verify_password
+from ...services.dev_access import maintenance_blocked
 from ..dependencies import CurrentUser
 from ...models.schemas import AuthResponse, LoginRequest, RegisterRequest
 
@@ -29,6 +30,8 @@ async def dev_login() -> AuthResponse:
 
 @router.post("/login", response_model=AuthResponse)
 async def login(body: LoginRequest) -> AuthResponse:
+    if await maintenance_blocked():
+        raise HTTPException(status_code=503, detail="La plataforma está en mantenimiento. Probá más tarde.")
     doc = await col("users").find_one({"username": body.username.strip()})
     if doc is None or not verify_password(body.password, doc.get("salt", ""), doc.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
