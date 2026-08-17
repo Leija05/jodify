@@ -1,30 +1,34 @@
 
 node_modules/
 
+.agents
+.claude
+.codex
+.opencode
+jodify-backend/seed_audio
+
 dist/
+dist-electron/
+release/
 win-unpacked/
+
+# Generado por scripts/sync-assets.mjs desde assets/icon.ico
+JodiFyPage/frontend/public/favicon.ico
 
 *.log
 
 .DS_Store
 Thumbs.db
--e 
+
 # Environment files
 *.env
 *.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+
+# Conservar los ejemplos de configuración
+!jodify-backend/.env.example
+!JodiFyPage/frontend/.env.example
+!JodiFyPage/frontend/.env.production.example
+!JodiFyPage/frontend/.env.electron.example
+
+# Copiado por JodiFyDesktop/scripts/sync-dist.mjs desde JodiFyPage/frontend
+JodiFyDesktop/dist-electron/

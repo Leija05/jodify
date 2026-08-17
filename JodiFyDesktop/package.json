@@ -1,0 +1,41 @@
+{
+  "name": "jodify-desktop",
+  "version": "2.0.0",
+  "private": true,
+  "description": "JodiFy — Free Music For Friends (escritorio)",
+  "main": "main.js",
+  "author": "JodiFy",
+  "license": "MIT",
+  "scripts": {
+    "build": "npm run build:electron --prefix ../JodiFyPage/frontend && node scripts/sync-dist.mjs",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --win",
+    "dir": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.leija.jodify-desktop",
+    "productName": "JodiFy",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "JodiFy"
+    }
+  }
+}

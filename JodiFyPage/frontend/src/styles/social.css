@@ -1,0 +1,1032 @@
+/* ============ 24. Community ============ */
+.jf-community-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.jf-community-tabs {
+  display: flex;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 3px;
+}
+
+.jf-community-tab {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.2s var(--ease-out), background 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.jf-community-tab:hover {
+  color: var(--text);
+}
+
+.jf-community-tab.is-active {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: var(--shadow-glow);
+}
+
+.jf-community-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.jf-autorefresh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.jf-autorefresh:hover {
+  color: var(--text);
+}
+
+.jf-autorefresh input {
+  accent-color: var(--primary);
+}
+
+.jf-community-insights {
+  position: relative;
+  overflow: hidden;
+  background: rgba(var(--primary-rgb), 0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.jf-community-insights::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.16), transparent 70%);
+  pointer-events: none;
+}
+
+.jf-community-insights-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-bottom: var(--space-sm);
+}
+
+.jf-community-insights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.jf-community-song {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  transition: background 0.16s var(--ease-out);
+  text-align: left;
+  width: 100%;
+}
+
+.jf-community-song:hover {
+  background: var(--surface-active);
+}
+
+.jf-community-song-rank {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--accent);
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.jf-community-song-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.jf-community-song svg {
+  color: var(--secondary);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 0.16s var(--ease-out), transform 0.16s var(--ease-out);
+}
+
+.jf-community-song:hover svg {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.jf-community-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jf-community-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-xl);
+}
+
+.jf-community-user {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  transition: background 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+  text-align: left;
+  width: 100%;
+}
+
+.jf-community-user:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.jf-community-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-community-user-name {
+  font-weight: 700;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jf-community-user-status {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-community-user-status.is-listening {
+  color: var(--success);
+}
+
+.jf-community-user-stats {
+  display: flex;
+  gap: var(--space-sm);
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.jf-community-user-arrow {
+  color: var(--text-muted);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+  flex-shrink: 0;
+}
+
+.jf-community-user:hover .jf-community-user-arrow {
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--secondary);
+}
+
+/* ============ 25. Discord ============ */
+.jf-discord-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.jf-discord-help {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.jf-discord-help strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.jf-discord-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-md);
+}
+
+.jf-discord-current {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: rgba(var(--primary-rgb), 0.08);
+  border: 1px solid rgba(var(--primary-rgb), 0.28);
+  border-radius: var(--radius-lg);
+}
+
+.jf-discord-current-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-discord-linked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--success);
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.jf-discord-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 14px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.jf-discord-input:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.18);
+}
+
+.jf-discord-input svg {
+  color: var(--secondary);
+  flex-shrink: 0;
+}
+
+.jf-input-reset {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-body);
+}
+
+.jf-input-reset::placeholder {
+  color: var(--text-muted);
+}
+
+.jf-discord-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.jf-discord-preview-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-discord-preview-meta .jf-discord-name {
+  font-size: 14px;
+}
+
+.jf-discord-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* ============ 26. Profile shell ============ */
+.jf-modal-card.jf-modal--profile .jf-modal-body {
+  padding: var(--space-sm) var(--space-sm) var(--space-md);
+}
+
+.jf-profile-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-xl);
+}
+
+.jf-profile-shell {
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-xl) + 6px);
+}
+
+.jf-profile {
+  position: relative;
+  overflow: hidden;
+  background: var(--background-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: var(--space-lg) var(--space-md) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.jf-profile-banner {
+  position: absolute;
+  top: -70px;
+  left: -40px;
+  right: -40px;
+  height: 200px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.jf-profile-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(30px);
+  will-change: transform, opacity;
+}
+
+.jf-profile-orb--a {
+  width: 180px;
+  height: 180px;
+  top: -30px;
+  left: -40px;
+  background: radial-gradient(circle, rgba(var(--primary-rgb), 0.45), transparent 70%);
+  animation: jf-orb-a 9s var(--ease-out) infinite alternate;
+}
+
+.jf-profile-orb--b {
+  width: 160px;
+  height: 160px;
+  bottom: 10px;
+  right: -40px;
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.35), transparent 70%);
+  animation: jf-orb-b 11s var(--ease-out) infinite alternate;
+}
+
+@keyframes jf-orb-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: translate3d(30px, 18px, 0) scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes jf-orb-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: translate3d(-26px, -14px, 0) scale(1.12);
+    opacity: 0.95;
+  }
+}
+
+.jf-profile-split {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 148px 1fr;
+  gap: var(--space-md);
+  align-items: stretch;
+}
+
+.jf-profile-id {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: var(--space-sm) var(--space-xs);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.jf-profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  justify-content: center;
+  min-width: 0;
+}
+
+.jf-avatar-ring {
+  padding: 3px;
+  border-radius: 50%;
+  background: conic-gradient(from 160deg, var(--primary), var(--secondary), var(--accent), var(--primary));
+  box-shadow: 0 12px 34px rgba(var(--primary-rgb), 0.35);
+}
+
+.jf-profile-username {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jf-status-pills {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.jf-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+
+.jf-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.jf-status-pill--online {
+  color: var(--success);
+  border-color: rgba(0, 255, 136, 0.25);
+  background: rgba(0, 255, 136, 0.08);
+}
+
+.jf-status-pill--online .jf-status-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.5);
+  animation: jf-pulse-ring 1.8s ease-out infinite;
+}
+
+.jf-status-pill--offline .jf-status-dot {
+  background: var(--text-muted);
+}
+
+.jf-status-pill--discord svg {
+  color: #5865f2;
+}
+
+.jf-status-pill--idle {
+  color: var(--warning);
+  border-color: rgba(255, 184, 0, 0.3);
+  background: rgba(255, 184, 0, 0.08);
+}
+
+.jf-status-pill--dnd {
+  color: var(--error);
+  border-color: rgba(255, 51, 102, 0.3);
+  background: rgba(255, 51, 102, 0.08);
+}
+
+@keyframes jf-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(0, 255, 136, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 136, 0);
+  }
+}
+
+/* ============ 27. Now playing ============ */
+.jf-nowplay {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: linear-gradient(120deg, rgba(var(--primary-rgb), 0.12), rgba(var(--secondary-rgb), 0.05));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.jf-nowplay--button {
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.2s var(--ease-out), transform 0.18s var(--ease-out);
+  cursor: pointer;
+}
+
+.jf-nowplay--button:hover {
+  border-color: var(--secondary);
+  transform: translateY(-1px);
+}
+
+.jf-nowplay--button:active {
+  transform: scale(0.99);
+}
+
+.jf-nowplay--compact {
+  padding: var(--space-sm);
+}
+
+.jf-nowplay-eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  width: 26px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.jf-nowplay-eq i {
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--gradient-primary);
+  transform-origin: bottom;
+  transform: scaleY(0.22);
+  animation: jf-eq 1.1s ease-in-out infinite;
+}
+
+.jf-nowplay-eq i:nth-child(1) { animation-duration: 1.1s; }
+.jf-nowplay-eq i:nth-child(2) { animation-duration: 0.85s; }
+.jf-nowplay-eq i:nth-child(3) { animation-duration: 1.3s; }
+.jf-nowplay-eq i:nth-child(4) { animation-duration: 0.95s; }
+
+@keyframes jf-eq {
+  0%, 100% { transform: scaleY(0.22); }
+  50% { transform: scaleY(1); }
+}
+
+.jf-nowplay-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.jf-nowplay-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.jf-nowplay-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--success);
+  font-family: var(--font-mono);
+}
+
+.jf-nowplay-title {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-nowplay-artist {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-nowplay-cta {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: var(--shadow-glow);
+  transition: transform 0.18s var(--ease-out), box-shadow 0.2s ease;
+}
+
+.jf-nowplay--button:hover .jf-nowplay-cta {
+  transform: scale(1.06);
+  box-shadow: 0 0 28px rgba(var(--primary-rgb), 0.55);
+}
+
+/* ============ 28. Stat cards ============ */
+.jf-profile-stats {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+
+.jf-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-md) var(--space-sm);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.jf-stat-chip {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 2px;
+}
+
+.jf-stat-chip--pink {
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+}
+
+.jf-stat-chip--violet {
+  background: rgba(var(--primary-rgb), 0.14);
+  color: var(--primary);
+  filter: saturate(1.4) brightness(1.4);
+}
+
+.jf-stat-chip--cyan {
+  background: rgba(var(--secondary-rgb), 0.12);
+  color: var(--secondary);
+}
+
+.jf-stat-card strong {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.jf-stat-card > span:last-child {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ============ 29. Discord panel ============ */
+.jf-discord-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.jf-discord-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(88, 101, 242, 0.16);
+  color: #9aa4ff;
+  flex-shrink: 0;
+}
+
+.jf-discord-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.jf-discord-name {
+  font-weight: 700;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-discord-tag {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.jf-discord-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.jf-presence-pill {
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.jf-presence-pill--online {
+  color: var(--success);
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.jf-presence-pill--idle {
+  color: var(--warning);
+  background: rgba(255, 184, 0, 0.1);
+  border: 1px solid rgba(255, 184, 0, 0.32);
+}
+
+.jf-presence-pill--dnd {
+  color: var(--error);
+  background: rgba(255, 51, 102, 0.1);
+  border: 1px solid rgba(255, 51, 102, 0.32);
+}
+
+.jf-presence-pill--offline {
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+}
+
+.jf-user-lastseen {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.jf-user-discord-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(88, 101, 242, 0.08);
+  border: 1px solid rgba(88, 101, 242, 0.25);
+  border-radius: var(--radius-lg);
+}
+
+.jf-user-discord-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.jf-user-discord-info .jf-discord-name {
+  font-size: 13px;
+}
+
+.jf-profile-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: space-between;
+}
+
+/* ============ Historial de reproducción y de Jams ============ */
+.jf-history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.jf-history-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.jf-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.jf-history-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: background 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+}
+
+.jf-history-row:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.jf-history-rank {
+  width: 22px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.jf-history-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-history-name {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-history-sub {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.jf-jam-history-link {
+  margin-top: var(--space-sm);
+}
+
+.jf-jam-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.jf-jam-history-row {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.jf-jam-history-row.is-active {
+  border-color: rgba(0, 240, 255, 0.35);
+}
+
+.jf-jam-history-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.jf-jam-history-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.jf-jam-history-status {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  background: var(--surface-hover);
+}
+
+.jf-jam-history-status.is-live {
+  color: #050505;
+  background: var(--secondary);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+}
+
+.jf-jam-history-sub {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.jf-jam-history-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--space-sm);
+}
+
+.jf-jam-history-member {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+
+.jf-jam-history-member.is-on {
+  color: var(--success);
+  background: rgba(0, 255, 136, 0.08);
+}

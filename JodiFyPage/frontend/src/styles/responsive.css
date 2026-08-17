@@ -1,0 +1,415 @@
+/* ============ 30. Login page ============ */
+.jf-login {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  overflow: hidden;
+  z-index: 1;
+}
+
+.jf-login-ambient {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.jf-login-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(600px 400px at 20% 20%, rgba(var(--primary-rgb), 0.2), transparent 70%),
+    radial-gradient(600px 400px at 80% 80%, rgba(var(--secondary-rgb), 0.14), transparent 70%);
+}
+
+.jf-login-shell {
+  position: relative;
+  z-index: 1;
+  padding: 10px;
+  border-radius: calc(var(--radius-xl) + 10px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-strong);
+  box-shadow:
+    0 40px 110px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='light'] .jf-login-shell {
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 40px 110px rgba(30, 35, 55, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.jf-login-card {
+  width: min(380px, 92vw);
+  background: var(--surface);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border);
+  border-top-color: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme='light'] .jf-login-card {
+  border-top-color: rgba(255, 255, 255, 0.8);
+}
+
+.jf-login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+}
+
+.jf-login-logo-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 14px 40px rgba(var(--primary-rgb), 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  margin-bottom: var(--space-xs);
+  position: relative;
+  animation: jf-logo-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes jf-logo-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+
+.jf-login-logo-icon::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 24px;
+  border: 1px solid rgba(var(--primary-rgb), 0.25);
+  background: radial-gradient(circle, rgba(var(--primary-rgb), 0.12), transparent 70%);
+  filter: blur(6px);
+  z-index: -1;
+}
+
+.jf-login-brand {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.jf-login-tagline {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.jf-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.jf-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.jf-input-group .jf-input {
+  padding-right: 44px;
+}
+
+.jf-password-toggle {
+  position: absolute;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color 0.18s ease, transform 0.15s var(--ease-out);
+}
+
+.jf-password-toggle:hover {
+  color: var(--text);
+}
+
+.jf-password-toggle:active {
+  transform: scale(0.88);
+}
+
+.jf-remember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.jf-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 99px;
+  background: var(--surface-active);
+  border: 1px solid var(--border-strong);
+  transition: background 0.25s var(--ease-out), border-color 0.25s ease;
+  flex-shrink: 0;
+}
+
+.jf-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 99px;
+  background: var(--text-muted);
+  transition: transform 0.25s var(--ease-out), background 0.25s ease;
+}
+
+.jf-toggle.is-on {
+  background: var(--gradient-primary);
+  border-color: transparent;
+}
+
+.jf-toggle.is-on .jf-toggle-knob {
+  transform: translateX(16px);
+  background: #fff;
+}
+
+.jf-login-error {
+  font-size: 12.5px;
+  color: var(--error);
+  background: rgba(var(--error-rgb), 0.08);
+  border: 1px solid rgba(var(--error-rgb), 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.jf-login-submit {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.jf-btn-shine {
+  position: absolute;
+  top: -60%;
+  left: -30%;
+  width: 40%;
+  height: 220%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: rotate(20deg);
+  pointer-events: none;
+}
+
+.jf-login-submit:hover .jf-btn-shine {
+  animation: jf-shine 0.9s var(--ease-out);
+}
+
+@keyframes jf-shine {
+  from {
+    left: -30%;
+  }
+  to {
+    left: 130%;
+  }
+}
+
+.jf-login-hint {
+  margin-top: var(--space-md);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.jf-login-hint strong {
+  color: var(--secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jf-login-ambient .jf-ambient-blob {
+    animation: none;
+  }
+  .jf-login-logo-icon {
+    animation: none;
+  }
+  .jf-login-submit:hover .jf-btn-shine {
+    animation: none;
+  }
+}
+
+/* ============ 31. Media queries ============ */
+@media (max-width: 1024px) {
+  .jf-app {
+    grid-template-columns: 1fr 320px;
+    padding-left: var(--space-lg);
+    padding-right: var(--space-lg);
+  }
+}
+
+@media (max-width: 860px) {
+  body {
+    overflow: auto;
+  }
+
+  .jf-app {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    padding: var(--space-md) var(--space-md) 200px;
+    gap: var(--space-md);
+  }
+
+  .jf-lyrics {
+    min-height: 60vh;
+  }
+
+  .jf-playlist {
+    min-height: 420px;
+    max-height: 70vh;
+  }
+
+  .jf-player {
+    bottom: var(--space-md);
+    width: calc(100vw - var(--space-md) * 2);
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+  }
+
+  .jf-player-center {
+    order: 3;
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .jf-volume {
+    display: none;
+  }
+
+  .jf-visualizer {
+    display: none;
+  }
+
+  .jf-drawer {
+    top: var(--space-md);
+    bottom: var(--space-md);
+    right: var(--space-md);
+    width: calc(100vw - var(--space-md) * 2);
+  }
+
+  .jf-fullscreen {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding: var(--space-md);
+  }
+
+  .jf-vinyl {
+    width: 210px;
+  }
+
+  .jf-fullscreen-right {
+    display: none;
+  }
+
+  .jf-fullscreen-title {
+    font-size: 20px;
+  }
+
+  .jf-modal-backdrop {
+    padding: var(--space-sm);
+  }
+
+  .jf-modal-card {
+    max-height: 92vh;
+  }
+}
+
+@media (max-width: 560px) {
+  .jf-lyrics-panel-line {
+    font-size: 1.8rem;
+  }
+
+  .jf-eq-sliders {
+    gap: 2px;
+    padding: var(--space-sm);
+  }
+
+  .jf-eq-save {
+    flex-basis: 100%;
+    justify-content: stretch;
+  }
+
+  .jf-host-rec {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jf-delete-tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jf-player-meta {
+    display: none;
+  }
+
+  .jf-player-left {
+    flex: 0 0 auto;
+  }
+
+  .jf-player-right {
+    flex: 1;
+  }
+
+  .jf-profile-stats {
+    gap: 6px;
+  }
+
+  .jf-jam-users {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: var(--space-xs);
+  }
+}
+
+/* ============ 32. Reduced motion ============ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

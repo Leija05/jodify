@@ -1,0 +1,715 @@
+/* ============ 6. Lyrics panel (karaoke) ============ */
+.jf-lyrics {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  padding: var(--space-md) var(--space-sm);
+  transition: opacity 0.4s ease;
+}
+
+.jf-lyrics-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-sm);
+}
+
+.jf-lyrics-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.jf-lyrics-expand {
+  width: 26px;
+  height: 26px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  transition: color 0.18s ease, background 0.18s ease, transform 0.15s var(--ease-out);
+}
+
+.jf-lyrics-expand:hover {
+  color: var(--text);
+  background: var(--surface-active);
+}
+
+.jf-lyrics-expand:active {
+  transform: scale(0.88);
+}
+
+.jf-lyrics-brand {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jf-now-playing-dot {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.jf-now-playing-dot span {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--secondary);
+  animation: jf-pulse 1.2s ease-in-out infinite;
+}
+
+.jf-lyrics-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  padding: var(--space-xl) var(--space-sm);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+
+.jf-lyrics.is-focus .jf-lyrics-scroll {
+  filter: blur(4px);
+  opacity: 0.3;
+}
+
+.jf-lyrics-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.jf-lyrics-panel-line {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.2vw, 3.4rem);
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+  padding: 6px 4px;
+}
+
+.jf-lyrics-panel-line.is-active {
+  color: var(--text);
+  text-shadow: 0 0 34px rgba(var(--primary-rgb), 0.55), 0 0 12px rgba(var(--secondary-rgb), 0.3);
+}
+
+.jf-lyrics-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.jf-lyrics-hint {
+  color: var(--text-muted);
+  font-size: 15px;
+  text-align: center;
+  padding: var(--space-xl) var(--space-md);
+}
+
+.jf-lyrics-subhint {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* Empty state */
+.jf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-2xl) var(--space-xl);
+  text-align: center;
+  animation: jf-fade-up 0.45s var(--ease-out) both;
+}
+
+.jf-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  margin-bottom: var(--space-xs);
+}
+
+.jf-empty-icon::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 29px;
+  background: radial-gradient(circle, rgba(var(--primary-rgb), 0.14), transparent 70%);
+  filter: blur(8px);
+  z-index: -1;
+}
+
+.jf-empty-title {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.jf-empty-desc {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  max-width: 32ch;
+  line-height: 1.5;
+}
+
+@keyframes jf-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============ 7. Playlist panel ============ */
+.jf-playlist {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme='light'] .jf-playlist {
+  border-top-color: rgba(255, 255, 255, 0.7);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.jf-playlist::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), transparent);
+  opacity: 0.6;
+  z-index: 1;
+}
+
+.jf-playlist::after {
+  content: 'Suelta los archivos de audio para subirlos';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  background: rgba(var(--primary-rgb), 0.2);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 8;
+  transition: opacity 0.22s var(--ease-out);
+}
+
+.jf-playlist.is-dragging::after {
+  opacity: 1;
+}
+
+/* topbar */
+.jf-playlist-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.jf-playlist-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.jf-playlist-brandmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.jf-brandmark-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-glow);
+  flex-shrink: 0;
+}
+
+.jf-playlist-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.jf-badge-count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--gradient-accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.4);
+}
+
+/* library */
+.jf-playlist-library {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md) var(--space-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.jf-library-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.jf-library-count {
+  min-width: 26px;
+  height: 20px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+}
+
+/* segmented tabs */
+.jf-segmented {
+  display: flex;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 4px;
+}
+
+.jf-segmented-btn {
+  flex: 1;
+  position: relative;
+  padding: 7px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.25s ease;
+  white-space: nowrap;
+}
+
+.jf-segmented-btn.is-active {
+  color: var(--text);
+}
+
+.jf-segmented-thumb {
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-glow);
+  opacity: 0.92;
+  z-index: 0;
+}
+
+.jf-segmented-label {
+  position: relative;
+  z-index: 1;
+}
+
+/* tools */
+.jf-playlist-tools {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  align-items: center;
+}
+
+.jf-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 8px 14px;
+  color: var(--text-muted);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.jf-search:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.18);
+}
+
+.jf-search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.jf-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.jf-select {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-full);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  outline: none;
+  cursor: pointer;
+}
+
+.jf-select option {
+  background: var(--surface-solid);
+}
+
+.jf-add-song-btn {
+  white-space: nowrap;
+}
+
+/* stats strip */
+.jf-playlist-stats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: var(--space-xs) var(--space-md) var(--space-sm);
+}
+
+.jf-stat-chip-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 5px 11px;
+  line-height: 1;
+}
+
+.jf-stat-chip-line svg {
+  color: var(--secondary);
+}
+
+.jf-stat-chip-line--timer {
+  color: var(--secondary);
+}
+
+.jf-timer-bar {
+  width: 30px;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--surface-active);
+  overflow: hidden;
+}
+
+.jf-timer-bar span {
+  display: block;
+  height: 100%;
+  background: var(--gradient-accent);
+  transition: width 1s linear;
+}
+
+.jf-insight {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  background: var(--surface-hover);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+}
+
+.jf-smart-mix {
+  padding: 0 var(--space-md) var(--space-sm);
+}
+
+/* footer */
+.jf-playlist-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  border-top: 1px solid var(--border);
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.jf-footer-stat {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.jf-footer-stat--muted {
+  color: var(--text-muted);
+}
+
+.jf-footer-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  flex-shrink: 0;
+}
+
+.jf-footer-stat:last-child {
+  margin-left: auto;
+}
+
+/* song list */
+.jf-song-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0 var(--space-sm) var(--space-sm);
+}
+
+.jf-song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jf-song {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.18s ease;
+}
+
+.jf-song-cover-pop {
+  position: absolute;
+  left: 54px;
+  top: 50%;
+  width: 122px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg), 0 0 40px rgba(var(--primary-rgb), 0.18);
+  opacity: 0;
+  transform: translateY(-46%) scale(0.92);
+  transition: opacity 0.22s var(--ease-out), transform 0.26s var(--ease-out);
+  pointer-events: none;
+  z-index: 6;
+}
+
+.jf-song-cover-pop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .jf-song:hover .jf-song-cover-pop {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .jf-song:hover {
+    background: var(--surface-hover);
+  }
+}
+
+.jf-song.is-current {
+  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.16), transparent 70%);
+}
+
+.jf-song.is-current::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.jf-song-cover-wrap {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.jf-song-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease;
+}
+
+.jf-song.is-current .jf-song-cover {
+  transform: scale(1.06);
+}
+
+.jf-song-cover-hover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .jf-song:hover .jf-song-cover-hover {
+    opacity: 1;
+  }
+}
+
+.jf-song-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-song-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-song.is-current .jf-song-name {
+  color: var(--secondary);
+}
+
+.jf-song-meta {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-song-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .jf-song:hover .jf-song-actions,
+  .jf-song.is-current .jf-song-actions {
+    opacity: 1;
+  }
+}
+
+.jf-song-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color 0.18s ease, background 0.18s ease, transform 0.16s ease-out;
+}
+
+.jf-song-action:active {
+  transform: scale(0.9);
+}
+
+.jf-song-action.is-liked {
+  color: var(--accent);
+}
+
+.jf-song-action.is-active {
+  color: var(--success);
+}
