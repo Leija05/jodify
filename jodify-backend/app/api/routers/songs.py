@@ -2,13 +2,13 @@ from datetime import datetime
 from typing import Annotated
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pymongo import ReturnDocument
 from starlette.requests import Request
 
 from ...core.database import col, sid
 from ...models.schemas import CheckNameRequest, DeleteSongsRequest, LikesDeltaRequest
-from ...services.audio_streaming import delete_audio, serve_audio, store_audio
+from ...services.audio_streaming import delete_audio, serve_audio, serve_cover, store_audio
 from ..dependencies import require_admin
 
 router = APIRouter(prefix="/api/songs", tags=["songs"])
@@ -19,7 +19,7 @@ def song_view(doc: dict) -> dict:
     return {
         "id": song_id,
         "name": doc.get("name", ""),
-        "url": f"/api/songs/{song_id}/audio",
+        "url": f"/songs/{song_id}/audio",
         "likes": doc.get("likes", 0),
         "added_by": doc.get("added_by"),
         "created_at": doc.get("created_at"),
@@ -27,7 +27,7 @@ def song_view(doc: dict) -> dict:
         "artist": doc.get("artist"),
         "category": doc.get("category"),
         "genre": doc.get("genre"),
-        "cover_url": doc.get("cover_url"),
+        "cover_url": f"/songs/{song_id}/cover" if doc.get("cover_file_id") else None,
         "play_count": doc.get("play_count", 0),
     }
 
@@ -50,15 +50,20 @@ async def check_name_body(body: CheckNameRequest) -> dict:
 
 
 @router.post("/upload", response_model=None)
-async def upload_song(file: UploadFile = File(...), _admin: Annotated[dict, Depends(require_admin)] = None) -> dict:
-    name = file.filename or "cancion"
-    if name.lower().endswith((".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".opus")):
-        name = name.rsplit(".", 1)[0]
-    if not name or len(name) < 2:
+async def upload_song(
+    file: UploadFile = File(...),
+    name: str | None = Form(None),
+    cover: UploadFile | None = File(None),
+    _admin: Annotated[dict, Depends(require_admin)] = None,
+) -> dict:
+    raw_name = (name or file.filename or "cancion").strip()
+    if not name and raw_name.lower().endswith((".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".opus")):
+        raw_name = raw_name.rsplit(".", 1)[0]
+    if not raw_name or len(raw_name) < 2:
         raise HTTPException(status_code=400, detail="El nombre de la canción no puede estar vacío")
-    exists = await col("songs").find_one({"name": name})
+    exists = await col("songs").find_one({"name": raw_name})
     if exists:
-        raise HTTPException(status_code=409, detail=f"Ya existe una canción llamada «{name}»")
+        raise HTTPException(status_code=409, detail=f"Ya existe una canción llamada «{raw_name}»")
 
     content = await file.read()
     if not content:
@@ -66,22 +71,32 @@ async def upload_song(file: UploadFile = File(...), _admin: Annotated[dict, Depe
     if len(content) > 200 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="El archivo supera los 200 MB")
 
-    fid = await store_audio(file.filename or name, file.content_type or "audio/mpeg", content)
+    fid = await store_audio(file.filename or raw_name, file.content_type or "audio/mpeg", content)
+
+    doc = {
+        "name": raw_name,
+        "url": "",
+        "likes": 0,
+        "added_by": None,
+        "created_at": datetime.now().isoformat(),
+        "audio_file_id": fid,
+    }
+    if cover is not None:
+        cover_bytes = await cover.read()
+        if cover_bytes:
+            cover_fid = await store_audio(
+                cover.filename or "cover.jpg", cover.content_type or "image/jpeg", cover_bytes
+            )
+            doc["cover_file_id"] = cover_fid
 
     try:
-        doc = {
-            "name": name,
-            "url": "",
-            "likes": 0,
-            "added_by": None,
-            "created_at": datetime.now().isoformat(),
-            "audio_file_id": fid,
-        }
         result = await col("songs").insert_one(doc)
         doc["_id"] = result.inserted_id
         return song_view(doc)
     except Exception:
         await delete_audio(fid)
+        if "cover_file_id" in doc:
+            await delete_audio(doc["cover_file_id"])
         raise
 
 
@@ -131,6 +146,11 @@ async def stream_audio(song_id: str, request: Request):
 @router.api_route("/{song_id}/audio", methods=["HEAD"])
 async def head_audio(song_id: str):
     return await serve_audio(song_id, None)
+
+
+@router.get("/{song_id}/cover")
+async def stream_cover(song_id: str):
+    return await serve_cover(song_id)
 
 
 @router.get("/top")

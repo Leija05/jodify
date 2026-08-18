@@ -44,6 +44,7 @@ export function PlaylistPanel() {
     if (!files || files.length === 0) return;
     const items = Array.from(files).map((file) => ({
       id: `${file.name}-${file.lastModified}`,
+      name: file.name,
       file,
     }));
     ui.open('upload', { items });
@@ -181,7 +182,7 @@ export function PlaylistPanel() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="audio/*"
+        accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.opus,.webm,.wma,.oga,.aiff"
         multiple
         hidden
         onChange={(e) => {

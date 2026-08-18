@@ -116,3 +116,33 @@ async def serve_audio(song_id: str, request: Request | None) -> StreamingRespons
         media_type=content_type,
         headers=headers,
     )
+
+
+async def serve_cover(song_id: str) -> StreamingResponse:
+    try:
+        oid = ObjectId(song_id)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Canción no encontrada") from exc
+
+    song = await dbmod.col("songs").find_one({"_id": oid})
+    if song is None:
+        raise HTTPException(status_code=404, detail="Canción no encontrada")
+    file_id = song.get("cover_file_id")
+    if file_id is None:
+        raise HTTPException(status_code=404, detail="Portada no encontrada")
+
+    meta = await dbmod.audio_files().find_one({"_id": file_id})
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Portada no encontrada")
+
+    length = int(meta.get("length", 0))
+    content_type = (meta.get("metadata") or {}).get("content_type") or "image/jpeg"
+    return StreamingResponse(
+        _stream_piece(file_id, 0, max(0, length - 1)),
+        status_code=200,
+        media_type=content_type,
+        headers={
+            "Content-Length": str(length),
+            "Cache-Control": "public, max-age=31536000",
+        },
+    )

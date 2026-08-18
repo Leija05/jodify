@@ -13,9 +13,11 @@ export const songsService = {
     return result.likes;
   },
 
-  async uploadAudio(file: File, _onProgress?: (percent: number) => void): Promise<Song> {
+  async uploadAudio(file: File, name?: string, cover?: Blob): Promise<Song> {
     const formData = new FormData();
     formData.append('file', file, sanitizeFileName(file.name) || file.name);
+    if (name) formData.append('name', name);
+    if (cover) formData.append('cover', cover, 'cover.jpg');
 
     const headers: Record<string, string> = {};
     const token = getAuthToken();
@@ -57,7 +59,9 @@ export const songsService = {
   },
 };
 
-export async function extractMetadataFromFile(file: File): Promise<{ title?: string; artist?: string; picture?: string }> {
+export async function extractMetadataFromFile(
+  file: File,
+): Promise<{ title?: string; artist?: string; picture?: string; pictureData?: Uint8Array; pictureFormat?: string }> {
   try {
     const { parseBlob } = await import('music-metadata');
     const metadata = await parseBlob(file, { duration: true });
@@ -71,6 +75,8 @@ export async function extractMetadataFromFile(file: File): Promise<{ title?: str
       title: metadata.common.title,
       artist: metadata.common.artist,
       picture: pictureUrl,
+      pictureData: picture?.data,
+      pictureFormat: picture?.format,
     };
   } catch {
     return {};

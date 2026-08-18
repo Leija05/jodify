@@ -137,6 +137,11 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   if (!url) return '';
   if (/^(https?:|blob:|data:)/i.test(url)) return url;
   const base = API_BASE;
-  if (/^https?:/i.test(base)) return `${base.replace(/\/+$/, '')}${url.startsWith('/') ? url : `/${url}`}`;
+  if (/^https?:/i.test(base)) {
+    const cleanBase = base.replace(/\/+$/, '');
+    const hostBase = cleanBase.replace(/\/api$/, '');
+    const target = url.startsWith('/api') ? hostBase : cleanBase;
+    return `${target}${url.startsWith('/') ? url : `/${url}`}`;
+  }
   return url;
 }

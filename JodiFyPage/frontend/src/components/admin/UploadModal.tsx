@@ -27,7 +27,7 @@ export function UploadModal() {
       setItems(
         payload.items.map((item) => ({
           id: item.id,
-          name: item.name,
+          name: item.name || item.file?.name || 'canción',
           status: 'uploading' as const,
           progress: 0,
         })),
@@ -46,7 +46,7 @@ export function UploadModal() {
     const username = session?.username ?? '';
     for (const item of payloadItems) {
       try {
-        const name = item.name.replace(/\.[^.]+$/, '');
+        const name = (item.name || item.file.name || 'canción').replace(/\.[^.]+$/, '');
         const meta = await extractMetadataFromFile(item.file);
         const finalName = meta.title || name;
 
@@ -55,7 +55,11 @@ export function UploadModal() {
           continue;
         }
 
-        const song = await songsService.uploadAudio(item.file);
+        const coverBlob =
+          meta.pictureData && meta.pictureFormat
+            ? new Blob([meta.pictureData], { type: meta.pictureFormat })
+            : undefined;
+        const song = await songsService.uploadAudio(item.file, finalName, coverBlob);
         updateItem(item.id, { name: finalName, status: 'success', progress: 100, coverUrl: meta.picture });
         void logsService.add('upload', `Canción subida: ${finalName}`, username);
 
