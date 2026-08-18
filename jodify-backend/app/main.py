@@ -48,3 +48,14 @@ app.include_router(jam.router)
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/")
+async def root() -> dict:
+    """Raíz amigable: todos los endpoints viven bajo /api."""
+    return {
+        "service": "JodiFy API",
+        "version": "2.0.0",
+        "docs": "/docs",
+        "health": "/api/health",
+    }

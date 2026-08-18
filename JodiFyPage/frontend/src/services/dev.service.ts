@@ -1,5 +1,5 @@
 import { api, API_BASE, getAuthToken } from '../lib/api';
-import type { DevLogEvent, DevOverview, DevState, DevToken, DevUserRow } from '../lib/types';
+import type { DevKeyRow, DevLogEvent, DevOverview, DevState, DevToken, DevUserRow } from '../lib/types';
 
 export interface DevAccessResult {
   token: string;
@@ -48,6 +48,22 @@ export const devService = {
 
   async listUsers(): Promise<DevUserRow[]> {
     return api.get<DevUserRow[]>('/dev/users');
+  },
+
+  async createUser(username: string, password: string, role: 'user' | 'mod' | 'admin' = 'user'): Promise<{ ok: boolean; username: string; role: string }> {
+    return api.post<{ ok: boolean; username: string; role: string }>('/dev/users', { username, password, role });
+  },
+
+  async listDevKeys(): Promise<DevKeyRow[]> {
+    return api.get<DevKeyRow[]>('/dev/keys');
+  },
+
+  async createDevKey(label = ''): Promise<DevKeyRow & { token: string }> {
+    return api.post<DevKeyRow & { token: string }>('/dev/keys', { label });
+  },
+
+  async revokeDevKey(id: string): Promise<{ ok: boolean }> {
+    return api.post<{ ok: boolean }>(`/dev/keys/${id}/revoke`);
   },
 
   async setRole(username: string, role: 'user' | 'mod' | 'admin'): Promise<{ ok: boolean }> {

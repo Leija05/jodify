@@ -63,7 +63,7 @@ export function IntroPage() {
       <header className="jf-intro-nav">
         <div className="jf-intro-nav-brand">
           <span className="jf-intro-nav-logo">
-            <MusicNotes size={18} weight="fill" />
+            <img className="jf-intro-nav-logo-img" src={`${import.meta.env.BASE_URL}logo.png`} alt="JodiFy" />
           </span>
           <span className="jf-intro-nav-name">
             Jodi<span>Fy</span>

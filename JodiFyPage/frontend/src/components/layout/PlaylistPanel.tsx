@@ -91,7 +91,7 @@ export function PlaylistPanel() {
             />
           )}
           <span className="jf-playlist-brandmark">
-            <span className="jf-brandmark-dot" />
+            <img className="jf-brandmark-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="JodiFy" />
             JodiFy
           </span>
         </div>

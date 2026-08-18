@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MagnifyingGlass, Power, Users } from '@phosphor-icons/react';
+import { MagnifyingGlass, Power, UserPlus, Users } from '@phosphor-icons/react';
 import { Button } from '../ui/Button';
 import { timeAgo } from './devBits';
 import { devService } from '../../services/dev.service';
@@ -23,6 +23,12 @@ export function DevUsers({
 }) {
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newUser, setNewUser] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [newRole, setNewRole] = useState<'user' | 'mod' | 'admin'>('user');
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -57,6 +63,33 @@ export function DevUsers({
     }
   };
 
+  const create = async () => {
+    setCreateError(null);
+    const username = newUser.trim();
+    if (username.length < 2) {
+      setCreateError('El usuario debe tener al menos 2 caracteres.');
+      return;
+    }
+    if (newPass.length < 4) {
+      setCreateError('La contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+    setCreating(true);
+    try {
+      await devService.createUser(username, newPass, newRole);
+      useToastStore.getState().show(`Cuenta @${username} creada (${newRole})`, 'success');
+      setNewUser('');
+      setNewPass('');
+      setNewRole('user');
+      setCreateOpen(false);
+      onChanged();
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'No se pudo crear la cuenta');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="jf-dev-panel">
       <div className="jf-dev-toolbar">
@@ -69,8 +102,50 @@ export function DevUsers({
             aria-label="Buscar usuarios"
           />
         </div>
+        <Button variant="ghost" size="sm" onClick={() => setCreateOpen((v) => !v)}>
+          <UserPlus size={14} />
+          Crear cuenta
+        </Button>
         <span className="jf-dev-toolbar-count">{users.length} cuentas</span>
       </div>
+
+      {createOpen && (
+        <div className="jf-dev-create-user">
+          <div className="jf-dev-create-user-row">
+            <input
+              className="jf-dev-input"
+              placeholder="usuario"
+              value={newUser}
+              onChange={(e) => setNewUser(e.target.value)}
+              aria-label="Nombre de usuario"
+            />
+            <input
+              className="jf-dev-input"
+              type="password"
+              placeholder="contraseña"
+              value={newPass}
+              onChange={(e) => setNewPass(e.target.value)}
+              aria-label="Contraseña"
+            />
+            <select
+              className="jf-select jf-select--sm"
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value as 'user' | 'mod' | 'admin')}
+              aria-label="Rol de la nueva cuenta"
+            >
+              {ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" onClick={() => void create()} disabled={creating}>
+              {creating ? 'Creando…' : 'Crear'}
+            </Button>
+          </div>
+          {createError && <p className="jf-dev-create-error">{createError}</p>}
+        </div>
+      )}
 
       {loading ? (
         <div className="jf-dev-skeleton">

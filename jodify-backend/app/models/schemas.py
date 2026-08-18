@@ -12,6 +12,16 @@ class RegisterRequest(BaseModel):
     role: str = "user"
 
 
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "user"
+
+
+class CreateDevKeyRequest(BaseModel):
+    label: str = ""
+
+
 class AuthResponse(BaseModel):
     token: str
     username: str

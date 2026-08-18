@@ -6,6 +6,7 @@ import {
   Key as KeyIcon,
   SignOut,
   UserCircle,
+  UserPlus,
   UserSwitch,
   TrashSimple,
   WifiSlash,
@@ -34,6 +35,29 @@ export function SettingsModal() {
   const [loginPass, setLoginPass] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmTokenDelete, setConfirmTokenDelete] = useState(false);
+  const [newAdminUser, setNewAdminUser] = useState('');
+  const [newAdminPass, setNewAdminPass] = useState('');
+  const [creatingUser, setCreatingUser] = useState(false);
+
+  const createAdminUser = async () => {
+    const username = newAdminUser.trim();
+    if (username.length < 2 || newAdminPass.length < 4) {
+      useToastStore.getState().show('Usuario (mín. 2) y contraseña (mín. 4) requeridos', 'warning');
+      return;
+    }
+    setCreatingUser(true);
+    try {
+      const { usersService } = await import('../../services/users.service');
+      await usersService.register(username, newAdminPass, 'user');
+      useToastStore.getState().show(`Cuenta @${username} creada`, 'success');
+      setNewAdminUser('');
+      setNewAdminPass('');
+    } catch (err) {
+      useToastStore.getState().show(err instanceof Error ? err.message : 'No se pudo crear la cuenta', 'error');
+    } finally {
+      setCreatingUser(false);
+    }
+  };
 
   const applySleepTimer = () => {
     const minutes = Number(sleepMinutes);
@@ -249,6 +273,35 @@ export function SettingsModal() {
             El token guardado permite entrar con permisos de dev o admin desde la pantalla de inicio de sesión.
           </p>
         </div>
+
+        {session?.role === 'admin' && (
+          <div className="jf-settings-token">
+            <p className="jf-settings-timer-title">Crear cuenta</p>
+            <div className="jf-settings-timer-row">
+              <input
+                className="jf-input"
+                placeholder="usuario"
+                value={newAdminUser}
+                onChange={(e) => setNewAdminUser(e.target.value)}
+                aria-label="Nuevo usuario"
+              />
+              <input
+                className="jf-input"
+                type="password"
+                placeholder="contraseña"
+                value={newAdminPass}
+                onChange={(e) => setNewAdminPass(e.target.value)}
+                aria-label="Contraseña del nuevo usuario"
+              />
+              <Button variant="glass" size="sm" onClick={() => void createAdminUser()} disabled={creatingUser}>
+                <UserPlus size={14} /> {creatingUser ? 'Creando…' : 'Crear (user)'}
+              </Button>
+            </div>
+            <p className="jf-settings-token-hint">
+              Como admin solo podés crear cuentas de usuario; el dev puede asignar roles superiores.
+            </p>
+          </div>
+        )}
 
         <div className="jf-settings-obs">
           <p className="jf-settings-timer-title">Overlay para OBS</p>

@@ -85,6 +85,13 @@
   animation: jf-logo-breathe 4.5s ease-in-out infinite;
 }
 
+.jf-login-logo-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
 @keyframes jf-logo-breathe {
   0%,
   100% {

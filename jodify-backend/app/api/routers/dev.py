@@ -13,7 +13,9 @@ from ...core.database import col, connect, db, sid
 from ...core.security import create_token, hash_password
 from ...models.schemas import (
     AuthResponse,
+    CreateDevKeyRequest,
     CreateDevTokenRequest,
+    CreateUserRequest,
     DevAccessRequest,
     MaintenanceRequest,
     RedeemTokenRequest,
@@ -22,11 +24,14 @@ from ...models.schemas import (
 from ...services import events
 from ...services.dev_access import (
     create_access_token,
+    create_dev_key,
+    dev_key_view,
     get_maintenance,
     maintenance_blocked,
     normalize_token,
     record_redemption,
     redeem_access_token,
+    revoke_dev_key,
     set_maintenance,
     token_view,
     verify_dev_key,
@@ -40,10 +45,10 @@ router = APIRouter(prefix="/api/dev", tags=["dev"])
 
 @router.post("/access", response_model=AuthResponse)
 async def dev_access(body: DevAccessRequest) -> AuthResponse:
-    """Canjea la clave única del dev (DEV_KEY del .env) por una sesión dev."""
+    """Canjea una clave dev (generada con tools/generate_dev_key.py o validada contra la DB) por una sesión dev."""
     if not DEV_MODE:
         raise HTTPException(status_code=404, detail="Modo dev desactivado")
-    if not verify_dev_key(body.dev_key):
+    if not await verify_dev_key(body.dev_key):
         raise HTTPException(status_code=401, detail="Clave de desarrollo incorrecta")
     doc = await col("users").find_one({"username": DEV_USERNAME})
     if doc is None:
@@ -256,6 +261,67 @@ async def dev_users(_dev: Annotated[dict, Depends(require_dev)]) -> list[dict]:
         }
         async for doc in cursor
     ]
+
+
+@router.post("/users", status_code=201)
+async def create_user(body: CreateUserRequest, dev: Annotated[dict, Depends(require_dev)]) -> dict:
+    """El dev crea cuentas: puede asignar 'user', 'mod' o 'admin'."""
+    role = body.role.strip().lower() if body.role else "user"
+    if role not in ("user", "mod", "admin"):
+        raise HTTPException(status_code=400, detail="Rol inválido. Usá 'user', 'mod' o 'admin'.")
+    username = body.username.strip()
+    if len(username) < 2:
+        raise HTTPException(status_code=400, detail="El usuario debe tener al menos 2 caracteres")
+    if len(body.password) < 4:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
+    existing = await col("users").find_one({"username": username})
+    if existing:
+        raise HTTPException(status_code=409, detail="Ese usuario ya existe")
+    salt, password_hash = hash_password(body.password)
+    await col("users").insert_one(
+        {
+            "username": username,
+            "salt": salt,
+            "password_hash": password_hash,
+            "role": role,
+            "is_online": 0,
+            "last_seen": None,
+            "discord_id": None,
+            "current_song_id": None,
+            "current_song_name": None,
+            "listening_since": None,
+            "created_at": datetime.now().isoformat(),
+        }
+    )
+    await events.publish(
+        {"type": "user.created", "message": f"Cuenta @{username} creada con rol {role} por @{dev.get('username', '')}"}
+    )
+    return {"ok": True, "username": username, "role": role}
+
+
+# ---------- Claves dev (generadas por script o por panel) ----------
+
+@router.get("/keys")
+async def list_dev_keys(_dev: Annotated[dict, Depends(require_dev)]) -> list[dict]:
+    cursor = col("dev_keys").find({}).sort("created_at", -1).limit(100)
+    return [dev_key_view(doc) async for doc in cursor]
+
+
+@router.post("/keys", status_code=201)
+async def create_dev_key_endpoint(body: CreateDevKeyRequest, dev: Annotated[dict, Depends(require_dev)]) -> dict:
+    created = await create_dev_key(label=body.label or "", created_by=dev.get("username", ""))
+    await events.publish(
+        {"type": "devkey.created", "message": f"Clave dev creada por @{dev.get('username', '')}: {created.get('label') or 'sin etiqueta'}"}
+    )
+    return created
+
+
+@router.post("/keys/{key_id}/revoke")
+async def revoke_dev_key_endpoint(key_id: str, dev: Annotated[dict, Depends(require_dev)]) -> dict:
+    if not await revoke_dev_key(key_id):
+        raise HTTPException(status_code=404, detail="Clave dev no encontrada")
+    await events.publish({"type": "devkey.revoked", "message": f"Clave dev revocada por @{dev.get('username', '')}"})
+    return {"ok": True}
 
 
 @router.post("/users/{username}/role")

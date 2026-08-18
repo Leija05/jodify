@@ -4,11 +4,15 @@ declare global {
   }
 }
 
-export const API_BASE = (
-  typeof window !== 'undefined' && window.jodifyEnv?.apiUrl
-    ? window.jodifyEnv.apiUrl
-    : import.meta.env.VITE_API_URL ?? '/api'
-).replace(/\/+$/, '');
+export const API_BASE = (() => {
+  const raw = (
+    typeof window !== 'undefined' && window.jodifyEnv?.apiUrl
+      ? window.jodifyEnv.apiUrl
+      : import.meta.env.VITE_API_URL ?? '/api'
+  ).replace(/\/+$/, '');
+  if (/^https?:\/\//i.test(raw) && !raw.toLowerCase().endsWith('/api')) return `${raw}/api`;
+  return raw;
+})();
 const TOKEN_KEY = 'jodify_token';
 
 export class ApiError extends Error {

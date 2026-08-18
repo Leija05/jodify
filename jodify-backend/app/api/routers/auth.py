@@ -1,12 +1,14 @@
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
 
 from ...core.config import DEV_MODE, DEV_USERNAME
 from ...core.database import col
 from ...core.security import create_token, hash_password, verify_password
+from ...services import events
 from ...services.dev_access import maintenance_blocked
-from ..dependencies import CurrentUser
+from ..dependencies import CurrentUser, require_admin
 from ...models.schemas import AuthResponse, LoginRequest, RegisterRequest
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -40,13 +42,19 @@ async def login(body: LoginRequest) -> AuthResponse:
 
 
 @router.post("/register", status_code=201)
-async def register(body: RegisterRequest) -> None:
+async def register(body: RegisterRequest, creator: Annotated[dict, Depends(require_admin)]) -> None:
+    """Crea cuentas. Solo dev/admin (require_admin acepta ambos): el dev puede asignar
+    user/mod/admin; el admin solo puede crear cuentas 'user'."""
     username = body.username.strip()
     if not username or len(username) < 2:
         raise HTTPException(status_code=400, detail="El usuario debe tener al menos 2 caracteres")
     if len(body.password) < 4:
         raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
-    role = "user"  # los registros siempre crean roles básicos; admin/dev se asignan por seed
+    creator_role = creator.get("role", "user")
+    allowed_roles = {"user", "mod", "admin"} if creator_role == "dev" else {"user"}
+    role = body.role.strip().lower() if body.role else "user"
+    if role not in allowed_roles:
+        raise HTTPException(status_code=403, detail=f"Con rol {creator_role} solo podés crear cuentas {'de usuario' if creator_role != 'dev' else 'user, mod o admin'}")
     salt, password_hash = hash_password(body.password)
     try:
         await col("users").insert_one(
@@ -68,6 +76,7 @@ async def register(body: RegisterRequest) -> None:
         if "E11000" in str(exc):
             raise HTTPException(status_code=409, detail="Ese usuario ya existe") from exc
         raise
+    await events.publish({"type": "user.created", "message": f"Cuenta @{username} creada por @{creator.get('username', '')}"})
 
 
 @router.get("/me", response_model=AuthResponse)

@@ -37,14 +37,58 @@ def normalize_token(token: str) -> str:
     return token.strip().upper().replace(" ", "-")
 
 
-def verify_dev_key(provided: str) -> bool:
-    """Compara la clave contra DEV_KEY en tiempo constante. Devuelve False si no está configurada."""
-    if not DEV_KEY:
+def generate_dev_key() -> str:
+    """Clave de acceso dev (generada por tools/generate_dev_key.py o por la API)."""
+    return f"JDFYDEV-{secrets.token_hex(16).upper()}"
+
+
+async def verify_dev_key(provided: str) -> bool:
+    """Valida la clave dev contra la base de datos (colección dev_keys). Como fallback,
+    acepta la DEV_KEY estática del .env. Devuelve False si no coincide con nada."""
+    key = provided.strip()
+    if not key:
         return False
+    doc = await col("dev_keys").find_one({"token_hash": hash_token(key), "revoked": {"$ne": True}})
+    if doc is not None:
+        await col("dev_keys").update_one({"_id": doc["_id"]}, {"$set": {"last_used_at": _now()}})
+        return True
+    if DEV_KEY and hmac.compare_digest(key.encode("utf-8"), DEV_KEY.encode("utf-8")):
+        return True
+    return False
+
+
+async def create_dev_key(*, label: str = "", created_by: str = "") -> dict:
+    """Crea una clave dev persistida en MongoDB. Devuelve la clave en claro una sola vez."""
+    plain = generate_dev_key()
+    doc = {
+        "token_hash": hash_token(plain),
+        "label": label.strip()[:80],
+        "created_by": created_by,
+        "created_at": _now(),
+        "last_used_at": None,
+        "revoked": False,
+    }
+    result = await col("dev_keys").insert_one(doc)
+    return {**dev_key_view(doc | {"_id": result.inserted_id}), "token": plain}
+
+
+def dev_key_view(doc: dict) -> dict:
+    return {
+        "id": sid(doc.get("_id")),
+        "label": doc.get("label", ""),
+        "created_by": doc.get("created_by", ""),
+        "created_at": doc.get("created_at", ""),
+        "last_used_at": doc.get("last_used_at"),
+        "revoked": bool(doc.get("revoked")),
+    }
+
+
+async def revoke_dev_key(token_id: str) -> bool:
     try:
-        return hmac.compare_digest(provided.strip().encode("utf-8"), DEV_KEY.encode("utf-8"))
+        result = await col("dev_keys").update_one({"_id": ObjectId(token_id)}, {"$set": {"revoked": True}})
     except Exception:
         return False
+    return result.modified_count > 0
 
 
 async def create_access_token(*, role: str, label: str = "", expires_in_days: int | None = 7, max_uses: int = 1, created_by: str = "") -> dict:

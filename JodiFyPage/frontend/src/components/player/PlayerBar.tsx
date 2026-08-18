@@ -35,7 +35,7 @@ export function PlayerBar() {
     >
       <div className="jf-player-left">
         <AnimatePresence mode="popLayout">
-          {song && (
+          {song ? (
             <motion.div
               key={song.id}
               className="jf-player-cover-wrap"
@@ -46,6 +46,17 @@ export function PlayerBar() {
             >
               <SongCover song={song} alt="" className="jf-player-cover" eager />
               {player.isPlaying && <span className="jf-player-cover-pulse" aria-hidden="true" />}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              className="jf-player-cover-wrap jf-player-cover-wrap--empty"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <img className="jf-player-empty-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="JodiFy" />
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
-import { ArrowLeft, Eye, EyeSlash, MusicNotes, ShieldCheck } from '@phosphor-icons/react';
+import { ArrowLeft, Eye, EyeSlash, ShieldCheck } from '@phosphor-icons/react';
 import { useSession } from '../context/SessionContext';
 import { GUEST_HINT } from '../lib/constants';
 import { hasSavedToken } from '../lib/token';
@@ -93,7 +93,7 @@ export function LoginPage() {
                     whileHover={{ rotate: 8, scale: 1.08 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 18 }}
                   >
-                    <MusicNotes size={30} weight="fill" />
+                    <img className="jf-login-logo-img" src={`${import.meta.env.BASE_URL}logo.png`} alt="JodiFy" />
                   </motion.div>
                   <h1 className="jf-login-brand">
                     Jodi<span>Fy</span>

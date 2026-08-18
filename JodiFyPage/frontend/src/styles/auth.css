@@ -37,7 +37,13 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.4);
+  overflow: hidden;
+}
+
+.jf-intro-nav-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .jf-intro-nav-name {

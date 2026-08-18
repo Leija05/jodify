@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Fingerprint, Keyhole, Prohibit, ShieldCheck, UserPlus } from '@phosphor-icons/react';
 import { Button } from '../ui/Button';
 import { CopyableToken, timeAgo } from './devBits';
 import { devService } from '../../services/dev.service';
 import { useToastStore } from '../../store/toast.store';
-import type { DevState, DevToken } from '../../lib/types';
+import type { DevKeyRow, DevState, DevToken } from '../../lib/types';
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Administrador', mod: 'Moderador' };
 
@@ -70,6 +70,47 @@ export function DevAccess({
   const [maxUses, setMaxUses] = useState('1');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [devKeys, setDevKeys] = useState<DevKeyRow[]>([]);
+  const [keyLabel, setKeyLabel] = useState('');
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [newKey, setNewKey] = useState<(DevKeyRow & { token: string }) | null>(null);
+
+  const loadKeys = async () => {
+    try {
+      setDevKeys(await devService.listDevKeys());
+    } catch {
+      /* el panel dev sin claves no debe romperse */
+    }
+  };
+
+  useEffect(() => {
+    void loadKeys();
+  }, []);
+
+  const createKey = async () => {
+    setCreatingKey(true);
+    try {
+      const created = await devService.createDevKey(keyLabel);
+      setNewKey(created);
+      setKeyLabel('');
+      void loadKeys();
+    } catch (err) {
+      useToastStore.getState().show(err instanceof Error ? err.message : 'No se pudo crear la clave', 'error');
+    } finally {
+      setCreatingKey(false);
+    }
+  };
+
+  const revokeKey = async (key: DevKeyRow) => {
+    if (!window.confirm(`¿Revocar la clave dev${key.label ? ` «${key.label}»` : ''}?`)) return;
+    try {
+      await devService.revokeDevKey(key.id);
+      useToastStore.getState().show('Clave dev revocada', 'success');
+      void loadKeys();
+    } catch {
+      useToastStore.getState().show('No se pudo revocar', 'error');
+    }
+  };
 
   const create = async () => {
     setError(null);
@@ -183,21 +224,22 @@ export function DevAccess({
             <span className="jf-dev-card-title">
               <Fingerprint size={15} /> Clave maestra del dev
             </span>
-            <span className="jf-dev-card-sub">configurada en el backend (.env)</span>
+            <span className="jf-dev-card-sub">generada desde tu PC y validada contra la DB</span>
           </div>
           <div className="jf-dev-keycard">
             <span className={`jf-dev-keycard-dot ${state?.dev_mode ? 'is-on' : ''}`} />
             <div>
               <strong>{state?.dev_mode ? 'Modo dev activo' : 'Modo dev apagado'}</strong>
               <span>
-                cuenta <span className="jf-dev-keycard-mono">@{state?.dev_username ?? 'dev'}</span> · la clave
-                entra por la pantalla de acceso (pestaña Dev)
+                cuenta <span className="jf-dev-keycard-mono">@{state?.dev_username ?? 'dev'}</span> · la clave entra
+                por el login con Ctrl+Alt+D
               </span>
             </div>
           </div>
           <p className="jf-dev-hint">
-            Mandá los códigos por mensaje privado a las personas que quieras. Al canjearlo en «Código» dentro de la
-            pantalla de acceso, crean su cuenta con el rol elegido.
+            Generala en tu PC con <span className="jf-dev-keycard-mono">python tools/generate_dev_key.py</span>{' '}
+            dentro de <span className="jf-dev-keycard-mono">jodify-backend</span>, o creala acá abajo. Queda guardada
+            hasheada en la colección <span className="jf-dev-keycard-mono">dev_keys</span>.
           </p>
         </div>
       </div>
@@ -217,6 +259,77 @@ export function DevAccess({
         <div className="jf-dev-tokens">
           {tokens.map((token) => (
             <TokenCard key={token.id} token={token} onRevoke={revoke} />
+          ))}
+        </div>
+      )}
+
+      <div className="jf-dev-section-head">
+        <h3 className="jf-dev-section-title">Claves dev</h3>
+        <span className="jf-dev-section-meta">{devKeys.length} total</span>
+      </div>
+
+      <div className="jf-dev-card">
+        <div className="jf-dev-form">
+          <label className="jf-dev-field">
+            <span className="jf-dev-field-label">Etiqueta (opcional)</span>
+            <input
+              className="jf-input"
+              placeholder="Ej: notebook de Leija"
+              value={keyLabel}
+              onChange={(e) => setKeyLabel(e.target.value)}
+              maxLength={80}
+            />
+          </label>
+          <Button variant="primary" size="sm" onClick={() => void createKey()} disabled={creatingKey}>
+            <Keyhole size={14} />
+            {creatingKey ? 'Generando…' : 'Generar clave dev'}
+          </Button>
+        </div>
+        {newKey && (
+          <div className="jf-dev-token is-active" style={{ marginTop: 12 }}>
+            <div className="jf-dev-token-main">
+              <div className="jf-dev-token-top">
+                <span className="jf-role-badge jf-role-badge--dev">dev</span>
+                <span className="jf-dev-token-status is-active">recién creada</span>
+              </div>
+              {newKey.label && <p className="jf-dev-token-label">{newKey.label}</p>}
+              <div className="jf-dev-token-code">
+                <CopyableToken token={newKey.token} />
+              </div>
+              <p className="jf-dev-hint">Copiala ahora: no se vuelve a mostrar en claro.</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {devKeys.length > 0 && (
+        <div className="jf-dev-tokens">
+          {devKeys.map((key) => (
+            <div key={key.id} className={`jf-dev-token is-${key.revoked ? 'revoked' : 'active'}`}>
+              <div className="jf-dev-token-main">
+                <div className="jf-dev-token-top">
+                  <span className="jf-role-badge jf-role-badge--dev">dev</span>
+                  <span className={`jf-dev-token-status is-${key.revoked ? 'revoked' : 'active'}`}>
+                    {key.revoked ? 'revocada' : 'activa'}
+                  </span>
+                </div>
+                {key.label && <p className="jf-dev-token-label">{key.label}</p>}
+                <div className="jf-dev-token-meta">
+                  <span>creada {timeAgo(key.created_at)}</span>
+                  {key.last_used_at && <span>último uso {timeAgo(key.last_used_at)}</span>}
+                  {key.created_by && <span>por {key.created_by}</span>}
+                </div>
+              </div>
+              {!key.revoked && (
+                <button
+                  className="jf-dev-token-revoke"
+                  onClick={() => void revokeKey(key)}
+                  aria-label="Revocar clave dev"
+                >
+                  <Prohibit size={15} />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}

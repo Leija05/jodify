@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icons/*.png'],
+        includeAssets: ['icons/*.png', 'logo.png'],
         manifest: {
           name: 'JodiFy',
           short_name: 'JodiFy',

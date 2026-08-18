@@ -270,13 +270,13 @@
   white-space: nowrap;
 }
 
-.jf-brandmark-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--gradient-primary);
+.jf-brandmark-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
   box-shadow: var(--shadow-glow);
   flex-shrink: 0;
+  object-fit: cover;
 }
 
 .jf-playlist-actions {
