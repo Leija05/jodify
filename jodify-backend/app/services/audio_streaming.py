@@ -1,5 +1,6 @@
 """GridFS: subida y streaming de audio con soporte de rangos (seeking)."""
 
+import inspect
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -13,6 +14,11 @@ from ..core import database as dbmod
 from ..core.config import AUDIO_BUCKET, GRIDFS_CHUNK, MONGO_DB
 
 import gridfs
+from gridfs import GridFSBucket
+
+_UPLOAD_CHUNK_PARAM = (
+    "chunk_size_bytes" if "chunk_size_bytes" in inspect.signature(GridFSBucket.upload_from_stream).parameters else "chunk_size"
+)
 
 
 def _bucket() -> AsyncIOMotorGridFSBucket:
@@ -24,11 +30,12 @@ def _bucket() -> AsyncIOMotorGridFSBucket:
 
 async def store_audio(filename: str, content_type: str, file, chunk_size: int | None = None) -> ObjectId:
     bucket = _bucket()
+    kwargs = {_UPLOAD_CHUNK_PARAM: chunk_size or GRIDFS_CHUNK}
     fid = await bucket.upload_from_stream(
         filename,
         file,
         metadata={"content_type": content_type or "audio/mpeg"},
-        chunk_size=chunk_size or GRIDFS_CHUNK,
+        **kwargs,
     )
     return fid
 
