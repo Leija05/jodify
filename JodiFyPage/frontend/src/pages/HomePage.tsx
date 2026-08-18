@@ -22,7 +22,6 @@ import { DiscordModal } from '../components/social/DiscordModal';
 import { ListeningHistoryModal } from '../components/social/ListeningHistoryModal';
 import { FullscreenPlayer } from '../components/player/FullscreenPlayer';
 import { OfflineModal } from '../components/offline/OfflineModal';
-import { Toaster } from '../components/ui/Toaster';
 import { useLoadLibrary } from '../hooks/useLoadLibrary';
 
 export function HomePage() {
@@ -61,7 +60,6 @@ export function HomePage() {
       <ListeningHistoryModal />
       <FullscreenPlayer />
       <OfflineModal />
-      <Toaster />
     </div>
   );
 }

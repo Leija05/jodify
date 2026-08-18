@@ -10,6 +10,9 @@ import { useKeyboardShortcuts, useShortcutHint } from './hooks/useKeyboardShortc
 import { useMediaSession } from './hooks/useMediaSession';
 import { useJamBoot } from './hooks/useJamBoot';
 import { DynamicBackground } from './components/layout/DynamicBackground';
+import { ConfirmDialog } from './components/ui/ConfirmDialog';
+import { Toaster } from './components/ui/Toaster';
+import { AppErrorBoundary, GlobalErrorHandler } from './components/GlobalErrorHandler';
 import { usePlayerStore } from './store/player.store';
 
 const isElectron = typeof window !== 'undefined' && navigator.userAgent.includes('Electron');
@@ -39,6 +42,9 @@ function Root() {
     <>
       <audio ref={audioRef} id="jodify-audio" preload="metadata" hidden />
       <DynamicBackground />
+      <GlobalErrorHandler />
+      <ConfirmDialog />
+      <Toaster />
       <Routes>
         <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/" element={session ? <HomePage /> : isElectron ? <LoginPage /> : <IntroPage />} />
@@ -54,7 +60,9 @@ export default function App() {
     <ThemeProvider>
       <SessionProvider>
         <Router initialEntries={['/']}>
-          <Root />
+          <AppErrorBoundary>
+            <Root />
+          </AppErrorBoundary>
         </Router>
       </SessionProvider>
     </ThemeProvider>

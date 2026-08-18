@@ -3,6 +3,7 @@ import { Broadcast, Pause, Play, TerminalWindow, Trash } from '@phosphor-icons/r
 import { Button } from '../ui/Button';
 import { logsService } from '../../services/social.service';
 import { devService } from '../../services/dev.service';
+import { confirmDialog } from '../../store/confirm.store';
 import type { DevLogEvent } from '../../lib/types';
 
 const MAX_LINES = 250;
@@ -88,7 +89,12 @@ export function DevConsole({ live, onLiveChange }: { live: boolean; onLiveChange
   const visible = filter === 'all' ? events : filtered;
 
   const purge = async () => {
-    if (!window.confirm('¿Borrar todos los logs del servidor?')) return;
+    const ok = await confirmDialog({
+      title: '¿Borrar todos los logs del servidor?',
+      confirmLabel: 'Borrar',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await devService.purgeLogs();
       setEvents([]);

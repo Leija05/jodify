@@ -1,5 +1,6 @@
 """Panel de control del dev: clave única, tokens de acceso, métricas y consola live."""
 
+import asyncio
 from datetime import datetime, timedelta
 from typing import Annotated
 
@@ -135,14 +136,14 @@ async def overview(_dev: Annotated[dict, Depends(require_dev)]) -> dict:
         except PyMongoError:
             return 0
 
-    users, online, songs, likes, downloads = await (
+    users, online, songs, likes, downloads = await asyncio.gather(
         count("users"),
         count("users", {"is_online": 1}),
         count("songs"),
         count("likes"),
         count("downloads"),
     )
-    plays_24h, plays_total, plays_7d, jams_active, logs_total = await (
+    plays_24h, plays_total, plays_7d, jams_active, logs_total = await asyncio.gather(
         count("history", {"played_at": {"$gte": since_24h}}),
         count("history"),
         count("history", {"played_at": {"$gte": since_7d}}),

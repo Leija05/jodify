@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { CopyableToken, timeAgo } from './devBits';
 import { devService } from '../../services/dev.service';
 import { useToastStore } from '../../store/toast.store';
+import { confirmDialog } from '../../store/confirm.store';
 import type { DevKeyRow, DevState, DevToken } from '../../lib/types';
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Administrador', mod: 'Moderador' };
@@ -102,7 +103,13 @@ export function DevAccess({
   };
 
   const revokeKey = async (key: DevKeyRow) => {
-    if (!window.confirm(`¿Revocar la clave dev${key.label ? ` «${key.label}»` : ''}?`)) return;
+    const ok = await confirmDialog({
+      title: '¿Revocar esta clave dev?',
+      message: key.label ? `«${key.label}» dejará de funcionar de inmediato.` : 'La clave dejará de funcionar de inmediato.',
+      confirmLabel: 'Revocar',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await devService.revokeDevKey(key.id);
       useToastStore.getState().show('Clave dev revocada', 'success');
@@ -134,7 +141,14 @@ export function DevAccess({
   };
 
   const revoke = async (token: DevToken) => {
-    if (!window.confirm(`¿Revocar el código de ${ROLE_LABEL[token.role] ?? token.role}${token.label ? ` «${token.label}»` : ''}?`)) return;
+    const roleLabel = ROLE_LABEL[token.role] ?? token.role;
+    const ok = await confirmDialog({
+      title: `¿Revocar el código de ${roleLabel}?`,
+      message: token.label ? `«${token.label}» dejará de funcionar al instante.` : 'El código dejará de funcionar al instante.',
+      confirmLabel: 'Revocar',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await devService.revokeToken(token.id);
       useToastStore.getState().show('Código revocado', 'success');

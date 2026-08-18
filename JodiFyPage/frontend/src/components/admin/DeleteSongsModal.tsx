@@ -9,6 +9,7 @@ import { useToastStore } from '../../store/toast.store';
 import { songsService } from '../../services/songs.service';
 import { logsService } from '../../services/social.service';
 import { useSession } from '../../context/SessionContext';
+import { confirmDialog } from '../../store/confirm.store';
 
 export function DeleteSongsModal() {
   const ui = useUiStore();
@@ -46,7 +47,13 @@ export function DeleteSongsModal() {
 
   const confirmDelete = async () => {
     if (selected.size === 0) return;
-    if (!window.confirm(`¿Borrar ${selected.size} canciones? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirmDialog({
+      title: `¿Borrar ${selected.size} canciones?`,
+      message: 'Esta acción no se puede deshacer.',
+      confirmLabel: 'Borrar',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const ids = [...selected];

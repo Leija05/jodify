@@ -3,6 +3,7 @@ import { Eraser, Power, ShieldWarning, Wrench } from '@phosphor-icons/react';
 import { Button } from '../ui/Button';
 import { devService } from '../../services/dev.service';
 import { useToastStore } from '../../store/toast.store';
+import { confirmDialog } from '../../store/confirm.store';
 import type { DevState } from '../../lib/types';
 
 export function DevControl({ state, onChanged }: { state: DevState | null; onChanged: () => void }) {
@@ -28,7 +29,13 @@ export function DevControl({ state, onChanged }: { state: DevState | null; onCha
   };
 
   const purge = async () => {
-    if (!window.confirm('¿Borrar todos los logs del servidor? Esta acción no se puede deshacer.')) return;
+    const ok = await confirmDialog({
+      title: '¿Borrar todos los logs del servidor?',
+      message: 'Esta acción no se puede deshacer.',
+      confirmLabel: 'Borrar',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setPurging(true);
     try {
       await devService.purgeLogs();
