@@ -28,36 +28,64 @@ function pickLrclibHit(json: unknown, title: string): { syncedLyrics?: string; p
   );
 }
 
+const inFlight = new Map<string, Promise<string | null>>();
+const cache = new Map<string, string | null>();
+
+export function clearLyricsCache(): void {
+  inFlight.clear();
+  cache.clear();
+}
+
 export async function fetchLyrics(name: string, artist?: string): Promise<string | null> {
   const search = name.trim();
   if (!search) return null;
 
-  const artists = artist ? [artist, search] : [search];
-  for (const currentArtist of artists) {
-    for (const build of LYRIC_PROVIDERS) {
-      try {
-        const response = await fetch(build(currentArtist, search));
-        if (!response.ok) continue;
-        const text = await response.text();
-        let json: unknown;
+  const key = `${artist ?? ''}|${search}`;
+  const cached = cache.get(key);
+  if (cached !== undefined) return cached;
+  const pending = inFlight.get(key);
+  if (pending) return pending;
+
+  const task = (async (): Promise<string | null> => {
+    const artists = [...new Set([artist, search].filter(Boolean) as string[])];
+    for (const currentArtist of artists) {
+      for (let i = 0; i < LYRIC_PROVIDERS.length; i++) {
+        // Sin artista real, lyrics.ovh no puede buscar con sentido ("Hielo/Hielo").
+        if (i === 1 && !artist) continue;
+        const build = LYRIC_PROVIDERS[i];
         try {
-          json = JSON.parse(text);
+          const response = await fetch(build(currentArtist, search));
+          if (!response.ok) continue;
+          const text = await response.text();
+          let json: unknown;
+          try {
+            json = JSON.parse(text);
+          } catch {
+            continue;
+          }
+          if (Array.isArray(json)) {
+            const hit = pickLrclibHit(json, search);
+            if (hit) return hit.syncedLyrics ?? hit.plainLyrics ?? null;
+          } else {
+            const record = json as { lyrics?: string };
+            if (record.lyrics && record.lyrics.trim()) return record.lyrics;
+          }
         } catch {
           continue;
         }
-        if (Array.isArray(json)) {
-          const hit = pickLrclibHit(json, search);
-          if (hit) return hit.syncedLyrics ?? hit.plainLyrics ?? null;
-        } else {
-          const record = json as { lyrics?: string };
-          if (record.lyrics && record.lyrics.trim()) return record.lyrics;
-        }
-      } catch {
-        continue;
       }
     }
+    return null;
+  })();
+
+  inFlight.set(key, task);
+  try {
+    const result = await task;
+    cache.set(key, result);
+    return result;
+  } finally {
+    inFlight.delete(key);
   }
-  return null;
 }
 
 export function getNowPlayingFromDb(username: string): void {
