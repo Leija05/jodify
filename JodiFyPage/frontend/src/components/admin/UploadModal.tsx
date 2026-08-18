@@ -59,7 +59,13 @@ export function UploadModal() {
           meta.pictureData && meta.pictureFormat
             ? new Blob([meta.pictureData], { type: meta.pictureFormat })
             : undefined;
-        const song = await songsService.uploadAudio(item.file, finalName, coverBlob, meta.album, meta.lyrics);
+        const song = await songsService.uploadAudio(item.file, {
+          name: finalName,
+          cover: coverBlob,
+          album: meta.album,
+          lyrics: meta.lyrics,
+          artist: meta.artist,
+        });
         updateItem(item.id, { name: finalName, status: 'success', progress: 100, coverUrl: meta.picture });
         void logsService.add('upload', `Canción subida: ${finalName}`, username);
 

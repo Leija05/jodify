@@ -66,6 +66,13 @@ class DeleteSongsRequest(BaseModel):
     ids: list[int | str]
 
 
+class UpdateSongRequest(BaseModel):
+    name: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    lyrics: str | None = None
+
+
 class CheckNameRequest(BaseModel):
     name: str
 

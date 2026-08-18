@@ -3,6 +3,14 @@ import type { Song } from '../lib/types';
 import { sanitizeFileName } from '../lib/utils';
 import { deleteSongOffline } from '../lib/idb';
 
+interface UploadOptions {
+  name?: string;
+  cover?: Blob;
+  album?: string;
+  lyrics?: string;
+  artist?: string;
+}
+
 export const songsService = {
   async fetchAll(): Promise<Song[]> {
     return api.get<Song[]>('/songs');
@@ -13,13 +21,14 @@ export const songsService = {
     return result.likes;
   },
 
-  async uploadAudio(file: File, name?: string, cover?: Blob, album?: string, lyrics?: string): Promise<Song> {
+  async uploadAudio(file: File, options: UploadOptions = {}): Promise<Song> {
     const formData = new FormData();
     formData.append('file', file, sanitizeFileName(file.name) || file.name);
-    if (name) formData.append('name', name);
-    if (cover) formData.append('cover', cover, 'cover.jpg');
-    if (album) formData.append('album', album);
-    if (lyrics) formData.append('lyrics', lyrics);
+    if (options.name) formData.append('name', options.name);
+    if (options.cover) formData.append('cover', options.cover, 'cover.jpg');
+    if (options.album) formData.append('album', options.album);
+    if (options.lyrics) formData.append('lyrics', options.lyrics);
+    if (options.artist) formData.append('artist', options.artist);
 
     const headers: Record<string, string> = {};
     const token = getAuthToken();
@@ -50,6 +59,13 @@ export const songsService = {
     for (const id of ids) {
       await deleteSongOffline(id).catch(() => undefined);
     }
+  },
+
+  async updateSongMeta(
+    songId: number | string,
+    fields: { name?: string; artist?: string; album?: string; lyrics?: string },
+  ): Promise<Song> {
+    return api.patch<Song>(`/songs/${songId}`, fields);
   },
 
   async fetchTopSongs(limit = 10): Promise<Array<{ song_id: string; song_name: string; count: number }>> {

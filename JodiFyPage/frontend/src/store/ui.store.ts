@@ -11,6 +11,7 @@ export type ModalName =
   | 'profile'
   | 'shortcuts'
   | 'upload'
+  | 'editSong'
   | 'devCenter'
   | 'deleteSongs'
   | 'discord'

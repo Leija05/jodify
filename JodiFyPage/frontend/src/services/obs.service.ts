@@ -1,6 +1,6 @@
 import { usePlayerStore } from '../store/player.store';
 import { useSettingsStore } from '../store/settings.store';
-import { throttle } from '../lib/utils';
+import { resolveMediaUrl, throttle } from '../lib/utils';
 
 interface ObsState {
   title: string | null;
@@ -29,7 +29,7 @@ const persist = throttle(() => {
   const state: ObsState = {
     title: player.currentSong?.name ?? null,
     addedBy: player.currentSong?.added_by ?? null,
-    cover: player.currentSong?.cover_url ?? player.currentSong?.coverUrl ?? null,
+    cover: resolveMediaUrl(player.currentSong?.cover_url ?? player.currentSong?.coverUrl ?? null),
     currentTime: player.currentTime,
     duration: player.duration,
     isPlaying: player.isPlaying,

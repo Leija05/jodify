@@ -78,7 +78,9 @@ describe('menú contextual de canciones', () => {
     expect(screen.getByTestId('cm-download')).toBeInTheDocument();
     expect(screen.getByTestId('cm-offline')).toBeInTheDocument();
     expect(screen.getByTestId('cm-like')).toBeInTheDocument();
+    expect(screen.getByTestId('cm-edit')).toBeInTheDocument();
     expect(screen.getByTestId('cm-delete')).toBeInTheDocument();
+    expect(screen.getByText('Editar información')).toBeInTheDocument();
     expect(screen.getByText('Eliminar canción')).toBeInTheDocument();
   });
 

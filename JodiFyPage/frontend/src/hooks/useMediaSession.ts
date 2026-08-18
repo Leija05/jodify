@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { usePlayerStore } from '../store/player.store';
+import { resolveMediaUrl } from '../lib/utils';
 
 export function useMediaSession(): void {
   useEffect(() => {
@@ -11,10 +12,10 @@ export function useMediaSession(): void {
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentSong.name,
-          artist: currentSong.added_by ?? 'JodiFy',
-          album: 'JodiFy',
+          artist: currentSong.artist ?? currentSong.added_by ?? 'JodiFy',
+          album: currentSong.album ?? 'JodiFy',
           artwork: currentSong.cover_url
-            ? [{ src: currentSong.cover_url, sizes: '512x512', type: 'image/jpeg' }]
+            ? [{ src: resolveMediaUrl(currentSong.cover_url), sizes: '512x512', type: 'image/jpeg' }]
             : [],
         });
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';

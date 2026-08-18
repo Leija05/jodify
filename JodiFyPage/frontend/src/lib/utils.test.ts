@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatTime, formatDuration, clamp, sanitizeFileName, initialOf, timeAgo, getSongCoverCandidates } from '../lib/utils';
+import { API_BASE } from '../lib/api';
 
 describe('formatTime', () => {
   it('formatea segundos básicos', () => {
@@ -67,6 +68,12 @@ describe('getSongCoverCandidates', () => {
   it('devuelve solo valores string no vacíos en orden de prioridad', () => {
     expect(
       getSongCoverCandidates({ cover_url: 'a.jpg', coverUrl: 'b.jpg', cover: '', image_url: null, picture: undefined }),
-    ).toEqual(['a.jpg', 'b.jpg']);
+    ).toEqual([`${API_BASE}/a.jpg`, `${API_BASE}/b.jpg`]);
+  });
+
+  it('deja pasar URLs absolutas sin tocarlas', () => {
+    expect(getSongCoverCandidates({ cover_url: 'https://cdn.example.com/x.jpg' })).toEqual([
+      'https://cdn.example.com/x.jpg',
+    ]);
   });
 });

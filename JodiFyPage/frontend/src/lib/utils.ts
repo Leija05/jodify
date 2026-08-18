@@ -71,7 +71,10 @@ export function getSongCoverCandidates(song: Record<string, unknown>): string[] 
     song.thumbnail_url,
     song.artwork_url,
     song.picture,
-  ].filter((v): v is string => typeof v === 'string' && v.length > 0);
+  ]
+    .filter((v): v is string => typeof v === 'string' && v.length > 0)
+    .map((url) => resolveMediaUrl(url))
+    .filter((v): v is string => v.length > 0);
 }
 
 export function songArtistMeta(song: { artist?: unknown } | null | undefined): string {

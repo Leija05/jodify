@@ -11,7 +11,7 @@ import { isSynced } from '../../lib/lrc';
 export function LyricsPanel() {
   const song = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const { lines, activeIndex, loading } = useLyrics(song?.name ?? null, songArtistMeta(song));
+  const { lines, activeIndex, loading } = useLyrics(song?.name ?? null, songArtistMeta(song), song?.lyrics ?? null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const focusMode = useSettingsStore((s) => s.focusMode);
 

@@ -7,7 +7,7 @@ from pymongo import ReturnDocument
 from starlette.requests import Request
 
 from ...core.database import col, sid
-from ...models.schemas import CheckNameRequest, DeleteSongsRequest, LikesDeltaRequest
+from ...models.schemas import CheckNameRequest, DeleteSongsRequest, LikesDeltaRequest, UpdateSongRequest
 from ...services.audio_streaming import delete_audio, serve_audio, serve_cover, store_audio
 from ..dependencies import require_admin
 
@@ -58,6 +58,7 @@ async def upload_song(
     cover: UploadFile | None = File(None),
     album: str | None = Form(None),
     lyrics: str | None = Form(None),
+    artist: str | None = Form(None),
     _admin: Annotated[dict, Depends(require_admin)] = None,
 ) -> dict:
     raw_name = (name or file.filename or "cancion").strip()
@@ -91,6 +92,9 @@ async def upload_song(
     lyrics_clean = (lyrics or "").strip()
     if lyrics_clean:
         doc["lyrics"] = lyrics_clean
+    artist_clean = (artist or "").strip()
+    if artist_clean:
+        doc["artist"] = artist_clean
     if cover is not None:
         cover_bytes = await cover.read()
         if cover_bytes:
@@ -179,6 +183,35 @@ async def top_songs(limit: int = Query(10, ge=1, le=50)) -> list[dict]:
         }
         for r in rows
     ]
+
+
+@router.patch("/{song_id}", response_model=None)
+async def update_song(
+    song_id: str, body: UpdateSongRequest, _admin: Annotated[dict, Depends(require_admin)] = None
+) -> dict:
+    try:
+        oid = ObjectId(song_id)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Canción no encontrada") from exc
+
+    update: dict[str, str] = {}
+    for field in ("name", "artist", "album", "lyrics"):
+        value = getattr(body, field, None)
+        if value is not None:
+            update[field] = str(value).strip()
+    if not update:
+        raise HTTPException(status_code=400, detail="Sin campos para actualizar")
+    if "name" in update and (not update["name"] or len(update["name"]) < 2):
+        raise HTTPException(status_code=400, detail="El nombre de la canción no puede estar vacío")
+
+    updated = await col("songs").find_one_and_update(
+        {"_id": oid},
+        {"$set": update},
+        return_document=ReturnDocument.AFTER,
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Canción no encontrada")
+    return song_view(updated)
 
 
 @router.post("/sync", response_model=None)

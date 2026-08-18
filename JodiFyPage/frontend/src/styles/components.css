@@ -732,3 +732,39 @@
   margin: 5px 8px;
   background: var(--border);
 }
+
+/* Formulario de edición de canción */
+.jf-edit-song-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.jf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jf-field-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jf-input--area {
+  resize: vertical;
+  min-height: 120px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.jf-edit-song-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: var(--space-xs);
+}

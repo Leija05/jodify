@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { CloudArrowDown, CloudCheck, Download, Heart, Play, Queue, Trash } from '@phosphor-icons/react';
+import { CloudArrowDown, CloudCheck, Download, Heart, PencilSimple, Play, Queue, Trash } from '@phosphor-icons/react';
 import { useContextMenuStore } from '../../store/contextmenu.store';
 import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
 import { useQueueStore } from '../../store/queue.store';
 import { useToastStore } from '../../store/toast.store';
+import { useUiStore } from '../../store/ui.store';
 import { useIsDev, useSession } from '../../context/SessionContext';
 import { resolveMediaUrl } from '../../lib/utils';
 import { playSong } from '../../services/player.service';
@@ -152,6 +153,12 @@ export function SongContextMenu() {
     }
   };
 
+  const handleEdit = () => {
+    if (!song) return;
+    hide();
+    useUiStore.getState().open('editSong', { song });
+  };
+
   const handleDelete = async () => {
     if (!song || !isDev) return;
     hide();
@@ -219,6 +226,7 @@ export function SongContextMenu() {
           )}
           {isDev && (
             <>
+              <MenuItem icon={<PencilSimple size={15} />} label="Editar información" onClick={handleEdit} testId="cm-edit" />
               <div className="jf-context-menu-sep" />
               <MenuItem icon={<Trash size={15} />} label="Eliminar canción" danger onClick={handleDelete} testId="cm-delete" />
             </>
