@@ -36,7 +36,8 @@ export function TokenValidation({ token, save, onCancel, onSuccess }: TokenValid
     const advance = (next: Phase, ms: number) =>
       timers.push(
         setTimeout(() => {
-          if (!cancelled) setPhase(next);
+          if (cancelled) return;
+          setPhase((current) => (current === 'error' || current === 'done' ? current : next));
         }, ms),
       );
 
@@ -47,6 +48,7 @@ export function TokenValidation({ token, save, onCancel, onSuccess }: TokenValid
       .accessWithKey(token)
       .then((res) => {
         if (cancelled) return;
+        timers.forEach(clearTimeout);
         setResult(res);
         setPhase('done');
         timers.push(
@@ -60,6 +62,7 @@ export function TokenValidation({ token, save, onCancel, onSuccess }: TokenValid
       })
       .catch((err) => {
         if (cancelled) return;
+        timers.forEach(clearTimeout);
         setError(err instanceof Error ? err.message : 'La credencial fue rechazada');
         setPhase('error');
       });
@@ -136,10 +139,10 @@ export function TokenValidation({ token, save, onCancel, onSuccess }: TokenValid
             <span className="jf-token-result-icon">
               <WarningCircle size={26} weight="fill" />
             </span>
-            <p className="jf-token-result-title">Credencial rechazada</p>
+            <p className="jf-token-result-title">El token no fue aceptado</p>
             <p className="jf-token-result-sub">{error}</p>
-            <button type="button" className="jf-btn jf-btn--glass jf-btn--sm" onClick={onCancel}>
-              Reintentar
+            <button type="button" className="jf-btn jf-btn--primary jf-btn--sm" onClick={onCancel} data-testid="token-reject-accept">
+              Aceptar
             </button>
           </motion.div>
         )}

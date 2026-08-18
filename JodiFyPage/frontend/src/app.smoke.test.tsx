@@ -53,6 +53,7 @@ describe('smoke render de la app completa', () => {
       const path = new URL(String(input), 'http://local.test').pathname;
       const method = (init?.method ?? 'GET').toUpperCase();
       if (path.endsWith('/songs') && method === 'GET') return jsonResponse(200, songs);
+      if (path.endsWith('/dev/access')) return jsonResponse(401, { detail: 'Clave de desarrollo incorrecta' });
       if (path.includes('likes') || path.includes('downloads')) return jsonResponse(200, []);
       return jsonResponse(200, {});
     }));
@@ -71,6 +72,20 @@ describe('smoke render de la app completa', () => {
     fireEvent.keyDown(window, { key: 'd', ctrlKey: true, altKey: true });
     expect(screen.getByTestId('dev-token-input')).toBeInTheDocument();
     expect(screen.getByTestId('dev-token-validate')).toBeInTheDocument();
+  });
+
+  it('mantiene el aviso de rechazo de token (no vuelve a "Verificando credenciales…")', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByTestId('intro-login-cta'));
+    fireEvent.keyDown(window, { key: 'd', ctrlKey: true, altKey: true });
+    fireEvent.change(screen.getByTestId('dev-token-input'), { target: { value: 'JDFYDEV-RECHAZADO' } });
+    fireEvent.click(screen.getByTestId('dev-token-validate'));
+    const title = await screen.findByText('El token no fue aceptado');
+    expect(title).toBeInTheDocument();
+    expect(screen.getByTestId('token-reject-accept')).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(title).toBeInTheDocument();
+    expect(document.querySelector('.jf-token-step--active')).toBeNull();
   });
 
   it('renderiza la app completa con sesión sin crashear (regresión #310/#520)', async () => {

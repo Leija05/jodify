@@ -10,7 +10,7 @@ from pymongo.errors import PyMongoError
 
 from ...core.config import DEV_MODE, DEV_USERNAME, JWT_EXPIRES_MINUTES
 from ...core.database import col, connect, db, sid
-from ...core.security import create_token, hash_password
+from ...core.security import create_token as create_jwt_token, hash_password
 from ...models.schemas import (
     AuthResponse,
     CreateDevKeyRequest,
@@ -55,7 +55,7 @@ async def dev_access(body: DevAccessRequest) -> AuthResponse:
         raise HTTPException(status_code=503, detail="Cuenta dev no encontrada; reiniciá el backend para sembrarla")
     role = doc.get("role", "dev")
     await events.publish({"type": "dev.access", "message": f"Acceso dev: {DEV_USERNAME}"})
-    return AuthResponse(token=create_token(doc["username"], role), username=doc["username"], role=role)
+    return AuthResponse(token=create_jwt_token(doc["username"], role), username=doc["username"], role=role)
 
 
 @router.post("/redeem", response_model=AuthResponse)
@@ -101,7 +101,7 @@ async def redeem_token(body: RedeemTokenRequest) -> AuthResponse:
         {"type": "token.redeemed", "message": f"Token {doc.get('label') or doc.get('role', '?')} canjeado por @{username} ({doc.get('role')})"}
     )
     return AuthResponse(
-        token=create_token(username, doc.get("role", "admin")),
+        token=create_jwt_token(username, doc.get("role", "admin")),
         username=username,
         role=doc.get("role", "admin"),
     )
@@ -218,7 +218,7 @@ async def list_tokens(_dev: Annotated[dict, Depends(require_dev)]) -> list[dict]
 
 
 @router.post("/tokens", status_code=201)
-async def create_token(body: CreateDevTokenRequest, dev: Annotated[dict, Depends(require_dev)]) -> dict:
+async def create_dev_access_token(body: CreateDevTokenRequest, dev: Annotated[dict, Depends(require_dev)]) -> dict:
     try:
         created = await create_access_token(
             role=body.role,
