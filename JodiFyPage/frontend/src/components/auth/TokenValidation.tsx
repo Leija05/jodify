@@ -60,7 +60,7 @@ export function TokenValidation({ token, save, onCancel, onSuccess }: TokenValid
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'No se pudo validar el token');
+        setError(err instanceof Error ? err.message : 'La credencial fue rechazada');
         setPhase('error');
       });
 
@@ -136,7 +136,7 @@ export function TokenValidation({ token, save, onCancel, onSuccess }: TokenValid
             <span className="jf-token-result-icon">
               <WarningCircle size={26} weight="fill" />
             </span>
-            <p className="jf-token-result-title">Token inválido</p>
+            <p className="jf-token-result-title">Credencial rechazada</p>
             <p className="jf-token-result-sub">{error}</p>
             <button type="button" className="jf-btn jf-btn--glass jf-btn--sm" onClick={onCancel}>
               Reintentar

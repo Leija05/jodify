@@ -18,6 +18,7 @@ COLLECTIONS = {
     "jam_sessions": "jam_sessions",
     "jam_members": "jam_members",
     "dev_tokens": "dev_tokens",
+    "dev_keys": "dev_keys",
     "system_state": "system_state",
 }
 
@@ -99,6 +100,11 @@ async def create_indexes() -> None:
         IndexModel([("uploadDate", DESCENDING)]),
     ])
     await col("dev_tokens").create_indexes([
+        IndexModel([("token_hash", ASCENDING)], unique=True),
+        IndexModel([("created_at", DESCENDING)]),
+        IndexModel([("revoked", ASCENDING)]),
+    ])
+    await col("dev_keys").create_indexes([
         IndexModel([("token_hash", ASCENDING)], unique=True),
         IndexModel([("created_at", DESCENDING)]),
         IndexModel([("revoked", ASCENDING)]),
