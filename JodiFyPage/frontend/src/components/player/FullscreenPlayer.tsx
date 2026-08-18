@@ -18,7 +18,7 @@ export function FullscreenPlayer() {
   const isLiked = useLibraryStore((s) => s.likedIds.includes(String(song?.id)));
   const reduce = useReducedMotion();
 
-  const { lines, activeIndex, loading } = useLyrics(song?.name ?? null, songArtistMeta(song));
+  const { lines, activeIndex, loading } = useLyrics(song?.name ?? null, songArtistMeta(song), song?.lyrics ?? null);
 
   const lyricsRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +81,10 @@ export function FullscreenPlayer() {
                   {song.name}
                 </motion.h2>
               </AnimatePresence>
-              <p className="jf-fullscreen-artist">{songArtistMeta(song) || 'JodiFy Studio'}</p>
+              <p className="jf-fullscreen-artist">
+                {songArtistMeta(song) || 'JodiFy Studio'}
+                {song.album ? ` · ${song.album}` : ''}
+              </p>
             </div>
 
             <div className="jf-fullscreen-timeline">

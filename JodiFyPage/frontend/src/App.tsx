@@ -11,6 +11,7 @@ import { useMediaSession } from './hooks/useMediaSession';
 import { useJamBoot } from './hooks/useJamBoot';
 import { DynamicBackground } from './components/layout/DynamicBackground';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
+import { SongContextMenu } from './components/ui/SongContextMenu';
 import { Toaster } from './components/ui/Toaster';
 import { AppErrorBoundary, GlobalErrorHandler } from './components/GlobalErrorHandler';
 import { usePlayerStore } from './store/player.store';
@@ -44,6 +45,7 @@ function Root() {
       <DynamicBackground />
       <GlobalErrorHandler />
       <ConfirmDialog />
+      <SongContextMenu />
       <Toaster />
       <Routes>
         <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />

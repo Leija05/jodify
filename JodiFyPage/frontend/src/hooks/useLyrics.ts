@@ -4,7 +4,11 @@ import { fetchLyrics } from '../services/lyrics.service';
 import { parseLrc, plainLines, isSynced } from '../lib/lrc';
 import type { LyricsLine } from '../lib/types';
 
-export function useLyrics(name: string | null, artist?: string): { lines: LyricsLine[]; activeIndex: number; loading: boolean } {
+export function useLyrics(
+  name: string | null,
+  artist?: string,
+  localLyrics?: string | null,
+): { lines: LyricsLine[]; activeIndex: number; loading: boolean } {
   const [lines, setLines] = useState<LyricsLine[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -22,13 +26,18 @@ export function useLyrics(name: string | null, artist?: string): { lines: Lyrics
     setLines([]);
     setActiveIndex(-1);
 
+    const parse = (text: string) => (/\[\d{1,2}:\d{1,2}/.test(text) ? parseLrc(text) : plainLines(text));
+
+    if (localLyrics) {
+      setLines(parse(localLyrics));
+      setLoading(false);
+      return;
+    }
+
     fetchLyrics(name, artist)
       .then((text) => {
         if (requestId !== requestIdRef.current) return;
-        if (text) {
-          const parsed = /\[\d{1,2}:\d{1,2}/.test(text) ? parseLrc(text) : plainLines(text);
-          setLines(parsed);
-        }
+        if (text) setLines(parse(text));
       })
       .catch(() => undefined)
       .finally(() => {
@@ -38,7 +47,7 @@ export function useLyrics(name: string | null, artist?: string): { lines: Lyrics
     return () => {
       requestIdRef.current++;
     };
-  }, [name, artist]);
+  }, [name, artist, localLyrics]);
 
   useEffect(() => {
     if (lines.length === 0 || !isSynced(lines)) return;

@@ -22,9 +22,14 @@ def _bucket() -> AsyncIOMotorGridFSBucket:
     return AsyncIOMotorGridFSBucket(client[MONGO_DB], bucket_name=AUDIO_BUCKET)
 
 
-async def store_audio(filename: str, content_type: str, file) -> ObjectId:
+async def store_audio(filename: str, content_type: str, file, chunk_size: int | None = None) -> ObjectId:
     bucket = _bucket()
-    fid = await bucket.upload_from_stream(filename, file, metadata={"content_type": content_type or "audio/mpeg"})
+    fid = await bucket.upload_from_stream(
+        filename,
+        file,
+        metadata={"content_type": content_type or "audio/mpeg"},
+        chunk_size=chunk_size or GRIDFS_CHUNK,
+    )
     return fid
 
 
@@ -35,13 +40,13 @@ async def delete_audio(file_id: ObjectId) -> None:
         pass
 
 
-async def _stream_piece(file_id: ObjectId, start: int, end: int):
-    first_n = start // GRIDFS_CHUNK
+async def _stream_piece(file_id: ObjectId, start: int, end: int, chunk_size: int = GRIDFS_CHUNK):
+    first_n = start // chunk_size
     cursor = dbmod.audio_chunks().find({"files_id": file_id, "n": {"$gte": first_n}}).sort("n", 1)
     remaining = end - start + 1
     async for chunk in cursor:
         data = chunk["data"]
-        chunk_start = chunk["n"] * GRIDFS_CHUNK
+        chunk_start = chunk["n"] * chunk_size
         begin = max(0, start - chunk_start)
         piece = bytes(data[begin : begin + remaining])
         remaining -= len(piece)
@@ -70,6 +75,7 @@ async def serve_audio(song_id: str, request: Request | None) -> StreamingRespons
 
     length = int(meta.get("length", 0))
     content_type = (meta.get("metadata") or {}).get("content_type") or "audio/mpeg"
+    chunk_size = int(meta.get("chunkSize") or GRIDFS_CHUNK)
 
     range_header = request.headers.get("Range") if request is not None else None
     if range_header and range_header.startswith("bytes=") and "-" in range_header:
@@ -97,7 +103,7 @@ async def serve_audio(song_id: str, request: Request | None) -> StreamingRespons
             "Last-Modified": upload_date.strftime("%a, %d %b %Y %H:%M:%S GMT"),
         }
         return StreamingResponse(
-            _stream_piece(file_id, start, end),
+            _stream_piece(file_id, start, end, chunk_size),
             status_code=206,
             media_type=content_type,
             headers=headers,
@@ -111,7 +117,7 @@ async def serve_audio(song_id: str, request: Request | None) -> StreamingRespons
         "Last-Modified": upload_date.strftime("%a, %d %b %Y %H:%M:%S GMT"),
     }
     return StreamingResponse(
-        _stream_piece(file_id, 0, max(0, length - 1)),
+        _stream_piece(file_id, 0, max(0, length - 1), chunk_size),
         status_code=200,
         media_type=content_type,
         headers=headers,
@@ -137,8 +143,9 @@ async def serve_cover(song_id: str) -> StreamingResponse:
 
     length = int(meta.get("length", 0))
     content_type = (meta.get("metadata") or {}).get("content_type") or "image/jpeg"
+    chunk_size = int(meta.get("chunkSize") or GRIDFS_CHUNK)
     return StreamingResponse(
-        _stream_piece(file_id, 0, max(0, length - 1)),
+        _stream_piece(file_id, 0, max(0, length - 1), chunk_size),
         status_code=200,
         media_type=content_type,
         headers={

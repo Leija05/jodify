@@ -76,6 +76,8 @@ export interface Song {
   name: string;
   url: string;
   artist?: string;
+  album?: string;
+  lyrics?: string;
   likes?: number;
   added_by?: string;
   created_at?: string;

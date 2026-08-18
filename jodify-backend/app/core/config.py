@@ -28,6 +28,6 @@ JWT_EXPIRES_MINUTES = int(os.getenv("JWT_EXPIRES_MINUTES", "43200"))
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 
 AUDIO_BUCKET = "audio"
-GRIDFS_CHUNK = 255 * 1024
+GRIDFS_CHUNK = 4 * 1024 * 1024
 
 SEED_AUDIO_DIR = Path(__file__).resolve().parents[2] / "seed_audio"

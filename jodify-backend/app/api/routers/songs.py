@@ -25,8 +25,10 @@ def song_view(doc: dict) -> dict:
         "created_at": doc.get("created_at"),
         "duration": doc.get("duration"),
         "artist": doc.get("artist"),
+        "album": doc.get("album"),
         "category": doc.get("category"),
         "genre": doc.get("genre"),
+        "lyrics": doc.get("lyrics"),
         "cover_url": f"/songs/{song_id}/cover" if doc.get("cover_file_id") else None,
         "play_count": doc.get("play_count", 0),
     }
@@ -54,6 +56,8 @@ async def upload_song(
     file: UploadFile = File(...),
     name: str | None = Form(None),
     cover: UploadFile | None = File(None),
+    album: str | None = Form(None),
+    lyrics: str | None = Form(None),
     _admin: Annotated[dict, Depends(require_admin)] = None,
 ) -> dict:
     raw_name = (name or file.filename or "cancion").strip()
@@ -81,6 +85,12 @@ async def upload_song(
         "created_at": datetime.now().isoformat(),
         "audio_file_id": fid,
     }
+    album_clean = (album or "").strip()
+    if album_clean:
+        doc["album"] = album_clean
+    lyrics_clean = (lyrics or "").strip()
+    if lyrics_clean:
+        doc["lyrics"] = lyrics_clean
     if cover is not None:
         cover_bytes = await cover.read()
         if cover_bytes:

@@ -13,11 +13,13 @@ export const songsService = {
     return result.likes;
   },
 
-  async uploadAudio(file: File, name?: string, cover?: Blob): Promise<Song> {
+  async uploadAudio(file: File, name?: string, cover?: Blob, album?: string, lyrics?: string): Promise<Song> {
     const formData = new FormData();
     formData.append('file', file, sanitizeFileName(file.name) || file.name);
     if (name) formData.append('name', name);
     if (cover) formData.append('cover', cover, 'cover.jpg');
+    if (album) formData.append('album', album);
+    if (lyrics) formData.append('lyrics', lyrics);
 
     const headers: Record<string, string> = {};
     const token = getAuthToken();
@@ -61,7 +63,15 @@ export const songsService = {
 
 export async function extractMetadataFromFile(
   file: File,
-): Promise<{ title?: string; artist?: string; picture?: string; pictureData?: Uint8Array; pictureFormat?: string }> {
+): Promise<{
+  title?: string;
+  artist?: string;
+  album?: string;
+  lyrics?: string;
+  picture?: string;
+  pictureData?: Uint8Array;
+  pictureFormat?: string;
+}> {
   try {
     const { parseBlob } = await import('music-metadata');
     const metadata = await parseBlob(file, { duration: true });
@@ -71,9 +81,18 @@ export async function extractMetadataFromFile(
       const blob = new Blob([picture.data], { type: picture.format });
       pictureUrl = URL.createObjectURL(blob);
     }
+    const lyricTags = metadata.common.lyrics;
+    const lyrics =
+      typeof lyricTags === 'string'
+        ? lyricTags
+        : Array.isArray(lyricTags)
+          ? lyricTags.map((l) => l.text).filter(Boolean).join('\n') || undefined
+          : undefined;
     return {
       title: metadata.common.title,
       artist: metadata.common.artist,
+      album: metadata.common.album,
+      lyrics,
       picture: pictureUrl,
       pictureData: picture?.data,
       pictureFormat: picture?.format,

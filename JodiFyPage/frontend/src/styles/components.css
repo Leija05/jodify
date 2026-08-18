@@ -640,3 +640,95 @@
   border-color: rgba(var(--secondary-rgb), 0.35);
   background: rgba(var(--secondary-rgb), 0.1);
 }
+
+.jf-context-menu {
+  position: fixed;
+  z-index: var(--z-modal);
+  min-width: 216px;
+  padding: 6px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-top-color: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-lg, 0 18px 50px rgba(0, 0, 0, 0.45));
+  transform-origin: top left;
+}
+
+.jf-context-menu-head {
+  padding: 7px 10px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 5px;
+}
+
+.jf-context-menu-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.jf-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 10px);
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md, 10px);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.jf-context-menu-item:hover,
+.jf-context-menu-item:focus-visible {
+  background: var(--surface-hover);
+  color: var(--accent);
+  outline: none;
+}
+
+.jf-context-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+
+.jf-context-menu-item:hover .jf-context-menu-icon,
+.jf-context-menu-item:focus-visible .jf-context-menu-icon {
+  color: var(--accent);
+}
+
+.jf-context-menu-item.is-danger,
+.jf-context-menu-item.is-danger .jf-context-menu-icon {
+  color: var(--danger, #ff5d5d);
+}
+
+.jf-context-menu-item.is-danger:hover,
+.jf-context-menu-item.is-danger:focus-visible {
+  background: rgba(var(--danger-rgb, 255, 80, 80), 0.12);
+  color: var(--danger, #ff5d5d);
+}
+
+.jf-context-menu-item.is-danger:hover .jf-context-menu-icon,
+.jf-context-menu-item.is-danger:focus-visible .jf-context-menu-icon {
+  color: var(--danger, #ff5d5d);
+}
+
+.jf-context-menu-sep {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--border);
+}

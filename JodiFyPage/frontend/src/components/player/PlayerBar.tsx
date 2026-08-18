@@ -1,9 +1,11 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Heart, ArrowsOut, Moon, Sun, List, SpeakerHigh, SpeakerSimpleX } from '@phosphor-icons/react';
+import { useEffect, useRef, useState } from 'react';
+import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Heart, ArrowsOut, Moon, Sun, List, SpeakerHigh, SpeakerSimpleX, TextT } from '@phosphor-icons/react';
 import { usePlayerStore } from '../../store/player.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useUiStore } from '../../store/ui.store';
 import { useLibraryStore } from '../../store/library.store';
+import { useLyrics } from '../../hooks/useLyrics';
 import { Slider } from '../ui/Slider';
 import { Visualizer } from './Visualizer';
 import { toggleLikeCurrent } from '../../services/player-shortcuts';
@@ -18,6 +20,20 @@ export function PlayerBar() {
 
   const song = player.currentSong;
   const isLiked = useLibraryStore((s) => (song ? s.likedIds.includes(song.id) : false));
+  const [lyricsOpen, setLyricsOpen] = useState(false);
+  const { lines, activeIndex, loading } = useLyrics(song?.name ?? null, songArtistMeta(song), song?.lyrics ?? null);
+  const lyricsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeIndex < 0 || !lyricsRef.current) return;
+    const container = lyricsRef.current;
+    const active = container.querySelector<HTMLElement>(`.jf-lyrics-line--${activeIndex}`);
+    if (!active) return;
+    const cRect = container.getBoundingClientRect();
+    const aRect = active.getBoundingClientRect();
+    const top = container.scrollTop + aRect.top - cRect.top - container.clientHeight / 2 + aRect.height / 2;
+    container.scrollTo({ top, behavior: 'smooth' });
+  }, [activeIndex, lyricsOpen]);
 
   const handlePlayPause = () => {
     if (!song) return;
@@ -62,7 +78,10 @@ export function PlayerBar() {
         </AnimatePresence>
         <div className="jf-player-meta">
           <p className={`jf-player-title ${song && song.name.length > 28 ? 'is-long' : ''}`}>{song?.name ?? 'Nada sonando'}</p>
-          <p className="jf-player-artist">{songArtistMeta(song) || (song?.added_by ? `Por ${song.added_by}` : 'JodiFy Studio')}</p>
+          <p className="jf-player-artist">
+            {songArtistMeta(song) || (song?.added_by ? `Por ${song.added_by}` : 'JodiFy Studio')}
+            {song?.album ? ` · ${song.album}` : ''}
+          </p>
         </div>
         <button
           className={`jf-like-btn ${isLiked ? 'is-liked' : ''}`}
@@ -139,6 +158,14 @@ export function PlayerBar() {
         >
           {settings.theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
+        <button
+          className={`jf-control jf-lyrics-toggle ${lyricsOpen ? 'is-active' : ''}`}
+          aria-label="Letras"
+          onClick={() => setLyricsOpen((v) => !v)}
+          disabled={!song}
+        >
+          <TextT size={17} weight="bold" />
+        </button>
         <button className="jf-control jf-fullscreen-btn" aria-label="Pantalla completa" onClick={() => ui.open('fullscreen')} disabled={!song}>
           <ArrowsOut size={17} />
         </button>
@@ -146,6 +173,49 @@ export function PlayerBar() {
           <List size={17} />
         </button>
       </div>
+
+      <AnimatePresence>
+        {lyricsOpen && song && (
+          <motion.div
+            className="jf-player-lyrics"
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="jf-player-lyrics-head">
+              <span className="jf-player-lyrics-label">Letras</span>
+              <span className="jf-player-lyrics-name">
+                {song.name}
+                {song.album ? ` · ${song.album}` : ''}
+              </span>
+            </div>
+            <div className="jf-player-lyrics-body" ref={lyricsRef} aria-live="polite">
+              {loading ? (
+                <div className="jf-lyrics-skeleton" aria-label="Cargando letras">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              ) : lines.length === 0 ? (
+                <p className="jf-lyrics-hint">Sin letras disponibles. Deja que la música hable.</p>
+              ) : (
+                lines.map((line, i) => (
+                  <p
+                    key={i}
+                    className={`jf-lyrics-line jf-lyrics-line--${i} ${i === activeIndex ? 'is-active' : ''} ${line.time >= 0 ? 'is-seekable' : ''}`}
+                    onClick={() => {
+                      if (line.time >= 0) usePlayerStore.getState().seek(line.time);
+                    }}
+                  >
+                    {line.text}
+                  </p>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.footer>
   );
 }

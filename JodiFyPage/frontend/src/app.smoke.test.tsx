@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import App from './App';
 import { usePlayerStore } from './store/player.store';
 import { useLibraryStore } from './store/library.store';
@@ -34,14 +34,16 @@ function resetStores(): void {
     globalAlpha: 1,
   } as unknown as CanvasRenderingContext2D;
   HTMLCanvasElement.prototype.getContext = (() => mockCtx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
-  usePlayerStore.setState(usePlayerStore.getInitialState());
-  useLibraryStore.setState(useLibraryStore.getInitialState());
-  useQueueStore.setState(useQueueStore.getInitialState());
-  useUiStore.setState(useUiStore.getInitialState());
-  useJamStore.setState(useJamStore.getInitialState());
-  useSettingsStore.setState(useSettingsStore.getInitialState());
-  useToastStore.setState(useToastStore.getInitialState());
-  useEqStore.setState(useEqStore.getInitialState());
+  act(() => {
+    usePlayerStore.setState(usePlayerStore.getInitialState());
+    useLibraryStore.setState(useLibraryStore.getInitialState());
+    useQueueStore.setState(useQueueStore.getInitialState());
+    useUiStore.setState(useUiStore.getInitialState());
+    useJamStore.setState(useJamStore.getInitialState());
+    useSettingsStore.setState(useSettingsStore.getInitialState());
+    useToastStore.setState(useToastStore.getInitialState());
+    useEqStore.setState(useEqStore.getInitialState());
+  });
   localStorage.clear();
 }
 

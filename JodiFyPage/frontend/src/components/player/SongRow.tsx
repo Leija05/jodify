@@ -5,6 +5,7 @@ import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
 import { useQueueStore } from '../../store/queue.store';
 import { useToastStore } from '../../store/toast.store';
+import { useContextMenuStore } from '../../store/contextmenu.store';
 import { useSession } from '../../context/SessionContext';
 import { songArtistMeta } from '../../lib/utils';
 import { SongCover } from '../ui/SongCover';
@@ -85,6 +86,10 @@ export function SongRow({ song, index }: SongRowProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.45), ease: [0.16, 1, 0.3, 1] }}
       onClick={handlePlay}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        useContextMenuStore.getState().show(e.clientX, e.clientY, song);
+      }}
       data-testid={`song-row-${song.id}`}
     >
       <div className="jf-song-cover-wrap">
@@ -97,6 +102,7 @@ export function SongRow({ song, index }: SongRowProps) {
         <p className="jf-song-name">{song.name}</p>
         <p className="jf-song-meta">
           {songArtistMeta(song) || (song.added_by ? `Por ${song.added_by}` : 'JodiFy')}
+          {song.album ? ` · ${song.album}` : ''}
           {song.likes ? ` · ${song.likes} ♥` : ''}
         </p>
       </div>
