@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Platform,
   Pressable,
   SafeAreaView,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { UpdateModal, type UpdateModalStatus } from './src/components/UpdateModal';
 import {
   checkForUpdate,
   currentAppVersion,
@@ -34,6 +34,8 @@ type UpdateStatus = 'checking' | 'available' | 'installing' | 'up-to-date' | 'er
 export default function App() {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [modalStatus, setModalStatus] = useState<UpdateModalStatus>('available');
+  const [modalOpen, setModalOpen] = useState(false);
   const checkedRef = useRef(false);
 
   const runCheck = useCallback(async (silent = false) => {
@@ -56,53 +58,33 @@ export default function App() {
       }
       setUpdateStatus('available');
       if (!silent) {
-        Alert.alert(
-          'Nueva versión disponible',
-          `JodiFy ${result.latest} ya está lista.\n\n¿Querés actualizar ahora o hacerlo más tarde?`,
-          [
-            {
-              text: 'Después',
-              style: 'cancel',
-              onPress: () => {
-                void skipVersion(result.latest);
-                setUpdateStatus('available');
-              },
-            },
-            {
-              text: 'Actualizar ahora',
-              onPress: () => {
-                void doInstall(result);
-              },
-            },
-          ],
-          { cancelable: true, onDismiss: () => void skipVersion(result.latest) },
-        );
+        setModalStatus('available');
+        setModalOpen(true);
       }
     } catch {
       setUpdateStatus('error');
     }
   }, []);
 
-  const doInstall = useCallback(async (result: UpdateCheckResult) => {
-    if (!result.apkUrl) {
-      Alert.alert(
-        'No se pudo actualizar',
-        'El APK de esta versión no está disponible. Podés descargarlo desde la página de releases de JodiFy.',
-      );
+  const doInstall = useCallback(async () => {
+    if (!updateInfo) return;
+    if (!updateInfo.apkUrl) {
+      setModalStatus('blocked');
       return;
     }
     setUpdateStatus('installing');
-    const ok = await installUpdate(result.apkUrl);
+    setModalStatus('installing');
+    const ok = await installUpdate(updateInfo.apkUrl);
     if (!ok) {
+      setModalStatus(Platform.OS === 'ios' ? 'blocked' : 'error');
       setUpdateStatus('available');
-      Alert.alert(
-        'Instalación no disponible',
-        Platform.OS === 'ios'
-          ? 'En iOS las actualizaciones se instalan desde la App Store.'
-          : 'No se pudo instalar la actualización. Revisá que el dispositivo permita instalar apps de orígenes desconocidos.',
-      );
     }
-  }, []);
+  }, [updateInfo]);
+
+  const handleLater = useCallback(() => {
+    setModalOpen(false);
+    if (updateInfo) void skipVersion(updateInfo.latest);
+  }, [updateInfo]);
 
   useEffect(() => {
     if (checkedRef.current) return;
@@ -169,13 +151,30 @@ export default function App() {
               <Text style={styles.settingsButtonText}>Buscar actualizaciones</Text>
             </Pressable>
             {updateStatus === 'available' && updateInfo && (
-              <Pressable style={[styles.settingsButton, styles.settingsButtonPrimary]} onPress={() => void doInstall(updateInfo)}>
+              <Pressable
+                style={[styles.settingsButton, styles.settingsButtonPrimary]}
+                onPress={() => {
+                  setModalStatus('available');
+                  setModalOpen(true);
+                }}
+              >
                 <Text style={styles.settingsButtonTextPrimary}>Instalar actualización</Text>
               </Pressable>
             )}
           </View>
         </View>
       </ScrollView>
+
+      <UpdateModal
+        visible={modalOpen}
+        current={currentAppVersion()}
+        latest={updateInfo?.latest ?? ''}
+        notes={updateInfo?.notes ?? ''}
+        status={modalStatus}
+        onInstall={() => void doInstall()}
+        onLater={handleLater}
+        onClose={handleLater}
+      />
     </SafeAreaView>
   );
 }

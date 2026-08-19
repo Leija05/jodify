@@ -19,6 +19,7 @@ export interface UpdateCheckResult {
   current: string;
   latest: string;
   apkUrl: string | null;
+  notes: string;
 }
 
 export function compareVersions(a: string, b: string): number {
@@ -58,6 +59,7 @@ export async function checkForUpdate(): Promise<UpdateCheckResult | null> {
       current,
       latest: release.version,
       apkUrl: release.apkUrl,
+      notes: release.notes,
     };
   } catch {
     return null;

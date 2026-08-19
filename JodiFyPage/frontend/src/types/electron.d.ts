@@ -3,6 +3,7 @@ export interface DesktopUpdaterState {
   downloading: boolean;
   downloaded: boolean;
   latestVersion: string | null;
+  notes: string;
   percent: number;
   error: string | null;
 }
@@ -20,9 +21,17 @@ interface DesktopUpdaterApi {
   onEvent: (callback: (payload: { type: string; state?: DesktopUpdaterState }) => void) => () => void;
 }
 
+export type TaskbarControlAction = 'prev' | 'toggle' | 'next' | 'like';
+
+interface DesktopPlayerApi {
+  setState: (state: { playing: boolean; hasTrack: boolean }) => void;
+  onControl: (callback: (payload: { action: TaskbarControlAction }) => void) => () => void;
+}
+
 declare global {
   interface Window {
     jodifyUpdater?: DesktopUpdaterApi;
+    jodifyPlayer?: DesktopPlayerApi;
   }
 }
 

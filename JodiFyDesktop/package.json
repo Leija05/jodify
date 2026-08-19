@@ -1,6 +1,6 @@
 {
   "name": "jodify-desktop",
-  "version": "2.1.0",
+  "version": "1.2.4",
   "private": true,
   "description": "JodiFy — Free Music For Friends (escritorio)",
   "main": "main.js",
@@ -38,6 +38,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "taskbar-icons.js",
       "assets/icon.ico",
       "dist-electron/**/*"
     ],

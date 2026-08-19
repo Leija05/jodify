@@ -17,3 +17,12 @@ contextBridge.exposeInMainWorld('jodifyUpdater', {
     return () => ipcRenderer.removeListener('updater:event', listener);
   },
 });
+
+contextBridge.exposeInMainWorld('jodifyPlayer', {
+  setState: (state) => ipcRenderer.send('player:state', state),
+  onControl: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('player:control', listener);
+    return () => ipcRenderer.removeListener('player:control', listener);
+  },
+});

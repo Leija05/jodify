@@ -13,6 +13,7 @@ import './styles/social.css';
 import './styles/admin.css';
 import './styles/dev.css';
 import './styles/auth.css';
+import './styles/updater.css';
 import './styles/responsive.css';
 import App from './App';
 

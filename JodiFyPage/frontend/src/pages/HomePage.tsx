@@ -11,6 +11,7 @@ import { RecommendModal } from '../components/jam/RecommendModal';
 import { HostRecommendations } from '../components/jam/HostRecommendations';
 import { JamHistoryModal } from '../components/jam/JamHistoryModal';
 import { SettingsModal } from '../components/settings/SettingsModal';
+import { DesktopUpdaterModal } from '../components/settings/DesktopUpdaterModal';
 import { ShortcutsModal } from '../components/settings/ShortcutsModal';
 import { UploadModal } from '../components/admin/UploadModal';
 import { EditSongModal } from '../components/admin/EditSongModal';
@@ -24,12 +25,14 @@ import { ListeningHistoryModal } from '../components/social/ListeningHistoryModa
 import { FullscreenPlayer } from '../components/player/FullscreenPlayer';
 import { OfflineModal } from '../components/offline/OfflineModal';
 import { useLoadLibrary } from '../hooks/useLoadLibrary';
+import { useTaskbarControls } from '../hooks/useTaskbarControls';
 
 export function HomePage() {
   const { session } = useSession();
   const navigate = useNavigate();
 
   useLoadLibrary(session);
+  useTaskbarControls();
 
   useEffect(() => {
     if (!session) navigate('/login', { replace: true });
@@ -50,6 +53,7 @@ export function HomePage() {
       <HostRecommendations />
       <JamHistoryModal />
       <SettingsModal />
+      <DesktopUpdaterModal />
       <ShortcutsModal />
       <UploadModal />
       <EditSongModal />

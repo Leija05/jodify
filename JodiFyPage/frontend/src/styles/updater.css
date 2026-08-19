@@ -1,0 +1,372 @@
+/* ============ Updater — modal de actualización (Neon Obsidian) ============ */
+.jf-update-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 1);
+  background: rgba(3, 3, 6, 0.74);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+}
+
+[data-theme='light'] .jf-update-backdrop {
+  background: rgba(28, 32, 52, 0.4);
+}
+
+.jf-update-card {
+  position: relative;
+  width: min(440px, 100%);
+  background:
+    linear-gradient(180deg, rgba(var(--primary-rgb), 0.05), transparent 34%),
+    var(--surface-solid);
+  border: 1px solid var(--border);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 90px rgba(var(--primary-rgb), 0.16);
+  overflow: hidden;
+}
+
+[data-theme='light'] .jf-update-card {
+  background:
+    linear-gradient(180deg, rgba(var(--primary-rgb), 0.05), transparent 34%),
+    var(--surface-solid);
+  border-top-color: rgba(255, 255, 255, 0.65);
+}
+
+.jf-update-aura {
+  position: absolute;
+  inset: -120px -80px auto -80px;
+  height: 280px;
+  background:
+    radial-gradient(420px 190px at 24% 20%, rgba(var(--primary-rgb), 0.2), transparent 62%),
+    radial-gradient(420px 190px at 76% 12%, rgba(var(--secondary-rgb), 0.13), transparent 62%),
+    radial-gradient(300px 150px at 52% 30%, rgba(var(--accent-rgb), 0.1), transparent 65%);
+  pointer-events: none;
+}
+
+[data-theme='light'] .jf-update-aura {
+  opacity: 0.8;
+}
+
+.jf-update-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+
+.jf-update-close:hover {
+  color: var(--text);
+  background: var(--surface-active);
+}
+
+.jf-update-close:active {
+  transform: scale(0.94);
+}
+
+.jf-update-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 38px 28px 8px;
+}
+
+.jf-update-mark {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: var(--gradient-primary);
+  box-shadow: 0 12px 30px rgba(var(--primary-rgb), 0.38);
+  z-index: 1;
+}
+
+[data-theme='light'] .jf-update-mark {
+  box-shadow: 0 12px 26px rgba(var(--primary-rgb), 0.3);
+}
+
+.jf-update-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-top-color: rgba(255, 255, 255, 0.72);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.jf-update-mark-glow {
+  position: absolute;
+  inset: -14px;
+  border-radius: var(--radius-full);
+  background: radial-gradient(50% 50% at 50% 50%, rgba(var(--primary-rgb), 0.32), transparent 70%);
+  pointer-events: none;
+}
+
+.jf-update-eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 22px;
+  margin-top: 2px;
+}
+
+.jf-update-eq-bar {
+  width: 5px;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--gradient-primary);
+  transform: scaleY(0.22);
+  transform-origin: bottom;
+  transition: transform 0.5s var(--ease-out);
+}
+
+.jf-update-eq-bar--live {
+  animation: jf-update-eq 1.05s ease-in-out infinite;
+}
+
+@keyframes jf-update-eq {
+  0%,
+  100% {
+    transform: scaleY(0.2);
+  }
+  38% {
+    transform: scaleY(1);
+  }
+  62% {
+    transform: scaleY(0.55);
+  }
+}
+
+.jf-update-eyebrow {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jf-update-versions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.jf-update-chip {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  letter-spacing: -0.02em;
+}
+
+.jf-update-chip--old {
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-decoration: line-through;
+  text-decoration-color: rgba(var(--accent-rgb), 0.55);
+  text-decoration-thickness: 1.5px;
+}
+
+.jf-update-chip--new {
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.22), rgba(var(--secondary-rgb), 0.14));
+  border: 1px solid rgba(var(--secondary-rgb), 0.38);
+  box-shadow: 0 0 22px rgba(var(--primary-rgb), 0.22);
+}
+
+.jf-update-arrow {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.jf-update-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 28px 28px;
+}
+
+.jf-update-notes {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jf-update-notes-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.jf-update-notes-text {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-height: 96px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.jf-update-notes-text--center {
+  text-align: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.jf-update-error {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--error);
+  background: rgba(var(--error-rgb), 0.08);
+  border: 1px solid rgba(var(--error-rgb), 0.28);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  word-break: break-word;
+}
+
+.jf-update-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.jf-update-progress-track {
+  position: relative;
+  flex: 1;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--surface-active);
+  overflow: hidden;
+}
+
+.jf-update-progress-fill {
+  position: relative;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
+  transition: width 0.35s var(--ease-out);
+}
+
+.jf-update-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35) 50%, transparent 80%);
+  background-size: 200% 100%;
+  animation: jf-update-shimmer 1.4s linear infinite;
+}
+
+@keyframes jf-update-shimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+.jf-update-percent {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  min-width: 38px;
+  text-align: right;
+}
+
+.jf-update-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.jf-update-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 0.16s var(--ease-out), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+
+.jf-update-btn:active {
+  transform: scale(0.98);
+}
+
+.jf-update-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+
+.jf-update-btn--primary {
+  color: #fff;
+  background: var(--gradient-primary);
+  border: none;
+  box-shadow: 0 8px 22px rgba(var(--primary-rgb), 0.35);
+}
+
+.jf-update-btn--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(var(--primary-rgb), 0.45);
+}
+
+.jf-update-btn--ghost {
+  color: var(--text);
+  background: var(--surface-hover);
+  border: 1px solid var(--border-strong);
+}
+
+.jf-update-btn--ghost:hover {
+  background: var(--surface-active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jf-update-eq-bar--live {
+    animation: none;
+    transform: scaleY(0.55);
+  }
+  .jf-update-progress-fill::after {
+    animation: none;
+  }
+}

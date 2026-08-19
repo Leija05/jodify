@@ -1,7 +1,8 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
+const { createTaskbarIcons } = require('./taskbar-icons');
 
 // ---- Cargador minimalista de .env (sin dependencias) ----
 function loadEnvFile(file) {
@@ -59,22 +60,72 @@ function createWindow() {
   return win;
 }
 
+// ==================== Thumbar buttons (Windows, barra de tarea) ====================
+// Al hacer hover sobre el icono de la app en la barra de tarea aparecen los
+// controles de reproducción: anterior, reproducir/pausa, siguiente y me gusta.
+// El renderer avisa el estado (reproduciendo / hay canción) vía IPC y el main
+// actualiza los botones (icono play/pausa y disabled sin canción).
+const thumbIcons = process.platform === 'win32' ? createTaskbarIcons() : null;
+let playerStatus = { playing: false, hasTrack: false };
+
+function sendPlayerControl(action) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('player:control', { action });
+  }
+}
+
+function updateThumbar() {
+  if (!thumbIcons) return;
+  const win = BrowserWindow.getAllWindows()[0];
+  if (!win) return;
+  const flags = playerStatus.hasTrack ? [] : ['disabled'];
+  const playIcon = playerStatus.playing ? thumbIcons.pause : thumbIcons.play;
+  win.setThumbarButtons([
+    { tooltip: 'Anterior', icon: thumbIcons.prev, flags, click: () => sendPlayerControl('prev') },
+    {
+      tooltip: playerStatus.playing ? 'Pausa' : 'Reproducir',
+      icon: playIcon,
+      flags,
+      click: () => sendPlayerControl('toggle'),
+    },
+    { tooltip: 'Siguiente', icon: thumbIcons.next, flags, click: () => sendPlayerControl('next') },
+    { tooltip: 'Me gusta', icon: thumbIcons.heart, flags, click: () => sendPlayerControl('like') },
+  ]);
+}
+
+function registerPlayerIpc() {
+  ipcMain.on('player:state', (_event, state) => {
+    playerStatus = { playing: !!state?.playing, hasTrack: !!state?.hasTrack };
+    updateThumbar();
+  });
+}
+
 // ==================== Auto-update (electron-updater) ====================
 // Solo funciona en la app empaquetada (NSIS) con releases en GitHub.
 // Flujo: al iniciar se busca la versión en segundo plano, se descarga sola
-// y al terminar se pregunta "Actualizar ahora / Después".
+// y el renderer muestra un modal con "Actualizar ahora / Después".
 // Si elige "Después", la actualización queda lista y se puede instalar
-// desde Ajustes > Actualizaciones del renderer.
+// desde Ajustes > Actualizaciones o reabriendo el modal.
 const updaterState = {
   available: false,
   downloading: false,
   downloaded: false,
   latestVersion: null,
+  notes: '',
   percent: 0,
   error: null,
 };
 
 let pendingInstall = false;
+
+function extractNotes(info) {
+  if (!info) return '';
+  if (typeof info.releaseNotes === 'string') return info.releaseNotes;
+  if (Array.isArray(info.releaseNotes)) {
+    return info.releaseNotes.map((n) => n.note || '').filter(Boolean).join('\n');
+  }
+  return info.releaseName || '';
+}
 
 function sendToRenderer(payload) {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -100,6 +151,7 @@ function setupUpdater() {
     updaterState.downloading = true;
     updaterState.downloaded = false;
     updaterState.latestVersion = info.version;
+    updaterState.notes = extractNotes(info);
     updaterState.error = null;
     notifyState();
   });
@@ -122,6 +174,7 @@ function setupUpdater() {
     updaterState.downloading = false;
     updaterState.downloaded = true;
     updaterState.latestVersion = info.version;
+    updaterState.notes = extractNotes(info);
     updaterState.percent = 100;
     updaterState.error = null;
     notifyState();
@@ -130,29 +183,12 @@ function setupUpdater() {
       autoUpdater.quitAndInstall();
       return;
     }
-    promptInstallNow();
   });
 
   autoUpdater.on('error', (err) => {
     updaterState.error = err && err.message ? err.message : String(err);
     notifyState();
   });
-}
-
-async function promptInstallNow() {
-  const win = BrowserWindow.getAllWindows()[0];
-  if (!win) return;
-  const { response } = await dialog.showMessageBox(win, {
-    type: 'info',
-    title: 'JodiFy — Actualización disponible',
-    message: `Nueva versión ${updaterState.latestVersion} lista`,
-    detail: 'La actualización ya se descargó. ¿Querés reiniciar e instalarla ahora?\n\nSi elegís "Después", podés instalarla desde Ajustes > Actualizaciones.',
-    buttons: ['Actualizar ahora', 'Después'],
-    defaultId: 0,
-    cancelId: 1,
-    noLink: true,
-  });
-  if (response === 0) installUpdate();
 }
 
 function installUpdate() {
@@ -185,13 +221,18 @@ app.whenReady().then(() => {
   createWindow();
 
   registerUpdaterIpc();
+  registerPlayerIpc();
+  updateThumbar();
   if (app.isPackaged && !DEV_URL) {
     setupUpdater();
     autoUpdater.checkForUpdates();
   }
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+      updateThumbar();
+    }
   });
 });
 
