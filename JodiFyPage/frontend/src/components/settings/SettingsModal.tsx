@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Copy,
+  ArrowClockwise,
   ArrowSquareOut,
+  Copy,
   DownloadSimple,
   Key as KeyIcon,
   SignOut,
@@ -11,6 +12,7 @@ import {
   TrashSimple,
   WifiSlash,
 } from '@phosphor-icons/react';
+import type { DesktopUpdaterInfo, DesktopUpdaterState } from '../../types/electron';
 import { Modal } from '../ui/Modal';
 import { Switch } from '../ui/Switch';
 import { Button } from '../ui/Button';
@@ -38,6 +40,48 @@ export function SettingsModal() {
   const [newAdminUser, setNewAdminUser] = useState('');
   const [newAdminPass, setNewAdminPass] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
+
+  const updater = window.jodifyUpdater;
+  const [updaterInfo, setUpdaterInfo] = useState<DesktopUpdaterInfo | null>(null);
+
+  useEffect(() => {
+    if (!updater) return;
+    const unsubscribe = updater.onEvent((payload) => {
+      if (payload.type === 'state' && payload.state) {
+        setUpdaterInfo((prev) => (prev ? { ...prev, state: payload.state as DesktopUpdaterState } : prev));
+      }
+    });
+    void updater
+      .getState()
+      .then(setUpdaterInfo)
+      .catch(() => undefined);
+    return unsubscribe;
+  }, [updater]);
+
+  const checkForUpdates = async () => {
+    if (!updater) return;
+    useToastStore.getState().show('Buscando actualizaciones…', 'info');
+    await updater.check().catch(() => {
+      useToastStore.getState().show('No se pudo buscar actualizaciones', 'error');
+    });
+  };
+
+  const installUpdate = async () => {
+    if (!updater) return;
+    await updater.install().catch(() => {
+      useToastStore.getState().show('No se pudo instalar la actualización', 'error');
+    });
+  };
+
+  const updaterStatus = (() => {
+    const s = updaterInfo?.state;
+    if (!s) return null;
+    if (s.error) return `Error: ${s.error}`;
+    if (s.downloaded) return `Lista para instalar (v${s.latestVersion})`;
+    if (s.downloading) return `Descargando v${s.latestVersion}… ${s.percent}%`;
+    if (s.available) return `Disponible: v${s.latestVersion}`;
+    return 'Actualizada';
+  })();
 
   const createAdminUser = async () => {
     const username = newAdminUser.trim();
@@ -299,6 +343,31 @@ export function SettingsModal() {
             </div>
             <p className="jf-settings-token-hint">
               Como admin solo podés crear cuentas de usuario; el dev puede asignar roles superiores.
+            </p>
+          </div>
+        )}
+
+        {updater && (
+          <div className="jf-settings-token">
+            <p className="jf-settings-timer-title">Actualizaciones</p>
+            <div className="jf-settings-timer-row">
+              <span className="jf-settings-count">
+                Versión actual: <strong>{updaterInfo?.version ?? '…'}</strong>
+              </span>
+              {updaterStatus && <span className="jf-settings-count">{updaterStatus}</span>}
+            </div>
+            <div className="jf-settings-timer-row jf-settings-gap">
+              <Button variant="glass" size="sm" onClick={() => void checkForUpdates()}>
+                <ArrowClockwise size={14} /> Buscar actualizaciones
+              </Button>
+              {(updaterInfo?.state.downloaded || updaterInfo?.state.available) && (
+                <Button variant="primary" size="sm" onClick={() => void installUpdate()}>
+                  <DownloadSimple size={14} /> Instalar actualización
+                </Button>
+              )}
+            </div>
+            <p className="jf-settings-token-hint">
+              Si hay una actualización descargada, se instala desde aquí sin abrir el navegador.
             </p>
           </div>
         )}

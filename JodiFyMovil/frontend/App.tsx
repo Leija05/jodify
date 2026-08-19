@@ -1,10 +1,27 @@
-import React from 'react';
-import { SafeAreaView, StyleSheet, Text, View, ScrollView, StatusBar } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {
+  checkForUpdate,
+  currentAppVersion,
+  getSkippedVersion,
+  installUpdate,
+  skipVersion,
+  type UpdateCheckResult,
+} from './src/services/update.service';
 
 const BRAND = {
   name: 'JodiFy',
   tagline: 'Free Music For Friends',
-  status: 'v2.0',
 };
 
 const TRACKS = [
@@ -12,7 +29,104 @@ const TRACKS = [
   { id: '2', name: 'Tu primera canción', artist: 'JodiFy' },
 ];
 
+type UpdateStatus = 'checking' | 'available' | 'installing' | 'up-to-date' | 'error' | 'idle';
+
 export default function App() {
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const checkedRef = useRef(false);
+
+  const runCheck = useCallback(async (silent = false) => {
+    setUpdateStatus('checking');
+    try {
+      const result = await checkForUpdate();
+      if (!result) {
+        setUpdateStatus(silent ? 'idle' : 'error');
+        return;
+      }
+      setUpdateInfo(result);
+      if (!result.available) {
+        setUpdateStatus('up-to-date');
+        return;
+      }
+      const skipped = await getSkippedVersion();
+      if (result.latest === skipped) {
+        setUpdateStatus('available');
+        return;
+      }
+      setUpdateStatus('available');
+      if (!silent) {
+        Alert.alert(
+          'Nueva versión disponible',
+          `JodiFy ${result.latest} ya está lista.\n\n¿Querés actualizar ahora o hacerlo más tarde?`,
+          [
+            {
+              text: 'Después',
+              style: 'cancel',
+              onPress: () => {
+                void skipVersion(result.latest);
+                setUpdateStatus('available');
+              },
+            },
+            {
+              text: 'Actualizar ahora',
+              onPress: () => {
+                void doInstall(result);
+              },
+            },
+          ],
+          { cancelable: true, onDismiss: () => void skipVersion(result.latest) },
+        );
+      }
+    } catch {
+      setUpdateStatus('error');
+    }
+  }, []);
+
+  const doInstall = useCallback(async (result: UpdateCheckResult) => {
+    if (!result.apkUrl) {
+      Alert.alert(
+        'No se pudo actualizar',
+        'El APK de esta versión no está disponible. Podés descargarlo desde la página de releases de JodiFy.',
+      );
+      return;
+    }
+    setUpdateStatus('installing');
+    const ok = await installUpdate(result.apkUrl);
+    if (!ok) {
+      setUpdateStatus('available');
+      Alert.alert(
+        'Instalación no disponible',
+        Platform.OS === 'ios'
+          ? 'En iOS las actualizaciones se instalan desde la App Store.'
+          : 'No se pudo instalar la actualización. Revisá que el dispositivo permita instalar apps de orígenes desconocidos.',
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (checkedRef.current) return;
+    checkedRef.current = true;
+    void runCheck();
+  }, [runCheck]);
+
+  const updateLabel = (() => {
+    switch (updateStatus) {
+      case 'checking':
+        return 'Buscando actualizaciones…';
+      case 'available':
+        return updateInfo ? `Nueva versión v${updateInfo.latest} disponible` : 'Actualización disponible';
+      case 'installing':
+        return 'Descargando e instalando…';
+      case 'up-to-date':
+        return `Estás al día (v${currentAppVersion()})`;
+      case 'error':
+        return 'No se pudo buscar actualizaciones';
+      default:
+        return `Versión v${currentAppVersion()}`;
+    }
+  })();
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -21,7 +135,7 @@ export default function App() {
           <Text style={styles.logo}>{BRAND.name}</Text>
           <Text style={styles.tagline}>{BRAND.tagline}</Text>
           <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>{BRAND.status}</Text>
+            <Text style={styles.statusText}>{`v${currentAppVersion()}`}</Text>
           </View>
         </View>
 
@@ -43,6 +157,24 @@ export default function App() {
             <Text style={styles.rowArtist}>{t.artist}</Text>
           </View>
         ))}
+
+        <Text style={styles.sectionTitle}>Configuración</Text>
+        <View style={styles.settingsCard}>
+          <View style={styles.settingsRow}>
+            <Text style={styles.settingsLabel}>Actualizaciones</Text>
+            <Text style={styles.settingsStatus}>{updateLabel}</Text>
+          </View>
+          <View style={styles.settingsButtons}>
+            <Pressable style={styles.settingsButton} onPress={() => void runCheck(true)} disabled={updateStatus === 'checking' || updateStatus === 'installing'}>
+              <Text style={styles.settingsButtonText}>Buscar actualizaciones</Text>
+            </Pressable>
+            {updateStatus === 'available' && updateInfo && (
+              <Pressable style={[styles.settingsButton, styles.settingsButtonPrimary]} onPress={() => void doInstall(updateInfo)}>
+                <Text style={styles.settingsButtonTextPrimary}>Instalar actualización</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -143,5 +275,56 @@ const styles = StyleSheet.create({
     color: '#8a8494',
     fontSize: 12,
     marginTop: 2,
+  },
+  settingsCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 24,
+    padding: 14,
+    gap: 12,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
+  settingsLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  settingsStatus: {
+    color: '#9b5cff',
+    fontSize: 12,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  settingsButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  settingsButton: {
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  settingsButtonPrimary: {
+    backgroundColor: '#9b5cff',
+    borderColor: '#9b5cff',
+  },
+  settingsButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  settingsButtonTextPrimary: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
