@@ -2,20 +2,35 @@
   "expo": {
     "name": "JodiFy Mobile",
     "slug": "jodify-mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "sdkVersion": "54.0.0",
-    "platforms": ["ios", "android", "web"],
-    "newArchEnabled": false,
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "newArchEnabled": true,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "android": {
+      "package": "com.leija.jodify",
+      "versionCode": 2
+    },
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#121212"
+      "backgroundColor": "#050507"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"]
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-audio",
+      "expo-font",
+      "./plugins/with-jodify-equalizer"
+    ]
   }
 }

@@ -42,11 +42,24 @@ async function fetchLatestRelease(): Promise<ReleaseInfo | null> {
   if (!res.ok) return null;
   const json = await res.json();
   const asset = (json.assets ?? []).find((a: { name: string }) => a.name.endsWith('.apk'));
+  // Solo hay actualización móvil si el release trae un APK.
+  if (!asset) return null;
+  const apkVersion = versionFromApkName(asset.name as string);
+  const tagVersion = String(json.tag_name ?? '').replace(/^v/i, '');
   return {
-    version: String(json.tag_name ?? '').replace(/^v/i, ''),
+    version: apkVersion ?? tagVersion,
     notes: String(json.body ?? ''),
-    apkUrl: asset ? (asset.browser_download_url as string) : null,
+    apkUrl: asset.browser_download_url as string,
   };
+}
+
+/**
+ * Extrae la versión del nombre del APK (p. ej. "JodiFyMobile-v1.2.0.apk" → "1.2.0").
+ * Si el APK no trae versión en el nombre, se usa el tag del release como fallback.
+ */
+function versionFromApkName(name: string): string | null {
+  const match = name.match(/(\d+\.\d+(?:\.\d+)?)/);
+  return match ? match[1] : null;
 }
 
 export async function checkForUpdate(): Promise<UpdateCheckResult | null> {
