@@ -14,6 +14,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import com.facebook.react.defaults.DefaultReactNativeHost
 
 import expo.modules.ApplicationLifecycleDispatcher
+import com.leija.jodify.eq.JodifyEqualizerPackage
 import expo.modules.ReactNativeHostWrapper
 
 class MainApplication : Application(), ReactApplication {
@@ -23,6 +24,8 @@ class MainApplication : Application(), ReactApplication {
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
+              // Ecualizador nativo de JodiFy.
+              add(com.leija.jodify.eq.JodifyEqualizerPackage())
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
             }
