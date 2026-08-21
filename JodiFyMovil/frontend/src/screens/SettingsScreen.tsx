@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { API_HOST } from '../lib/constants';
+import { useSecretCombo } from '../hooks/useSecretCombo';
 import { EmptyState } from '../components/ui/EmptyState';
 import { GlassCard } from '../components/ui/GlassCard';
 import { PressableScale } from '../components/ui/PressableScale';
@@ -22,12 +23,17 @@ export function SettingsScreen() {
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
   const update = useUpdateStore();
   const openAuth = useUiStore((s) => s.openAuth);
+  const openEqualizer = useUiStore((s) => s.openEqualizer);
+  const openSecret = useUiStore((s) => s.openSecret);
+  const unlockSecret = useSecretCombo(openSecret);
 
   const sleepActive = sleepTimer.endAt !== null && !sleepTimer.triggered;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.screenTitle}>Ajustes</Text>
+      <Pressable onPress={unlockSecret} hitSlop={12}>
+        <Text style={styles.screenTitle}>Ajustes</Text>
+      </Pressable>
 
       <GlassCard>
         <Pressable style={styles.cardRow} onPress={user ? undefined : openAuth}>
@@ -37,7 +43,7 @@ export function SettingsScreen() {
           <View style={styles.cardRowText}>
             <Text style={styles.cardRowTitle}>{user ? user.username : 'Invitado'}</Text>
             <Text style={styles.cardRowSubtitle}>
-              {user ? `Rol: ${user.role}` : 'Inicia sesión para guardar tus favoritas'}
+              {user ? `Rol: ${user.role.toUpperCase()}` : 'Inicia sesión para guardar tus favoritas'}
             </Text>
           </View>
           {!user && <Ionicons name="chevron-forward" size={18} color={colors.textDim} />}
@@ -48,6 +54,22 @@ export function SettingsScreen() {
             <Text style={styles.rowBtnTextDanger}>Cerrar sesión</Text>
           </PressableScale>
         )}
+      </GlassCard>
+
+      <Text style={styles.sectionTitle}>Sonido</Text>
+      <GlassCard>
+        <PressableScale onPress={openEqualizer} haptic style={styles.cardRow} scaleTo={0.98}>
+          <Ionicons name="options-outline" size={20} color={colors.secondary} />
+          <View style={styles.cardRowText}>
+            <Text style={styles.cardRowTitle}>Ecualizador</Text>
+            <Text style={styles.cardRowSubtitle}>Ajusta graves, medios y agudos con presets móviles</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
+        </PressableScale>
+        <PressableScale onPress={openSecret} haptic style={styles.secretBtn} scaleTo={0.98}>
+          <Ionicons name="shield-checkmark-outline" size={16} color={colors.textMuted} />
+          <Text style={styles.secretText}>Acceso admin/dev</Text>
+        </PressableScale>
       </GlassCard>
 
       <Text style={styles.sectionTitle}>Temporizador de sueño</Text>
@@ -212,6 +234,22 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 12,
     marginTop: 2,
+  },
+  secretBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  secretText: {
+    color: colors.textMuted,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12.5,
   },
   rowBtnDanger: {
     flexDirection: 'row',

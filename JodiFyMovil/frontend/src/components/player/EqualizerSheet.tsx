@@ -9,8 +9,8 @@ import { checkNativeAvailability, isEqualizerAvailable } from '../../services/eq
 import { useEqStore } from '../../store/eq.store';
 import { useUiStore } from '../../store/ui.store';
 import { colors, fonts, gradients, radius } from '../../theme';
-import { BottomSheet } from './BottomSheet';
-import { PressableScale } from './PressableScale';
+import { BottomSheet } from '../ui/BottomSheet';
+import { PressableScale } from '../ui/PressableScale';
 
 function labelForFrequency(freq: number): string {
   return freq >= 1000 ? `${freq / 1000} kHz` : `${freq} Hz`;
@@ -64,7 +64,7 @@ function VerticalSlider({ value, onChange, label }: SliderProps) {
       >
         <View style={styles.sliderZero} />
         <LinearGradient
-          colors={[gradients.primary[0], gradients.play[1]]}
+          colors={[gradients.primary[0], gradients.play[1]] as const}
           start={{ x: 0, y: 1 }}
           end={{ x: 0, y: 0 }}
           style={[styles.sliderFill, { height: Math.max(0, fraction * (height || 1)) }]}
