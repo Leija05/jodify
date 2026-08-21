@@ -1,4 +1,4 @@
-package com.jodifymobile
+package com.leija.jodify
 
 import android.app.Application
 import android.content.res.Configuration

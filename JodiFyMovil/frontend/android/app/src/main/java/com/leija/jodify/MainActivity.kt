@@ -1,4 +1,4 @@
-package com.jodifymobile
+package com.leija.jodify
 
 import android.os.Build
 import android.os.Bundle
