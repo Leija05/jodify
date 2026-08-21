@@ -13,10 +13,12 @@ import {
 } from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MiniPlayer } from './src/components/player/MiniPlayer';
 import { FullscreenPlayer } from './src/components/player/FullscreenPlayer';
 import { LyricsScreen } from './src/components/player/LyricsScreen';
+import { EqualizerSheet } from './src/components/player/EqualizerSheet';
 import { UpdateModal } from './src/components/update/UpdateModal';
 import { useBootstrap } from './src/hooks/useBootstrap';
 import { usePlayerEngine } from './src/hooks/usePlayerEngine';
@@ -26,6 +28,7 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LibraryScreen } from './src/screens/LibraryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { SecretAccessScreen } from './src/screens/SecretAccessScreen';
 import { configureAudioMode } from './src/store/audio';
 import { useUiStore } from './src/store/ui.store';
 import { useUpdateStore } from './src/store/update.store';
@@ -68,27 +71,31 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
-      {tab === 'home' && <HomeScreen />}
-      {tab === 'library' && <LibraryScreen />}
-      {tab === 'settings' && <SettingsScreen />}
-      <MiniPlayer />
-      <TabBar />
-      <FullscreenPlayer />
-      <LyricsScreen />
-      <AuthScreen visible={authOpen} onClose={closeAuth} />
-      <UpdateModal
-        visible={update.modalOpen}
-        current={update.info?.current ?? ''}
-        latest={update.info?.latest ?? ''}
-        notes={update.info?.notes ?? ''}
-        status={update.modalStatus}
-        onInstall={() => void update.doInstall()}
-        onLater={update.handleLater}
-        onClose={update.handleLater}
-      />
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <StatusBar style="light" />
+        {tab === 'home' && <HomeScreen />}
+        {tab === 'library' && <LibraryScreen />}
+        {tab === 'settings' && <SettingsScreen />}
+        <MiniPlayer />
+        <TabBar />
+        <FullscreenPlayer />
+        <LyricsScreen />
+        <EqualizerSheet />
+        <SecretAccessScreen />
+        <AuthScreen visible={authOpen} onClose={closeAuth} />
+        <UpdateModal
+          visible={update.modalOpen}
+          current={update.info?.current ?? ''}
+          latest={update.info?.latest ?? ''}
+          notes={update.info?.notes ?? ''}
+          status={update.modalStatus}
+          onInstall={() => void update.doInstall()}
+          onLater={update.handleLater}
+          onClose={update.handleLater}
+        />
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
