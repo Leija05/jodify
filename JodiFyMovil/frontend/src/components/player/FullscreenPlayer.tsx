@@ -2,9 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LyricsLine, Song } from '../../lib/types';
-import { formatTime } from '../../lib/utils';
+import { formatTime, resolveArtist } from '../../lib/utils';
 import { fetchLyrics, lyricsFromSong } from '../../services/lyrics.service';
 import { downloadSong, deleteDownloadedSong } from '../../services/downloads.service';
 import { useLibraryStore } from '../../store/library.store';
@@ -20,7 +21,8 @@ import { TimelineSlider } from './TimelineSlider';
 import { VinylDisc } from './VinylDisc';
 import { SongRow } from './SongRow';
 
-const VINYL_SIZE = 250;
+const SCREEN = Dimensions.get('window');
+const VINYL_SIZE = Math.min(250, Math.max(190, SCREEN.width * 0.62));
 
 function QueueSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { queue, currentSong, isPlaying, playSong, removeFromQueue, clearQueue, error } = usePlayerStore();
@@ -128,6 +130,8 @@ export function FullscreenPlayer() {
   const sleepTimer = useSettingsStore((s) => s.sleepTimer);
   const cancelSleepTimer = useSettingsStore((s) => s.cancelSleepTimer);
   const openAuth = useUiStore((s) => s.openAuth);
+  const openEqualizer = useUiStore((s) => s.openEqualizer);
+  const insets = useSafeAreaInsets();
 
   const [showLyrics, setShowLyrics] = useState(false);
   const [lyrics, setLyrics] = useState<LyricsLine[] | null>(null);
@@ -200,7 +204,7 @@ export function FullscreenPlayer() {
       <View style={styles.container}>
         <DynamicBackground song={currentSong} />
 
-        <View style={[styles.topBar, { paddingTop: safeArea.top + 6 }]}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
           <PressableScale onPress={closeFullscreen} haptic style={styles.topBtn}>
             <Ionicons name="chevron-down" size={24} color={colors.text} />
           </PressableScale>
@@ -213,7 +217,7 @@ export function FullscreenPlayer() {
         </View>
 
         {currentSong ? (
-          <>
+          <ScrollView contentContainerStyle={[styles.playerScroll, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>
             <View style={styles.vinylZone}>
               <VinylDisc song={currentSong} size={VINYL_SIZE} playing={isPlaying} />
             </View>
@@ -223,7 +227,7 @@ export function FullscreenPlayer() {
                 {currentSong.name}
               </Text>
               <Text style={styles.artist} numberOfLines={1}>
-                {currentSong.artist ?? 'Desconocido'}
+                {resolveArtist(currentSong) ?? 'Desconocido'}
                 {currentSong.album ? ` · ${currentSong.album}` : ''}
               </Text>
               <View style={styles.chips}>
@@ -267,7 +271,7 @@ export function FullscreenPlayer() {
                 <Ionicons name="play-skip-back" size={30} color={colors.text} />
               </PressableScale>
               <PressableScale onPress={handleTogglePlay} haptic style={styles.playBtnWrap}>
-                <LinearGradient colors={[gradients.play[0], gradients.play[1]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.playBtn}>
+                <LinearGradient colors={[gradients.play[0], gradients.play[1]] as const} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.playBtn}>
                   <Ionicons name={isPlaying ? 'pause' : 'play'} size={32} color={colors.white} />
                 </LinearGradient>
               </PressableScale>
@@ -294,6 +298,9 @@ export function FullscreenPlayer() {
                 ) : (
                   <Ionicons name={downloaded ? 'cloud-done' : 'cloud-download-outline'} size={22} color={downloaded ? colors.success : colors.textMuted} />
                 )}
+              </PressableScale>
+              <PressableScale onPress={openEqualizer} haptic style={styles.utilityBtn}>
+                <Ionicons name="options-outline" size={22} color={colors.secondary} />
               </PressableScale>
               <PressableScale onPress={() => setShowLyrics((v) => !v)} haptic style={styles.utilityBtn}>
                 <Ionicons name={showLyrics ? 'mic' : 'mic-outline'} size={22} color={showLyrics ? colors.secondary : colors.textMuted} />
@@ -327,7 +334,7 @@ export function FullscreenPlayer() {
                 </PressableScale>
               )}
             </View>
-          </>
+          </ScrollView>
         ) : (
           <View style={styles.empty}>
             <Ionicons name="musical-notes-outline" size={40} color={colors.textMuted} />
@@ -363,9 +370,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
   },
+  playerScroll: {
+    flexGrow: 1,
+  },
   vinylZone: {
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: 8,
   },
   songInfo: {
     alignItems: 'center',
@@ -484,7 +494,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   lyricsZone: {
-    flex: 1,
+    minHeight: 58,
     marginTop: 10,
   },
   lyricsZoneVisible: {

@@ -54,16 +54,16 @@ class JodifyEqualizerModule(
   private fun applyGainsInternal(gains: DoubleArray) {
     val eq = equalizer ?: return
     try {
-      val bands = eq.numberOfBands
+      val bands = eq.numberOfBands.toInt()
       val targets = intArrayOf(60, 230, 910, 3600, 14000)
       for (i in 0 until bands) {
+        val bandShort = i.toShort()
         val center = try {
-          val range = eq.getBandFreqRange(i)
-          (range[0] + range[1]) / 2
+          val range = eq.getBandFreqRange(bandShort)
+          ((range[0].toInt() + range[1].toInt()) / 2).toInt()
         } catch (e: Throwable) {
           0
         }
-        // Mapea cada banda del sistema a la banda de la UI más cercana.
         var bestIdx = 0
         var bestDist = Int.MAX_VALUE
         for (j in gains.indices) {
@@ -76,7 +76,7 @@ class JodifyEqualizerModule(
         }
         val db = gains.getOrElse(bestIdx) { 0.0 }.toFloat()
         val millibels = (db * 100).roundToInt().coerceIn(-1500, 1500)
-        eq.setBandLevel(i.toShort(), millibels.toShort())
+        eq.setBandLevel(bandShort, millibels.toShort())
       }
       lastGains = gains
     } catch (e: Throwable) {
@@ -129,10 +129,10 @@ class JodifyEqualizerModule(
       callback.invoke(arr)
       return
     }
-    for (i in 0 until eq.numberOfBands) {
+    for (i in 0 until eq.numberOfBands.toInt()) {
       try {
-        val range = eq.getBandFreqRange(i)
-        arr.pushInt((range[0] + range[1]) / 2)
+        val range = eq.getBandFreqRange(i.toShort())
+        arr.pushInt((range[0].toInt() + range[1].toInt()) / 2)
       } catch (e: Throwable) {
         arr.pushInt(0)
       }

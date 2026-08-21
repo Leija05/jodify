@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, Text, View } from 'react-native';
 import { usePlayerStore } from '../store/player.store';
 import { useUiStore, type TabId } from '../store/ui.store';
-import { colors, fonts, gradients, radius, safeArea } from '../theme';
+import { colors, fonts, gradients, radius } from '../theme';
 import { PressableScale } from '../components/ui/PressableScale';
 
 const TABS: Array<{ id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = [
@@ -17,9 +18,10 @@ export function TabBar() {
   const tab = useUiStore((s) => s.tab);
   const setTab = useUiStore((s) => s.setTab);
   const queueLength = usePlayerStore((s) => s.queue.length);
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { paddingBottom: safeArea.bottom + 10 }]}>
+    <View style={[styles.wrap, { paddingBottom: insets.bottom + 10 }]}>
       <View style={styles.bar}>
         {TABS.map((t) => {
           const active = tab === t.id;
@@ -33,7 +35,7 @@ export function TabBar() {
                 ) : null}
                 {active && (
                   <LinearGradient
-                    colors={[gradients.primary[0], gradients.play[1]]}
+                    colors={[gradients.primary[0], gradients.play[1]] as const}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.activePill}

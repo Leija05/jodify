@@ -14,9 +14,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSecretCombo } from '../hooks/useSecretCombo';
 import { login } from '../services/auth.service';
 import { useLibraryStore } from '../store/library.store';
 import { useSettingsStore } from '../store/settings.store';
+import { useUiStore } from '../store/ui.store';
 import { colors, fonts, gradients, radius, safeArea, shadows } from '../theme';
 import { PressableScale } from '../components/ui/PressableScale';
 import { EqualizerBars } from '../components/ui/EqualizerBars';
@@ -39,6 +41,8 @@ export function AuthScreen({ visible, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setUser = useSettingsStore((s) => s.setUser);
+  const openSecret = useUiStore((s) => s.openSecret);
+  const unlockSecret = useSecretCombo(openSecret);
 
   const canSubmit = username.trim().length > 0 && password.length > 0 && !busy;
 
@@ -90,8 +94,8 @@ export function AuthScreen({ visible, onClose }: Props) {
               </PressableScale>
             </View>
 
-            <View style={styles.logoZone}>
-              <LinearGradient colors={[gradients.play[0], gradients.play[1]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logoDisc}>
+            <Pressable onPress={unlockSecret} style={styles.logoZone} hitSlop={12}>
+              <LinearGradient colors={[gradients.play[0], gradients.play[1]] as const} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logoDisc}>
                 <Ionicons name="musical-notes" size={34} color={colors.white} />
               </LinearGradient>
               <Text style={styles.logo}>
@@ -101,7 +105,7 @@ export function AuthScreen({ visible, onClose }: Props) {
               <View style={styles.eqRow}>
                 <EqualizerBars playing bars={5} height={14} barWidth={2.5} color={colors.secondary} />
               </View>
-            </View>
+            </Pressable>
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Iniciar sesión</Text>
@@ -174,7 +178,7 @@ export function AuthScreen({ visible, onClose }: Props) {
                 scaleTo={0.97}
               >
                 <LinearGradient
-                  colors={canSubmit ? [gradients.play[0], gradients.play[1]] : ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.06)']}
+                  colors={canSubmit ? gradients.play : (['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.06)'] as const)}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.submitBtnInner}
