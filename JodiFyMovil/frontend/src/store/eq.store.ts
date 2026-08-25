@@ -17,7 +17,7 @@ interface EqState {
   reset: () => void;
 }
 
-const FLAT = DEFAULT_EQ_PRESETS.flat;
+const FLAT: number[] = (DEFAULT_EQ_PRESETS as Record<string, number[]>).flat ?? [0, 0, 0, 0, 0];
 
 function isFlat(values: number[]): boolean {
   return values.every((v) => v === 0);

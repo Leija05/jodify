@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import type { Song } from '../../lib/types';
 import { colors } from '../../theme';
@@ -14,19 +14,20 @@ export function VinylDisc({ song, size, playing }: Props) {
   const rotation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (playing) {
-      const loop = Animated.loop(
-        Animated.timing(rotation, {
-          toValue: 1,
-          duration: 12000,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-      );
-      loop.start();
-      return () => loop.stop();
+    if (!playing) {
+      rotation.stopAnimation();
+      return;
     }
-    rotation.stopAnimation();
+    const loop = Animated.loop(
+      Animated.timing(rotation, {
+        toValue: 1,
+        duration: 12000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
   }, [playing, rotation]);
 
   const rotate = rotation.interpolate({

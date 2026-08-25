@@ -58,8 +58,8 @@ async function fetchLatestRelease(): Promise<ReleaseInfo | null> {
  * Si el APK no trae versión en el nombre, se usa el tag del release como fallback.
  */
 function versionFromApkName(name: string): string | null {
-  const match = name.match(/(\d+\.\d+(?:\.\d+)?)/);
-  return match ? match[1] : null;
+  const version = name.match(/(\d+\.\d+(?:\.\d+)?)/)?.[1];
+  return version ?? null;
 }
 
 export async function checkForUpdate(): Promise<UpdateCheckResult | null> {

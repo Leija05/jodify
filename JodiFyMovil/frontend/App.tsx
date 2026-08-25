@@ -12,7 +12,7 @@ import {
   useFonts as useOutfitFonts,
 } from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MiniPlayer } from './src/components/player/MiniPlayer';
@@ -21,12 +21,14 @@ import { LyricsScreen } from './src/components/player/LyricsScreen';
 import { EqualizerSheet } from './src/components/player/EqualizerSheet';
 import { UpdateModal } from './src/components/update/UpdateModal';
 import { useBootstrap } from './src/hooks/useBootstrap';
+import { useHeartbeat } from './src/hooks/useHeartbeat';
 import { usePlayerEngine } from './src/hooks/usePlayerEngine';
 import { useSleepTimer } from './src/hooks/useSleepTimer';
 import { TabBar } from './src/navigation/TabBar';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LibraryScreen } from './src/screens/LibraryScreen';
+import { CommunityScreen } from './src/screens/CommunityScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SecretAccessScreen } from './src/screens/SecretAccessScreen';
 import { configureAudioMode } from './src/store/audio';
@@ -50,6 +52,7 @@ export default function App() {
   usePlayerEngine();
   useSleepTimer();
   useBootstrap();
+  useHeartbeat();
 
   const tab = useUiStore((s) => s.tab);
   const authOpen = useUiStore((s) => s.authOpen);
@@ -76,6 +79,7 @@ export default function App() {
         <StatusBar style="light" />
         {tab === 'home' && <HomeScreen />}
         {tab === 'library' && <LibraryScreen />}
+        {tab === 'community' && <CommunityScreen />}
         {tab === 'settings' && <SettingsScreen />}
         <MiniPlayer />
         <TabBar />

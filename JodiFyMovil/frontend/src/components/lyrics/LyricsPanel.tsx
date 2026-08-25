@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import type { LyricsLine } from '../../lib/types';
 import { fetchLyrics, lyricsFromSong } from '../../services/lyrics.service';
 import { usePlayerStore } from '../../store/player.store';
-import { colors, fonts, radius } from '../../theme';
+import { radius } from '../../theme';
 import { KaraokeLyrics } from './KaraokeLyrics';
 
 interface Props {

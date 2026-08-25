@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, Image, Modal, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Image, Modal, PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { LyricsLine, Song } from '../../lib/types';
 import { formatTime, pickCoverUrl } from '../../lib/utils';
 import { fetchLyrics, lyricsFromSong } from '../../services/lyrics.service';
 import { usePlayerStore } from '../../store/player.store';
 import { useUiStore } from '../../store/ui.store';
-import { colors, fonts, radius } from '../../theme';
+import { colors, typography, radius } from '../../theme';
 import { KaraokeLyrics } from '../lyrics/KaraokeLyrics';
 import { PressableScale } from '../ui/PressableScale';
 import { EqualizerBars } from '../ui/EqualizerBars';
@@ -27,8 +27,8 @@ function hashFromString(str: string): number {
 
 function deriveMode(song: Song): LyricsMode {
   const h = hashFromString(`${song.id}-${song.name}`);
-  const modes: LyricsMode[] = ['neon', 'minimal', 'vinyl', 'gradient'];
-  return modes[h % modes.length];
+  const modes: readonly LyricsMode[] = ['neon', 'minimal', 'vinyl', 'gradient'];
+  return modes[h % modes.length] ?? 'neon';
 }
 
 function derivePalette(song: Song): { primary: string; secondary: string; accent: string } {
@@ -41,12 +41,19 @@ function derivePalette(song: Song): { primary: string; secondary: string; accent
     { primary: '#00f0ff', secondary: '#7f00ff', accent: '#ff8c00' },
     { primary: '#ff0080', secondary: '#7f00ff', accent: '#00ff88' },
   ];
-  return palettes[h % palettes.length];
+  const fallback = palettes[0];
+  return palettes[h % palettes.length] ?? {
+    primary: fallback?.primary ?? '#7f00ff',
+    secondary: fallback?.secondary ?? '#00f0ff',
+    accent: fallback?.accent ?? '#ff0080',
+  };
 }
 
 function deriveRotation(song: Song): number {
   return (hashFromString(`${song.id}-rotation`) % 6) * 60;
 }
+
+const SPRING_CONFIG = { damping: 16, stiffness: 280, useNativeDriver: true };
 
 export function LyricsScreen() {
   const open = useUiStore((s) => s.lyricsModalOpen);
@@ -60,16 +67,42 @@ export function LyricsScreen() {
   const rotation = useMemo(() => currentSong ? deriveRotation(currentSong) : 0, [currentSong?.id]);
   const synced = useMemo(() => (lyrics ? lyrics.length > 0 && lyrics.every((l) => l.time >= 0) : false), [lyrics]);
 
-  const fadeAnim = useMemo(() => new Animated.Value(0), []);
+  const panY = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 120 || gestureState.vy > 0.8) {
+          handleClose();
+        } else {
+          Animated.spring(panY, { toValue: 0, damping: 16, stiffness: 280, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     if (!open) return;
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [open, fadeAnim]);
+    fadeAnim.setValue(0);
+    slideAnim.setValue(50);
+    scaleAnim.setValue(0.95);
+    Animated.parallel([
+      Animated.spring(fadeAnim, { toValue: 1, ...SPRING_CONFIG }),
+      Animated.spring(slideAnim, { toValue: 0, ...SPRING_CONFIG }),
+      Animated.spring(scaleAnim, { toValue: 1, ...SPRING_CONFIG }),
+    ]).start();
+  }, [open, fadeAnim, slideAnim, scaleAnim]);
 
   useEffect(() => {
     setLyrics(null);
@@ -80,18 +113,18 @@ export function LyricsScreen() {
       return;
     }
     setLyricsLoading(true);
-    void fetchLyrics(currentSong.name, currentSong.artist).then((lines) => {
+    fetchLyrics(currentSong.name, currentSong.artist).then((lines) => {
       setLyrics(lines);
       setLyricsLoading(false);
     });
   }, [currentSong?.id]);
 
   const handleClose = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(() => closeLyricsModal());
+    Animated.parallel([
+      Animated.spring(fadeAnim, { toValue: 0, ...SPRING_CONFIG }),
+      Animated.spring(slideAnim, { toValue: 50, ...SPRING_CONFIG }),
+      Animated.spring(scaleAnim, { toValue: 0.95, ...SPRING_CONFIG }),
+    ]).start(() => closeLyricsModal());
   };
 
   const renderBackground = () => {
@@ -105,24 +138,24 @@ export function LyricsScreen() {
               source={{ uri: pickCoverUrl(currentSong) ?? undefined }}
               style={styles.vinylCover}
               resizeMode="cover"
-          blurRadius={50}
-          />
+              blurRadius={50}
+            />
             <View style={[styles.vinylOverlay, { backgroundColor: palette.primary }]} />
             <View style={[styles.vinylRotation, { transform: [{ rotate: `${rotation}deg` }] }]}>
-            {[0.28, 0.42, 0.56, 0.7].map((r, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.vinylGroove,
-                  {
-                    width: VINYL_SIZE * r,
-                    height: VINYL_SIZE * r,
-                    borderRadius: (VINYL_SIZE * r) / 2,
-                    borderColor: `${palette.secondary}30`,
-                  },
-                ]}
-              />
-            ))}
+              {[0.28, 0.42, 0.56, 0.7].map((r, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.vinylGroove,
+                    {
+                      width: VINYL_SIZE * r,
+                      height: VINYL_SIZE * r,
+                      borderRadius: (VINYL_SIZE * r) / 2,
+                      borderColor: `${palette.secondary}30`,
+                    },
+                  ]}
+                />
+              ))}
             </View>
           </View>
         );
@@ -163,7 +196,13 @@ export function LyricsScreen() {
 
   return (
     <Modal visible={open} animationType="none" presentationStyle="fullScreen" onRequestClose={handleClose} statusBarTranslucent>
-      <Animated.View style={[styles.screenContainer, { opacity: fadeAnim }]}>
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
+          styles.screenContainer,
+          { opacity: fadeAnim, transform: [{ translateY: Animated.add(slideAnim, panY) }, { scale: scaleAnim }] }
+        ]}
+      >
         {renderBackground()}
 
         <View style={styles.topBar}>
@@ -304,7 +343,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   minimalBadgeText: {
-    fontFamily: fonts.bodyBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 10,
     letterSpacing: 1.5,
   },
@@ -322,7 +361,7 @@ const styles = StyleSheet.create({
   topLabel: {
     flex: 1,
     color: colors.textMuted,
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 13,
     textAlign: 'center',
   },
@@ -336,7 +375,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   songTitle: {
-    fontFamily: fonts.display,
+    fontFamily: typography.displaySmall.fontFamily,
     fontSize: 24,
     letterSpacing: -0.6,
     lineHeight: 30,
@@ -346,7 +385,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   songArtist: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 14,
     marginTop: 4,
   },
@@ -362,7 +401,7 @@ const styles = StyleSheet.create({
   },
   lyricsLoadingText: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 13,
   },
   lyricsEmpty: {
@@ -373,7 +412,7 @@ const styles = StyleSheet.create({
   },
   lyricsEmptyText: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 14,
     textAlign: 'center',
     paddingHorizontal: 24,
@@ -387,7 +426,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   progressTrack: {
-    height: 4,
+    height: 3,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.15)',
     overflow: 'hidden',
@@ -402,7 +441,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     color: colors.textDim,
-    fontFamily: fonts.bodyMedium,
+    fontFamily: typography.labelMedium.fontFamily,
     fontSize: 11,
   },
   controlsRow: {

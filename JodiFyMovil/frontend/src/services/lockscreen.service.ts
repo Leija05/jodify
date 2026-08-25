@@ -14,14 +14,33 @@ import { getPlayer, playerGeneration } from '../store/audio';
 
 let activeSongId: string | null = null;
 let activeGeneration = -1;
+let elapsedTime = 0;
+let lastTimestamp = 0;
 
 function buildMetadata(song: Song) {
+  const artwork = pickCoverUrl(song);
   return {
     title: song.name,
-    artist: resolveArtist(song) ?? '',
-    albumTitle: song.album ?? '',
-    artworkUrl: pickCoverUrl(song) ?? undefined,
+    artist: resolveArtist(song) ?? 'Desconocido',
+    albumTitle: song.album?.trim() ? song.album : 'JodiFy',
+    // Solo se incluye cuando existe: exactOptionalPropertyTypes no admite undefined explicito.
+    ...(artwork != null ? { artworkUrl: artwork } : null),
+    duration: song.duration ?? 0,
   };
+}
+
+const LOCK_SCREEN_OPTIONS = { showSeekForward: true, showSeekBackward: true };
+
+function trackElapsedTime(playing: boolean): void {
+  if (playing) {
+    const now = Date.now();
+    if (lastTimestamp > 0) {
+      elapsedTime += (now - lastTimestamp) / 1000;
+    }
+    lastTimestamp = now;
+  } else {
+    lastTimestamp = 0;
+  }
 }
 
 /**
@@ -39,8 +58,9 @@ export function activateLockScreenForSong(song: Song): void {
   const metadata = buildMetadata(song);
   try {
     const player = getPlayer();
+    if (!player) return;
     if (activeSongId === null) {
-      player.setActiveForLockScreen(true, metadata);
+      player.setActiveForLockScreen(true, metadata, LOCK_SCREEN_OPTIONS);
     } else if (activeSongId !== key) {
       player.updateLockScreenMetadata(metadata);
     }
@@ -50,9 +70,19 @@ export function activateLockScreenForSong(song: Song): void {
   }
 }
 
+export function getElapsedTime(): number {
+  return elapsedTime;
+}
+
+export function resetElapsedTime(): void {
+  elapsedTime = 0;
+  lastTimestamp = 0;
+}
+
 /** Sincroniza la notificación con el estado real del player. */
-export function syncLockScreen(song: Song | null, playing: boolean, playbackState: string): void {
+export function syncLockScreen(song: Song | null | undefined, playing: boolean, playbackState: string): void {
   const isPlaying = playing || playbackState === 'playing';
+  trackElapsedTime(isPlaying);
 
   if (isPlaying) {
     if (!song) return;
@@ -65,8 +95,9 @@ export function syncLockScreen(song: Song | null, playing: boolean, playbackStat
     const metadata = buildMetadata(song);
     try {
       const player = getPlayer();
+      if (!player) return;
       if (activeSongId === null) {
-        player.setActiveForLockScreen(true, metadata);
+        player.setActiveForLockScreen(true, metadata, LOCK_SCREEN_OPTIONS);
       } else if (activeSongId !== key) {
         player.updateLockScreenMetadata(metadata);
       }
@@ -82,11 +113,12 @@ export function syncLockScreen(song: Song | null, playing: boolean, playbackStat
   if (playbackState === 'ended' || playbackState === 'idle') {
     if (activeSongId !== null) {
       try {
-        getPlayer().clearLockScreenControls();
+        getPlayer()?.clearLockScreenControls();
       } catch {
         // noop
       }
       activeSongId = null;
+      resetElapsedTime();
     }
   }
 }

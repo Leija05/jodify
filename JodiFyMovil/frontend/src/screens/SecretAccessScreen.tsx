@@ -1,13 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,7 +18,7 @@ import { devAccess, redeemAccessToken } from '../services/auth.service';
 import { useLibraryStore } from '../store/library.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useUiStore } from '../store/ui.store';
-import { colors, fonts, gradients, radius } from '../theme';
+import { colors, typography, gradients, radius } from '../theme';
 import { PressableScale } from '../components/ui/PressableScale';
 
 type Mode = 'dev' | 'token';
@@ -299,13 +298,13 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.white,
-    fontFamily: fonts.title,
+    fontFamily: typography.headlineMedium.fontFamily,
     fontSize: 22,
     letterSpacing: -0.4,
   },
   heroSubtitle: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'center',
@@ -334,7 +333,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: colors.textMuted,
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 13.5,
   },
   tabTextActive: {
@@ -350,7 +349,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     color: colors.textMuted,
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 12,
     letterSpacing: 0.4,
     marginTop: 2,
@@ -358,7 +357,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: colors.text,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 14.5,
     padding: 0,
     height: '100%',
@@ -377,7 +376,7 @@ const styles = StyleSheet.create({
   errorText: {
     flex: 1,
     color: colors.error,
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 12.5,
   },
   submitBtn: {
@@ -395,7 +394,7 @@ const styles = StyleSheet.create({
   },
   submitText: {
     color: colors.white,
-    fontFamily: fonts.bodyBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 15,
   },
   submitTextDisabled: {
@@ -403,7 +402,7 @@ const styles = StyleSheet.create({
   },
   footnote: {
     color: colors.textDim,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 11.5,
     textAlign: 'center',
     lineHeight: 17,

@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, View } from 'react-native';
 import type { Song } from '../../lib/types';
 import { pickCoverUrl } from '../../lib/utils';
-import { colors } from '../../theme';
 
 interface Props {
-  song: Song | null;
+  song: Song | null | undefined;
   intensity?: number;
 }
 

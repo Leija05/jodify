@@ -8,6 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "test": "jest",
+    "typecheck": "tsc --noEmit",
     "start:tunnel": "expo start --tunnel",
     "start:tunel": "expo start --tunnel",
     "start:lan": "expo start --lan",
@@ -37,8 +39,13 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.1.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.1.10",
     "babel-preset-expo": "~54.0.12",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-expo": "~54.0.12",
     "typescript": "~5.9.2"
   }
 }

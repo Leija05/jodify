@@ -12,8 +12,9 @@ export function parseLrc(text: string): LyricsLine[] {
     if (!line) continue;
 
     const offsetMatch = line.match(OFFSET_TAG);
-    if (offsetMatch) {
-      offsetMs = parseInt(offsetMatch[1], 10) || 0;
+    const offsetValue = offsetMatch?.[1];
+    if (offsetMatch && offsetValue != null) {
+      offsetMs = parseInt(offsetValue, 10) || 0;
       continue;
     }
     if (/^\[[a-z]{2}:/i.test(line)) continue;
@@ -24,8 +25,8 @@ export function parseLrc(text: string): LyricsLine[] {
     if (!text) continue;
 
     for (const tag of tags) {
-      const minutes = parseInt(tag[1], 10);
-      const seconds = parseInt(tag[2], 10);
+      const minutes = parseInt(tag[1] ?? '0', 10);
+      const seconds = parseInt(tag[2] ?? '0', 10);
       const fraction = (tag[3] ?? '').padEnd(3, '0').slice(0, 3);
       const millis = parseInt(fraction || '0', 10);
       const time = Math.max(0, minutes * 60 + seconds + millis / 1000 + offsetMs / 1000);

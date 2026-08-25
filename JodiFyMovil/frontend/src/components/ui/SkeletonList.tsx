@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { colors, radius } from '../../theme';
+import { radius } from '../../theme';
 
 const ROW_HEIGHT = 68;
 

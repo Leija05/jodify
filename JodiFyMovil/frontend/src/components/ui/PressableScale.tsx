@@ -2,18 +2,21 @@ import * as Haptics from 'expo-haptics';
 import React, { useCallback, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
+type HitSlop = NonNullable<React.ComponentProps<typeof Pressable>['hitSlop']>;
+
 interface Props {
   children: React.ReactNode;
-  onPress?: () => void;
-  onLongPress?: () => void;
-  disabled?: boolean;
-  style?: StyleProp<ViewStyle>;
-  haptic?: boolean;
-  hapticStyle?: Haptics.NotificationFeedbackType | Haptics.ImpactFeedbackStyle;
-  scaleTo?: number;
+  onPress?: (() => void) | undefined;
+  onLongPress?: (() => void) | undefined;
+  disabled?: boolean | undefined;
+  style?: StyleProp<ViewStyle> | undefined;
+  haptic?: boolean | undefined;
+  hapticStyle?: Haptics.NotificationFeedbackType | Haptics.ImpactFeedbackStyle | undefined;
+  scaleTo?: number | undefined;
+  hitSlop?: HitSlop | undefined;
 }
 
-export function PressableScale({ children, onPress, onLongPress, disabled, style, haptic = false, hapticStyle, scaleTo = 0.95 }: Props) {
+export function PressableScale({ children, onPress, onLongPress, disabled, style, haptic = false, hapticStyle, scaleTo = 0.95, hitSlop }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const animateTo = useCallback(
@@ -47,6 +50,7 @@ export function PressableScale({ children, onPress, onLongPress, disabled, style
         disabled={disabled}
         onPressIn={() => animateTo(scaleTo)}
         onPressOut={() => animateTo(1)}
+        hitSlop={hitSlop}
         style={styles.pressable}
       >
         {children}

@@ -47,3 +47,12 @@ export interface SleepTimerState {
 export type LibraryTab = 'global' | 'liked' | 'downloads';
 
 export type RepeatMode = 'off' | 'all' | 'one';
+
+export interface Playlist {
+  id: number | string;
+  name: string;
+  cover_url?: string;
+  coverUrl?: string;
+  song_count?: number;
+  songIds?: (number | string)[];
+}

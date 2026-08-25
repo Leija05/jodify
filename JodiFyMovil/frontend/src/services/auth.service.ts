@@ -71,6 +71,10 @@ export async function redeemAccessToken(
   });
 }
 
+/**
+ * Obtiene el usuario autenticado desde AsyncStorage (caché local).
+ * Para revalidar con el backend, usar revalidateAuthUser().
+ */
 export async function getAuthUser(): Promise<AuthUser | null> {
   const raw = await AsyncStorage.getItem(STORAGE_KEYS.user);
   if (!raw) return null;
@@ -81,6 +85,41 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   }
 }
 
+/**
+ * Revalida el token actual con el backend (GET /auth/me).
+ * Si el token es válido, retorna el usuario actualizado y actualiza la caché.
+ * Si no, limpia la sesión y retorna null.
+ */
+export async function revalidateAuthUser(): Promise<AuthUser | null> {
+  try {
+    const user = await apiFetch<{ username: string; role: string }>('/auth/me', {
+      auth: true,
+    });
+    const cached = await getAuthUser();
+    if (cached) {
+      const updated: AuthUser = {
+        ...cached,
+        username: user.username ?? cached.username,
+        role: user.role ?? cached.role,
+      };
+      await AsyncStorage.setItem(STORAGE_KEYS.user, JSON.stringify(updated));
+      return updated;
+    }
+    return null;
+  } catch {
+    await logout();
+    return null;
+  }
+}
+
+/**
+ * Valida el token actual con el backend (GET /auth/me).
+ * Alias para revalidateAuthUser() por compatibilidad.
+ */
+export async function validateToken(): Promise<AuthUser | null> {
+  return revalidateAuthUser();
+}
+
 export async function logout(): Promise<void> {
-  await AsyncStorage.multiRemove([STORAGE_KEYS.token, STORAGE_KEYS.user, STORAGE_KEYS.likedIds]);
+  await (AsyncStorage as unknown as { multiRemove: (keys: string[]) => Promise<void> }).multiRemove([STORAGE_KEYS.token, STORAGE_KEYS.user, STORAGE_KEYS.likedIds]);
 }

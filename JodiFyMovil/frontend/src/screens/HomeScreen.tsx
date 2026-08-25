@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CoverArt, SongRow } from '../components/player/SongRow';
 import { DynamicBackground } from '../components/player/DynamicBackground';
 import { EmptyState } from '../components/ui/EmptyState';
 import { EqualizerBars } from '../components/ui/EqualizerBars';
-import { PressableScale } from '../components/ui/PressableScale';
+import { PressableFluid } from '../components/ui/PressableFluid';
 import { SkeletonList } from '../components/ui/SkeletonList';
 import { LyricsPanel } from '../components/lyrics/LyricsPanel';
 import type { Song } from '../lib/types';
@@ -17,7 +17,7 @@ import { useLibraryStore } from '../store/library.store';
 import { usePlayerStore } from '../store/player.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useUiStore } from '../store/ui.store';
-import { colors, fonts, gradients, radius } from '../theme';
+import { colors, typography, gradients, radius, touch, elevation } from '../theme';
 
 export function HomeScreen() {
   const songs = useLibraryStore((s) => s.songs);
@@ -75,7 +75,14 @@ export function HomeScreen() {
 
   const queuePreview = queue.slice(0, 20);
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
+
+  const handleQueuePlaySong = useCallback((song: Song) => {
+    playSong(song, queue);
+  }, [playSong, queue]);
+
+  const MemoizedSongRow = useMemo(() => React.memo(SongRow), []);
   const nowPlaying = currentSong;
+  const nowPlayingCover = useMemo(() => nowPlaying ? pickCoverUrl(nowPlaying) : null, [nowPlaying]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -99,21 +106,27 @@ export function HomeScreen() {
               {greeting}, {user ? user.username : 'invitado'}
             </Text>
           </View>
-          <PressableScale onPress={user ? undefined : openAuth} haptic={!user} style={styles.headerRight}>
+          <PressableFluid
+            onPress={user ? undefined : openAuth}
+            haptic={!user ? 'light' : undefined}
+            disabled={!!user}
+            style={styles.headerRight}
+            hitSlop={8}
+          >
             {user ? (
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{user.username.slice(0, 1).toUpperCase()}</Text>
               </View>
             ) : (
               <View style={styles.loginChip}>
-                <Ionicons name="person-outline" size={14} color={colors.white} />
+                <Ionicons name="person-outline" size={16} color={colors.white} />
                 <Text style={styles.loginChipText}>Entrar</Text>
               </View>
             )}
             <View style={styles.headerBadge}>
-              <EqualizerBars playing={isPlaying} bars={3} height={12} barWidth={2.5} color={colors.secondary} />
+              <EqualizerBars playing={isPlaying} bars={3} height={14} barWidth={3} color={colors.secondary} />
             </View>
-          </PressableScale>
+          </PressableFluid>
         </View>
 
         <LyricsPanel />
@@ -123,16 +136,25 @@ export function HomeScreen() {
             <SkeletonList rows={7} />
           </View>
         ) : error ? (
-          <EmptyState icon="cloud-offline-outline" title="Sin conexión" subtitle={error} />
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Sin conexión"
+            subtitle={error}
+            action={{ label: 'Reintentar', onPress: () => useLibraryStore.getState().refresh() }}
+          />
         ) : nowPlaying ? (
-          <PressableScale onPress={openFullscreen} style={styles.hero} haptic>
+          <PressableFluid
+            onPress={openFullscreen}
+            haptic="medium"
+            style={styles.hero}
+          >
             <View style={styles.heroBackdrop}>
-              {pickCoverUrl(nowPlaying) && (
+              {nowPlayingCover && (
                 <Image
-                  source={{ uri: pickCoverUrl(nowPlaying) ?? undefined }}
+                  source={{ uri: nowPlayingCover ?? undefined }}
                   style={StyleSheet.absoluteFill}
                   resizeMode="cover"
-                  blurRadius={40}
+                  blurRadius={50}
                 />
               )}
               <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
@@ -140,7 +162,7 @@ export function HomeScreen() {
             <LinearGradient colors={[gradients.primary[0], gradients.primary[1]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroGlowLine} />
             <View style={styles.heroInner}>
               <View style={styles.heroTop}>
-                <CoverArt song={nowPlaying} size={92} radiusSize={20} />
+                <CoverArt song={nowPlaying} size={120} radiusSize={22} />
                 <View style={styles.heroTexts}>
                   <Text style={styles.heroLabel}>REPRODUCIENDO</Text>
                   <Text style={styles.heroTitle} numberOfLines={2}>
@@ -162,33 +184,39 @@ export function HomeScreen() {
                     />
                   </View>
                 </View>
-                <PressableScale onPress={previous} haptic style={styles.heroControlBtn}>
-                  <Ionicons name="play-skip-back" size={20} color={colors.text} />
-                </PressableScale>
-                <PressableScale onPress={togglePlay} haptic style={styles.heroControlBtn}>
-                  <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color={colors.white} />
-                </PressableScale>
-                <PressableScale onPress={next} haptic style={styles.heroControlBtn}>
-                  <Ionicons name="play-skip-forward" size={20} color={colors.text} />
-                </PressableScale>
-                <PressableScale onPress={openFullscreen} haptic style={styles.heroControlBtn}>
-                  <Ionicons name="expand" size={20} color={colors.primary} />
-                </PressableScale>
+                <PressableFluid onPress={previous} haptic="light" style={styles.heroControlBtn}>
+                  <Ionicons name="play-skip-back" size={24} color={colors.text} />
+                </PressableFluid>
+                <PressableFluid onPress={togglePlay} haptic="medium" style={styles.heroControlBtnMain}>
+                  <LinearGradient colors={[gradients.play[0], gradients.play[1]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroPlayFill}>
+                    <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color={colors.white} />
+                  </LinearGradient>
+                </PressableFluid>
+                <PressableFluid onPress={next} haptic="light" style={styles.heroControlBtn}>
+                  <Ionicons name="play-skip-forward" size={24} color={colors.text} />
+                </PressableFluid>
+                <PressableFluid onPress={openFullscreen} haptic="light" style={styles.heroControlBtn}>
+                  <Ionicons name="expand" size={24} color={colors.secondary} />
+                </PressableFluid>
               </View>
               <View style={styles.heroEqualizer}>
-                <EqualizerBars playing={isPlaying} bars={5} height={16} barWidth={3} color={colors.white} />
+                <EqualizerBars playing={isPlaying} bars={5} height={18} barWidth={4} color={colors.white} />
               </View>
             </View>
-          </PressableScale>
+          </PressableFluid>
         ) : (
-          <PressableScale onPress={() => useUiStore.getState().setTab('library')} style={styles.hero} haptic>
+          <PressableFluid
+            onPress={() => useUiStore.getState().setTab('library')}
+            haptic="medium"
+            style={styles.hero}
+          >
             <LinearGradient colors={[gradients.accent[0], gradients.primary[1]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             <View style={styles.heroInner}>
               <Text style={styles.heroLabel}>BIENVENIDO</Text>
               <Text style={styles.heroTitle}>Descubre tu próxima canción favorita</Text>
               <Text style={styles.heroArtist}>Explora la biblioteca →</Text>
             </View>
-          </PressableScale>
+          </PressableFluid>
         )}
 
         {!loading && topSongs.length > 0 && (
@@ -204,21 +232,21 @@ export function HomeScreen() {
               {topSongs.map((song) => {
                 const isCurrent = String(currentSong?.id) === String(song.id);
                 return (
-                  <PressableScale
+                  <PressableFluid
                     key={song.id}
                     onPress={() => {
                       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       playSong(song, songs);
                     }}
-                    haptic
+                    haptic="light"
                     scaleTo={0.96}
                     style={styles.topCard}
                   >
                     <View style={styles.topCoverWrap}>
-                      <CoverArt song={song} size={108} radiusSize={16} />
+                      <CoverArt song={song} size={120} radiusSize={18} />
                       {isCurrent && (
                         <View style={styles.topPlayingBadge}>
-                          <EqualizerBars playing={isPlaying} bars={3} height={12} barWidth={2.5} color={colors.white} />
+                          <EqualizerBars playing={isPlaying} bars={3} height={14} barWidth={3} color={colors.white} />
                         </View>
                       )}
                     </View>
@@ -228,7 +256,7 @@ export function HomeScreen() {
                     <Text style={styles.topArtist} numberOfLines={1}>
                       {resolveArtist(song) ?? 'Desconocido'}
                     </Text>
-                  </PressableScale>
+                  </PressableFluid>
                 );
               })}
             </ScrollView>
@@ -247,10 +275,10 @@ export function HomeScreen() {
             <Text style={styles.sectionTitle}>Cola</Text>
           </View>
           {queue.length > 0 && (
-            <PressableScale onPress={togglePlay} haptic style={styles.queueBtn}>
-              <Ionicons name={isPlaying ? 'pause' : 'play'} size={15} color={colors.white} />
+            <PressableFluid onPress={togglePlay} haptic="light" style={styles.queueBtn}>
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={16} color={colors.white} />
               <Text style={styles.queueBtnText}>{isPlaying ? 'Pausar' : 'Reanudar'}</Text>
-            </PressableScale>
+            </PressableFluid>
           )}
         </View>
 
@@ -262,12 +290,12 @@ export function HomeScreen() {
           />
         ) : (
           queuePreview.map((song) => (
-            <SongRow
+            <MemoizedSongRow
               key={song.id}
               song={song}
               isCurrent={String(currentSong?.id) === String(song.id)}
               isPlaying={isPlaying}
-              onPress={() => playSong(song, queue)}
+              onPress={() => handleQueuePlaySong(song)}
               onLongPress={() => openSongActions(song)}
             />
           ))
@@ -285,74 +313,82 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    paddingTop: 14,
-    paddingBottom: 190,
+    paddingTop: 16,
+    paddingBottom: 200,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 18,
+    marginBottom: 20,
   },
   logo: {
     color: colors.white,
-    fontFamily: fonts.display,
-    fontSize: 28,
-    letterSpacing: -0.5,
+    fontFamily: typography.displayMedium.fontFamily,
+    fontSize: typography.displayMedium.fontSize,
+    letterSpacing: typography.displayMedium.letterSpacing,
+    lineHeight: typography.displayMedium.lineHeight,
     textShadowColor: colors.primary,
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 22,
+    textShadowRadius: 24,
   },
   logoAccent: {
     color: colors.secondary,
   },
   greeting: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 12.5,
-    marginTop: 1,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: typography.bodySmall.fontSize,
+    letterSpacing: typography.bodySmall.letterSpacing,
+    lineHeight: typography.bodySmall.lineHeight,
+    marginTop: 2,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(127,0,255,0.3)',
+    width: touch.comfortable,
+    height: touch.comfortable,
+    borderRadius: touch.comfortable / 2,
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.6)',
+    borderColor: colors.primaryStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     color: colors.white,
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: typography.labelLarge.fontSize,
+    letterSpacing: typography.labelLarge.letterSpacing,
   },
   loginChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(127,0,255,0.2)',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.5)',
+    borderColor: colors.primaryStrong,
   },
   loginChipText: {
     color: colors.white,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11.5,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: typography.labelMedium.fontSize,
+    letterSpacing: typography.labelMedium.letterSpacing,
   },
   headerBadge: {
-    padding: 10,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(16,16,22,0.7)',
+    width: touch.comfortable,
+    height: touch.comfortable,
+    borderRadius: touch.comfortable / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -361,73 +397,73 @@ const styles = StyleSheet.create({
   },
   hero: {
     marginHorizontal: 16,
-    borderRadius: radius.xl,
+    borderRadius: radius.xxl,
     overflow: 'hidden',
-    shadowColor: colors.black,
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    ...elevation.level3,
   },
   heroBackdrop: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
+    borderRadius: radius.xxl,
   },
   heroGlowLine: {
     position: 'absolute',
     top: 0,
-    left: 24,
-    right: 24,
+    left: 28,
+    right: 28,
     height: 2,
     borderRadius: 1,
   },
   heroInner: {
-    padding: 20,
-    minHeight: 168,
+    padding: 24,
+    minHeight: 220,
     justifyContent: 'flex-end',
-    gap: 14,
+    gap: 16,
   },
   heroTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 18,
   },
   heroTexts: {
     flex: 1,
   },
   heroLabel: {
     color: colors.secondary,
-    fontFamily: fonts.bodyBold,
-    fontSize: 10.5,
-    letterSpacing: 2.2,
-    marginBottom: 5,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: typography.labelSmall.fontSize,
+    letterSpacing: typography.labelSmall.letterSpacing,
+    lineHeight: typography.labelSmall.lineHeight,
+    marginBottom: 6,
   },
   heroTitle: {
     color: colors.white,
-    fontFamily: fonts.display,
-    fontSize: 24,
-    letterSpacing: -0.6,
-    lineHeight: 29,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    fontFamily: typography.displaySmall.fontFamily,
+    fontSize: typography.displaySmall.fontSize,
+    letterSpacing: typography.displaySmall.letterSpacing,
+    lineHeight: typography.displaySmall.lineHeight,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   heroArtist: {
     color: 'rgba(255,255,255,0.85)',
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13.5,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: typography.labelLarge.fontSize,
+    letterSpacing: typography.labelLarge.letterSpacing,
+    lineHeight: typography.labelLarge.lineHeight,
     marginTop: 4,
   },
   heroControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
   },
   heroProgressWrap: {
     flex: 1,
   },
   heroProgress: {
-    height: 4,
+    height: 5,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.22)',
     overflow: 'hidden',
@@ -437,57 +473,80 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   heroControlBtn: {
-    padding: 8,
+    width: touch.comfortable,
+    height: touch.comfortable,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: 'rgba(127,0,255,0.12)',
     borderWidth: 1,
     borderColor: 'rgba(127,0,255,0.4)',
   },
+  heroControlBtnMain: {
+    width: touch.generous,
+    height: touch.generous,
+    borderRadius: touch.generous / 2,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
+  },
+  heroPlayFill: {
+    width: '100%',
+    height: '100%',
+    borderRadius: touch.generous / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroEqualizer: {
-    marginTop: 12,
-    paddingLeft: 4,
+    marginTop: 14,
+    paddingLeft: 6,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 6,
+    marginTop: 36,
+    marginBottom: 10,
   },
   sectionTitleWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   sectionDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: colors.primary,
     shadowColor: colors.primary,
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 },
   },
   sectionTitle: {
     color: colors.text,
-    fontFamily: fonts.title,
-    fontSize: 17,
-    letterSpacing: -0.3,
+    fontFamily: typography.headlineMedium.fontFamily,
+    fontSize: typography.headlineMedium.fontSize,
+    letterSpacing: typography.headlineMedium.letterSpacing,
+    lineHeight: typography.headlineMedium.lineHeight,
   },
   sectionMeta: {
-    color: colors.textDim,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11.5,
+    color: colors.textMuted,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: typography.labelMedium.fontSize,
+    letterSpacing: typography.labelMedium.letterSpacing,
+    lineHeight: typography.labelMedium.lineHeight,
   },
   topRow: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 14,
     paddingBottom: 4,
   },
   topCard: {
-    width: 108,
+    width: 120,
   },
   topCoverWrap: {
     position: 'relative',
@@ -498,44 +557,49 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 16,
+    borderRadius: 18,
     backgroundColor: 'rgba(5,5,7,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   topName: {
     color: colors.text,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12.5,
-    marginTop: 8,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: typography.bodyMedium.fontSize,
+    letterSpacing: typography.bodyMedium.letterSpacing,
+    lineHeight: typography.bodyMedium.lineHeight,
+    marginTop: 10,
   },
   topArtist: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 11,
-    marginTop: 1,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: typography.bodySmall.fontSize,
+    letterSpacing: typography.bodySmall.letterSpacing,
+    lineHeight: typography.bodySmall.lineHeight,
+    marginTop: 2,
   },
   topLoading: {
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   queueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(127,0,255,0.18)',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.4)',
+    borderColor: colors.primaryStrong,
   },
   queueBtnText: {
     color: colors.white,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: typography.labelMedium.fontSize,
+    letterSpacing: typography.labelMedium.letterSpacing,
   },
   bottomPad: {
-    height: 40,
+    height: 48,
   },
 });

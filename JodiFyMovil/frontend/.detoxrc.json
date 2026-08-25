@@ -1,0 +1,29 @@
+{
+  "testRunner": "jest",
+  "specs": "e2e/**/*.test.ts",
+  "devices": {
+    "ios": {
+      "type": "ios.simulator",
+      "device": {
+        "type": "iPhone 15 Pro"
+      }
+    },
+    "android": {
+      "type": "android.avd",
+      "avdName": "pixel_7_pro"
+    }
+  },
+  "apps": {
+    "ios.debug": {
+      "type": "ios.app",
+      "binaryPath": "ios/build/Build/Products/Debug-iphonesimulator/JodiFy.app"
+    },
+    "android.debug": {
+      "type": "apk",
+      "apkPath": "android/app/build/outputs/apk/debug/app-debug.apk"
+    }
+  },
+  "testRunnerOptions": {
+    "verbose": true
+  }
+}

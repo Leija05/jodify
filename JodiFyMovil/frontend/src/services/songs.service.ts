@@ -35,6 +35,14 @@ export async function removeLike(songId: number | string, username: string): Pro
   });
 }
 
+export async function updateLikeCount(songId: number | string, username: string, delta: number): Promise<void> {
+  await apiFetch(`/songs/${songId}/likes`, {
+    method: 'POST',
+    body: { username, delta },
+    auth: true,
+  });
+}
+
 export async function fetchDownloadedIds(username: string): Promise<Array<number | string>> {
   const data = await apiFetch<Array<{ song_id: number | string }>>(`/downloads?username=${encodeURIComponent(username)}`);
   return Array.isArray(data) ? data.map((r) => r.song_id) : [];

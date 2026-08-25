@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { STORAGE_KEYS } from '../lib/constants';
 import type { AuthUser, SleepTimerState } from '../lib/types';
-import { getAuthUser, logout as apiLogout } from '../services/auth.service';
+import { revalidateAuthUser, logout as apiLogout } from '../services/auth.service';
 import { useLibraryStore } from './library.store';
 
 interface SettingsState {
@@ -37,14 +37,14 @@ async function readSleepTimer(): Promise<SleepTimerState> {
   }
 }
 
-export const useSettingsStore = create<SettingsState>((set, get) => ({
+export const useSettingsStore = create<SettingsState>((set) => ({
   user: null,
   authChecked: false,
   sleepTimer: defaultSleep,
   downloadsStorage: 0,
 
   loadUser: async () => {
-    const [user, sleepTimer] = await Promise.all([getAuthUser(), readSleepTimer()]);
+    const [user, sleepTimer] = await Promise.all([revalidateAuthUser(), readSleepTimer()]);
     set({ user, authChecked: true, sleepTimer });
   },
 

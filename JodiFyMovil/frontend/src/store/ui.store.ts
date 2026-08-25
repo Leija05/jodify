@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Song } from '../lib/types';
 
-export type TabId = 'home' | 'library' | 'settings';
+export type TabId = 'home' | 'library' | 'community' | 'settings';
 
 interface UiState {
   tab: TabId;

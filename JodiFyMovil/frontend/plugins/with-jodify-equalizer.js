@@ -1,11 +1,11 @@
 /**
  * Config plugin de JodiFy: ecualizador nativo de Android.
  *
- * 1. Copia el módulo Kotlin `JodifyEqualizer` dentro del proyecto android.
- * 2. Lo registra en MainApplication.getPackages().
- * 3. Activa la New Architecture (gradle) para quitar el modo legacy.
+ * 1. Copia el módulo Kotlin dentro del proyecto android.
+ * 2. Lo registra en MainApplication.
+ * 3. New Architecture se gestiona desde app.json (no forzar aquí).
  */
-const { withDangerousMod, withMainApplication, withGradleProperties } = require('@expo/config-plugins');
+const { withDangerousMod, withMainApplication } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -18,10 +18,14 @@ function withEqualizerSources(config) {
     'android',
     async (cfg) => {
       const dest = path.join(cfg.modRequest.projectRoot, 'android', REL_DEST);
-      fs.mkdirSync(dest, { recursive: true });
-      for (const file of fs.readdirSync(SRC_DIR)) {
-        if (!file.endsWith('.kt')) continue;
-        fs.copyFileSync(path.join(SRC_DIR, file), path.join(dest, file));
+      try {
+        fs.mkdirSync(dest, { recursive: true });
+        for (const file of fs.readdirSync(SRC_DIR)) {
+          if (!file.endsWith('.kt')) continue;
+          fs.copyFileSync(path.join(SRC_DIR, file), path.join(dest, file));
+        }
+      } catch (e) {
+        console.warn('[with-jodify-equalizer] No se pudieron copiar los sources:', e.message);
       }
       return cfg;
     },
@@ -33,34 +37,30 @@ function withEqualizerRegistration(config) {
     let contents = cfg.modResults.contents;
     if (contents.includes(IMPORT_LINE)) return cfg;
 
+    // Import
     contents = contents.replace(
       'import expo.modules.ApplicationLifecycleDispatcher',
       `import expo.modules.ApplicationLifecycleDispatcher\n${IMPORT_LINE}`,
     );
 
-    contents = contents.replace(
-      'PackageList(this).packages.apply {',
-      `PackageList(this).packages.apply {
+    // Registro del paquete — buscar el patrón correcto
+    if (contents.includes('PackageList(this).packages.apply {')) {
+      contents = contents.replace(
+        'PackageList(this).packages.apply {',
+        `PackageList(this).packages.apply {
               // Ecualizador nativo de JodiFy.
               add(com.leija.jodify.eq.JodifyEqualizerPackage())`,
-    );
+      );
+    } else if (contents.includes('PackageList(this).packages')) {
+      contents = contents.replace(
+        'PackageList(this).packages',
+        `PackageList(this).packages
+              // Ecualizador nativo de JodiFy.
+              .also { it.add(com.leija.jodify.eq.JodifyEqualizerPackage()) }`,
+      );
+    }
 
     cfg.modResults.contents = contents;
-    return cfg;
-  });
-}
-
-function withNewArchitecture(config) {
-  return withGradleProperties(config, (cfg) => {
-    const props = cfg.modResults;
-    const existing = props.findIndex(
-      (p) => p.type === 'property' && p.key === 'newArchEnabled',
-    );
-    if (existing >= 0) {
-      props[existing].value = 'true';
-    } else {
-      props.push({ type: 'property', key: 'newArchEnabled', value: 'true' });
-    }
     return cfg;
   });
 }
@@ -68,6 +68,5 @@ function withNewArchitecture(config) {
 module.exports = function withJodifyEqualizer(config) {
   config = withEqualizerSources(config);
   config = withEqualizerRegistration(config);
-  config = withNewArchitecture(config);
   return config;
 };

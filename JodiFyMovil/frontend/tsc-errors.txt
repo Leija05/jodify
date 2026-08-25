@@ -1,0 +1,309 @@
+src/__tests__/stores/player.store.test.ts(2,32): error TS2307: Cannot find module '../../../store/player.store' or its corresponding type declarations.
+src/__tests__/utils/utils.test.ts(1,50): error TS2307: Cannot find module '../../../lib/utils' or its corresponding type declarations.
+src/components/error/ErrorBoundary.tsx(146,5): error TS1117: An object literal cannot have multiple properties with the same name.
+src/components/lyrics/KaraokeLyrics.tsx(26,11): error TS2532: Object is possibly 'undefined'.
+src/components/lyrics/KaraokeLyrics.tsx(52,23): error TS2345: Argument of type 'Value | undefined' is not assignable to parameter of type 'Value | ValueXY'.
+  Type 'undefined' is not assignable to type 'Value | ValueXY'.
+src/components/lyrics/KaraokeLyrics.tsx(140,37): error TS6133: 'item' is declared but its value is never read.
+src/components/player/EqualizerSheet.tsx(281,16): error TS2304: Cannot find name 'touch'.
+src/components/player/EqualizerSheet.tsx(359,19): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/EqualizerSheet.tsx(377,16): error TS2304: Cannot find name 'touch'.
+src/components/player/fullscreen/ControlsRow.tsx(32,9): error TS6133: 'handleTogglePlay' is declared but its value is never read.
+src/components/player/fullscreen/ControlsRow.tsx(58,30): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/components/player/fullscreen/ControlsRow.tsx(58,31): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string | undefined): Text; prototype: Text; }' is not a valid JSX element type.
+    Type '{ new (data?: string | undefined): Text; prototype: Text; }' is not assignable to type 'new (props: any, context: any) => Component<any, any, any>'.
+      Type 'Text' is missing the following properties from type 'Component<any, any, any>': context, setState, forceUpdate, render, and 2 more.
+src/components/player/fullscreen/QueueSheet.tsx(9,7): error TS6133: 'SCREEN_HEIGHT' is declared but its value is never read.
+src/components/player/fullscreen/QueueSheet.tsx(90,68): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/fullscreen/QueueSheet.tsx(97,71): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/fullscreen/QueueSheet.tsx(195,19): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/fullscreen/TimelineZone.tsx(41,19): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/FullscreenPlayer.tsx(5,27): error TS6196: 'Song' is declared but never used.
+src/components/player/FullscreenPlayer.tsx(184,11): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(184,31): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(195,5): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(195,25): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(201,5): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(201,25): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(207,13): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(207,39): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(212,11): error TS6133: 'id' is declared but its value is never read.
+src/components/player/FullscreenPlayer.tsx(222,7): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(222,33): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(224,7): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(224,33): error TS2304: Cannot find name 'Haptics'.
+src/components/player/FullscreenPlayer.tsx(308,15): error TS2322: Type 'LyricsLine[] | null' is not assignable to type 'any[]'.
+  Type 'null' is not assignable to type 'any[]'.
+src/components/player/LyricsScreen.tsx(31,3): error TS2322: Type 'LyricsMode | undefined' is not assignable to type 'LyricsMode'.
+  Type 'undefined' is not assignable to type 'LyricsMode'.
+src/components/player/LyricsScreen.tsx(44,3): error TS2322: Type '{ primary: string; secondary: string; accent: string; } | undefined' is not assignable to type '{ primary: string; secondary: string; accent: string; }'.
+  Type 'undefined' is not assignable to type '{ primary: string; secondary: string; accent: string; }'.
+src/components/player/LyricsScreen.tsx(52,7): error TS6133: 'CUBIC_EASING' is declared but its value is never read.
+src/components/player/LyricsScreen.tsx(439,19): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/MiniPlayer.tsx(123,37): error TS6133: 'gestureState' is declared but its value is never read.
+src/components/player/NowPlayingBar.tsx(11,7): error TS6133: 'SCREEN_WIDTH' is declared but its value is never read.
+src/components/player/NowPlayingBar.tsx(59,9): error TS6133: 'snapToItem' is declared but its value is never read.
+src/components/player/NowPlayingBar.tsx(212,19): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/NowPlayingBar.tsx(225,29): error TS2339: Property 'surfaceDeep' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/NowPlayingBar.tsx(328,19): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/SongRow.tsx(23,8): error TS2375: Type '{ children: Element; onPress: (() => void) | undefined; haptic: "light"; scaleTo: number; style: { width: number; height: number; borderRadius: number; }; hitSlop: number; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/player/SongRow.tsx(36,6): error TS2375: Type '{ children: Element; onPress: (() => void) | undefined; haptic: "light"; scaleTo: number; style: { width: number; height: number; borderRadius: number; }; hitSlop: number; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/player/SongRow.tsx(93,3): error TS6133: 'onPlayNext' is declared but its value is never read.
+src/components/player/SongRow.tsx(192,9): error TS6133: 'handlePressIn' is declared but its value is never read.
+src/components/player/SongRow.tsx(196,9): error TS6133: 'handlePressOut' is declared but its value is never read.
+src/components/player/SongRow.tsx(210,9): error TS6133: 'handleCoverPress' is declared but its value is never read.
+src/components/player/SongRow.tsx(279,12): error TS2375: Type '{ children: Element[]; onPress: (() => void) | undefined; onLongPress: () => void; haptic: "light"; scaleTo: number; style: ({ flex: number; flexDirection: "row"; alignItems: "center"; gap: number; } | { ...; })[]; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/player/SongRow.tsx(350,12): error TS2552: Cannot find name 'Pressable'. Did you mean 'pressScale'?
+src/components/player/SongRow.tsx(358,14): error TS2552: Cannot find name 'Pressable'. Did you mean 'pressScale'?
+src/components/player/SongRow.tsx(366,15): error TS2552: Cannot find name 'Pressable'. Did you mean 'pressScale'?
+src/components/player/TimelineSlider.tsx(104,29): error TS2339: Property 'track' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/player/VinylDisc.tsx(16,13): error TS7030: Not all code paths return a value.
+src/components/ui/BottomSheet.tsx(35,35): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/ui/Button.tsx(4,40): error TS6133: 'PressableIconButton' is declared but its value is never read.
+src/components/ui/Button.tsx(140,21): error TS2339: Property 'gap' does not exist on type '{ height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | { height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | ... 4 more ... | { ...; }'.
+  Property 'gap' does not exist on type '{ width: number; height: number; borderRadius: number; }'.
+src/components/ui/Button.tsx(144,19): error TS2322: Type '"spinner"' is not assignable to type '"body" | "reload" | "document" | "image" | "navigate" | "push" | "map" | "filter" | "at" | "search" | "refresh" | "key" | "repeat" | "link" | "toggle" | "shuffle" | "play" | "pause" | ... 1339 more ... | undefined'.
+src/components/ui/Button.tsx(144,47): error TS2339: Property 'iconSize' does not exist on type '{ height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | { height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | ... 4 more ... | { ...; }'.
+  Property 'iconSize' does not exist on type '{ width: number; height: number; borderRadius: number; }'.
+src/components/ui/Button.tsx(151,30): error TS2339: Property 'fontSize' does not exist on type '{ height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | { height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | ... 4 more ... | { ...; }'.
+  Property 'fontSize' does not exist on type '{ width: number; height: number; borderRadius: number; }'.
+src/components/ui/Button.tsx(167,6): error TS2375: Type '{ children: (Element | null)[]; onPress: (() => void) | undefined; disabled: boolean | undefined; haptic: "error" | "light" | "medium" | "heavy" | "selection" | "success" | "warning"; style: any[]; testID: string | undefined; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/ui/Button.tsx(175,38): error TS2339: Property 'width' does not exist on type '{ height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | { height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | ... 4 more ... | { ...; }'.
+  Property 'width' does not exist on type '{ height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; }'.
+src/components/ui/Button.tsx(177,54): error TS2339: Property 'paddingHorizontal' does not exist on type '{ height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | { height: number; paddingHorizontal: number; fontSize: number; iconSize: number; gap: number; borderRadius: 9999; } | ... 4 more ... | { ...; }'.
+  Property 'paddingHorizontal' does not exist on type '{ width: number; height: number; borderRadius: number; }'.
+src/components/ui/Button.tsx(214,6): error TS2375: Type '{ children: ReactNode; onPress: (() => void) | undefined; variant: ButtonVariant; size: ButtonSize; disabled: boolean | undefined; style: any; testID: string | undefined; haptic: "error" | ... 5 more ... | "warning"; }' is not assignable to type 'ButtonProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/ui/Button.tsx(272,6): error TS2375: Type '{ children: Element; onPress: (() => void) | undefined; disabled: boolean | undefined; haptic: "selection"; style: any[]; testID: string | undefined; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/ui/DoubleBezelCard.tsx(1,22): error TS2305: Module '"react"' has no exported member 'StyleProp'.
+src/components/ui/DoubleBezelCard.tsx(1,38): error TS2305: Module '"react"' has no exported member 'ViewStyle'.
+src/components/ui/DoubleBezelCard.tsx(22,9): error TS6133: 'Wrapper' is declared but its value is never read.
+src/components/ui/EqualizerBars.tsx(55,13): error TS2322: Type 'number | undefined' is not assignable to type 'number | Value | ValueXY | AnimatedInterpolation<number> | { x: number; y: number; }'.
+  Type 'undefined' is not assignable to type 'number | Value | ValueXY | AnimatedInterpolation<number> | { x: number; y: number; }'.
+src/components/ui/FluidSheet.tsx(5,3): error TS6133: 'Easing' is declared but its value is never read.
+src/components/ui/FluidSheet.tsx(64,7): error TS2588: Cannot assign to 'currentSnapIndex' because it is a constant.
+src/components/ui/FluidSheet.tsx(65,44): error TS2532: Object is possibly 'undefined'.
+src/components/ui/FluidSheet.tsx(111,37): error TS2339: Property '_value' does not exist on type 'Value'.
+src/components/ui/FluidSheet.tsx(112,15): error TS6133: 'progress' is declared but its value is never read.
+src/components/ui/FluidSheet.tsx(163,15): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/components/ui/FluidSheet.tsx(163,16): error TS2786: 'Text' cannot be used as a JSX component.
+  Its type '{ new (data?: string | undefined): Text; prototype: Text; }' is not a valid JSX element type.
+    Type '{ new (data?: string | undefined): Text; prototype: Text; }' is not assignable to type 'new (props: any, context: any) => Component<any, any, any>'.
+      Type 'Text' is missing the following properties from type 'Component<any, any, any>': context, setState, forceUpdate, render, and 2 more.
+src/components/ui/FluidSheet.tsx(217,35): error TS18048: 'snapPoints.length' is possibly 'undefined'.
+src/components/ui/FluidSheet.tsx(217,35): error TS2869: Right operand of ?? is unreachable because the left operand is never nullish.
+src/components/ui/FluidSheet.tsx(221,5): error TS7030: Not all code paths return a value.
+src/components/ui/FluidSheet.tsx(224,7): error TS2588: Cannot assign to 'currentSnapIndex' because it is a constant.
+src/components/ui/FluidSheet.tsx(225,44): error TS2532: Object is possibly 'undefined'.
+src/components/ui/PressableFluid.tsx(27,9): error TS2322: Type 'false | HapticType' is not assignable to type 'HapticType'.
+  Type 'false' is not assignable to type 'HapticType'.
+src/components/ui/PressableFluid.tsx(165,6): error TS2375: Type '{ children: ReactNode; onPress: (() => void) | undefined; haptic: HapticProp; hitSlop: number; disabled: boolean | undefined; style: (StyleProp<ViewStyle> | { ...; })[]; testID: string | undefined; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/ui/PressableFluid.tsx(194,6): error TS2375: Type '{ children: ReactNode; onPress: (() => void) | undefined; haptic: HapticProp; hitSlop: number; disabled: boolean | undefined; style: (StyleProp<ViewStyle> | { ...; })[]; testID: string | undefined; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/ui/SongActionsSheet.tsx(32,6): error TS2375: Type '{ children: Element[]; onPress: (() => void) | undefined; haptic: true; disabled: boolean | undefined; style: (false | { backgroundColor: string; } | undefined)[]; scaleTo: number; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/components/ui/SongActionsSheet.tsx(45,98): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/ui/SongActionsSheet.tsx(129,48): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/ui/SongActionsSheet.tsx(166,82): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/ui/SongActionsSheet.tsx(193,80): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/components/update/UpdateModal.tsx(29,34): error TS6133: 'i' is declared but its value is never read.
+src/components/update/UpdateModal.tsx(58,92): error TS6133: 'onClose' is declared but its value is never read.
+src/hooks/animations/index.ts(55,9): error TS6133: 'spring' is declared but its value is never read.
+src/hooks/animations/index.ts(56,9): error TS6133: 'timing' is declared but its value is never read.
+src/hooks/animations/scrollAnimation.ts(1,10): error TS2300: Duplicate identifier 'useRef'.
+src/hooks/animations/scrollAnimation.ts(2,10): error TS2300: Duplicate identifier 'Animated'.
+src/hooks/animations/scrollAnimation.ts(2,20): error TS2300: Duplicate identifier 'ScrollEvent'.
+src/hooks/animations/scrollAnimation.ts(2,20): error TS2305: Module '"react-native"' has no exported member 'ScrollEvent'.
+src/hooks/animations/scrollAnimation.ts(4,10): error TS2300: Duplicate identifier 'useRef'.
+src/hooks/animations/scrollAnimation.ts(5,10): error TS2300: Duplicate identifier 'Animated'.
+src/hooks/animations/scrollAnimation.ts(5,20): error TS2300: Duplicate identifier 'ScrollEvent'.
+src/hooks/animations/scrollAnimation.ts(5,20): error TS2305: Module '"react-native"' has no exported member 'ScrollEvent'.
+src/hooks/useAccessibility.ts(31,27): error TS2551: Property 'isHighContrastEnabled' does not exist on type 'AccessibilityInfoStatic'. Did you mean 'isHighTextContrastEnabled'?
+src/hooks/useAccessibility.ts(53,42): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(eventName: AccessibilityChangeEventName, handler: AccessibilityChangeEventHandler): EmitterSubscription', gave the following error.
+    Argument of type '"highContrastChanged"' is not assignable to parameter of type 'AccessibilityChangeEventName'.
+  Overload 2 of 2, '(eventName: "announcementFinished", handler: AccessibilityAnnouncementFinishedEventHandler): EmitterSubscription', gave the following error.
+    Argument of type '"highContrastChanged"' is not assignable to parameter of type '"announcementFinished"'.
+src/hooks/useAccessibility.ts(53,66): error TS7006: Parameter 'enabled' implicitly has an 'any' type.
+src/hooks/useAccessibility.ts(97,3): error TS6133: 'highContrastDark' is declared but its value is never read.
+src/hooks/useErrorHandling.tsx(58,13): error TS2379: Argument of type '{ message: string; type: "error"; action: { label: string; onPress: () => void; } | undefined; }' is not assignable to parameter of type 'ToastProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'action' are incompatible.
+    Type '{ label: string; onPress: () => void; } | undefined' is not assignable to type '{ label: string; onPress: () => void; }'.
+      Type 'undefined' is not assignable to type '{ label: string; onPress: () => void; }'.
+src/hooks/useErrorHandling.tsx(84,5): error TS2412: Type 'number | undefined' is not assignable to type 'number' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+  Type 'undefined' is not assignable to type 'number'.
+src/hooks/useErrorHandling.tsx(146,75): error TS2339: Property 'retryAfter' does not exist on type 'NetworkError | TimeoutError'.
+  Property 'retryAfter' does not exist on type 'TimeoutError'.
+src/hooks/usePerformance.ts(218,15): error TS2554: Expected 1 arguments, but got 0.
+src/lib/lrc.ts(16,27): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/lrc.ts(27,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/lrc.ts(28,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/utils.ts(60,25): error TS2532: Object is possibly 'undefined'.
+src/lib/utils.ts(80,6): error TS2322: Type 'T | undefined' is not assignable to type 'T'.
+  'T' could be instantiated with an arbitrary type which could be unrelated to 'T | undefined'.
+src/lib/utils.ts(80,15): error TS2322: Type 'T | undefined' is not assignable to type 'T'.
+  'T' could be instantiated with an arbitrary type which could be unrelated to 'T | undefined'.
+src/navigation/TabBar.tsx(61,23): error TS6133: 'index' is declared but its value is never read.
+src/screens/AuthScreen.tsx(128,41): error TS2339: Property 'logoAccent' does not exist on type '{ container: { flex: number; backgroundColor: "#030305"; }; aurora: { position: "absolute"; top: number; left: number; right: number; height: number; }; vignette: { backgroundColor: string; position: "absolute"; left: 0; right: 0; top: 0; bottom: 0; }; ... 34 more ...; demoChipStrong: { ...; }; }'.
+src/screens/AuthScreen.tsx(156,48): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/AuthScreen.tsx(185,48): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/AuthScreen.tsx(482,19): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/home/HomeHeader.tsx(24,8): error TS2375: Type '{ children: Element[]; onPress: (() => void) | undefined; haptic: "light" | undefined; disabled: boolean; style: { flexDirection: "row"; alignItems: "center"; gap: number; }; hitSlop: number; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/screens/home/HomeScreen.tsx(112,13): error TS2322: Type '{ icon: "cloud-offline-outline"; title: string; subtitle: string; action: { label: string; onPress: () => Promise<void>; }; }' is not assignable to type 'IntrinsicAttributes & Props'.
+  Property 'action' does not exist on type 'IntrinsicAttributes & Props'.
+src/screens/home/QueueSection.tsx(57,13): error TS2322: Type '(song: Song) => void' is not assignable to type '() => void'.
+  Target signature provides too few arguments. Expected 1 or more, but got 0.
+src/screens/home/TopTracksSection.tsx(2,1): error TS6192: All imports in import declaration are unused.
+src/screens/HomeScreen.tsx(109,12): error TS2375: Type '{ children: Element[]; onPress: (() => void) | undefined; haptic: "light" | undefined; disabled: boolean; style: { flexDirection: "row"; alignItems: "center"; gap: number; }; hitSlop: number; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/screens/HomeScreen.tsx(143,13): error TS2322: Type '{ icon: "cloud-offline-outline"; title: string; subtitle: string; action: { label: string; onPress: () => Promise<void>; }; }' is not assignable to type 'IntrinsicAttributes & Props'.
+  Property 'action' does not exist on type 'IntrinsicAttributes & Props'.
+src/screens/LibraryScreen.tsx(30,67): error TS6133: 'queue' is declared but its value is never read.
+src/screens/LibraryScreen.tsx(181,10): error TS2375: Type '{ song: Song; isCurrent: boolean; isPlaying: boolean; onPress: () => void; onLike: (() => undefined) | undefined; onUnlike: (() => undefined) | undefined; liked: boolean; onDownload: () => undefined; ... 4 more ...; right: Element | undefined; }' is not assignable to type 'RowProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onLike' are incompatible.
+    Type '(() => undefined) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/screens/LibraryScreen.tsx(333,13): error TS2322: Type '{ icon: "cloud-download-outline" | "heart-outline" | "musical-notes-outline"; title: string; subtitle: string; action: { label: string; onPress: () => void; } | undefined; }' is not assignable to type 'IntrinsicAttributes & Props'.
+  Property 'action' does not exist on type 'IntrinsicAttributes & Props'.
+src/screens/SecretAccessScreen.tsx(10,3): error TS6133: 'Pressable' is declared but its value is never read.
+src/screens/SecretAccessScreen.tsx(144,52): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/SecretAccessScreen.tsx(163,52): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/SecretAccessScreen.tsx(178,52): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/SecretAccessScreen.tsx(193,52): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/SecretAccessScreen.tsx(344,29): error TS2339: Property 'surfaceDeep' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/SecretAccessScreen.tsx(405,19): error TS2339: Property 'textDim' does not exist on type '{ readonly background: "#030305"; readonly backgroundElevated: "#08080C"; readonly surface: "rgba(12,12,18,0.85)"; readonly surfaceSolid: "#0A0A10"; readonly surfaceHover: "rgba(255,255,255,0.04)"; ... 25 more ...; readonly black: "#000000"; }'.
+src/screens/SettingsScreen.tsx(33,10): error TS2375: Type '{ children: (false | Element)[]; onPress: (() => void) | undefined; haptic: "light"; disabled: boolean; style: { flexDirection: "row"; alignItems: "center"; gap: number; marginBottom: number; }; }' is not assignable to type 'Props' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onPress' are incompatible.
+    Type '(() => void) | undefined' is not assignable to type '() => void'.
+      Type 'undefined' is not assignable to type '() => void'.
+src/services/api.ts(20,49): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(input: string | URL | Request, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Argument of type '{ method: string; headers: Record<string, string>; body: string | undefined; }' is not assignable to parameter of type 'RequestInit' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'body' are incompatible.
+        Type 'string | undefined' is not assignable to type 'BodyInit | null'.
+          Type 'undefined' is not assignable to type 'BodyInit | null'.
+  Overload 2 of 3, '(input: RequestInfo, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Argument of type '{ method: string; headers: Record<string, string>; body: string | undefined; }' is not assignable to parameter of type 'RequestInit' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'body' are incompatible.
+        Type 'string | undefined' is not assignable to type 'BodyInit | null'.
+          Type 'undefined' is not assignable to type 'BodyInit | null'.
+  Overload 3 of 3, '(input: URL | RequestInfo, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Argument of type '{ method: string; headers: Record<string, string>; body: string | undefined; }' is not assignable to parameter of type 'RequestInit' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'body' are incompatible.
+        Type 'string | undefined' is not assignable to type 'BodyInit | null'.
+          Type 'undefined' is not assignable to type 'BodyInit | null'.
+src/services/lockscreen.service.ts(61,43): error TS2379: Argument of type '{ title: string; artist: string; albumTitle: string; artworkUrl: string | undefined; duration: number; }' is not assignable to parameter of type 'AudioMetadata' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'artworkUrl' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/lockscreen.service.ts(63,39): error TS2379: Argument of type '{ title: string; artist: string; albumTitle: string; artworkUrl: string | undefined; duration: number; }' is not assignable to parameter of type 'AudioMetadata' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'artworkUrl' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/lockscreen.service.ts(98,45): error TS2379: Argument of type '{ title: string; artist: string; albumTitle: string; artworkUrl: string | undefined; duration: number; }' is not assignable to parameter of type 'AudioMetadata' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'artworkUrl' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/lockscreen.service.ts(100,41): error TS2379: Argument of type '{ title: string; artist: string; albumTitle: string; artworkUrl: string | undefined; duration: number; }' is not assignable to parameter of type 'AudioMetadata' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'artworkUrl' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/update.service.ts(62,18): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/store/audio.ts(144,15): error TS6133: 'key' is declared but its value is never read.
+src/store/eq.store.ts(53,15): error TS2488: Type 'number[] | undefined' must have a '[Symbol.iterator]()' method that returns an iterator.
+src/store/player.store.ts(96,18): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/store/player.store.ts(96,28): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/store/player.store.ts(219,9): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/store/player.store.ts(230,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(partial: PlayerState | Partial<PlayerState> | ((state: PlayerState) => PlayerState | Partial<PlayerState>), replace?: false | undefined): void', gave the following error.
+    Argument of type '{ queueIndex: number; currentSong: Song | undefined; position: number; duration: number; error: null; }' is not assignable to parameter of type 'PlayerState | Partial<PlayerState> | ((state: PlayerState) => PlayerState | Partial<PlayerState>)'.
+      Type '{ queueIndex: number; currentSong: Song | undefined; position: number; duration: number; error: null; }' is not assignable to type 'Partial<PlayerState>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+        Types of property 'currentSong' are incompatible.
+          Type 'Song | undefined' is not assignable to type 'Song | null'.
+            Type 'undefined' is not assignable to type 'Song | null'.
+  Overload 2 of 2, '(state: PlayerState | ((state: PlayerState) => PlayerState), replace: true): void', gave the following error.
+    Type 'Song | undefined' is not assignable to type 'Song | null'.
+      Type 'undefined' is not assignable to type 'Song | null'.
+src/store/player.store.ts(231,27): error TS2345: Argument of type 'Song | undefined' is not assignable to parameter of type 'Song'.
+  Type 'undefined' is not assignable to type 'Song'.
+src/store/player.store.ts(245,9): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/store/player.store.ts(249,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(partial: PlayerState | Partial<PlayerState> | ((state: PlayerState) => PlayerState | Partial<PlayerState>), replace?: false | undefined): void', gave the following error.
+    Argument of type '{ queueIndex: number; currentSong: Song | undefined; position: number; duration: number; error: null; }' is not assignable to parameter of type 'PlayerState | Partial<PlayerState> | ((state: PlayerState) => PlayerState | Partial<PlayerState>)'.
+      Type '{ queueIndex: number; currentSong: Song | undefined; position: number; duration: number; error: null; }' is not assignable to type 'Partial<PlayerState>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+        Types of property 'currentSong' are incompatible.
+          Type 'Song | undefined' is not assignable to type 'Song | null'.
+            Type 'undefined' is not assignable to type 'Song | null'.
+  Overload 2 of 2, '(state: PlayerState | ((state: PlayerState) => PlayerState), replace: true): void', gave the following error.
+    Type 'Song | undefined' is not assignable to type 'Song | null'.
+      Type 'undefined' is not assignable to type 'Song | null'.
+src/store/player.store.ts(250,27): error TS2345: Argument of type 'Song | undefined' is not assignable to parameter of type 'Song'.
+  Type 'undefined' is not assignable to type 'Song'.
+src/store/player.store.ts(273,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(partial: PlayerState | Partial<PlayerState> | ((state: PlayerState) => PlayerState | Partial<PlayerState>), replace?: false | undefined): void', gave the following error.
+    Argument of type '{ repeat: RepeatMode | undefined; }' is not assignable to parameter of type 'PlayerState | Partial<PlayerState> | ((state: PlayerState) => PlayerState | Partial<PlayerState>)'.
+      Type '{ repeat: RepeatMode | undefined; }' is not assignable to type 'Partial<PlayerState>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+        Types of property 'repeat' are incompatible.
+          Type 'RepeatMode | undefined' is not assignable to type 'RepeatMode'.
+            Type 'undefined' is not assignable to type 'RepeatMode'.
+  Overload 2 of 2, '(state: PlayerState | ((state: PlayerState) => PlayerState), replace: true): void', gave the following error.
+    Type 'RepeatMode | undefined' is not assignable to type 'RepeatMode'.
+      Type 'undefined' is not assignable to type 'RepeatMode'.
+src/store/player.store.ts(303,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(partial: PlayerState | Partial<PlayerState> | ((state: PlayerState) => PlayerState | Partial<PlayerState>), replace?: false | undefined): void', gave the following error.
+    Argument of type '{ queue: Song[]; queueIndex: number; currentSong: Song | undefined; position: number; duration: number; }' is not assignable to parameter of type 'PlayerState | Partial<PlayerState> | ((state: PlayerState) => PlayerState | Partial<PlayerState>)'.
+      Type '{ queue: Song[]; queueIndex: number; currentSong: Song | undefined; position: number; duration: number; }' is not assignable to type 'Partial<PlayerState>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+        Types of property 'currentSong' are incompatible.
+          Type 'Song | undefined' is not assignable to type 'Song | null'.
+            Type 'undefined' is not assignable to type 'Song | null'.
+  Overload 2 of 2, '(state: PlayerState | ((state: PlayerState) => PlayerState), replace: true): void', gave the following error.
+    Type 'Song | undefined' is not assignable to type 'Song | null'.
+      Type 'undefined' is not assignable to type 'Song | null'.
+src/store/player.store.ts(304,29): error TS2345: Argument of type 'Song | undefined' is not assignable to parameter of type 'Song'.
+  Type 'undefined' is not assignable to type 'Song'.
+src/store/settings.store.ts(40,61): error TS6133: 'get' is declared but its value is never read.
+src/theme/index.ts(108,9): error TS2448: Block-scoped variable 'motion' used before its declaration.
+src/theme/index.ts(108,9): error TS2454: Variable 'motion' is used before being assigned.
+src/theme/index.ts(109,11): error TS2448: Block-scoped variable 'motion' used before its declaration.
+src/theme/index.ts(109,11): error TS2454: Variable 'motion' is used before being assigned.
+src/theme/index.ts(110,9): error TS2448: Block-scoped variable 'motion' used before its declaration.
+src/theme/index.ts(110,9): error TS2454: Variable 'motion' is used before being assigned.

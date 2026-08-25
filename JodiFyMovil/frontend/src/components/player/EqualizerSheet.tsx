@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PanResponder, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DEFAULT_EQ_PRESETS, EQ_BANDS, EQ_MAX, EQ_MIN, EQ_PRESET_LABELS } from '../../lib/constants';
 import { clamp } from '../../lib/utils';
 import { checkNativeAvailability, isEqualizerAvailable } from '../../services/equalizer.service';
 import { useEqStore } from '../../store/eq.store';
 import { useUiStore } from '../../store/ui.store';
-import { colors, fonts, gradients, radius } from '../../theme';
+import { colors, typography, gradients, radius, touch } from '../../theme';
 import { BottomSheet } from '../ui/BottomSheet';
 import { PressableScale } from '../ui/PressableScale';
 
@@ -201,20 +201,20 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontFamily: fonts.title,
+    fontFamily: typography.headlineMedium.fontFamily,
     fontSize: 17,
     letterSpacing: -0.3,
   },
   subtitle: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 12,
     marginTop: 1,
   },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.06)',
@@ -235,12 +235,12 @@ const styles = StyleSheet.create({
   },
   toggleLabel: {
     color: colors.text,
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 14,
   },
   toggleHint: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 11.5,
     marginTop: 1,
   },
@@ -272,12 +272,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   preset: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: touch.comfortable,
   },
   presetActive: {
     backgroundColor: 'rgba(127,0,255,0.22)',
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
   },
   presetText: {
     color: colors.textMuted,
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 12.5,
   },
   presetTextActive: {
@@ -304,7 +305,7 @@ const styles = StyleSheet.create({
   },
   sliderValue: {
     color: colors.textMuted,
-    fontFamily: fonts.bodyBold,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 11,
     marginBottom: 6,
     minWidth: 30,
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
   },
   sliderLabel: {
     color: colors.textDim,
-    fontFamily: fonts.bodyMedium,
+    fontFamily: typography.labelSmall.fontFamily,
     fontSize: 10,
     marginTop: 8,
   },
@@ -367,15 +368,17 @@ const styles = StyleSheet.create({
     gap: 7,
     marginHorizontal: 20,
     marginTop: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: radius.md,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: touch.comfortable,
   },
   resetText: {
     color: colors.text,
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: typography.labelMedium.fontFamily,
     fontSize: 13,
   },
   notice: {
@@ -393,7 +396,7 @@ const styles = StyleSheet.create({
   noticeText: {
     flex: 1,
     color: colors.textMuted,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 12.5,
     lineHeight: 18,
   },

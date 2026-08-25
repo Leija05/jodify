@@ -1,18 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { API_HOST } from '../lib/constants';
-import { useSecretCombo } from '../hooks/useSecretCombo';
 import { EmptyState } from '../components/ui/EmptyState';
-import { GlassCard } from '../components/ui/GlassCard';
-import { PressableScale } from '../components/ui/PressableScale';
+import { DoubleBezelCard } from '../components/ui/DoubleBezelCard';
+import { PressableFluid } from '../components/ui/PressableFluid';
 import { currentAppVersion } from '../services/update.service';
 import { clearAllDownloads } from '../services/downloads.service';
 import { useLibraryStore } from '../store/library.store';
 import { useSettingsStore } from '../store/settings.store';
 import { updateLabel, useUpdateStore } from '../store/update.store';
 import { useUiStore } from '../store/ui.store';
-import { colors, fonts, radius } from '../theme';
+import { colors, typography, radius } from '../theme';
 
 export function SettingsScreen() {
   const user = useSettingsStore((s) => s.user);
@@ -24,21 +22,17 @@ export function SettingsScreen() {
   const update = useUpdateStore();
   const openAuth = useUiStore((s) => s.openAuth);
   const openEqualizer = useUiStore((s) => s.openEqualizer);
-  const openSecret = useUiStore((s) => s.openSecret);
-  const unlockSecret = useSecretCombo(openSecret);
 
   const sleepActive = sleepTimer.endAt !== null && !sleepTimer.triggered;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Pressable onPress={unlockSecret} hitSlop={12}>
-        <Text style={styles.screenTitle}>Ajustes</Text>
-      </Pressable>
+      <Text style={styles.screenTitle}>Ajustes</Text>
 
-      <GlassCard>
-        <Pressable style={styles.cardRow} onPress={user ? undefined : openAuth}>
+      <DoubleBezelCard style={styles.card} elevated>
+        <PressableFluid onPress={user ? undefined : openAuth} haptic="light" disabled={!!user} style={styles.cardRow}>
           <View style={styles.avatar}>
-            <Ionicons name={user ? 'person' : 'person-outline'} size={20} color={colors.white} />
+            <Ionicons name={user ? 'person' : 'person-outline'} size={22} color={colors.white} />
           </View>
           <View style={styles.cardRowText}>
             <Text style={styles.cardRowTitle}>{user ? user.username : 'Invitado'}</Text>
@@ -46,46 +40,48 @@ export function SettingsScreen() {
               {user ? `Rol: ${user.role.toUpperCase()}` : 'Inicia sesión para guardar tus favoritas'}
             </Text>
           </View>
-          {!user && <Ionicons name="chevron-forward" size={18} color={colors.textDim} />}
-        </Pressable>
+          {!user && <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+        </PressableFluid>
         {user && (
-          <PressableScale onPress={() => void logout()} haptic style={styles.rowBtnDanger}>
-            <Ionicons name="log-out-outline" size={16} color={colors.error} />
+          <PressableFluid onPress={() => void logout()} haptic="medium" style={styles.rowBtnDanger}>
+            <Ionicons name="log-out-outline" size={18} color={colors.error} />
             <Text style={styles.rowBtnTextDanger}>Cerrar sesión</Text>
-          </PressableScale>
+          </PressableFluid>
         )}
-      </GlassCard>
+      </DoubleBezelCard>
 
       <Text style={styles.sectionTitle}>Sonido</Text>
-      <GlassCard>
-        <PressableScale onPress={openEqualizer} haptic style={styles.cardRow} scaleTo={0.98}>
-          <Ionicons name="options-outline" size={20} color={colors.secondary} />
+      <DoubleBezelCard style={styles.card} elevated>
+        <PressableFluid onPress={openEqualizer} haptic="light" style={styles.cardRow} scaleTo={0.98}>
+          <View style={styles.cardIcon}>
+            <Ionicons name="options-outline" size={22} color={colors.secondary} />
+          </View>
           <View style={styles.cardRowText}>
             <Text style={styles.cardRowTitle}>Ecualizador</Text>
             <Text style={styles.cardRowSubtitle}>Ajusta graves, medios y agudos con presets móviles</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
-        </PressableScale>
-        <PressableScale onPress={openSecret} haptic style={styles.secretBtn} scaleTo={0.98}>
-          <Ionicons name="shield-checkmark-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.secretText}>Acceso admin/dev</Text>
-        </PressableScale>
-      </GlassCard>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </PressableFluid>
+      </DoubleBezelCard>
 
       <Text style={styles.sectionTitle}>Temporizador de sueño</Text>
-      <GlassCard>
+      <DoubleBezelCard style={styles.card} elevated>
         <View style={styles.sleepRow}>
           {sleepActive ? (
             <>
-              <Ionicons name="moon" size={18} color={colors.warning} />
+              <View style={styles.sleepIcon}>
+                <Ionicons name="moon" size={20} color={colors.warning} />
+              </View>
               <Text style={styles.sleepActiveText}>La música se pausará pronto</Text>
-              <PressableScale onPress={cancelSleepTimer} haptic style={styles.chipBtn}>
+              <PressableFluid onPress={cancelSleepTimer} haptic="light" style={styles.chipBtn}>
                 <Text style={styles.chipBtnText}>Cancelar</Text>
-              </PressableScale>
+              </PressableFluid>
             </>
           ) : (
             <>
-              <Ionicons name="moon-outline" size={18} color={colors.textMuted} />
+              <View style={styles.sleepIcon}>
+                <Ionicons name="moon-outline" size={20} color={colors.textMuted} />
+              </View>
               <Text style={styles.sleepHint}>Pausar después de…</Text>
             </>
           )}
@@ -93,18 +89,20 @@ export function SettingsScreen() {
         {!sleepActive && (
           <View style={styles.sleepOptions}>
             {[5, 10, 15, 30, 60].map((m) => (
-              <PressableScale key={m} onPress={() => startSleepTimer(m)} haptic style={styles.chipBtn}>
+              <PressableFluid key={m} onPress={() => startSleepTimer(m)} haptic="selection" style={styles.chipBtn}>
                 <Text style={styles.chipBtnText}>{m} min</Text>
-              </PressableScale>
+              </PressableFluid>
             ))}
           </View>
         )}
-      </GlassCard>
+      </DoubleBezelCard>
 
       <Text style={styles.sectionTitle}>Descargas</Text>
-      <GlassCard>
+      <DoubleBezelCard style={styles.card} elevated>
         <View style={styles.cardRow}>
-          <Ionicons name="cloud-download-outline" size={20} color={colors.secondary} />
+          <View style={styles.cardIcon}>
+            <Ionicons name="cloud-download-outline" size={22} color={colors.secondary} />
+          </View>
           <View style={styles.cardRowText}>
             <Text style={styles.cardRowTitle}>
               {downloadedIds.length} canción{downloadedIds.length === 1 ? '' : 'es'} descargada{downloadedIds.length === 1 ? '' : 's'}
@@ -113,49 +111,51 @@ export function SettingsScreen() {
           </View>
         </View>
         {downloadedIds.length > 0 && (
-          <PressableScale
+          <PressableFluid
             onPress={() => {
               void clearAllDownloads().then(() => useLibraryStore.getState().clearDownloads());
             }}
-            haptic
+            haptic="medium"
             style={styles.rowBtnDanger}
           >
-            <Ionicons name="trash-outline" size={16} color={colors.error} />
+            <Ionicons name="trash-outline" size={18} color={colors.error} />
             <Text style={styles.rowBtnTextDanger}>Borrar todas las descargas</Text>
-          </PressableScale>
+          </PressableFluid>
         )}
-      </GlassCard>
+      </DoubleBezelCard>
 
       <Text style={styles.sectionTitle}>Actualizaciones</Text>
-      <GlassCard>
+      <DoubleBezelCard style={styles.card} elevated>
         <View style={styles.cardRow}>
-          <Ionicons name="refresh-circle-outline" size={20} color={colors.secondary} />
+          <View style={styles.cardIcon}>
+            <Ionicons name="refresh-circle-outline" size={22} color={colors.secondary} />
+          </View>
           <View style={styles.cardRowText}>
             <Text style={styles.cardRowTitle}>JodiFy Mobile</Text>
             <Text style={styles.cardRowSubtitle}>{updateLabel(update.status, update.info)}</Text>
           </View>
         </View>
         <View style={styles.sleepOptions}>
-          <PressableScale
+          <PressableFluid
             onPress={() => void update.runCheck(true)}
             disabled={update.status === 'checking' || update.status === 'installing'}
-            haptic
+            haptic="light"
             style={styles.chipBtn}
           >
             <Text style={styles.chipBtnText}>
               {update.status === 'checking' ? 'Buscando…' : 'Buscar actualizaciones'}
             </Text>
-          </PressableScale>
+          </PressableFluid>
           {update.status === 'available' && (
-            <PressableScale onPress={update.openModal} haptic style={[styles.chipBtn, styles.chipBtnPrimary]}>
+            <PressableFluid onPress={update.openModal} haptic="medium" style={[styles.chipBtn, styles.chipBtnPrimary]}>
               <Text style={[styles.chipBtnText, styles.chipBtnTextPrimary]}>Instalar actualización</Text>
-            </PressableScale>
+            </PressableFluid>
           )}
         </View>
-      </GlassCard>
+      </DoubleBezelCard>
 
       <Text style={styles.sectionTitle}>Información</Text>
-      <GlassCard>
+      <DoubleBezelCard style={styles.card} elevated>
         <View style={styles.infoRows}>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Versión</Text>
@@ -172,7 +172,7 @@ export function SettingsScreen() {
             <Text style={styles.infoValue}>GitHub Releases</Text>
           </View>
         </View>
-      </GlassCard>
+      </DoubleBezelCard>
 
       <EmptyState icon="sparkles-outline" title="Hecho con ♥ para los amigos" subtitle="JodiFy — música libre, sin anuncios, para siempre." />
     </ScrollView>
@@ -186,110 +186,120 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 200,
+    paddingBottom: 220,
   },
   screenTitle: {
     color: colors.text,
-    fontFamily: fonts.display,
-    fontSize: 26,
-    letterSpacing: -0.5,
-    marginBottom: 16,
+    fontFamily: typography.displaySmall.fontFamily,
+    fontSize: typography.displaySmall.fontSize,
+    letterSpacing: typography.displaySmall.letterSpacing,
+    lineHeight: typography.displaySmall.lineHeight,
+    marginBottom: 20,
   },
   sectionTitle: {
     color: colors.textMuted,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    letterSpacing: 1.5,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: typography.labelSmall.fontSize,
+    letterSpacing: typography.labelSmall.letterSpacing,
     textTransform: 'uppercase',
-    marginTop: 22,
-    marginBottom: 8,
+    marginTop: 28,
+    marginBottom: 10,
     marginLeft: 4,
+  },
+  card: {
+    marginBottom: 16,
   },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     marginBottom: 12,
   },
+  cardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(127,0,255,0.25)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.5)',
+    borderColor: colors.primaryStrong,
   },
   cardRowText: {
     flex: 1,
   },
   cardRowTitle: {
     color: colors.text,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 15,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: typography.bodyMedium.fontSize,
+    letterSpacing: typography.bodyMedium.letterSpacing,
   },
   cardRowSubtitle: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 12,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: typography.bodySmall.fontSize,
+    letterSpacing: typography.bodySmall.letterSpacing,
     marginTop: 2,
-  },
-  secretBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  secretText: {
-    color: colors.textMuted,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12.5,
   },
   rowBtnDanger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    paddingVertical: 10,
+    gap: 8,
+    paddingVertical: 14,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255,51,102,0.12)',
+    backgroundColor: colors.errorSoft,
   },
   rowBtnTextDanger: {
     color: colors.error,
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: typography.labelMedium.fontSize,
+    letterSpacing: typography.labelMedium.letterSpacing,
   },
   sleepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+  },
+  sleepIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.warningSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sleepHint: {
+    flex: 1,
     color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 14,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: typography.bodyMedium.fontSize,
+    letterSpacing: typography.bodyMedium.letterSpacing,
   },
   sleepActiveText: {
     flex: 1,
     color: colors.warning,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: typography.bodyMedium.fontSize,
+    letterSpacing: typography.bodyMedium.letterSpacing,
   },
   sleepOptions: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
+    gap: 10,
+    marginTop: 14,
     flexWrap: 'wrap',
   },
   chipBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
@@ -297,18 +307,19 @@ const styles = StyleSheet.create({
   },
   chipBtnText: {
     color: colors.text,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12.5,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: typography.labelMedium.fontSize,
+    letterSpacing: typography.labelMedium.letterSpacing,
   },
   chipBtnPrimary: {
-    backgroundColor: 'rgba(127,0,255,0.25)',
-    borderColor: 'rgba(127,0,255,0.6)',
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryStrong,
   },
   chipBtnTextPrimary: {
     color: colors.white,
   },
   infoRows: {
-    gap: 10,
+    gap: 12,
   },
   infoRow: {
     flexDirection: 'row',
@@ -317,13 +328,15 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 13,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: typography.bodySmall.fontSize,
+    letterSpacing: typography.bodySmall.letterSpacing,
   },
   infoValue: {
     color: colors.text,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: typography.bodyMedium.fontSize,
+    letterSpacing: typography.bodyMedium.letterSpacing,
     flexShrink: 1,
     marginLeft: 12,
     textAlign: 'right',

@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fonts } from '../../theme';
+import { colors, typography, radius } from '../../theme';
+import { PressableFluid } from './PressableFluid';
 
 interface Props {
   icon?: keyof typeof Ionicons.glyphMap;
   title: string;
-  subtitle?: string;
+  subtitle?: string | undefined;
+  action?: { label: string; onPress: () => void } | undefined;
 }
 
-export function EmptyState({ icon = 'musical-notes-outline', title, subtitle }: Props) {
+export function EmptyState({ icon = 'musical-notes-outline', title, subtitle, action }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.iconWrap}>
@@ -17,6 +18,16 @@ export function EmptyState({ icon = 'musical-notes-outline', title, subtitle }: 
       </View>
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {action ? (
+        <PressableFluid
+          onPress={action.onPress}
+          haptic="light"
+          hitSlop={6}
+          style={styles.actionBtn}
+        >
+          <Text style={styles.actionText}>{action.label}</Text>
+        </PressableFluid>
+      ) : null}
     </View>
   );
 }
@@ -40,16 +51,32 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontFamily: fonts.title,
+    fontFamily: typography.headlineSmall.fontFamily,
     fontSize: 16,
     textAlign: 'center',
   },
   subtitle: {
     color: colors.textMuted,
-    fontFamily: fonts.body,
+    fontFamily: typography.bodyMedium.fontFamily,
     fontSize: 13,
     textAlign: 'center',
     marginTop: 4,
     lineHeight: 19,
+  },
+  actionBtn: {
+    marginTop: 18,
+    minHeight: 48,
+    paddingHorizontal: 22,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.primaryStrong,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+  },
+  actionText: {
+    color: colors.text,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: typography.labelLarge.fontSize,
+    letterSpacing: typography.labelLarge.letterSpacing,
   },
 });

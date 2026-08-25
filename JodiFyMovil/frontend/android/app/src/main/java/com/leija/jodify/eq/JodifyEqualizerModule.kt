@@ -87,7 +87,7 @@ class JodifyEqualizerModule(
   @ReactMethod
   fun isAvailable(callback: Callback) {
     val ok = createIfNeeded()
-    callback.invoke(ok, equalizer?.numberOfBands ?: 0)
+    callback.invoke(ok, equalizer?.numberOfBands?.toInt() ?: 0)
   }
 
   @ReactMethod

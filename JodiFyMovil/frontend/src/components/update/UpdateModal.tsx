@@ -26,7 +26,7 @@ function Equalizer({ active }: { active: boolean }) {
       bars.forEach((b) => b.setValue(0.22));
       return;
     }
-    const loops = bars.map((bar, i) =>
+    const loops = bars.map((bar) =>
       Animated.loop(
         Animated.sequence([
           Animated.timing(bar, { toValue: 1, duration: 340, useNativeDriver: true }),
@@ -55,7 +55,7 @@ function Equalizer({ active }: { active: boolean }) {
   );
 }
 
-export function UpdateModal({ visible, current, latest, notes, status, onInstall, onLater, onClose }: UpdateModalProps) {
+export function UpdateModal({ visible, current, latest, notes, status, onInstall, onLater }: UpdateModalProps) {
   const installing = status === 'installing';
   const ready = !installing && (status === 'available' || status === 'error' || status === 'blocked');
 

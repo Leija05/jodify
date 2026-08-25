@@ -17,11 +17,12 @@ export async function apiFetch<T>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const init: RequestInit = { method, headers };
+  if (body !== undefined) {
+    init.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, init);
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
     try {

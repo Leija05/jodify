@@ -48,16 +48,21 @@ export function pickCoverUrl(song: { cover_url?: string; coverUrl?: string; cove
  * 3. album
  * 4. added_by (quien subió la canción)
  */
-export function resolveArtist(song: { name: string; artist?: string; album?: string; added_by?: string } | undefined | null): string | null {
+export function resolveArtist(song: { name?: string; artist?: string; album?: string; added_by?: string; artists?: { name?: string }[] } | undefined | null): string | null {
   if (!song) return null;
   const artist = song.artist?.trim();
   if (artist) return artist;
 
+  const firstArtist = song.artists?.[0]?.name?.trim();
+  if (firstArtist) return firstArtist;
+
   const name = song.name?.trim();
   if (name) {
     const match = name.match(/^\s*([^\-–—]{1,60}?)\s+[\-–—]\s+(.+?)\s*$/);
-    if (match && match[2] && match[2].length <= 80) {
-      const candidate = match[1].trim();
+    const artistPart = match?.[1];
+    const titlePart = match?.[2];
+    if (artistPart && titlePart && titlePart.length <= 80) {
+      const candidate = artistPart.trim();
       if (candidate.length >= 2 && !candidate.toUpperCase().startsWith('FT')) return candidate;
     }
   }
@@ -77,7 +82,10 @@ export function shuffleArray<T>(arr: T[]): T[] {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+    const a = copy[i] as T;
+    const b = copy[j] as T;
+    copy[i] = b;
+    copy[j] = a;
   }
   return copy;
 }

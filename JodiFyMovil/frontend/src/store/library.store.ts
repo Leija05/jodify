@@ -1,10 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { STORAGE_KEYS } from '../lib/constants';
 import type { LibraryTab, Song } from '../lib/types';
 import { getAuthUser } from '../services/auth.service';
 import { getDownloadedIds, getDownloadedSongs } from '../services/downloads.service';
-import { fetchLikedIds, fetchSongs, addLike, removeLike } from '../services/songs.service';
+import { fetchLikedIds, fetchSongs, addLike, removeLike, updateLikeCount } from '../services/songs.service';
 
 interface LibraryState {
   songs: Song[];
@@ -15,6 +13,7 @@ interface LibraryState {
   search: string;
   tab: LibraryTab;
   refreshing: boolean;
+  lastUserId: string | null;
 
   load: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -59,9 +58,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   search: '',
   tab: 'global',
   refreshing: false,
+  lastUserId: null,
 
   load: async () => {
-    if (get().songs.length > 0) return;
+    const user = await getAuthUser();
+    const userId = user?.username ?? null;
+
+    // Forzar recarga si cambió el usuario (login/logout)
+    if (get().lastUserId === userId && get().songs.length > 0 && userId) return;
+
     set({ loading: true, error: null });
     try {
       const [songs, likedIds, downloadedIds] = await Promise.all([
@@ -70,7 +75,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         getDownloadedIds(),
       ]);
       const songsWithLocal = await mergeDownloadedLocalUris(songs);
-      set({ songs: songsWithLocal, likedIds, downloadedIds, loading: false });
+      set({ songs: songsWithLocal, likedIds, downloadedIds, loading: false, lastUserId: userId });
     } catch {
       set({ loading: false, error: 'No se pudo conectar con el servidor de JodiFy.' });
     }
@@ -109,10 +114,16 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     if (!user) return false;
     const liked = get().likedIds.some((id) => String(id) === String(song.id));
     const next = !liked;
+    const delta = next ? 1 : -1;
     set({
       likedIds: next
         ? [...get().likedIds, song.id]
         : get().likedIds.filter((id) => String(id) !== String(song.id)),
+      songs: get().songs.map((s) =>
+        String(s.id) === String(song.id)
+          ? { ...s, likes: Math.max(0, (s.likes ?? 0) + delta) }
+          : s,
+      ),
     });
     try {
       if (next) {
@@ -120,11 +131,19 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       } else {
         await removeLike(song.id, user.username);
       }
+      // Actualizar contador en backend con delta
+      await updateLikeCount(song.id, user.username, delta);
     } catch {
+      // Revertir en caso de error
       set({
         likedIds: liked
           ? [...get().likedIds, song.id]
           : get().likedIds.filter((id) => String(id) !== String(song.id)),
+        songs: get().songs.map((s) =>
+          String(s.id) === String(song.id)
+            ? { ...s, likes: Math.max(0, (s.likes ?? 0) + (liked ? 1 : -1)) }
+            : s,
+        ),
       });
       return false;
     }
