@@ -44,6 +44,11 @@ app.include_router(social.router)
 app.include_router(logs.router)
 app.include_router(jam.router)
 
+# Alias para compatibilidad directa con URLs /songs/{id}/audio y /songs/{id}/cover
+app.add_api_route("/songs/{song_id}/audio", songs.stream_audio, methods=["GET"])
+app.add_api_route("/songs/{song_id}/audio", songs.head_audio, methods=["HEAD"])
+app.add_api_route("/songs/{song_id}/cover", songs.stream_cover, methods=["GET"])
+
 
 @app.get("/api/health")
 async def health() -> dict:
