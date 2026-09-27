@@ -1,24 +1,19 @@
 import { useEffect } from 'react';
-import { useLibraryStore } from '../store/library.store';
-import { useSettingsStore } from '../store/settings.store';
+import { useLibraryStore } from '../stores/library.store';
+import { useEqStore } from '../stores/eq.store';
+import { useSettingsStore } from '../stores/settings.store';
+import { useJamStore } from '../stores/jam.store';
 
-/**
- * Bootstrap de la app: carga datos iniciales y reactiva
- * likes/library cuando cambia el usuario (login/logout).
- */
 export function useBootstrap() {
-  const user = useSettingsStore((s) => s.user);
+  const loadLibrary = useLibraryStore((s) => s.load);
+  const loadEq = useEqStore((s) => s.loadPersisted);
+  const loadSettings = useSettingsStore((s) => s.loadPersisted);
+  const restoreJam = useJamStore((s) => s.restore);
 
   useEffect(() => {
-    void useLibraryStore.getState().load();
-    void useSettingsStore.getState().loadUser();
-  }, []);
-
-  // Cuando cambia el usuario, refrescar likes y forzar recarga de library
-  useEffect(() => {
-    void useLibraryStore.getState().refreshLikes();
-    // Forzar recarga de canciones si el usuario cambió
-    useLibraryStore.setState({ songs: [], lastUserId: null });
-    void useLibraryStore.getState().load();
-  }, [user]);
+    loadLibrary();
+    loadEq();
+    loadSettings();
+    restoreJam();
+  }, [loadLibrary, loadEq, loadSettings, restoreJam]);
 }

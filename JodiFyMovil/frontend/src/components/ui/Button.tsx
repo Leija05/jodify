@@ -1,352 +1,150 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, View, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Text, ActivityIndicator, View } from 'react-native';
 import { PressableFluid } from './PressableFluid';
-import { colors, typography, radius, gradients, elevation } from '../../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, radius, typography } from '@theme';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'outline';
-type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon' | 'icon-comfortable' | 'icon-generous';
-
-type HapticKind = 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'warning' | 'error';
+export type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'glass' | 'ghost' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon' | 'iconComfortable' | 'iconGenerous';
 
 interface ButtonProps {
   children: React.ReactNode;
-  onPress?: (() => void) | undefined;
-  variant?: ButtonVariant | undefined;
-  size?: ButtonSize | undefined;
-  disabled?: boolean | undefined;
-  loading?: boolean | undefined;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  fullWidth?: boolean | undefined;
-  style?: any;
-  testID?: string | undefined;
-  haptic?: HapticKind | undefined;
-}
-
-const VARIANT_STYLES = {
-  primary: {
-    background: 'gradient',
-    textColor: colors.white,
-    borderColor: 'transparent',
-    shadow: { ...elevation.level2, shadowColor: colors.primary },
-  },
-  secondary: {
-    background: 'glass',
-    textColor: colors.white,
-    borderColor: colors.borderStrong,
-    shadow: { shadowOpacity: 0, elevation: 0 },
-  },
-  ghost: {
-    background: 'none',
-    textColor: colors.text,
-    borderColor: 'transparent',
-    shadow: { shadowOpacity: 0, elevation: 0 },
-  },
-  destructive: {
-    background: 'error',
-    textColor: colors.white,
-    borderColor: 'transparent',
-    shadow: { ...elevation.level2, shadowColor: colors.error },
-  },
-  outline: {
-    background: 'none',
-    textColor: colors.primary,
-    borderColor: colors.primaryStrong,
-    shadow: { shadowOpacity: 0, elevation: 0 },
-  },
-};
-
-interface SizeConfig {
-  width?: number;
-  height?: number;
-  paddingHorizontal?: number;
-  fontSize?: number;
+  onPress?: () => void;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  disabled?: boolean;
+  loading?: boolean;
+  fullWidth?: boolean;
+  leftIcon?: keyof typeof Ionicons.glyphMap;
+  rightIcon?: keyof typeof Ionicons.glyphMap;
   iconSize?: number;
-  gap?: number;
-  borderRadius: number;
+  style?: any;
+  testID?: string;
+  haptic?: 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'warning' | 'error' | false;
 }
 
-const SIZE_CONFIG: Record<ButtonSize, SizeConfig> = {
-  sm: { height: 40, paddingHorizontal: 16, fontSize: 13, iconSize: 16, gap: 6, borderRadius: radius.pill },
-  md: { height: 48, paddingHorizontal: 20, fontSize: 14, iconSize: 18, gap: 8, borderRadius: radius.pill },
-  lg: { height: 56, paddingHorizontal: 24, fontSize: 15, iconSize: 20, gap: 10, borderRadius: radius.pill },
-  xl: { height: 64, paddingHorizontal: 32, fontSize: 16, iconSize: 22, gap: 12, borderRadius: radius.pill },
-  icon: { width: 48, height: 48, borderRadius: 9999 },
-  'icon-comfortable': { width: 52, height: 52, borderRadius: 9999 },
-  'icon-generous': { width: 56, height: 56, borderRadius: 9999 },
+const gradients = {
+  primary: ['#7F00FF', '#00E5FF'],
+  accent: ['#FF007A', '#7F00FF'],
 };
 
-export function Button({
-  children,
-  onPress,
-  variant = 'primary',
-  size = 'md',
-  disabled,
-  loading,
-  leftIcon,
-  rightIcon,
-  fullWidth = false,
-  style,
-  testID,
-  haptic = 'medium',
-}: ButtonProps) {
-  const config = SIZE_CONFIG[size];
-  const variantStyle = VARIANT_STYLES[variant];
-  const isIconOnly = size.startsWith('icon');
-  const showChildren = !isIconOnly;
-  const textFontSize = config.fontSize ?? typography.labelLarge.fontSize;
-  const contentGap = config.gap ?? 8;
+const variantStyles: Record<ButtonVariant, { bg: string; text: string; border: string; gradient?: string[] }> = {
+  primary: { bg: colors.primary, text: colors.white, border: colors.primary, gradient: gradients.primary },
+  secondary: { bg: colors.secondary, text: colors.white, border: colors.secondary, gradient: gradients.primary },
+  accent: { bg: colors.accent, text: colors.white, border: colors.accent, gradient: gradients.accent },
+  glass: { bg: 'rgba(255,255,255,0.05)', text: colors.text, border: colors.border },
+  ghost: { bg: 'transparent', text: colors.text, border: 'transparent' },
+  danger: { bg: colors.error, text: colors.white, border: colors.error, gradient: [colors.error, '#E0304A'] },
+};
 
-  const background = (() => {
-    if (variant === 'primary') {
+const sizeConfigs: Record<ButtonSize, { height: number; paddingHorizontal: number; minWidth: number; fontSize: number; gap: number; iconSize: number; size?: number }> = {
+  sm: { height: 40, paddingHorizontal: 16, minWidth: 80, fontSize: 13, gap: 8, iconSize: 18 },
+  md: { height: 48, paddingHorizontal: 20, minWidth: 96, fontSize: 14, gap: 8, iconSize: 20 },
+  lg: { height: 56, paddingHorizontal: 24, minWidth: 112, fontSize: 16, gap: 10, iconSize: 22 },
+  xl: { height: 64, paddingHorizontal: 32, minWidth: 140, fontSize: 18, gap: 12, iconSize: 24 },
+  icon: { size: 48, height: 48, paddingHorizontal: 0, minWidth: 48, fontSize: 0, gap: 0, iconSize: 22 },
+  iconComfortable: { size: 52, height: 52, paddingHorizontal: 0, minWidth: 52, fontSize: 0, gap: 0, iconSize: 24 },
+  iconGenerous: { size: 56, height: 56, paddingHorizontal: 0, minWidth: 56, fontSize: 0, gap: 0, iconSize: 26 },
+};
+
+export const Button = React.forwardRef<View, ButtonProps>(
+  (
+    {
+      children,
+      onPress,
+      variant = 'primary',
+      size = 'md',
+      disabled = false,
+      loading = false,
+      fullWidth = false,
+      leftIcon,
+      rightIcon,
+      iconSize,
+      style,
+      testID,
+      haptic = 'medium',
+      ...props
+    },
+    ref
+  ) => {
+    const { bg, text, border, gradient } = variantStyles[variant];
+    const sizeConfig = sizeConfigs[size];
+    const isIconOnly = size.startsWith('icon');
+    const fontSize = isIconOnly ? undefined : sizeConfig.fontSize;
+
+    const containerStyle = [
+      {
+        height: sizeConfig.height,
+        paddingHorizontal: isIconOnly ? 0 : sizeConfig.paddingHorizontal,
+        borderRadius: radius.pill,
+        backgroundColor: disabled ? 'rgba(255,255,255,0.08)' : bg,
+        borderWidth: variant === 'glass' || variant === 'ghost' ? 1 : 0,
+        borderColor: disabled ? colors.border : border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: sizeConfig.gap,
+        width: fullWidth ? '100%' : undefined,
+        minWidth: sizeConfig.minWidth,
+      },
+      style,
+    ] as any;
+
+    const content = (
+      <>
+        {loading ? (
+          <ActivityIndicator size="small" color={text} />
+        ) : (
+          <>
+            {leftIcon && <Ionicons name={leftIcon} size={iconSize ?? sizeConfig.iconSize} color={text} />}
+            <Text
+              style={{
+                color: text,
+                fontFamily: typography.labelMedium.fontFamily,
+                fontSize: fontSize,
+                letterSpacing: typography.labelMedium.letterSpacing,
+                lineHeight: typography.labelMedium.lineHeight,
+                fontWeight: '600',
+              }}
+            >
+              {children}
+            </Text>
+            {rightIcon && <Ionicons name={rightIcon} size={iconSize ?? sizeConfig.iconSize} color={text} />}
+          </>
+        )}
+      </>
+    );
+
+    const renderButton = () => (
+      <PressableFluid
+        ref={ref}
+        onPress={onPress}
+        disabled={disabled || loading}
+        haptic={haptic}
+        style={containerStyle}
+        {...(testID ? { testID } : {})}
+        {...props}
+      >
+        {content}
+      </PressableFluid>
+    );
+
+    if (gradient && variant !== 'glass' && variant !== 'ghost') {
       return (
         <LinearGradient
-          colors={gradients.play}
+          colors={gradient as unknown as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
+          style={containerStyle}
+        >
+          {content}
+        </LinearGradient>
       );
     }
-    if (variant === 'destructive') {
-      return (
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.error, borderRadius: config.borderRadius }]} />
-      );
-    }
-    if (variant === 'secondary') {
-      return (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { backgroundColor: colors.surface, borderRadius: config.borderRadius, borderWidth: 1, borderColor: colors.borderStrong },
-          ]}
-        />
-      );
-    }
-    if (variant === 'outline') {
-      return (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { backgroundColor: 'transparent', borderRadius: config.borderRadius, borderWidth: 1.5, borderColor: colors.primaryStrong },
-          ]}
-        />
-      );
-    }
-    if (variant === 'ghost') {
-      return (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { backgroundColor: 'transparent', borderRadius: config.borderRadius },
-          ]}
-        />
-      );
-    }
-    return null;
-  })();
 
-  const content = showChildren ? (
-    <View style={[
-      styles.content,
-      { gap: contentGap },
-      isIconOnly && styles.contentIcon,
-    ]}>
-      {loading ? (
-        <ActivityIndicator size="small" color={variantStyle.textColor} />
-      ) : leftIcon ? (
-        <View>{leftIcon}</View>
-      ) : null}
-      <Text
-        style={[
-          styles.label,
-          { fontSize: textFontSize, fontFamily: typography.labelLarge.fontFamily, color: variantStyle.textColor },
-          loading && styles.labelLoading,
-        ]}
-        numberOfLines={1}
-      >
-        {children}
-      </Text>
-      {rightIcon && !loading && <View>{rightIcon}</View>}
-    </View>
-  ) : (
-    <View style={styles.contentIcon}>
-      {children}
-    </View>
-  );
+    return renderButton();
+  }
+);
 
-  return (
-    <PressableFluid
-      onPress={onPress}
-      disabled={disabled || loading}
-      haptic={haptic}
-      style={[
-        styles.button,
-        {
-          height: config.height,
-          width: isIconOnly ? config.width : fullWidth ? '100%' : undefined,
-          borderRadius: config.borderRadius,
-          paddingHorizontal: isIconOnly ? 0 : config.paddingHorizontal,
-          ...variantStyle.shadow,
-        },
-        fullWidth && styles.fullWidth,
-        style,
-      ]}
-      testID={testID}
-    >
-      {background}
-      <View style={styles.contentWrapper} pointerEvents="none">
-        {content}
-      </View>
-    </PressableFluid>
-  );
-}
-
-export function IconButton({
-  icon,
-  onPress,
-  variant = 'ghost',
-  size = 'icon-comfortable',
-  disabled,
-  style,
-  testID,
-  haptic = 'light',
-  ...props
-}: {
-  icon: React.ReactNode;
-  onPress?: (() => void) | undefined;
-  variant?: ButtonVariant | undefined;
-  size?: ButtonSize | undefined;
-  disabled?: boolean | undefined;
-  style?: any;
-  testID?: string | undefined;
-  haptic?: HapticKind | undefined;
-}) {
-  return (
-    <Button
-      onPress={onPress}
-      variant={variant}
-      size={size}
-      disabled={disabled}
-      style={style}
-      testID={testID}
-      haptic={haptic}
-      {...props}
-    >
-      {icon}
-    </Button>
-  );
-}
-
-export function Chip({
-  children,
-  onPress,
-  variant = 'default',
-  leadingIcon,
-  trailingIcon,
-  selected = false,
-  disabled,
-  style,
-  testID,
-}: {
-  children: React.ReactNode;
-  onPress?: (() => void) | undefined;
-  variant?: ('default' | 'primary' | 'destructive') | undefined;
-  leadingIcon?: React.ReactNode;
-  trailingIcon?: React.ReactNode;
-  selected?: boolean | undefined;
-  disabled?: boolean | undefined;
-  style?: any;
-  testID?: string | undefined;
-}) {
-  const isPrimary = variant === 'primary' || selected;
-  const isDestructive = variant === 'destructive';
-  
-  const bgColor = isPrimary
-    ? colors.primarySoft
-    : isDestructive
-    ? colors.errorSoft
-    : 'rgba(255,255,255,0.06)';
-  
-  const borderColor = isPrimary
-    ? colors.primaryStrong
-    : isDestructive
-    ? 'rgba(255,61,92,0.4)'
-    : colors.border;
-  
-  const textColor = isPrimary
-    ? colors.white
-    : isDestructive
-    ? colors.error
-    : colors.text;
-
-  return (
-    <PressableFluid
-      onPress={onPress}
-      disabled={disabled}
-      haptic="selection"
-      style={[
-        styles.chip,
-        {
-          backgroundColor: bgColor,
-          borderColor,
-          borderWidth: 1,
-        },
-        style,
-      ]}
-      testID={testID}
-    >
-      <View style={styles.chipContent}>
-        {leadingIcon && <View style={styles.chipIcon}>{leadingIcon}</View>}
-        <Text style={[typography.labelMedium, { color: textColor }]}>{children}</Text>
-        {trailingIcon && <View style={styles.chipIcon}>{trailingIcon}</View>}
-      </View>
-    </PressableFluid>
-  );
-}
-
-const styles = StyleSheet.create({
-  button: {
-    position: 'relative',
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  fullWidth: {
-    width: '100%',
-  },
-  contentWrapper: {
-    flex: 1,
-    zIndex: 1,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contentIcon: {
-    paddingHorizontal: 0,
-  },
-  label: {
-    textAlign: 'center',
-    letterSpacing: 0.3,
-  },
-  labelLoading: {
-    opacity: 0.7,
-  },
-  chip: {
-    borderRadius: radius.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  chipContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  chipIcon: {
-    flexShrink: 0,
-  },
-});
+Button.displayName = 'Button';

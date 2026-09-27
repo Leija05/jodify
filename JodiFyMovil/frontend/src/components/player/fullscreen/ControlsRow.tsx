@@ -1,10 +1,10 @@
+import React from 'react';
+import { Animated, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Animated, StyleSheet, Text } from 'react-native';
-import { PressableFluid } from '../../ui/PressableFluid';
-import { colors, gradients } from '../../../theme';
+import { PressableFluid } from '@components/ui/PressableFluid';
+import { colors } from '@theme';
 
-interface Props {
+interface ControlsRowProps {
   controlsOpacity: Animated.Value;
   isPlaying: boolean;
   shuffle: boolean;
@@ -16,82 +16,118 @@ interface Props {
   onCycleRepeat: () => void;
 }
 
-export function ControlsRow({
-  controlsOpacity,
-  isPlaying,
-  shuffle,
-  repeat,
-  onToggleShuffle,
-  onPrevious,
-  onTogglePlay,
-  onNext,
-  onCycleRepeat,
-}: Props) {
-  return (
-    <Animated.View style={[{ opacity: controlsOpacity }, styles.controlsRow]}>
-      <PressableFluid onPress={onToggleShuffle} haptic style={styles.sideBtn}>
-        <Ionicons name="shuffle" size={20} color={shuffle ? colors.secondary : colors.textMuted} />
-      </PressableFluid>
-      <PressableFluid onPress={onPrevious} haptic style={styles.sideBtn}>
-        <Ionicons name="play-skip-back" size={30} color={colors.text} />
-      </PressableFluid>
-      <PressableFluid onPress={onTogglePlay} haptic style={styles.playBtnWrap}>
-        <LinearGradient colors={[gradients.play[0], gradients.play[1]] as const} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.playBtn}>
-          <Ionicons name={isPlaying ? 'pause' : 'play'} size={32} color={colors.white} />
-        </LinearGradient>
-      </PressableFluid>
-      <PressableFluid onPress={onNext} haptic style={styles.sideBtn}>
-        <Ionicons name="play-skip-forward" size={30} color={colors.text} />
-      </PressableFluid>
-      <PressableFluid onPress={onCycleRepeat} haptic style={styles.sideBtn}>
-        <Ionicons
-          name={repeat === 'one' ? 'repeat' : 'repeat-outline'}
-          size={20}
-          color={repeat === 'off' ? colors.textMuted : colors.secondary}
-        />
-        {repeat === 'one' && <Text style={styles.repeatOne}>1</Text>}
-      </PressableFluid>
-    </Animated.View>
-  );
-}
+export const ControlsRow = React.forwardRef<View, ControlsRowProps>(
+  ({
+    controlsOpacity,
+    isPlaying,
+    shuffle,
+    repeat,
+    onToggleShuffle,
+    onPrevious,
+    onTogglePlay,
+    onNext,
+    onCycleRepeat,
+  }, ref) => {
+    return (
+      <Animated.View
+        ref={ref}
+        style={[
+          styles.container,
+          { opacity: controlsOpacity },
+        ]}
+      >
+        <View style={styles.row}>
+          <PressableFluid
+            onPress={onToggleShuffle}
+            haptic="light"
+            style={[
+              styles.controlBtn,
+              shuffle && styles.controlBtnActive,
+            ]}
+            hitSlop={8}
+          >
+            <Ionicons name="shuffle" size={24} color={shuffle ? colors.secondary : colors.textSecondary} />
+          </PressableFluid>
+
+          <PressableFluid onPress={onPrevious} haptic="light" style={styles.controlBtn} hitSlop={8}>
+            <Ionicons name="play-skip-back" size={30} color={colors.text} />
+          </PressableFluid>
+
+          <PressableFluid onPress={onTogglePlay} haptic="medium" style={styles.playBtn}>
+            <View style={styles.playBtnFill}>
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={36} color={colors.white} />
+            </View>
+          </PressableFluid>
+
+          <PressableFluid onPress={onNext} haptic="light" style={styles.controlBtn} hitSlop={8}>
+            <Ionicons name="play-skip-forward" size={30} color={colors.text} />
+          </PressableFluid>
+
+          <PressableFluid
+            onPress={onCycleRepeat}
+            haptic="light"
+            style={[
+              styles.controlBtn,
+              repeat !== 'off' && styles.controlBtnActive,
+            ]}
+            hitSlop={8}
+          >
+            <Ionicons name={repeat === 'one' ? 'repeat' : 'repeat'} size={24} color={repeat !== 'off' ? colors.secondary : colors.textSecondary} />
+          </PressableFluid>
+        </View>
+      </Animated.View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
-  controlsRow: {
+  container: {
+    paddingHorizontal: 24,
+    marginVertical: 8,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 26,
-    marginTop: 14,
+    gap: 24,
   },
-  sideBtn: {
-    padding: 12,
+  controlBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 52,
-    minHeight: 52,
+    backgroundColor: 'rgba(127,0,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(127,0,255,0.3)',
   },
-  playBtnWrap: {
-    shadowColor: '#7F00FF',
-    shadowOpacity: 0.7,
-    shadowRadius: 28,
+  controlBtnActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryStrong,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 14,
+    elevation: 6,
   },
   playBtn: {
     width: 72,
     height: 72,
     borderRadius: 36,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
+  },
+  playBtnFill: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  repeatOne: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    color: '#00E5FF',
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 9,
+    backgroundColor: colors.primary,
   },
 });
+
+ControlsRow.displayName = 'ControlsRow';

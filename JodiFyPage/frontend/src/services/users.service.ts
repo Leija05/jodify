@@ -59,6 +59,22 @@ export const usersService = {
   async insertListeningHistory(username: string, songId: number | string, songName?: string): Promise<void> {
     await api.post('/history', { username, song_id: songId, song_name: songName ?? null });
   },
+
+  async getPreferences(username: string): Promise<Record<string, any> | null> {
+    try {
+      return await api.get<Record<string, any>>(`/users/${encodeURIComponent(username)}/preferences`);
+    } catch {
+      return null;
+    }
+  },
+
+  async updatePreferences(username: string, prefs: Record<string, any>): Promise<void> {
+    try {
+      await api.put(`/users/${encodeURIComponent(username)}/preferences`, prefs);
+    } catch {
+      // non-blocking
+    }
+  },
 };
 
 export async function fetchCommunityUsers(): Promise<UserAccess[]> {

@@ -1,105 +1,111 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Directory, File, Paths } from 'expo-file-system';
-import { STORAGE_KEYS } from '../lib/constants';
-import type { DownloadRecord, Song } from '../lib/types';
-import { resolveMediaUrl } from '../lib/utils';
+import { apiFetch } from './api';
+import { API_BASE } from '../lib/constants';
+import { mmkv, STORAGE_KEYS } from '../lib/mmkv';
+import * as FileSystem from 'expo-file-system';
+import type { Song } from '../lib/types';
 
-const MUSIC_DIR = new Directory(Paths.document, 'music');
+type DownloadRecord = Song & { localUri: string; savedAt?: number };
 
-function sanitizeName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 80);
+const DOWNLOAD_DIR = `${FileSystem.documentDirectory}downloads/`;
+
+async function ensureDownloadDir(): Promise<void> {
+  const info = await FileSystem.getInfoAsync(DOWNLOAD_DIR);
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(DOWNLOAD_DIR, { intermediates: true });
+  }
 }
 
-async function ensureMusicDir(): Promise<void> {
-  if (!MUSIC_DIR.exists) MUSIC_DIR.create({ intermediates: true, idempotent: true });
+function getLocalUri(songId: string | number): string {
+  return `${DOWNLOAD_DIR}${songId}.mp3`;
 }
 
-async function readRecords(): Promise<DownloadRecord[]> {
+export async function getDownloadedIds(): Promise<Array<number | string>> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.downloaded);
-    return raw ? (JSON.parse(raw) as DownloadRecord[]) : [];
+    const data = mmkv.getObject<Record<string, DownloadRecord>>(STORAGE_KEYS.downloads) ?? {};
+    return Object.keys(data);
   } catch {
     return [];
   }
 }
 
-async function writeRecords(records: DownloadRecord[]): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEYS.downloaded, JSON.stringify(records));
+export async function getDownloadedSongs(): Promise<DownloadRecord[]> {
+  try {
+    const data = mmkv.getObject<Record<string, DownloadRecord>>(STORAGE_KEYS.downloads) ?? {};
+    return Object.values(data);
+  } catch {
+    return [];
+  }
+}
+
+export async function isDownloaded(songId: string | number): Promise<boolean> {
+  const ids = await getDownloadedIds();
+  return ids.some((id) => String(id) === String(songId));
 }
 
 export async function downloadSong(song: Song): Promise<DownloadRecord> {
-  await ensureMusicDir();
-  const url = resolveMediaUrl(song.url);
-  if (!url) throw new Error('La canción no tiene URL de audio');
+  await ensureDownloadDir();
 
-  const file = new File(MUSIC_DIR, `${sanitizeName(String(song.id))}.mp3`);
-  if (file.exists) file.delete();
+  const localUri = getLocalUri(song.id);
+  const existingInfo = await FileSystem.getInfoAsync(localUri);
+  if (existingInfo.exists) {
+    const record: DownloadRecord = { ...song, localUri, savedAt: Date.now() };
+    await saveDownloadRecord(record);
+    return record;
+  }
 
-  await File.downloadFileAsync(url, file, { idempotent: true });
+  const sourceUrl = song.url?.startsWith('http') ? song.url : `${song.url?.startsWith('/') ? '' : '/api/songs'}/${song.id}/audio`;
+  const fullUrl = sourceUrl.startsWith('http') ? sourceUrl : `${API_BASE}${sourceUrl}`;
 
-  const record: DownloadRecord = {
-    ...song,
-    localUri: file.uri,
-    savedAt: Date.now(),
+  const downloadOptions: FileSystem.DownloadOptions = {
+    headers: {},
   };
 
-  const records = await readRecords();
-  const next = records.filter((r) => String(r.id) !== String(song.id));
-  next.push(record);
-  await writeRecords(next);
-  return record;
-}
-
-export async function getDownloadedSongs(): Promise<DownloadRecord[]> {
-  const records = await readRecords();
-  return records
-    .filter((r) => {
-      try {
-        return new File(r.localUri).exists;
-      } catch {
-        return false;
-      }
-    })
-    .sort((a, b) => b.savedAt - a.savedAt);
-}
-
-export async function deleteDownloadedSong(songId: number | string): Promise<void> {
-  const records = await readRecords();
-  const target = records.find((r) => String(r.id) === String(songId));
-  if (target) {
-    try {
-      const f = new File(target.localUri);
-      if (f.exists) f.delete();
-    } catch {
-      // archivo ya no existe
-    }
+  const token = await apiFetch<string>('/api/auth/token', { method: 'GET' }).catch(() => null);
+  if (token) {
+    downloadOptions.headers = { Authorization: `Bearer ${token}` };
   }
-  await writeRecords(records.filter((r) => String(r.id) !== String(songId)));
+
+  const result: FileSystem.DownloadResult = await FileSystem.downloadAsync(fullUrl, localUri, downloadOptions);
+
+  if (result.status === 200) {
+    const record: DownloadRecord = { ...song, localUri, savedAt: Date.now() };
+    await saveDownloadRecord(record);
+    return record;
+  } else {
+    throw new Error(`Download failed with status ${result.status}`);
+  }
 }
 
-export async function isSongDownloaded(songId: number | string): Promise<boolean> {
-  const records = await readRecords();
-  return records.some((r) => String(r.id) === String(songId));
+async function saveDownloadRecord(record: DownloadRecord): Promise<void> {
+  const data = mmkv.getObject<Record<string, DownloadRecord>>(STORAGE_KEYS.downloads) ?? {};
+  data[String(record.id)] = record;
+  mmkv.setObject(STORAGE_KEYS.downloads, data);
+}
+
+export async function deleteDownloadedSong(songId: string | number): Promise<void> {
+  const localUri = getLocalUri(songId);
+  const info = await FileSystem.getInfoAsync(localUri);
+  if (info.exists) {
+    await FileSystem.deleteAsync(localUri, { idempotent: true });
+  }
+
+  const data = mmkv.getObject<Record<string, DownloadRecord>>(STORAGE_KEYS.downloads) ?? {};
+  delete data[String(songId)];
+  mmkv.setObject(STORAGE_KEYS.downloads, data);
 }
 
 export async function clearAllDownloads(): Promise<void> {
-  await ensureMusicDir();
-  for (const child of MUSIC_DIR.list()) {
-    try {
-      child.delete();
-    } catch {
-      // ignorar
+  const data = mmkv.getObject<Record<string, DownloadRecord>>(STORAGE_KEYS.downloads) ?? {};
+  for (const record of Object.values(data)) {
+    const info = await FileSystem.getInfoAsync(record.localUri);
+    if (info.exists) {
+      await FileSystem.deleteAsync(record.localUri, { idempotent: true });
     }
   }
-  await writeRecords([]);
+  mmkv.delete(STORAGE_KEYS.downloads);
 }
 
-export async function getDownloadedIds(): Promise<Array<number | string>> {
-  const records = await readRecords();
-  return records.map((r) => r.id);
-}
-
-export async function getDownloadedRecord(songId: number | string): Promise<DownloadRecord | null> {
-  const records = await readRecords();
-  return records.find((r) => String(r.id) === String(songId)) ?? null;
+export async function getDownloadProgress(songId: string | number): Promise<number> {
+  const downloaded = await isDownloaded(songId);
+  return downloaded ? 100 : 0;
 }

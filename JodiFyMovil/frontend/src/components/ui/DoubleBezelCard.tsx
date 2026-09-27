@@ -1,68 +1,48 @@
 import React from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { colors, radius, elevation } from '../../theme';
+import { View, StyleProp, ViewStyle, StyleSheet } from 'react-native';
+import { colors, radius, elevation } from '@theme';
 
 interface DoubleBezelCardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   elevated?: boolean;
-  pressable?: boolean;
-  onPress?: () => void;
-  testID?: string;
+  innerPadding?: number;
+  outerPadding?: number;
 }
 
-export function DoubleBezelCard({
-  children,
-  style,
-  elevated = false,
-  pressable = false,
-  onPress,
-  testID,
-}: DoubleBezelCardProps) {
-  return (
-    <View
-      style={[
-        styles.outer,
-        elevated && styles.outerElevated,
-        style,
-      ]}
-      testID={testID}
-      accessibilityRole={pressable ? 'button' : undefined}
-      accessibilityState={{ disabled: pressable && !onPress }}
-    >
-      <View style={styles.inner} collapsable={false}>
-        {children}
+export const DoubleBezelCard = React.forwardRef<View, DoubleBezelCardProps>(
+  ({ children, style, elevated = false, innerPadding = 16, outerPadding = 2, ...props }, ref) => {
+    return (
+      <View
+        ref={ref}
+        style={[
+          styles.outer,
+          elevated ? elevation.level2 : elevation.level1,
+          { padding: outerPadding },
+          style,
+        ]}
+        {...props}
+      >
+        <View style={[styles.inner, { padding: innerPadding, borderRadius: radius.cardInner }]}>{children}</View>
       </View>
-    </View>
-  );
-}
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   outer: {
-    backgroundColor: colors.backgroundElevated,
+    backgroundColor: colors.surfaceSolid,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.cardOuter,
-    padding: 4,
-    ...elevation.level1,
-  },
-  outerElevated: {
-    ...elevation.level2,
     borderColor: colors.borderStrong,
+    borderRadius: radius.cardOuter,
+    overflow: 'hidden',
   },
   inner: {
     backgroundColor: colors.surface,
-    borderRadius: radius.cardInner,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    flex: 1,
   },
 });
 
-export function DoubleBezelCardInner({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  return <View style={[styles.inner, style]}>{children}</View>;
-}
+DoubleBezelCard.displayName = 'DoubleBezelCard';

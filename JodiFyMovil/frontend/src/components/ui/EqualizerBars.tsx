@@ -1,120 +1,121 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
-import { colors } from '../../theme';
+import React, { useEffect, useMemo } from 'react';
+import { View, StyleProp, ViewStyle, StyleSheet, Animated, Easing } from 'react-native';
+import { colors } from '@theme';
 
-interface Props {
+interface EqualizerBarsProps {
   playing: boolean;
   bars?: number;
   height?: number;
   barWidth?: number;
+  gap?: number;
   color?: string;
+  style?: StyleProp<ViewStyle>;
+  speeds?: number[];
+  amplitudes?: number[];
 }
 
-function randomHeights(count: number, min: number, max: number): number[] {
-  return Array.from({ length: count }, () => min + Math.random() * (max - min));
-}
+const DEFAULT_BARS = 5;
+const DEFAULT_HEIGHT = 20;
+const DEFAULT_BAR_WIDTH = 3;
+const DEFAULT_GAP = 3;
 
-function randomSpeeds(count: number, min: number, max: number): number[] {
-  return Array.from({ length: count }, () => min + Math.random() * (max - min));
-}
+export const EqualizerBars = React.forwardRef<View, EqualizerBarsProps>(
+  (
+    {
+      playing,
+      bars = DEFAULT_BARS,
+      height = DEFAULT_HEIGHT,
+      barWidth = DEFAULT_BAR_WIDTH,
+      gap = DEFAULT_GAP,
+      color = colors.white,
+      style,
+      speeds,
+      amplitudes,
+    },
+    ref
+  ) => {
+    const animatedValues = useMemo(
+      () => Array.from({ length: bars }, () => new Animated.Value(2)),
+      [bars]
+    );
 
-export function EqualizerBars({ playing, bars = 5, height = 18, barWidth = 3, color }: Props) {
-  const animationsRef = useRef<Animated.Value[] | null>(null);
-  const baseHeightsRef = useRef<number[]>([]);
-  const speedsRef = useRef<number[]>([]);
-  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
-  const mountedRef = useRef(true);
-  const [initialized, setInitialized] = React.useState(false);
+    const barSpeeds = speeds ?? [0.8, 1.2, 0.9, 1.1, 1.0, 1.3, 0.7, 1.15, 0.85, 1.05];
+    const barAmplitudes = amplitudes ?? [0.6, 0.8, 0.7, 0.9, 0.75, 0.85, 0.65, 0.9, 0.7, 0.8];
 
-  // Initialize refs only once
-  useEffect(() => {
-    if (!animationsRef.current) {
-      animationsRef.current = Array.from({ length: bars }, () => new Animated.Value(0.35));
-      baseHeightsRef.current = randomHeights(bars, 0.4, 0.9);
-      speedsRef.current = randomSpeeds(bars, 800, 1500);
-      setInitialized(true);
-    }
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [bars]);
-
-  // Handle playing state changes
-  useEffect(() => {
-    if (!mountedRef.current) return;
-    const animations = animationsRef.current;
-    const baseHeights = baseHeightsRef.current;
-    const speeds = speedsRef.current;
-    
-    if (!animations || animations.length !== bars) return;
-
-    if (playing) {
-      const seqs = animations.map((anim, i) =>
-        Animated.sequence([
-          Animated.timing(anim, {
-            toValue: baseHeights[i] ?? 0.6,
-            duration: speeds[i] ?? 600,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, {
-            toValue: 0.35,
-            duration: speeds[i] ?? 600,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-      
-      const parallel = Animated.parallel(seqs);
-      loopRef.current = Animated.loop(parallel);
-      loopRef.current.start();
-    } else {
-      if (loopRef.current) {
-        loopRef.current.stop();
-        loopRef.current = null;
+    useEffect(() => {
+      if (!playing) {
+        animatedValues.forEach((v) => v.setValue(2));
+        return;
       }
-      animations.forEach((a) => a.stopAnimation());
-    }
-    
-    return () => {
-      if (loopRef.current) {
-        loopRef.current.stop();
-        loopRef.current = null;
-      }
-      animations.forEach((a) => a.stopAnimation());
-    };
-  }, [playing, bars]);
 
-// Memoize bar styles
-  const barStyles = useMemo(() => {
-    const baseStyle = { width: barWidth, backgroundColor: color ?? colors.primary };
-    return (animationsRef.current ?? []).map((anim) => [
-      styles.bar,
-      {
-        ...baseStyle,
-        transform: [{ scaleY: anim }],
-      },
-    ]);
-  }, [barWidth, color, initialized]);
+      const animations = animatedValues.map((v, i) => {
+        const speedVal = barSpeeds[i % barSpeeds.length] ?? 1.0;
+        const speed = speedVal * 1000;
+        const ampVal = barAmplitudes[i % barAmplitudes.length] ?? 0.75;
+        const amplitude = ampVal * height * 0.9;
 
-  return (
-    <View style={[styles.row, { height }]}>
-      {barStyles.map((style, i) => (
-        <Animated.View key={i} style={style} />
-      ))}
-    </View>
-  );
-}
+        return Animated.loop(
+          Animated.sequence([
+            Animated.timing(v, {
+              toValue: amplitude,
+              duration: speed,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: false,
+            }),
+            Animated.timing(v, {
+              toValue: 2,
+              duration: speed,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: false,
+            }),
+          ])
+        );
+      });
+
+      animations.forEach((a) => a.start());
+
+      return () => {
+        animations.forEach((a) => a.stop());
+      };
+    }, [playing, animatedValues, barSpeeds, barAmplitudes, height]);
+
+    return (
+      <View
+        ref={ref}
+        style={[
+          styles.container,
+          { gap, height },
+          style,
+        ]}
+      >
+        {animatedValues.map((animatedValue, i) => (
+          <Animated.View
+            key={i}
+            style={[
+              styles.bar,
+              {
+                width: barWidth,
+                backgroundColor: color,
+                height: animatedValue,
+              },
+            ]}
+          />
+        ))}
+      </View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
-  row: {
+  container: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   bar: {
-    height: '100%',
     borderRadius: 2,
+    minHeight: 2,
   },
 });
+
+EqualizerBars.displayName = 'EqualizerBars';

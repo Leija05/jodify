@@ -83,6 +83,22 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(value));
     }
     set(patch);
+    try {
+      const username = localStorage.getItem('currentUserName');
+      if (username) {
+        import('../services/users.service').then(({ usersService }) => {
+          const current = get();
+          usersService.updatePreferences(username, {
+            theme: current.theme,
+            eq_preset: current.eqPreset,
+            custom_curves: current.customEqPresets,
+            fade_duration: current.fadeDuration,
+          }).catch(() => undefined);
+        });
+      }
+    } catch {
+      /* ignore */
+    }
   },
 
   setSleepTimer: (timer) => {

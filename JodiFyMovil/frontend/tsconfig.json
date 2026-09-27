@@ -1,6 +1,15 @@
 {
-  "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -12,10 +21,75 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx",
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "@components": [
+        "src/components"
+      ],
+      "@components/*": [
+        "src/components/*"
+      ],
+      "@hooks": [
+        "src/hooks"
+      ],
+      "@hooks/*": [
+        "src/hooks/*"
+      ],
+      "@stores": [
+        "src/stores"
+      ],
+      "@stores/*": [
+        "src/stores/*"
+      ],
+      "@services": [
+        "src/services"
+      ],
+      "@services/*": [
+        "src/services/*"
+      ],
+      "@lib": [
+        "src/lib"
+      ],
+      "@lib/*": [
+        "src/lib/*"
+      ],
+      "@theme": [
+        "src/theme"
+      ],
+      "@theme/*": [
+        "src/theme/*"
+      ],
+      "@context": [
+        "src/context"
+      ],
+      "@context/*": [
+        "src/context/*"
+      ]
+    },
+    "types": [
+      "jest",
+      "vitest/globals",
+      "react-native"
+    ]
   },
-  "exclude": ["node_modules", "e2e", "android", "plugins"]
+  "include": [
+    "src/**/*",
+    "app/**/*",
+    "app.config.ts",
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".expo",
+    "coverage",
+    "src/__tests__"
+  ],
+  "extends": "expo/tsconfig.base"
 }

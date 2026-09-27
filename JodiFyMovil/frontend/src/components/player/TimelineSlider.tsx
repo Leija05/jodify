@@ -1,135 +1,199 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useRef, useState } from 'react';
-import { PanResponder, StyleSheet, View, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
-import { clamp } from '../../lib/utils';
-import { colors, gradients, radius } from '../../theme';
+import React, { useRef, useEffect, useCallback, useImperativeHandle } from 'react';
+import { View, Text, PanResponder, StyleProp, ViewStyle, StyleSheet } from 'react-native';
+import { colors, radius, touch } from '@theme';
 
-interface Props {
+interface TimelineSliderProps {
   position: number;
   duration: number;
   onSeek: (seconds: number) => void;
+  onSlidingStart?: () => void;
+  onSlidingComplete?: () => void;
+  style?: StyleProp<ViewStyle>;
+  trackHeight?: number;
+  thumbSize?: number;
+  showPreview?: boolean;
+  previewTime?: number;
 }
 
-const TRACK_HEIGHT = 5;
-
-export function TimelineSlider({ position, duration, onSeek }: Props) {
-  const [width, setWidth] = useState(0);
-  const [scrubbing, setScrubbing] = useState(false);
-  const [scrubFraction, setScrubFraction] = useState<number | null>(null);
-  const widthRef = useRef(0);
-
-  const fraction = duration > 0 ? clamp(position / duration, 0, 1) : 0;
-  const shownFraction = scrubFraction ?? fraction;
-
-  const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    widthRef.current = e.nativeEvent.layout.width;
-    setWidth(e.nativeEvent.layout.width);
-  }, []);
-
-  const computeFraction = useCallback((x: number) => {
-    if (widthRef.current <= 0) return 0;
-    return clamp(x / widthRef.current, 0, 1);
-  }, []);
-
-  const commitSeek = useCallback(
-    (f: number) => {
-      if (duration > 0) onSeek(f * duration);
+export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => void }, TimelineSliderProps>(
+  (
+    {
+      position,
+      duration,
+      onSeek,
+      onSlidingStart,
+      onSlidingComplete,
+      style,
+      trackHeight = 4,
+      thumbSize = touch.iconComfortable,
+      showPreview = false,
+      previewTime,
     },
-    [duration, onSeek],
-  );
+    ref
+  ) => {
+    const [dragPosition, setDragPosition] = React.useState<number | null>(null);
+    const panResponder = useRef<ReturnType<typeof PanResponder.create> | null>(null);
+    const trackWidth = useRef(0);
+    const isDragging = useRef(false);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt: GestureResponderEvent) => {
-        setScrubbing(true);
-        setScrubFraction(computeFraction(evt.nativeEvent.locationX));
+    const seekTo = useCallback(
+      (seconds: number) => {
+        const clamped = Math.max(0, Math.min(seconds, duration));
+        setDragPosition(null);
+        onSeek(clamped);
       },
-      onPanResponderMove: (evt: GestureResponderEvent) => {
-        setScrubFraction(computeFraction(evt.nativeEvent.locationX));
-      },
-      onPanResponderRelease: (evt: GestureResponderEvent) => {
-        const f = computeFraction(evt.nativeEvent.locationX);
-        setScrubFraction(null);
-        setScrubbing(false);
-        commitSeek(f);
-      },
-      onPanResponderTerminate: () => {
-        setScrubbing(false);
-        setScrubFraction(null);
-      },
-    }),
-  ).current;
+      [duration, onSeek]
+    );
 
-  return (
-    <View style={styles.container} onLayout={handleLayout} {...panResponder.panHandlers}>
-      <View style={styles.track}>
-        <LinearGradient
-          colors={[gradients.primary[0], gradients.primary[1]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.fill, { width: `${shownFraction * 100}%` }]}
-        />
+    useImperativeHandle(ref, () => ({ seekTo }), [seekTo]);
+
+    const updateFromTouch = useCallback(
+      (x: number) => {
+        if (trackWidth.current <= 0) return;
+        const clampedX = Math.max(0, Math.min(x, trackWidth.current));
+        const ratio = clampedX / trackWidth.current;
+        const newTime = ratio * duration;
+        setDragPosition(newTime);
+        onSeek(newTime);
+      },
+      [duration, onSeek]
+    );
+
+    useEffect(() => {
+      panResponder.current = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_event, gestureState) => Math.abs(gestureState.dx) > 2,
+        onPanResponderGrant: (event) => {
+          isDragging.current = true;
+          onSlidingStart?.();
+          updateFromTouch(event.nativeEvent.locationX);
+        },
+        onPanResponderMove: (event) => {
+          updateFromTouch(event.nativeEvent.locationX);
+        },
+        onPanResponderRelease: () => {
+          isDragging.current = false;
+          setDragPosition(null);
+          onSlidingComplete?.();
+        },
+        onPanResponderTerminate: () => {
+          isDragging.current = false;
+          setDragPosition(null);
+          onSlidingComplete?.();
+        },
+      });
+    }, [updateFromTouch, onSlidingStart, onSlidingComplete]);
+
+    const currentPos = dragPosition !== null ? dragPosition : position;
+    const progressPercent = duration > 0 ? Math.min(Math.max((currentPos / duration) * 100, 0), 100) : 0;
+
+    const formatTime = (seconds: number) => {
+      if (!Number.isFinite(seconds)) return '0:00';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return (
+      <View style={[styles.container, style]} {...panResponder.current?.panHandlers}>
+        <View
+          style={styles.trackWrapper}
+          onLayout={(e) => {
+            trackWidth.current = e.nativeEvent.layout.width;
+          }}
+        >
+          <View style={[styles.track, { height: trackHeight }]} />
+          <View style={[styles.activeTrack, { height: trackHeight, width: `${progressPercent}%` }]} />
+          <View
+            style={[
+              styles.thumb,
+              {
+                width: thumbSize,
+                height: thumbSize,
+                borderRadius: thumbSize / 2,
+                left: `${progressPercent}%`,
+                transform: [{ translateX: -thumbSize / 2 }],
+              },
+            ]}
+          />
+        </View>
+
+        <View style={styles.timeLabels}>
+          <Text style={styles.timeLabel}>{formatTime(currentPos)}</Text>
+          <Text style={styles.timeLabel}>{formatTime(duration)}</Text>
+        </View>
+
+        {showPreview && previewTime !== undefined && (
+          <View style={styles.preview}>
+            <Text style={styles.previewTime}>{formatTime(previewTime)}</Text>
+          </View>
+        )}
       </View>
-      <View
-        style={[
-          styles.thumb,
-          {
-            left: width > 0 ? shownFraction * width - 7 : 0,
-            opacity: scrubbing ? 1 : 0,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.thumbGhost,
-          {
-            left: width > 0 ? shownFraction * width - 5 : 0,
-          },
-        ]}
-      />
-    </View>
-  );
-}
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {
-    height: 28,
-    justifyContent: 'center',
+    width: '100%',
+    gap: 8,
+  },
+  trackWrapper: {
+    position: 'relative',
   },
   track: {
-    height: TRACK_HEIGHT,
-    borderRadius: radius.pill,
     backgroundColor: colors.track,
+    borderRadius: radius.pill,
     overflow: 'hidden',
   },
-  fill: {
-    height: '100%',
+  activeTrack: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: colors.primary,
     borderRadius: radius.pill,
   },
   thumb: {
     position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    top: '50%',
     backgroundColor: colors.white,
-    shadowColor: colors.secondary,
-    shadowOpacity: 0.9,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 6,
-  },
-  thumbGhost: {
-    position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.white,
+    borderRadius: 9999,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    transform: [{ translateY: -12 }],
     shadowColor: colors.primary,
-    shadowOpacity: 0.8,
-    shadowRadius: 9,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 },
     elevation: 4,
   },
+  timeLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  timeLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontFamily: 'JetBrainsMono_400Regular',
+    fontVariant: ['tabular-nums'],
+  },
+  preview: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: colors.surfaceSolid,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 8,
+  },
+  previewTime: {
+    color: colors.secondary,
+    fontSize: 11,
+    fontFamily: 'JetBrainsMono_400Regular',
+  },
 });
+
+TimelineSlider.displayName = 'TimelineSlider';

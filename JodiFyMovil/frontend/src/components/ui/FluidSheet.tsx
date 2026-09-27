@@ -1,278 +1,294 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Animated,
-  Dimensions,
-  Modal,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type GestureResponderEvent,
-  type PanResponderGestureState,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius, motion, elevation, typography, useReducedMotion } from '../../theme';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { Animated, View, StyleProp, ViewStyle, PanResponder, Dimensions, StyleSheet, Text } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { colors, radius, motion, elevation } from '@theme';
+import { useReducedMotion } from '@hooks/useReducedMotion';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface FluidSheetProps {
   visible: boolean;
   onClose: () => void;
-  children: React.ReactNode;
-  /** Fracción de la altura de pantalla ocupada por el sheet (0..1). */
-  maxHeight?: number;
-  /** Alturas visibles del sheet como fracciones de pantalla, de menor a mayor. */
   snapPoints?: number[];
-  style?: StyleProp<ViewStyle> | undefined;
-  dismissible?: boolean | undefined;
-  showHandle?: boolean | undefined;
-  title?: string | undefined;
+  title?: string;
   titleAction?: React.ReactNode;
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  handleStyle?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
+  backdropOpacity?: number;
+  dismissThreshold?: number;
 }
 
-const DEFAULT_SNAP_POINTS = [0.5, 0.9];
-const DISMISS_DRAG = 120;
-const DISMISS_VELOCITY = 0.5;
+interface FluidSheetRef {
+  open: () => void;
+  close: () => void;
+  snapTo: (index: number) => void;
+}
 
-/**
- * Sheet inferior con arrastre continuo, snaps elásticos y salida animada.
- * A diferencia de un Modal plano, permanece montado durante la animación
- * de salida: el contenido nunca "parpadea" al cerrarse.
- */
-export function FluidSheet({
-  visible,
-  onClose,
-  children,
-  maxHeight = 0.95,
-  snapPoints = DEFAULT_SNAP_POINTS,
-  style,
-  dismissible = true,
-  showHandle = true,
-  title,
-  titleAction,
-}: FluidSheetProps) {
-  const insets = useSafeAreaInsets();
-  const reduceMotion = useReducedMotion();
+const DEFAULT_SNAP_POINTS = [0.25, 0.5, 0.9];
 
-  // El sheet se mantiene montado mientras dura la animación de salida.
-  const [mounted, setMounted] = useState(visible);
-
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const snapIndexRef = useRef(snapPoints.length - 1);
-  const closingRef = useRef(false);
-  const dismissibleRef = useRef(dismissible);
-  const onCloseRef = useRef(onClose);
-  dismissibleRef.current = dismissible;
-  onCloseRef.current = onClose;
-
-  const snapTargetY = useCallback(
-    (index: number) => {
-      const fraction = snapPoints[Math.max(0, Math.min(index, snapPoints.length - 1))] ?? 0.9;
-      return SCREEN_HEIGHT - SCREEN_HEIGHT * fraction * maxHeight;
+export const FluidSheet = forwardRef<FluidSheetRef, FluidSheetProps>(
+  (
+    {
+      visible,
+      onClose,
+      snapPoints = DEFAULT_SNAP_POINTS,
+      title,
+      titleAction,
+      children,
+      style,
+      handleStyle,
+      contentStyle,
+      backdropOpacity = 0.5,
+      dismissThreshold = 100,
     },
-    [snapPoints, maxHeight],
-  );
+    ref
+  ) => {
+    const reduced = useReducedMotion();
+    const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+    const backdropAnim = useRef(new Animated.Value(0)).current;
+    const currentSnapIndex = useRef(0);
+    const panResponder = useRef<ReturnType<typeof PanResponder.create> | null>(null);
+    const isAnimating = useRef(false);
 
-  const finishClose = useCallback(() => {
-    closingRef.current = false;
-    setMounted(false);
-    onCloseRef.current();
-  }, []);
+    const sheetHeight = SCREEN_HEIGHT * Math.max(...snapPoints);
+    const minTranslate = SCREEN_HEIGHT - sheetHeight;
 
-  const animateOut = useCallback(() => {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    if (reduceMotion) {
-      translateY.setValue(SCREEN_HEIGHT);
-      finishClose();
-      return;
-    }
-    Animated.spring(translateY, {
-      toValue: SCREEN_HEIGHT,
-      ...motion.springQuick,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) finishClose();
-    });
-  }, [translateY, reduceMotion, finishClose]);
+    useImperativeHandle(ref, () => ({
+      open: () => animateToSnap(currentSnapIndex.current),
+      close: animateOut,
+      snapTo: (index) => {
+        if (index >= 0 && index < snapPoints.length) {
+          animateToSnap(index);
+        }
+      },
+    }));
 
-  const snapTo = useCallback(
-    (index: number, velocity = 0) => {
-      if (index < 0) {
-        if (dismissibleRef.current) animateOut();
-        return;
-      }
-      const clamped = Math.min(index, snapPoints.length - 1);
-      snapIndexRef.current = clamped;
-      const targetY = snapTargetY(clamped);
-      if (reduceMotion) {
+    const animateToSnap = (index: number) => {
+      if (isAnimating.current) return;
+      isAnimating.current = true;
+      currentSnapIndex.current = index;
+      const snap = snapPoints[index] ?? 0.5;
+      const targetY = SCREEN_HEIGHT - SCREEN_HEIGHT * snap;
+
+      if (reduced) {
         translateY.setValue(targetY);
+        isAnimating.current = false;
         return;
       }
+
       Animated.spring(translateY, {
         toValue: targetY,
         ...motion.springDrawer,
-        velocity,
         useNativeDriver: true,
-      }).start();
-    },
-    [animateOut, snapPoints.length, snapTargetY, translateY, reduceMotion],
-  );
+      }).start(() => {
+        isAnimating.current = false;
+      });
+    };
 
-  useEffect(() => {
-    if (visible) {
-      closingRef.current = false;
-      setMounted(true);
-      const topY = snapTargetY(snapPoints.length - 1);
-      snapIndexRef.current = snapPoints.length - 1;
-      if (reduceMotion) {
-        translateY.setValue(topY);
+    const animateIn = () => {
+      if (isAnimating.current) return;
+      isAnimating.current = true;
+      translateY.setValue(SCREEN_HEIGHT);
+      backdropAnim.setValue(0);
+
+      if (reduced) {
+        translateY.setValue(minTranslate);
+        backdropAnim.setValue(backdropOpacity);
+        isAnimating.current = false;
         return;
       }
-      translateY.setValue(SCREEN_HEIGHT);
-      Animated.spring(translateY, {
-        toValue: topY,
-        ...motion.springDrawer,
-        useNativeDriver: true,
-      }).start();
-    } else if (mounted) {
-      animateOut();
-    }
-    // `mounted` intencionalmente omitido: reaccionar solo a cambios de `visible`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
 
-  const getY = useCallback(
-    () => (translateY as unknown as { _value: number })._value,
-    [translateY],
-  );
+      Animated.parallel([
+        Animated.spring(translateY, { toValue: minTranslate, ...motion.springDrawer, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: backdropOpacity, duration: motion.duration.normal, useNativeDriver: true }),
+      ]).start(() => {
+        isAnimating.current = false;
+      });
+    };
 
-  const panHandlers = useMemo(() => {
-    let dragStartY = 0;
-    return PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_e: GestureResponderEvent, gs: PanResponderGestureState) =>
-        Math.abs(gs.dy) > 6 && Math.abs(gs.dy) > Math.abs(gs.dx),
-      onPanResponderGrant: () => {
-        dragStartY = getY();
-      },
-      onPanResponderMove: (_e: GestureResponderEvent, gs: PanResponderGestureState) => {
-        let next = dragStartY + gs.dy;
-        // Resistencia elástica al arrastrar por encima del tope.
-        const topLimit = snapTargetY(snapPoints.length - 1);
-        if (next < topLimit) next = topLimit + (next - topLimit) * 0.18;
-        translateY.setValue(Math.max(next, 0));
-      },
-      onPanResponderRelease: (_e: GestureResponderEvent, gs: PanResponderGestureState) => {
-        const { vy } = gs;
-        const dragged = getY() - dragStartY;
-        if ((dragged > DISMISS_DRAG && vy > 0.2) || vy > DISMISS_VELOCITY) {
-          snapTo(-1, vy);
-          return;
-        }
-        // Snap más cercano según posición final + velocidad.
-        let best = 0;
-        let bestDist = Infinity;
-        for (let i = 0; i < snapPoints.length; i++) {
-          const d = Math.abs(getY() - snapTargetY(i));
-          if (d < bestDist) {
-            bestDist = d;
-            best = i;
+    const animateOut = () => {
+      if (isAnimating.current) return;
+      isAnimating.current = true;
+
+      if (reduced) {
+        translateY.setValue(SCREEN_HEIGHT);
+        backdropAnim.setValue(0);
+        onClose();
+        isAnimating.current = false;
+        return;
+      }
+
+      Animated.parallel([
+        Animated.spring(translateY, { toValue: SCREEN_HEIGHT, ...motion.springDrawer, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 0, duration: motion.duration.fast, useNativeDriver: true }),
+      ]).start(() => {
+        onClose();
+        isAnimating.current = false;
+      });
+    };
+
+    useEffect(() => {
+      if (visible) animateIn();
+      else animateOut();
+    }, [visible]);
+
+    useEffect(() => {
+      panResponder.current = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_event, gestureState) => Math.abs(gestureState.dy) > 3,
+        onPanResponderGrant: () => {
+          translateY.extractOffset();
+          isAnimating.current = false;
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          const dy = gestureState.dy;
+          const currentBase = (translateY as any)._value ?? 0;
+          let newY = currentBase + dy;
+          newY = Math.min(Math.max(newY, minTranslate), SCREEN_HEIGHT);
+          translateY.setValue(newY);
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          translateY.flattenOffset();
+          const { dy, vy } = gestureState;
+          const currentY = (translateY as any)._value ?? SCREEN_HEIGHT;
+
+          if (dy > dismissThreshold || (dy > 50 && vy > 0.4)) {
+            animateOut();
+            return;
           }
-        }
-        const flingUp = vy < -DISMISS_VELOCITY * 0.6;
-        snapTo(flingUp ? Math.min(best + 1, snapPoints.length - 1) : best, vy);
-      },
-      onPanResponderTerminate: () => {
-        snapTo(snapIndexRef.current);
-      },
-    }).panHandlers;
-  }, [snapTo, snapPoints.length, snapTargetY, translateY, getY]);
 
-  const handleClosePress = useCallback(() => {
-    if (!dismissible) return;
-    animateOut();
-  }, [dismissible, animateOut]);
+          let closestIndex = 0;
+          let closestDist = Infinity;
+          snapPoints.forEach((point, i) => {
+            const targetY = SCREEN_HEIGHT - SCREEN_HEIGHT * point;
+            const dist = Math.abs(currentY - targetY);
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestIndex = i;
+            }
+          });
 
-  if (!mounted) return null;
+          animateToSnap(closestIndex);
+        },
+        onPanResponderTerminate: () => {
+          translateY.flattenOffset();
+          animateToSnap(currentSnapIndex.current);
+        },
+      });
+    }, [backdropAnim, dismissThreshold, minTranslate, reduced, snapPoints]);
 
-  return (
-    <Modal transparent animationType="none" statusBarTranslucent onRequestClose={handleClosePress} visible>
-      <View style={styles.overlay}>
-        <Pressable
-          style={styles.backdrop}
-          onPress={handleClosePress}
-          accessibilityLabel="Cerrar"
-          accessibilityRole="button"
-        />
+    if (!visible && ((translateY as any)._value ?? SCREEN_HEIGHT) >= SCREEN_HEIGHT) return null;
+
+    return (
+      <Animated.View
+        style={[
+          styles.container,
+          { opacity: backdropAnim },
+          style,
+        ]}
+        pointerEvents={visible ? 'auto' : 'none'}
+      >
         <Animated.View
+          style={StyleSheet.absoluteFill}
+          onStartShouldSetResponder={() => true}
+          onResponderTerminationRequest={() => true}
+          onResponderRelease={animateOut}
+        >
+          <Animated.View
+            style={[styles.backdrop, { opacity: backdropAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }) }]}
+          />
+        </Animated.View>
+
+        <Animated.View
+          {...panResponder.current?.panHandlers}
           style={[
             styles.sheet,
-            {
-              maxHeight: SCREEN_HEIGHT * maxHeight,
-              paddingBottom: insets.bottom + 12,
-              transform: [{ translateY }],
-            },
-            style,
+            { transform: [{ translateY }] },
           ]}
-          {...panHandlers}
         >
-          {showHandle && <View style={styles.handle} />}
-          {title != null && (
+          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={styles.handleContainer}>
+            <View style={[styles.handle, handleStyle]} />
+          </View>
+
+          {(title || titleAction) && (
             <View style={styles.header}>
-              <Text style={styles.title} numberOfLines={1}>
-                {title}
-              </Text>
-              {titleAction}
+              {title && <Text style={styles.title}>{title}</Text>}
+              {titleAction && <View style={styles.titleAction}>{titleAction}</View>}
             </View>
           )}
-          {children}
+
+          <View style={[styles.content, contentStyle]}>{children}</View>
         </Animated.View>
-      </View>
-    </Modal>
-  );
-}
+      </Animated.View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(3,3,5,0.72)',
+    backgroundColor: colors.black,
   },
   sheet: {
-    backgroundColor: colors.surfaceSolid,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(20, 20, 30, 0.88)',
     borderTopLeftRadius: radius.sheetOuter,
     borderTopRightRadius: radius.sheetOuter,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    paddingTop: 10,
     overflow: 'hidden',
-    ...elevation.level3,
+    maxHeight: SCREEN_HEIGHT * 0.9,
+    ...elevation.level4,
+  },
+  handleContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
   },
   handle: {
-    alignSelf: 'center',
     width: 40,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    marginBottom: 14,
+    backgroundColor: colors.borderStrong,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 8,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
   },
   title: {
-    ...typography.headlineMedium,
     color: colors.text,
-    flexShrink: 1,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  titleAction: {
+    padding: 4,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
 });
+
+FluidSheet.displayName = 'FluidSheet';

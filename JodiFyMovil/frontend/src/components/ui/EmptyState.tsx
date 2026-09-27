@@ -1,82 +1,89 @@
+import React from 'react';
+import { View, Text, StyleProp, ViewStyle, TextStyle, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, typography, radius } from '../../theme';
 import { PressableFluid } from './PressableFluid';
+import { colors, typography, radius, spacing } from '@theme';
 
-interface Props {
-  icon?: keyof typeof Ionicons.glyphMap;
+interface EmptyStateProps {
+  icon: keyof typeof Ionicons.glyphMap;
   title: string;
-  subtitle?: string | undefined;
+  subtitle?: string;
   action?: { label: string; onPress: () => void } | undefined;
+  iconSize?: number;
+  style?: StyleProp<ViewStyle>;
+  titleStyle?: TextStyle;
+  subtitleStyle?: TextStyle;
+  iconColor?: string;
 }
 
-export function EmptyState({ icon = 'musical-notes-outline', title, subtitle, action }: Props) {
-  return (
-    <View style={styles.container}>
-      <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={34} color={colors.primary} />
+export const EmptyState = React.forwardRef<View, EmptyStateProps>(
+  ({ icon, title, subtitle, action, iconSize = 48, style, titleStyle, subtitleStyle, iconColor = colors.textMuted, ...props }, ref) => {
+    return (
+      <View
+        ref={ref}
+        style={[
+          styles.container,
+          style,
+        ]}
+        {...props}
+      >
+        <Ionicons name={icon} size={iconSize} color={iconColor} />
+        <Text style={[styles.title, titleStyle]}>{title}</Text>
+        {subtitle && <Text style={[styles.subtitle, subtitleStyle]}>{subtitle}</Text>}
+        {action && (
+          <PressableFluid
+            onPress={action.onPress}
+            haptic="light"
+            style={styles.action}
+          >
+            <Text style={styles.actionText}>{action.label}</Text>
+          </PressableFluid>
+        )}
       </View>
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      {action ? (
-        <PressableFluid
-          onPress={action.onPress}
-          haptic="light"
-          hitSlop={6}
-          style={styles.actionBtn}
-        >
-          <Text style={styles.actionText}>{action.label}</Text>
-        </PressableFluid>
-      ) : null}
-    </View>
-  );
-}
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 24,
-  },
-  iconWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(127,0,255,0.14)',
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.35)',
+    paddingHorizontal: spacing.xxl,
+    gap: spacing.lg,
   },
   title: {
     color: colors.text,
-    fontFamily: typography.headlineSmall.fontFamily,
-    fontSize: 16,
+    fontFamily: typography.headlineMedium.fontFamily,
+    fontSize: typography.headlineMedium.fontSize,
+    letterSpacing: typography.headlineMedium.letterSpacing,
+    lineHeight: typography.headlineMedium.lineHeight,
     textAlign: 'center',
   },
   subtitle: {
     color: colors.textMuted,
     fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: 13,
+    fontSize: typography.bodyMedium.fontSize,
+    letterSpacing: typography.bodyMedium.letterSpacing,
+    lineHeight: typography.bodyMedium.lineHeight,
     textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 19,
   },
-  actionBtn: {
-    marginTop: 18,
-    minHeight: 48,
-    paddingHorizontal: 22,
+  action: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
     borderRadius: radius.pill,
-    borderWidth: 1.5,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
     borderColor: colors.primaryStrong,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
   },
   actionText: {
-    color: colors.text,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: typography.labelLarge.fontSize,
-    letterSpacing: typography.labelLarge.letterSpacing,
+    color: colors.white,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: typography.labelMedium.fontSize,
+    letterSpacing: typography.labelMedium.letterSpacing,
+    fontWeight: '600',
   },
 });
+
+EmptyState.displayName = 'EmptyState';

@@ -3,17 +3,18 @@ import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Animated, Dimensions, Easing, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { LyricsLine } from '../../lib/types';
-import { fetchLyrics, lyricsFromSong } from '../../services/lyrics.service';
-import { downloadSong, deleteDownloadedSong } from '../../services/downloads.service';
-import { useLibraryStore } from '../../store/library.store';
-import { usePlayerStore } from '../../store/player.store';
-import { useSettingsStore } from '../../store/settings.store';
-import { useUiStore } from '../../store/ui.store';
-import { colors, typography, motion } from '../../theme';
-import { DynamicBackground } from './DynamicBackground';
+import type { LyricsLine } from '@lib/types';
+import { fetchLyrics, lyricsFromSong } from '@services/lyrics.service';
+import { downloadSong, deleteDownloadedSong } from '@services/downloads.service';
+import { useLibraryStore } from '@stores/library.store';
+import { usePlayerStore } from '@stores/player.store';
+import { useSettingsStore } from '@stores/settings.store';
+import { useUiStore } from '@stores/ui.store';
+import { useJamStore } from '@stores/jam.store';
+import { colors, typography, motion } from '@theme';
+import { DynamicBackground } from '@components/player/DynamicBackground';
 import { FullscreenHeader } from './fullscreen/FullscreenHeader';
-import { VinylZone } from './fullscreen/VinylZone';
+import { ShowcaseHero } from './fullscreen/ShowcaseHero';
 import { SongInfo } from './fullscreen/SongInfo';
 import { TimelineZone } from './fullscreen/TimelineZone';
 import { ControlsRow } from './fullscreen/ControlsRow';
@@ -22,11 +23,10 @@ import { LyricsZone } from './fullscreen/LyricsZone';
 import { QueueSheet } from './fullscreen/QueueSheet';
 
 const SCREEN = Dimensions.get('window');
-const VINYL_SIZE = Math.min(260, Math.max(200, SCREEN.width * 0.62));
 const DISMISS_THRESHOLD = 130;
 const CUBIC_EASING = Easing.bezier(0.23, 1, 0.32, 1);
 
-export function FullscreenPlayer() {
+export default function FullscreenPlayer() {
   const open = useUiStore((s) => s.fullscreenOpen);
   const closeFullscreen = useUiStore((s) => s.closeFullscreen);
   const { currentSong, isPlaying, position, duration, shuffle, repeat, isBuffering, error } = usePlayerStore();
@@ -41,8 +41,10 @@ export function FullscreenPlayer() {
   const cancelSleepTimer = useSettingsStore((s) => s.cancelSleepTimer);
   const openAuth = useUiStore((s) => s.openAuth);
   const openEqualizer = useUiStore((s) => s.openEqualizer);
+  const jamActive = useJamStore((s) => s.active);
   const insets = useSafeAreaInsets();
 
+  const [displayMode, setDisplayMode] = useState<'cover' | 'vinyl'>('cover');
   const [showLyrics, setShowLyrics] = useState(false);
   const [lyrics, setLyrics] = useState<LyricsLine[] | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState(false);
@@ -227,6 +229,20 @@ export function FullscreenPlayer() {
     }
   }, [currentSong, downloaded, markDownloaded, unmarkDownloaded]);
 
+  const handleStartRadio = useCallback(() => {
+    if (!currentSong) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const allSongs = useLibraryStore.getState().songs;
+    const radio = [currentSong, ...allSongs.filter((s) => String(s.id) !== String(currentSong.id)).slice(0, 30)];
+    usePlayerStore.getState().playQueue(radio, 0);
+  }, [currentSong]);
+
+  const handleOpenJam = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    useUiStore.getState().setTab('community');
+    closeFullscreen();
+  }, [closeFullscreen]);
+
   const sleepRemaining = sleepTimer.endAt ? Math.max(0, sleepTimer.endAt - Date.now()) : 0;
 
   if (!open) return null;
@@ -248,26 +264,31 @@ export function FullscreenPlayer() {
           opacity={topBarOpacity}
           onDismiss={dismiss}
           onQueuePress={() => setQueueOpen(true)}
+          displayMode={displayMode}
+          onToggleDisplayMode={() => setDisplayMode((m) => (m === 'cover' ? 'vinyl' : 'cover'))}
           insets={insets}
         />
 
         {currentSong ? (
           <ScrollView contentContainerStyle={[styles.playerScroll, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>
-            <VinylZone
+            <ShowcaseHero
               song={currentSong}
+              coverScale={coverScale}
               vinylScale={vinylScale}
-              size={VINYL_SIZE}
               isPlaying={isPlaying}
+              displayMode={displayMode}
+              onToggleMode={() => setDisplayMode((m) => (m === 'cover' ? 'vinyl' : 'cover'))}
             />
 
             <SongInfo
               song={currentSong}
               titleOpacity={titleOpacity}
-              coverScale={coverScale}
               isBuffering={isBuffering}
               sleepRemaining={sleepRemaining}
               cancelSleepTimer={cancelSleepTimer}
               error={error}
+              liked={liked}
+              onLike={handleLike}
             />
 
             <TimelineZone
@@ -290,16 +311,17 @@ export function FullscreenPlayer() {
             />
 
             <UtilityRow
-              liked={liked}
               downloaded={downloaded}
               downloading={downloading}
-              onLike={handleLike}
               onDownload={handleDownload}
               onEqualizer={openEqualizer}
               onLyricsToggle={() => setShowLyrics((v) => !v)}
               showLyrics={showLyrics}
               onLyricsFullscreen={openLyricsModal}
               hasLyrics={!!lyrics && lyrics.length > 0}
+              onStartRadio={handleStartRadio}
+              onOpenJam={handleOpenJam}
+              jamActive={jamActive}
             />
 
             <LyricsZone
@@ -347,3 +369,5 @@ const styles = StyleSheet.create({
     lineHeight: typography.bodyMedium.lineHeight,
   },
 });
+
+export { FullscreenPlayer };

@@ -1,12 +1,4 @@
-import { AccessibilityInfo } from 'react-native';
-import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-
-/**
- * "Neon Obsidian v2" — JodiFy Mobile Design System.
- * Deep obsidian + neon violet/cyan/pink with optical typography.
- * Built for fluid interfaces, double-bezel cards, and spring physics.
- */
 
 export const colors = {
   background: '#030305',
@@ -20,6 +12,7 @@ export const colors = {
   borderStrong: 'rgba(255,255,255,0.12)',
   track: 'rgba(255,255,255,0.10)',
   borderFocus: 'rgba(127,0,255,0.5)',
+
   primary: '#7F00FF',
   primarySoft: 'rgba(127,0,255,0.12)',
   primaryStrong: 'rgba(127,0,255,0.45)',
@@ -33,14 +26,17 @@ export const colors = {
   warningSoft: 'rgba(255,179,0,0.12)',
   error: '#FF3D5C',
   errorSoft: 'rgba(255,61,92,0.12)',
+
   text: '#F5F5F7',
   textSecondary: 'rgba(245,245,247,0.72)',
   textMuted: 'rgba(245,245,247,0.48)',
   textDim: 'rgba(245,245,247,0.34)',
   textInverse: '#050507',
+
   glowPrimary: 'rgba(127,0,255,0.35)',
   glowSecondary: 'rgba(0,229,255,0.25)',
-  glowAccent: 'rgba(255,0,122,0.3)',
+  glowAccent: 'rgba(255,0,122,0.30)',
+
   white: '#FFFFFF',
   black: '#000000',
 } as const;
@@ -53,6 +49,8 @@ export const gradients = {
   hero: ['rgba(20,2,38,0.55)', 'rgba(5,5,7,0.96)'] as const,
   surface: ['rgba(127,0,255,0.25)', 'rgba(0,229,255,0.15)', 'rgba(255,0,122,0.12)'] as const,
   cardOuter: ['rgba(255,255,255,0.03)', 'rgba(255,255,255,0.01)'] as const,
+  vinyl: ['#0A0A10', '#121218', '#0A0A10'] as const,
+  groove: ['rgba(127,0,255,0.4)', 'rgba(0,229,255,0.3)', 'rgba(255,0,122,0.2)'] as const,
 } as const;
 
 export const typography = {
@@ -68,6 +66,9 @@ export const typography = {
   labelLarge: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, letterSpacing: 0.3, lineHeight: 18 },
   labelMedium: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, letterSpacing: 0.5, lineHeight: 14 },
   labelSmall: { fontFamily: 'Manrope_500Medium', fontSize: 10, letterSpacing: 0.8, lineHeight: 12 },
+  monoLarge: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 14, letterSpacing: 0, lineHeight: 20 },
+  monoMedium: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, letterSpacing: 0, lineHeight: 18 },
+  monoSmall: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 10, letterSpacing: 0, lineHeight: 14 },
 } as const;
 
 export const spacing = {
@@ -135,27 +136,6 @@ export const transition = {
   normal: motion.duration.normal,
   slow: motion.duration.slow,
 } as const;
-
-/** Suscripción React al ajuste de accesibilidad "reduce motion" del sistema. */
-export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((v) => {
-        if (alive) setReduced(v);
-      })
-      .catch(() => undefined);
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => {
-      if (alive) setReduced(v);
-    });
-    return () => {
-      alive = false;
-      sub.remove();
-    };
-  }, []);
-  return reduced;
-}
 
 export const glow = {
   primary: 'rgba(127, 0, 255, 0.45)',

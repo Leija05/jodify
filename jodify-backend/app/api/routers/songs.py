@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 from typing import Annotated
 
 from bson import ObjectId
@@ -12,6 +13,16 @@ from ...services.audio_streaming import delete_audio, serve_audio, serve_cover, 
 from ..dependencies import require_admin
 
 router = APIRouter(prefix="/api/songs", tags=["songs"])
+
+_SONGS_CACHE: dict = {"timestamp": 0.0, "data": []}
+_TOP_CACHE: dict = {"timestamp": 0.0, "limit": 0, "data": []}
+CACHE_TTL_SECONDS = 30.0
+TOP_CACHE_TTL_SECONDS = 60.0
+
+
+def invalidate_songs_cache():
+    _SONGS_CACHE["timestamp"] = 0.0
+    _TOP_CACHE["timestamp"] = 0.0
 
 
 def song_view(doc: dict) -> dict:
@@ -35,9 +46,30 @@ def song_view(doc: dict) -> dict:
 
 
 @router.get("")
-async def list_songs() -> list[dict]:
-    cursor = col("songs").find({}).sort("created_at", -1)
-    return [song_view(doc) for doc in await cursor.to_list(1000)]
+async def list_songs(
+    limit: int = Query(1000, ge=1, le=1000),
+    cursor: str | None = Query(None, description="Cursor ObjectId para paginación eficiente"),
+) -> list[dict]:
+    now = time.time()
+    if cursor is None and limit >= 500:
+        if now - _SONGS_CACHE["timestamp"] < CACHE_TTL_SECONDS and _SONGS_CACHE["data"]:
+            return _SONGS_CACHE["data"]
+
+    query = {}
+    if cursor:
+        try:
+            query["_id"] = {"$lt": ObjectId(cursor)}
+        except Exception:
+            pass
+
+    mongo_cursor = col("songs").find(query).sort("created_at", -1)
+    results = [song_view(doc) for doc in await mongo_cursor.to_list(limit)]
+
+    if cursor is None and limit >= 500:
+        _SONGS_CACHE["timestamp"] = now
+        _SONGS_CACHE["data"] = results
+
+    return results
 
 
 @router.get("/check")
@@ -106,6 +138,7 @@ async def upload_song(
     try:
         result = await col("songs").insert_one(doc)
         doc["_id"] = result.inserted_id
+        invalidate_songs_cache()
         return song_view(doc)
     except Exception:
         await delete_audio(fid)
@@ -133,6 +166,7 @@ async def delete_songs(body: DeleteSongsRequest, _admin: Annotated[dict, Depends
     await col("downloads").delete_many({"song_id": {"$in": [str(i) for i in ids]}})
     await col("history").delete_many({"song_id": {"$in": [str(i) for i in ids]}})
     await col("songs").delete_many({"_id": {"$in": ids}})
+    invalidate_songs_cache()
 
 
 @router.post("/{song_id}/likes")
@@ -149,6 +183,7 @@ async def update_likes(song_id: str, body: LikesDeltaRequest) -> dict:
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="Canción no encontrada")
+    invalidate_songs_cache()
     return {"likes": max(0, updated.get("likes", 0))}
 
 
@@ -169,13 +204,17 @@ async def stream_cover(song_id: str):
 
 @router.get("/top")
 async def top_songs(limit: int = Query(10, ge=1, le=50)) -> list[dict]:
+    now = time.time()
+    if _TOP_CACHE["data"] and _TOP_CACHE["limit"] >= limit and (now - _TOP_CACHE["timestamp"] < TOP_CACHE_TTL_SECONDS):
+        return _TOP_CACHE["data"][:limit]
+
     pipeline = [
         {"$group": {"_id": "$song_id", "song_name": {"$first": "$song_name"}, "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": limit},
     ]
     rows = await col("history").aggregate(pipeline).to_list(limit)
-    return [
+    res = [
         {
             "song_id": str(r["_id"]),
             "song_name": r.get("song_name") or "Anónima",
@@ -183,6 +222,10 @@ async def top_songs(limit: int = Query(10, ge=1, le=50)) -> list[dict]:
         }
         for r in rows
     ]
+    _TOP_CACHE["timestamp"] = now
+    _TOP_CACHE["limit"] = limit
+    _TOP_CACHE["data"] = res
+    return res
 
 
 @router.patch("/{song_id}", response_model=None)
@@ -211,6 +254,7 @@ async def update_song(
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="Canción no encontrada")
+    invalidate_songs_cache()
     return song_view(updated)
 
 

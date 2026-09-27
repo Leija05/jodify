@@ -1,94 +1,62 @@
 import { NativeModules, Platform } from 'react-native';
 
-/**
- * Puente hacia el ecualizador nativo de Android (JodifyEqualizer).
- *
- * El módulo nativo existe en builds generados con `expo run:android`
- * (config plugin `with-jodify-equalizer`). En Expo Go o en iOS no hay
- * módulo nativo: todos los métodos degradan a no-op para que la app
- * siga funcionando con normalidad.
- */
+const { JodifyEqualizer } = NativeModules;
 
-type NativeEq = {
-  isAvailable: (callback: (available: boolean, bands: number) => void) => void;
-  setEnabled: (enabled: boolean) => void;
-  setBandGains: (gains: number[]) => void;
-  getBandFrequencies: (callback: (frequencies: number[]) => void) => void;
-  release: () => void;
-};
+let equalizerAvailable: boolean | null = null;
 
-let checked = false;
-let nativeModule: NativeEq | null = null;
+export async function checkEqualizerSupport(): Promise<boolean> {
+  if (equalizerAvailable !== null) return equalizerAvailable;
 
-function native(): NativeEq | null {
-  if (Platform.OS !== 'android') return null;
-  if (!checked) {
-    checked = true;
+  if (Platform.OS === 'android' && JodifyEqualizer) {
     try {
-      const mod = (NativeModules as Record<string, unknown>).JodifyEqualizer;
-      nativeModule = mod ? (mod as NativeEq) : null;
+      return new Promise<boolean>((resolve) => {
+        JodifyEqualizer.isAvailable((supported: boolean) => {
+          equalizerAvailable = supported;
+          resolve(supported);
+        });
+      });
     } catch {
-      nativeModule = null;
+      equalizerAvailable = false;
+      return false;
     }
   }
-  return nativeModule;
+
+  // Graceful support for iOS / Web / Simulators
+  equalizerAvailable = true;
+  return true;
 }
 
-export function isEqualizerAvailable(): boolean {
-  return native() !== null;
-}
-
-export async function checkNativeAvailability(): Promise<{ available: boolean; bands: number }> {
-  const mod = native();
-  if (!mod) return { available: false, bands: 0 };
-  return new Promise((resolve) => {
-    try {
-      mod.isAvailable((available, bands) => resolve({ available, bands }));
-    } catch {
-      resolve({ available: false, bands: 0 });
-    }
-  });
-}
-
-export async function setNativeEnabled(enabled: boolean): Promise<void> {
-  const mod = native();
-  if (!mod) return;
-  try {
-    mod.setEnabled(enabled);
-  } catch {
-    // el dispositivo no soporta el ecualizador
-  }
-}
-
-/** Aplica las ganancias (dB, típicamente -12..12) a las 5 bandas de la UI. */
 export async function applyNative(values: number[]): Promise<void> {
-  const mod = native();
-  if (!mod || values.length === 0) return;
   try {
-    mod.setBandGains(values.map((v) => (Number.isFinite(v) ? v : 0)));
-  } catch {
-    // noop
-  }
-}
-
-export async function fetchNativeBandFrequencies(): Promise<number[]> {
-  const mod = native();
-  if (!mod) return [];
-  return new Promise((resolve) => {
-    try {
-      mod.getBandFrequencies((frequencies) => resolve(frequencies ?? []));
-    } catch {
-      resolve([]);
+    if (Platform.OS === 'android' && JodifyEqualizer?.setBandGains) {
+      JodifyEqualizer.setBandGains(values);
     }
-  });
+  } catch (e) {
+    console.warn('[Equalizer] Failed to apply native:', e);
+  }
 }
 
-export async function releaseNativeEqualizer(): Promise<void> {
-  const mod = native();
-  if (!mod) return;
+export async function enableEqualizer(enabled: boolean): Promise<void> {
   try {
-    mod.release();
-  } catch {
-    // noop
+    if (Platform.OS === 'android' && JodifyEqualizer?.setEnabled) {
+      JodifyEqualizer.setEnabled(enabled);
+    }
+  } catch (e) {
+    console.warn('[Equalizer] Failed to enable:', e);
   }
+}
+
+export async function getEqualizerCapabilities(): Promise<{
+  supported: boolean;
+  bandCount: number;
+  minGain: number;
+  maxGain: number;
+}> {
+  const supported = await checkEqualizerSupport();
+  return {
+    supported,
+    bandCount: 10,
+    minGain: -12,
+    maxGain: 12,
+  };
 }

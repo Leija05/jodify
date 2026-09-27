@@ -1,472 +1,441 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, Modal, PanResponder, StyleSheet, Text, View } from 'react-native';
-import type { LyricsLine, Song } from '../../lib/types';
-import { formatTime, pickCoverUrl } from '../../lib/utils';
-import { fetchLyrics, lyricsFromSong } from '../../services/lyrics.service';
-import { usePlayerStore } from '../../store/player.store';
-import { useUiStore } from '../../store/ui.store';
-import { colors, typography, radius } from '../../theme';
-import { KaraokeLyrics } from '../lyrics/KaraokeLyrics';
-import { PressableScale } from '../ui/PressableScale';
-import { EqualizerBars } from '../ui/EqualizerBars';
-import { DynamicBackground } from './DynamicBackground';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { LyricsLine } from '@lib/types';
+import { fetchLyrics, lyricsFromSong } from '@services/lyrics.service';
+import { usePlayerStore } from '@stores/player.store';
+import { useUiStore } from '@stores/ui.store';
+import { colors, motion } from '@theme';
+import { PressableFluid } from '@components/ui/PressableFluid';
+import { DynamicBackground } from '@components/player/DynamicBackground';
+import { getSongPalette } from '@lib/palette';
 
-const VINYL_SIZE = 200;
+const SCREEN = Dimensions.get('window');
+const DISMISS_THRESHOLD = 130;
 
-type LyricsMode = 'neon' | 'minimal' | 'vinyl' | 'gradient';
+export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => void }, any>(
+  (_props, _ref) => {
+    const open = useUiStore((s) => s.lyricsModalOpen);
+    const closeLyricsModal = useUiStore((s) => s.closeLyricsModal);
+    const { currentSong, position, seek } = usePlayerStore();
+    const insets = useSafeAreaInsets();
 
-function hashFromString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
+    const [lyrics, setLyrics] = useState<LyricsLine[] | null>(null);
+    const [lyricsLoading, setLyricsLoading] = useState(false);
+    const [singMode, setSingMode] = useState(false);
+    const [vocalLevel, setVocalLevel] = useState(1.0); // 1.0: Full voice, 0.2: Sing karaoke
 
-function deriveMode(song: Song): LyricsMode {
-  const h = hashFromString(`${song.id}-${song.name}`);
-  const modes: readonly LyricsMode[] = ['neon', 'minimal', 'vinyl', 'gradient'];
-  return modes[h % modes.length] ?? 'neon';
-}
+    const translateY = useRef(new Animated.Value(SCREEN.height)).current;
+    const opacity = useRef(new Animated.Value(0)).current;
+    const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
+    const isAnimatingOutRef = useRef(false);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const lineLayouts = useRef<{ [index: number]: number }>({});
 
-function derivePalette(song: Song): { primary: string; secondary: string; accent: string } {
-  const h = hashFromString(`${song.id}-${song.artist ?? ''}`);
-  const palettes = [
-    { primary: '#7f00ff', secondary: '#00f0ff', accent: '#ff0080' },
-    { primary: '#00ff88', secondary: '#00f0ff', accent: '#7f00ff' },
-    { primary: '#ff0080', secondary: '#ff8c00', accent: '#00f0ff' },
-    { primary: '#ff8c00', secondary: '#ffb800', accent: '#ff0080' },
-    { primary: '#00f0ff', secondary: '#7f00ff', accent: '#ff8c00' },
-    { primary: '#ff0080', secondary: '#7f00ff', accent: '#00ff88' },
-  ];
-  const fallback = palettes[0];
-  return palettes[h % palettes.length] ?? {
-    primary: fallback?.primary ?? '#7f00ff',
-    secondary: fallback?.secondary ?? '#00f0ff',
-    accent: fallback?.accent ?? '#ff0080',
-  };
-}
+    const palette = useMemo(() => getSongPalette(currentSong), [currentSong]);
 
-function deriveRotation(song: Song): number {
-  return (hashFromString(`${song.id}-rotation`) % 6) * 60;
-}
+    useEffect(() => {
+      setLyrics(null);
+      if (!currentSong) return;
+      const fromSong = lyricsFromSong(currentSong.lyrics);
+      if (fromSong) {
+        setLyrics(fromSong);
+        return;
+      }
+      setLyricsLoading(true);
+      fetchLyrics(currentSong.name, currentSong.artist).then((lines) => {
+        setLyrics(lines);
+        setLyricsLoading(false);
+      });
+    }, [currentSong?.id]);
 
-const SPRING_CONFIG = { damping: 16, stiffness: 280, useNativeDriver: true };
+    const animateIn = useCallback(() => {
+      isAnimatingOutRef.current = false;
+      translateY.setValue(SCREEN.height);
+      opacity.setValue(0);
+      Animated.spring(translateY, { toValue: 0, ...motion.springDefault, useNativeDriver: true }).start();
+      Animated.spring(opacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }).start();
+    }, [translateY, opacity]);
 
-export function LyricsScreen() {
-  const open = useUiStore((s) => s.lyricsModalOpen);
-  const closeLyricsModal = useUiStore((s) => s.closeLyricsModal);
-  const { currentSong, isPlaying, position, duration, togglePlay, next, previous, seek } = usePlayerStore();
-  const [lyrics, setLyrics] = useState<LyricsLine[] | null>(null);
-  const [lyricsLoading, setLyricsLoading] = useState(false);
+    const animateOut = useCallback(() => {
+      if (isAnimatingOutRef.current) return;
+      isAnimatingOutRef.current = true;
+      Animated.parallel([
+        Animated.spring(translateY, { toValue: SCREEN.height, ...motion.springDefault, useNativeDriver: true }),
+        Animated.spring(opacity, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
+      ]).start(() => {
+        closeLyricsModal();
+        translateY.setValue(SCREEN.height);
+        opacity.setValue(0);
+        isAnimatingOutRef.current = false;
+      });
+    }, [translateY, opacity, closeLyricsModal]);
 
-  const mode = useMemo(() => currentSong ? deriveMode(currentSong) : 'neon', [currentSong?.id]);
-  const palette = useMemo(() => currentSong ? derivePalette(currentSong) : { primary: colors.primary, secondary: colors.secondary, accent: colors.accent }, [currentSong?.id]);
-  const rotation = useMemo(() => currentSong ? deriveRotation(currentSong) : 0, [currentSong?.id]);
-  const synced = useMemo(() => (lyrics ? lyrics.length > 0 && lyrics.every((l) => l.time >= 0) : false), [lyrics]);
+    useEffect(() => {
+      if (open) animateIn();
+    }, [open, animateIn]);
 
-  const panY = useRef(new Animated.Value(0)).current;
+    const springBack = useCallback(() => {
+      if (isAnimatingOutRef.current) return;
+      Animated.spring(translateY, { toValue: 0, ...motion.springDefault, useNativeDriver: true }).start();
+    }, [translateY]);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          panY.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 120 || gestureState.vy > 0.8) {
-          handleClose();
+    const dismiss = useCallback(() => {
+      animateOut();
+    }, [animateOut]);
+
+    useEffect(() => {
+      panResponderRef.current = PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 12 && Math.abs(gestureState.dx) < 20,
+        onPanResponderGrant: () => {
+          translateY.extractOffset();
+          isAnimatingOutRef.current = false;
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          const dy = gestureState.dy;
+          if (dy > 0) {
+            const clampedDy = Math.min(dy, SCREEN.height * 0.55);
+            translateY.setValue(clampedDy);
+            const progress = Math.min(dy / DISMISS_THRESHOLD, 1);
+            opacity.setValue(1 - progress * 0.5);
+          }
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          translateY.flattenOffset();
+          const { dy, vy } = gestureState;
+          if (dy > DISMISS_THRESHOLD || (dy > 60 && vy > 0.45)) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            dismiss();
+          } else {
+            springBack();
+          }
+        },
+        onPanResponderTerminate: springBack,
+      });
+    }, [translateY, opacity, dismiss, springBack]);
+
+    // Calculate active line index based on current playback position
+    const activeLineIndex = useMemo(() => {
+      if (!lyrics || lyrics.length === 0) return -1;
+      let active = -1;
+      for (let i = 0; i < lyrics.length; i++) {
+        const item = lyrics[i];
+        if (item && item.time <= position) {
+          active = i;
         } else {
-          Animated.spring(panY, { toValue: 0, damping: 16, stiffness: 280, useNativeDriver: true }).start();
+          break;
         }
+      }
+      return active;
+    }, [lyrics, position]);
+
+    // Auto-scroll to center active line smoothly
+    useEffect(() => {
+      if (activeLineIndex >= 0 && lineLayouts.current[activeLineIndex] !== undefined) {
+        const y = lineLayouts.current[activeLineIndex];
+        scrollViewRef.current?.scrollTo({
+          y: Math.max(0, y - SCREEN.height * 0.35),
+          animated: true,
+        });
+      }
+    }, [activeLineIndex]);
+
+    const handleLinePress = useCallback(
+      (time: number) => {
+        Haptics.selectionAsync();
+        seek(time);
       },
-    })
-  ).current;
+      [seek]
+    );
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+    const toggleSingMode = useCallback(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setSingMode((prev) => {
+        const next = !prev;
+        setVocalLevel(next ? 0.25 : 1.0);
+        return next;
+      });
+    }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    fadeAnim.setValue(0);
-    slideAnim.setValue(50);
-    scaleAnim.setValue(0.95);
-    Animated.parallel([
-      Animated.spring(fadeAnim, { toValue: 1, ...SPRING_CONFIG }),
-      Animated.spring(slideAnim, { toValue: 0, ...SPRING_CONFIG }),
-      Animated.spring(scaleAnim, { toValue: 1, ...SPRING_CONFIG }),
-    ]).start();
-  }, [open, fadeAnim, slideAnim, scaleAnim]);
+    if (!open) return null;
 
-  useEffect(() => {
-    setLyrics(null);
-    if (!currentSong) return;
-    const fromSong = lyricsFromSong(currentSong.lyrics);
-    if (fromSong) {
-      setLyrics(fromSong);
-      return;
-    }
-    setLyricsLoading(true);
-    fetchLyrics(currentSong.name, currentSong.artist).then((lines) => {
-      setLyrics(lines);
-      setLyricsLoading(false);
-    });
-  }, [currentSong?.id]);
-
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.spring(fadeAnim, { toValue: 0, ...SPRING_CONFIG }),
-      Animated.spring(slideAnim, { toValue: 50, ...SPRING_CONFIG }),
-      Animated.spring(scaleAnim, { toValue: 0.95, ...SPRING_CONFIG }),
-    ]).start(() => closeLyricsModal());
-  };
-
-  const renderBackground = () => {
-    if (!currentSong) return null;
-
-    switch (mode) {
-      case 'vinyl':
-        return (
-          <View style={styles.vinylBg}>
-            <Image
-              source={{ uri: pickCoverUrl(currentSong) ?? undefined }}
-              style={styles.vinylCover}
-              resizeMode="cover"
-              blurRadius={50}
-            />
-            <View style={[styles.vinylOverlay, { backgroundColor: palette.primary }]} />
-            <View style={[styles.vinylRotation, { transform: [{ rotate: `${rotation}deg` }] }]}>
-              {[0.28, 0.42, 0.56, 0.7].map((r, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.vinylGroove,
-                    {
-                      width: VINYL_SIZE * r,
-                      height: VINYL_SIZE * r,
-                      borderRadius: (VINYL_SIZE * r) / 2,
-                      borderColor: `${palette.secondary}30`,
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-        );
-      case 'gradient':
-        return (
-          <LinearGradient
-            colors={[palette.primary, palette.secondary, palette.accent]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-        );
-      case 'minimal':
-        return (
-          <View style={[styles.minimalBg, { backgroundColor: palette.primary }]}>
-            {currentSong ? (
-              <Image
-                source={{ uri: pickCoverUrl(currentSong) ?? undefined }}
-                style={styles.minimalCover}
-                resizeMode="cover"
-              />
-            ) : null}
-            <View style={[styles.minimalOverlay, { backgroundColor: palette.secondary }]} />
-          </View>
-        );
-      case 'neon':
-      default:
-        return (
-          <>
-            <DynamicBackground song={currentSong} intensity={0.92} />
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: `${palette.primary}10` }] } />
-          </>
-        );
-    }
-  };
-
-  if (!open) return null;
-
-  return (
-    <Modal visible={open} animationType="none" presentationStyle="fullScreen" onRequestClose={handleClose} statusBarTranslucent>
-      <Animated.View
-        {...panResponder.panHandlers}
-        style={[
-          styles.screenContainer,
-          { opacity: fadeAnim, transform: [{ translateY: Animated.add(slideAnim, panY) }, { scale: scaleAnim }] }
-        ]}
+    return (
+      <Modal
+        visible={open}
+        animationType="none"
+        presentationStyle="fullScreen"
+        onRequestClose={dismiss}
+        statusBarTranslucent
       >
-        {renderBackground()}
+        <Animated.View
+          style={[
+            styles.container,
+            { opacity, transform: [{ translateY }] },
+          ]}
+          {...panResponderRef.current?.panHandlers}
+        >
+          {/* Living Dynamic Mesh Aura Backdrop */}
+          <DynamicBackground song={currentSong} intensity={0.95} />
 
-        <View style={styles.topBar}>
-          <PressableScale onPress={handleClose} haptic style={styles.topBtn}>
-            <Ionicons name="chevron-down" size={26} color={colors.text} />
-          </PressableScale>
-          <Text style={styles.topLabel}>Letra</Text>
-          <View style={styles.topSpacer} />
-        </View>
+          {/* Top Floating Glass Header */}
+          <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+            <PressableFluid onPress={dismiss} haptic="light" style={styles.headerBtn} hitSlop={12}>
+              <Ionicons name="chevron-down" size={26} color={colors.white} />
+            </PressableFluid>
 
-        {currentSong && (
-          <>
-            <View style={styles.songHeader}>
-              {mode === 'minimal' && (
-                <View style={[styles.minimalBadge, { backgroundColor: `${palette.accent}20`, borderColor: `${palette.accent}60` }]}>
-                  <Text style={[styles.minimalBadgeText, { color: palette.accent }]}>{mode.toUpperCase()}</Text>
-                </View>
-              )}
-              <Text style={[styles.songTitle, { color: colors.white, textShadowColor: 'rgba(0,0,0,0.6)' }]} numberOfLines={2}>
-                {currentSong.name}
+            <View style={styles.headerCenter}>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {currentSong?.name ?? 'Letras'}
               </Text>
-              <Text style={[styles.songArtist, { color: palette.secondary }]} numberOfLines={1}>
-                {currentSong.artist ?? 'Desconocido'}
+              <Text style={styles.headerArtist} numberOfLines={1}>
+                {currentSong?.artist ?? 'Apple Music Sing'}
               </Text>
             </View>
 
-            <View style={styles.lyricsContainer}>
-              {lyricsLoading ? (
-                <View style={styles.lyricsLoading}>
-                  <EqualizerBars playing bars={5} height={20} barWidth={3} color={palette.secondary} />
-                  <Text style={styles.lyricsLoadingText}>Buscando letras…</Text>
-                </View>
-              ) : lyrics && lyrics.length > 0 ? (
-                <KaraokeLyrics
-                  lines={lyrics}
-                  currentTime={position}
-                  synced={synced}
-                  onSeek={seek}
-                />
-              ) : (
-                <View style={styles.lyricsEmpty}>
-                  <Ionicons name="document-text-outline" size={30} color={colors.textMuted} />
-                  <Text style={styles.lyricsEmptyText}>No se encontraron letras para esta canción</Text>
-                </View>
-              )}
+            {/* Apple Music Sing Vocal Attenuator Toggle */}
+            <PressableFluid
+              onPress={toggleSingMode}
+              haptic="medium"
+              style={[
+                styles.singToggleBtn,
+                singMode && styles.singToggleBtnActive,
+              ]}
+              hitSlop={8}
+            >
+              <Ionicons
+                name="mic"
+                size={16}
+                color={singMode ? colors.white : 'rgba(255, 255, 255, 0.7)'}
+              />
+              <Text style={[styles.singToggleText, singMode && styles.singToggleTextActive]}>
+                {singMode ? 'Sing Activo' : 'Sing'}
+              </Text>
+            </PressableFluid>
+          </View>
+
+          {/* Lyrics Content Stream */}
+          {lyricsLoading ? (
+            <View style={styles.centerWrap}>
+              <Text style={styles.loadingText}>Sincronizando letras en tiempo real…</Text>
             </View>
+          ) : lyrics && lyrics.length > 0 ? (
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.scrollView}
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingTop: insets.top + 70, paddingBottom: insets.bottom + 80 },
+              ]}
+              showsVerticalScrollIndicator={false}
+            >
+              {lyrics.map((line, index) => {
+                const isActive = index === activeLineIndex;
+                const isPast = index < activeLineIndex;
 
-            <View style={styles.controlsContainer}>
-              <View style={styles.progressBar}>
-                <View style={styles.progressTrack}>
-                  <LinearGradient
-                    colors={[palette.primary, palette.secondary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.progressFill, { width: `${duration > 0 ? (position / duration) * 100 : 0}%` }]}
-                  />
-                </View>
-                <View style={styles.timeRow}>
-                  <Text style={styles.timeText}>{formatTime(position)}</Text>
-                  <Text style={styles.timeText}>{formatTime(duration)}</Text>
-                </View>
-              </View>
-
-              <View style={styles.controlsRow}>
-                <PressableScale onPress={previous} haptic style={styles.controlBtn}>
-                  <Ionicons name="play-skip-back" size={28} color={colors.text} />
-                </PressableScale>
-                <PressableScale onPress={togglePlay} haptic style={styles.playBtn}>
-                  <LinearGradient
-                    colors={[palette.primary, palette.secondary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.playBtnInner}
+                return (
+                  <PressableFluid
+                    key={index}
+                    onPress={() => handleLinePress(line.time)}
+                    haptic="selection"
+                    style={styles.lineContainer}
+                    onLayout={(event) => {
+                      lineLayouts.current[index] = event.nativeEvent.layout.y;
+                    }}
                   >
-                    <Ionicons name={isPlaying ? 'pause' : 'play'} size={34} color={colors.white} />
-                  </LinearGradient>
-                </PressableScale>
-                <PressableScale onPress={next} haptic style={styles.controlBtn}>
-                  <Ionicons name="play-skip-forward" size={28} color={colors.text} />
-                </PressableScale>
-              </View>
+                    <Text
+                      style={[
+                        styles.lyricText,
+                        isActive
+                          ? [
+                              styles.lyricTextActive,
+                              {
+                                textShadowColor: palette.primary,
+                              },
+                            ]
+                          : isPast
+                          ? styles.lyricTextPast
+                          : styles.lyricTextFuture,
+                      ]}
+                    >
+                      {line.text}
+                    </Text>
+                  </PressableFluid>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <View style={styles.centerWrap}>
+              <Ionicons name="musical-notes-outline" size={48} color={colors.textMuted} />
+              <Text style={styles.emptyTitle}>Letras no disponibles</Text>
+              <Text style={styles.emptySubtitle}>Esta canción no cuenta con transcripción sincronizada</Text>
             </View>
-          </>
-        )}
-      </Animated.View>
-    </Modal>
-  );
-}
+          )}
+
+          {/* Floating Vocal Slider Indicator when Sing mode is active */}
+          {singMode && (
+            <View style={[styles.singFloatingIndicator, { bottom: insets.bottom + 24 }]}>
+              <Ionicons name="sparkles" size={14} color={colors.secondary} />
+              <Text style={styles.singIndicatorText}>
+                Modo Karaoke Apple Music Sing • Nivel de voz {Math.round(vocalLevel * 100)}%
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+      </Modal>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
-  screenContainer: {
+  container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#030305',
   },
-  vinylBg: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  vinylCover: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  vinylOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.6,
-  },
-  vinylRotation: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  vinylGroove: {
+  header: {
     position: 'absolute',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  minimalBg: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  minimalCover: {
-    width: '100%',
-    height: '100%',
-    opacity: 0.15,
-  },
-  minimalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.7,
-  },
-  minimalBadge: {
-    alignSelf: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  minimalBadgeText: {
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 10,
-    letterSpacing: 1.5,
-  },
-  topBar: {
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 44,
-    paddingBottom: 8,
-    gap: 12,
-  },
-  topBtn: {
-    padding: 6,
-  },
-  topLabel: {
-    flex: 1,
-    color: colors.textMuted,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  topSpacer: {
-    width: 36,
-  },
-  songHeader: {
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  songTitle: {
-    fontFamily: typography.displaySmall.fontFamily,
-    fontSize: 24,
-    letterSpacing: -0.6,
-    lineHeight: 30,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  songArtist: {
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 14,
-    marginTop: 4,
-  },
-  lyricsContainer: {
-    flex: 1,
-    paddingHorizontal: 12,
-  },
-  lyricsLoading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-  },
-  lyricsLoadingText: {
-    color: colors.textMuted,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: 13,
-  },
-  lyricsEmpty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  lyricsEmptyText: {
-    color: colors.textMuted,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
-  controlsContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 50,
-    gap: 18,
-  },
-  progressBar: {
-    gap: 6,
-  },
-  progressTrack: {
-    height: 3,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: radius.pill,
-  },
-  timeRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
-  timeText: {
-    color: colors.textDim,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: 11,
-  },
-  controlsRow: {
-    flexDirection: 'row',
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
-  controlBtn: {
-    padding: 8,
+  headerCenter: {
+    flex: 1,
+    marginHorizontal: 12,
+    alignItems: 'center',
   },
-  playBtn: {
+  headerTitle: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 16,
+    color: colors.white,
+    letterSpacing: -0.3,
+  },
+  headerArtist: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 2,
+  },
+  singToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  singToggleBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  singToggleText: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.75)',
+  },
+  singToggleTextActive: {
+    color: colors.white,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 28,
+  },
+  lineContainer: {
+    paddingVertical: 14,
+  },
+  lyricText: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 30,
+    lineHeight: 38,
+    letterSpacing: -0.8,
+  },
+  lyricTextActive: {
+    color: colors.white,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
+    opacity: 1,
+    transform: [{ scale: 1.02 }],
+  },
+  lyricTextPast: {
+    color: 'rgba(255, 255, 255, 0.40)',
+    opacity: 0.4,
+  },
+  lyricTextFuture: {
+    color: 'rgba(255, 255, 255, 0.28)',
+    opacity: 0.28,
+  },
+  centerWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  emptyTitle: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 20,
+    color: colors.white,
+    marginTop: 8,
+  },
+  emptySubtitle: {
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  singFloatingIndicator: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(12, 12, 18, 0.85)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 22,
     shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
     elevation: 12,
   },
-  playBtnInner: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+  singIndicatorText: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 12,
+    color: colors.white,
   },
 });
+
+LyricsScreen.displayName = 'LyricsScreen';

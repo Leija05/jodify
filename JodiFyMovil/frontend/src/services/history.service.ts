@@ -1,32 +1,21 @@
 import { apiFetch } from './api';
-import type { Song } from '../lib/types';
+import type { ListeningHistoryRow } from '../lib/types';
 
-/**
- * Servicio de historial de reproducción.
- * Registra cada canción reproducida en el backend (igual que web/desktop).
- */
-export async function recordHistory(
-  songId: number | string,
-  username: string,
-): Promise<void> {
-  try {
-    await apiFetch('/history', {
-      method: 'POST',
-      body: { song_id: songId, username },
-      auth: true,
-    });
-  } catch {
-    // El historial es best-effort; no falla la app si no se registra.
-  }
+export async function recordHistory(songId: string | number, username: string): Promise<void> {
+  await apiFetch<void>('/api/history', {
+    method: 'POST',
+    body: { song_id: songId, username, song_name: '' },
+  });
 }
 
-/** Obtiene el historial de reproducción del usuario. */
-export async function fetchHistory(username: string): Promise<Song[]> {
-  try {
-    return await apiFetch<Song[]>(`/history/${encodeURIComponent(username)}`, {
-      auth: true,
-    });
-  } catch {
-    return [];
-  }
+export async function fetchHistory(username: string, limit = 50): Promise<ListeningHistoryRow[]> {
+  return apiFetch<ListeningHistoryRow[]>(`/api/users/${encodeURIComponent(username)}/history?limit=${limit}`);
+}
+
+export async function fetchTopSongs(username: string, limit = 5): Promise<Array<{ song_name: string; count: number }>> {
+  return apiFetch<Array<{ song_name: string; count: number }>>(`/api/users/${encodeURIComponent(username)}/top-songs?limit=${limit}`);
+}
+
+export async function fetchListeningStats(username: string): Promise<{ liked: number; played: number; downloaded: number }> {
+  return apiFetch<{ liked: number; played: number; downloaded: number }>(`/api/users/${encodeURIComponent(username)}/stats`);
 }

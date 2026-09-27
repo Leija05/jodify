@@ -1,49 +1,51 @@
+import { apiFetch, apiFetchBlob } from './api';
 import type { Song } from '../lib/types';
-import { apiFetch } from './api';
 
 export async function fetchSongs(): Promise<Song[]> {
-  const data = await apiFetch<Song[]>('/songs');
-  return Array.isArray(data) ? data : [];
+  return apiFetch<Song[]>('/api/songs');
 }
 
-export async function fetchSongAudioUrl(songId: number | string): Promise<string | null> {
-  return apiFetch<string>(`/songs/${songId}/audio`);
+export async function fetchSong(id: string | number): Promise<Song> {
+  return apiFetch<Song>(`/api/songs/${id}`);
 }
 
-export async function fetchTopSongs(
-  limit = 10,
-): Promise<Array<{ song_id: string; song_name: string; count: number }>> {
-  const data = await apiFetch<Array<{ song_id: string; song_name: string; count: number }>>(`/songs/top?limit=${limit}`);
-  return Array.isArray(data) ? data : [];
+export async function fetchTopSongs(limit = 10): Promise<Array<{ song_id: string; song_name: string; count: number }>> {
+  return apiFetch<Array<{ song_id: string; song_name: string; count: number }>>(`/api/songs/top?limit=${limit}`);
 }
 
 export async function fetchLikedIds(username: string): Promise<Array<number | string>> {
-  const data = await apiFetch<Array<number | string>>(`/likes?username=${encodeURIComponent(username)}`);
-  return Array.isArray(data) ? data.map((id) => String(id)) : [];
+  return apiFetch<Array<number | string>>(`/api/likes?username=${encodeURIComponent(username)}`);
 }
 
-export async function addLike(songId: number | string, username: string): Promise<void> {
-  await apiFetch('/likes', {
+export async function hasLike(username: string, songId: string | number): Promise<boolean> {
+  const res = await apiFetch<{ has: boolean }>(`/api/likes/has?username=${encodeURIComponent(username)}&song_id=${songId}`);
+  return res.has;
+}
+
+export async function addLike(songId: string | number, username: string): Promise<void> {
+  await apiFetch<void>('/api/likes', {
     method: 'POST',
-    body: { username, song_id: String(songId) },
+    body: { song_id: songId, username },
   });
 }
 
-export async function removeLike(songId: number | string, username: string): Promise<void> {
-  await apiFetch(`/likes?username=${encodeURIComponent(username)}&song_id=${String(songId)}`, {
+export async function removeLike(songId: string | number, username: string): Promise<void> {
+  await apiFetch<void>(`/api/likes?username=${encodeURIComponent(username)}&song_id=${songId}`, {
     method: 'DELETE',
   });
 }
 
-export async function updateLikeCount(songId: number | string, username: string, delta: number): Promise<void> {
-  await apiFetch(`/songs/${songId}/likes`, {
+export async function updateLikeCount(songId: string | number, _username: string, delta: number): Promise<{ likes: number }> {
+  return apiFetch<{ likes: number }>(`/api/songs/${songId}/likes`, {
     method: 'POST',
-    body: { username, delta },
-    auth: true,
+    body: { delta: Math.max(-1, Math.min(1, delta)) },
   });
 }
 
-export async function fetchDownloadedIds(username: string): Promise<Array<number | string>> {
-  const data = await apiFetch<Array<{ song_id: number | string }>>(`/downloads?username=${encodeURIComponent(username)}`);
-  return Array.isArray(data) ? data.map((r) => r.song_id) : [];
+export async function streamAudio(songId: string | number): Promise<Blob> {
+  return apiFetchBlob(`/api/songs/${songId}/audio`);
+}
+
+export async function streamCover(songId: string | number): Promise<Blob> {
+  return apiFetchBlob(`/api/songs/${songId}/cover`);
 }

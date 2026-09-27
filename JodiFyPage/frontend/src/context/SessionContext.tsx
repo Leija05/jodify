@@ -28,6 +28,23 @@ const SESSION_KEY = 'jodify_session_active';
 const USER_KEY = 'currentUserName';
 const ROLE_KEY = 'jodify_user_role';
 
+async function syncUserPreferences(username: string) {
+  try {
+    const prefs = await usersService.getPreferences(username);
+    if (prefs) {
+      const { useSettingsStore } = await import('../store/settings.store');
+      const patch: any = {};
+      if (prefs.theme) patch.theme = prefs.theme;
+      if (prefs.eq_preset) patch.eqPreset = prefs.eq_preset;
+      if (prefs.custom_curves) patch.customEqPresets = prefs.custom_curves;
+      if (prefs.fade_duration != null) patch.fadeDuration = prefs.fade_duration;
+      useSettingsStore.getState().set(patch);
+    }
+  } catch {
+    /* non-blocking */
+  }
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
@@ -39,6 +56,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const role = localStorage.getItem(ROLE_KEY) as Role | null;
       if (active && username) {
         setSession({ username, role: role ?? 'user' });
+        syncUserPreferences(username).catch(() => undefined);
       }
     } catch {
       /* ignore */
@@ -59,6 +77,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(SESSION_KEY, keepSession ? 'true' : 'true');
 
       usersService.heartbeat(result.username, true).catch(() => undefined);
+      syncUserPreferences(result.username).catch(() => undefined);
       return true;
     } catch (error) {
       useToastStore.getState().show('No se pudo iniciar sesión', 'error');

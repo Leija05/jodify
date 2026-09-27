@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Animated, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
-import { usePlayerStore } from '../store/player.store';
-import { useUiStore, type TabId } from '../store/ui.store';
-import { colors, typography, radius, motion, elevation } from '../theme';
-import { PressableFluid } from '../components/ui/PressableFluid';
+import { BlurView } from 'expo-blur';
+import { usePlayerStore } from '@stores/player.store';
+import { useUiStore, type TabId } from '@stores/ui.store';
+import { colors, typography, motion } from '@theme';
+import { PressableFluid } from '@components/ui/PressableFluid';
 
 const TABS: Array<{ id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = [
   { id: 'home', label: 'Inicio', icon: 'home-outline', iconActive: 'home' },
@@ -14,7 +15,7 @@ const TABS: Array<{ id: TabId; label: string; icon: keyof typeof Ionicons.glyphM
   { id: 'settings', label: 'Ajustes', icon: 'settings-outline', iconActive: 'settings' },
 ];
 
-const TAB_BAR_HEIGHT = 80;
+const TAB_BAR_HEIGHT = 68;
 
 export function TabBar() {
   const tab = useUiStore((s) => s.tab);
@@ -22,54 +23,46 @@ export function TabBar() {
   const queueLength = usePlayerStore((s) => s.queue.length);
   const insets = useSafeAreaInsets();
 
-  // El indicador se calcula con el ancho REAL medido de la barra:
-  // cada tab es flex:1, asi que su ancho es (anchoUtil / cantidadDeTabs).
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorTranslate = React.useRef(new Animated.Value(0)).current;
-  const indicatorWidth = React.useRef(new Animated.Value(0)).current;
 
   const onBarLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      const measured = event.nativeEvent.layout.width - 8; // paddingHorizontal 4+4
+      const measured = event.nativeEvent.layout.width - 8;
       const next = Math.max(measured / TABS.length, 0);
       setTabWidth(next);
-      indicatorWidth.setValue(next);
       const activeIndex = TABS.findIndex((t) => t.id === tab);
       indicatorTranslate.setValue(activeIndex * next);
     },
-    [indicatorTranslate, indicatorWidth, tab],
+    [indicatorTranslate, tab]
   );
 
   React.useEffect(() => {
     if (tabWidth <= 0) return;
     const targetIndex = TABS.findIndex((t) => t.id === tab);
-    Animated.parallel([
-      Animated.spring(indicatorTranslate, {
-        toValue: targetIndex * tabWidth,
-        ...motion.springQuick,
-        useNativeDriver: true,
-      }),
-      Animated.spring(indicatorWidth, {
-        toValue: tabWidth,
-        ...motion.springQuick,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [tab, tabWidth, indicatorTranslate, indicatorWidth]);
+    Animated.spring(indicatorTranslate, {
+      toValue: targetIndex * tabWidth,
+      ...motion.springQuick,
+      useNativeDriver: true,
+    }).start();
+  }, [tab, tabWidth, indicatorTranslate]);
 
   return (
-    <View style={[styles.wrap, { bottom: insets.bottom }]}>
+    <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.bar} onLayout={onBarLayout}>
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.indicator,
-            {
-              transform: [{ translateX: indicatorTranslate }],
-              width: indicatorWidth,
-            },
-          ]}
-        />
+        <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        {tabWidth > 0 && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.indicator,
+              {
+                width: tabWidth,
+                transform: [{ translateX: indicatorTranslate }],
+              },
+            ]}
+          />
+        )}
         {TABS.map((t) => {
           const active = tab === t.id;
           return (
@@ -89,7 +82,7 @@ export function TabBar() {
                 ) : null}
                 <Ionicons
                   name={active ? t.iconActive : t.icon}
-                  size={26}
+                  size={22}
                   color={active ? colors.white : colors.textMuted}
                 />
                 <Text style={[styles.label, active && styles.labelActive]}>{t.label}</Text>
@@ -105,69 +98,77 @@ export function TabBar() {
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 0,
+    left: 16,
+    right: 16,
+    zIndex: 100,
   },
   bar: {
     flexDirection: 'row',
-    backgroundColor: colors.backgroundElevated,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.xl,
+    backgroundColor: 'rgba(14, 14, 22, 0.72)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 26,
     height: TAB_BAR_HEIGHT,
     paddingHorizontal: 4,
-    ...elevation.level3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.55,
+    shadowRadius: 24,
+    elevation: 16,
     overflow: 'hidden',
   },
   indicator: {
     position: 'absolute',
-    top: 4,
-    bottom: 4,
+    top: 6,
+    bottom: 6,
     left: 4,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    ...elevation.level1,
+    borderRadius: 20,
+    backgroundColor: 'rgba(127, 0, 255, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(127, 0, 255, 0.5)',
   },
   item: {
     flex: 1,
   },
   itemInner: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
+    gap: 3,
+    paddingVertical: 6,
   },
   badge: {
     position: 'absolute',
-    top: 4,
-    right: -6,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    top: 2,
+    right: 8,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: colors.background,
   },
   badgeText: {
     color: colors.white,
     fontFamily: typography.labelMedium.fontFamily,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
   },
   label: {
     color: colors.textMuted,
     fontFamily: typography.labelMedium.fontFamily,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
+    letterSpacing: 0.2,
   },
   labelActive: {
     color: colors.white,
     fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

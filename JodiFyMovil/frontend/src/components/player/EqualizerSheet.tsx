@@ -1,403 +1,410 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
-import { PanResponder, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { DEFAULT_EQ_PRESETS, EQ_BANDS, EQ_MAX, EQ_MIN, EQ_PRESET_LABELS } from '../../lib/constants';
-import { clamp } from '../../lib/utils';
-import { checkNativeAvailability, isEqualizerAvailable } from '../../services/equalizer.service';
-import { useEqStore } from '../../store/eq.store';
-import { useUiStore } from '../../store/ui.store';
-import { colors, typography, gradients, radius, touch } from '../../theme';
-import { BottomSheet } from '../ui/BottomSheet';
-import { PressableScale } from '../ui/PressableScale';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PressableFluid } from '@components/ui/PressableFluid';
+import { EqualizerBars } from '@components/ui/EqualizerBars';
+import { Slider } from '@components/ui/Slider';
+import { useEqStore } from '@stores/eq.store';
+import { useUiStore } from '@stores/ui.store';
+import { colors, typography, radius, motion } from '@theme';
 
-function labelForFrequency(freq: number): string {
-  return freq >= 1000 ? `${freq / 1000} kHz` : `${freq} Hz`;
-}
+const SCREEN = Dimensions.get('window');
+const DISMISS_THRESHOLD = 130;
 
-interface SliderProps {
-  value: number;
-  onChange: (value: number) => void;
-  label: string;
-}
+const BAND_LABELS = ['32', '64', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
 
-function VerticalSlider({ value, onChange, label }: SliderProps) {
-  const [height, setHeight] = useState(0);
-  const heightRef = useRef(0);
+const EQ_PRESETS: Record<string, { name: string; values: number[] }> = {
+  flat: { name: 'Flat', values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  bass: { name: 'Bass Boost', values: [6, 4, 2, 1, 0, -1, -2, -3, -4, -5] },
+  vocal: { name: 'Vocal', values: [-3, -2, 0, 2, 4, 5, 4, 2, 0, -2] },
+  rock: { name: 'Rock', values: [4, 3, 2, 0, -2, -1, 1, 3, 4, 5] },
+  electronic: { name: 'Electronic', values: [5, 3, 1, -1, -2, -1, 1, 3, 5, 6] },
+  classical: { name: 'Classical', values: [2, 1, 0, -1, 0, 1, 2, 3, 4, 3] },
+  pop: { name: 'Pop', values: [2, 1, 0, 1, 3, 4, 3, 2, 1, 0] },
+  jazz: { name: 'Jazz', values: [3, 2, 1, 0, 1, 2, 3, 2, 1, 0] },
+};
 
-  const fraction = (value - EQ_MIN) / (EQ_MAX - EQ_MIN);
-  const markerBottom = clamp(fraction * height, 6, Math.max(6, height - 6));
+export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => void }, any>(
+  ({ ...props }, _ref) => {
+    const open = useUiStore((s) => s.equalizerOpen);
+    const closeEqualizer = useUiStore((s) => s.closeEqualizer);
+    const { enabled, preset, values, setEnabled, setPreset, setBand, loadPersisted, smooth, vibe, reset } = useEqStore();
+    const insets = useSafeAreaInsets();
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        const h = heightRef.current;
-        if (h <= 0) return;
-        const f = clamp(1 - evt.nativeEvent.locationY / h, 0, 1);
-        onChange(EQ_MIN + f * (EQ_MAX - EQ_MIN));
-      },
-      onPanResponderMove: (evt) => {
-        const h = heightRef.current;
-        if (h <= 0) return;
-        const f = clamp(1 - evt.nativeEvent.locationY / h, 0, 1);
-        onChange(EQ_MIN + f * (EQ_MAX - EQ_MIN));
-      },
-    }),
-  ).current;
+    const [visualizerData, setVisualizerData] = useState<number[]>(Array(10).fill(0));
 
-  return (
-    <View style={styles.sliderCol}>
-      <Text style={[styles.sliderValue, value > 0 && styles.sliderValuePos, value < 0 && styles.sliderValueNeg]}>
-        {value > 0 ? `+${Math.round(value)}` : Math.round(value)}
-      </Text>
-      <View
-        style={styles.sliderTrack}
-        onLayout={(e) => {
-          heightRef.current = e.nativeEvent.layout.height;
-          setHeight(e.nativeEvent.layout.height);
-        }}
-        {...panResponder.panHandlers}
+    const translateY = useRef(new Animated.Value(SCREEN.height)).current;
+    const opacity = useRef(new Animated.Value(0)).current;
+    const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
+    const isAnimatingOutRef = useRef(false);
+
+    useEffect(() => {
+      loadPersisted();
+    }, [loadPersisted]);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setVisualizerData(prev => prev.map(() => Math.random() * 0.5 + 0.2));
+      }, 200);
+      return () => clearInterval(interval);
+    }, []);
+
+    const animateIn = useCallback(() => {
+      isAnimatingOutRef.current = false;
+      translateY.setValue(SCREEN.height);
+      opacity.setValue(0);
+      Animated.spring(translateY, { toValue: 0, ...motion.springDrawer, useNativeDriver: true }).start();
+      Animated.spring(opacity, { toValue: 1, ...motion.springDrawer, useNativeDriver: true }).start();
+    }, [translateY, opacity]);
+
+    const animateOut = useCallback(() => {
+      if (isAnimatingOutRef.current) return;
+      isAnimatingOutRef.current = true;
+      Animated.parallel([
+        Animated.spring(translateY, { toValue: SCREEN.height, ...motion.springDrawer, useNativeDriver: true }),
+        Animated.spring(opacity, { toValue: 0, ...motion.springDrawer, useNativeDriver: true }),
+      ]).start(() => {
+        closeEqualizer();
+        translateY.setValue(SCREEN.height);
+        opacity.setValue(0);
+        isAnimatingOutRef.current = false;
+      });
+    }, [translateY, opacity, closeEqualizer]);
+
+    useEffect(() => {
+      if (open) animateIn();
+    }, [open, animateIn]);
+
+    const springBack = useCallback(() => {
+      if (isAnimatingOutRef.current) return;
+      Animated.spring(translateY, { toValue: 0, ...motion.springDrawer, useNativeDriver: true }).start();
+    }, [translateY]);
+
+    const dismiss = useCallback(() => {
+      animateOut();
+    }, [animateOut]);
+
+    useEffect(() => {
+      panResponderRef.current = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 3,
+        onPanResponderGrant: () => {
+          translateY.extractOffset();
+          isAnimatingOutRef.current = false;
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          const dy = gestureState.dy;
+          if (dy > 0) {
+            const clampedDy = Math.min(dy, SCREEN.height * 0.55);
+            translateY.setValue(clampedDy);
+            const progress = Math.min(dy / DISMISS_THRESHOLD, 1);
+            const easedProgress = progress * progress;
+            opacity.setValue(1 - easedProgress * 0.5);
+          }
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          translateY.flattenOffset();
+          const { dy, vy } = gestureState;
+          if (dy > DISMISS_THRESHOLD || (dy > 60 && vy > 0.45)) {
+            dismiss();
+          } else {
+            springBack();
+          }
+        },
+        onPanResponderTerminate: springBack,
+      });
+    }, [dismiss, springBack]);
+
+    if (!open) return null;
+
+    return (
+      <Modal
+        visible={open}
+        animationType="none"
+        presentationStyle="fullScreen"
+        onRequestClose={dismiss}
+        statusBarTranslucent
+        {...props}
       >
-        <View style={styles.sliderZero} />
-        <LinearGradient
-          colors={[gradients.primary[0], gradients.play[1]] as const}
-          start={{ x: 0, y: 1 }}
-          end={{ x: 0, y: 0 }}
-          style={[styles.sliderFill, { height: Math.max(0, fraction * (height || 1)) }]}
-        />
-        <View style={[styles.sliderMarker, { bottom: markerBottom }]} />
-      </View>
-      <Text style={styles.sliderLabel}>{label}</Text>
-    </View>
-  );
-}
-
-export function EqualizerSheet() {
-  const open = useUiStore((s) => s.equalizerOpen);
-  const close = useUiStore((s) => s.closeEqualizer);
-  const { enabled, values, preset, setBand, setPreset, toggle, reset } = useEqStore();
-  const [nativeOk, setNativeOk] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    void checkNativeAvailability().then((res) => {
-      if (alive) setNativeOk(res.available);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [open]);
-
-  const unsupported = nativeOk === false || (Platform.OS !== 'android' && !isEqualizerAvailable());
-
-  return (
-    <BottomSheet visible={open} onClose={close} maxHeight={0.72}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.eqIcon}>
-            <Ionicons name="options" size={16} color={colors.secondary} />
+        <Animated.View
+          style={[
+            styles.container,
+            { opacity, transform: [{ translateY }] },
+          ]}
+          {...panResponderRef.current?.panHandlers}
+        >
+          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={[styles.header, { paddingTop: Math.max(44, insets.top) }]}>
+            <PressableFluid onPress={dismiss} haptic="light" hitSlop={12} style={styles.dismissBtn}>
+              <Ionicons name="chevron-down-outline" size={28} color={colors.white} />
+            </PressableFluid>
+            <View style={styles.headerCenter}>
+              <Text style={styles.headerTitle}>Ecualizador</Text>
+            </View>
+            <PressableFluid
+              onPress={() => setEnabled(!enabled)}
+              haptic="selection"
+              style={[
+                styles.toggleBtn,
+                enabled && styles.toggleBtnOn,
+              ]}
+              hitSlop={8}
+            >
+              <Ionicons name={enabled ? 'toggle' : 'toggle-outline'} size={24} color={enabled ? colors.secondary : colors.textMuted} />
+            </PressableFluid>
           </View>
-          <View>
-            <Text style={styles.title}>Ecualizador</Text>
-            <Text style={styles.subtitle}>Ajusta el sonido a tu gusto</Text>
-          </View>
-        </View>
-        <PressableScale onPress={close} haptic style={styles.closeBtn}>
-          <Ionicons name="close" size={20} color={colors.textMuted} />
-        </PressableScale>
-      </View>
 
-      <View style={styles.toggleRow}>
-        <View>
-          <Text style={styles.toggleLabel}>Ecualizador</Text>
-          <Text style={styles.toggleHint}>{enabled ? 'Activado' : 'Desactivado'}</Text>
-        </View>
-        <PressableScale onPress={toggle} haptic style={[styles.switch, enabled && styles.switchOn]} scaleTo={0.92}>
-          <View style={[styles.switchThumb, enabled && styles.switchThumbOn]} />
-        </PressableScale>
-      </View>
-
-      {unsupported ? (
-        <View style={styles.notice}>
-          <Ionicons name="phone-portrait-outline" size={20} color={colors.textMuted} />
-          <Text style={styles.noticeText}>
-            Tu dispositivo no expone un ecualizador de sistema. La configuración se guardará igualmente para cuando esté disponible.
-          </Text>
-        </View>
-      ) : (
-        <>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.presets}
-            style={styles.presetsScroll}
-          >
-            {Object.keys(DEFAULT_EQ_PRESETS).map((name) => {
-              const active = preset === name;
-              return (
-                <PressableScale
-                  key={name}
-                  onPress={() => setPreset(name)}
-                  haptic
-                  style={[styles.preset, active && styles.presetActive]}
-                  scaleTo={0.94}
-                >
-                  <Text style={[styles.presetText, active && styles.presetTextActive]}>
-                    {EQ_PRESET_LABELS[name] ?? name}
-                  </Text>
-                </PressableScale>
-              );
-            })}
-          </ScrollView>
-
-          <View style={styles.slidersRow}>
-            {EQ_BANDS.map((freq, i) => (
-              <VerticalSlider
-                key={freq}
-                label={labelForFrequency(freq)}
-                value={values[i] ?? 0}
-                onChange={(v) => setBand(i, v)}
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.visualizer}>
+              <EqualizerBars
+                playing={enabled}
+                bars={10}
+                height={60}
+                barWidth={12}
+                gap={4}
+                color={colors.secondary}
+                amplitudes={visualizerData}
               />
-            ))}
-          </View>
+            </View>
 
-          <PressableScale onPress={reset} haptic style={styles.resetBtn} scaleTo={0.97}>
-            <Ionicons name="refresh" size={15} color={colors.text} />
-            <Text style={styles.resetText}>Restablecer</Text>
-          </PressableScale>
-        </>
-      )}
-    </BottomSheet>
-  );
-}
+            <View style={styles.bands}>
+              {values.map((value, index) => (
+                <View key={index} style={styles.band}>
+                  <Text style={styles.bandLabel}>{BAND_LABELS[index]}</Text>
+                  <Slider
+                    value={value}
+                    onValueChange={(v) => setBand(index, v)}
+                    min={-12}
+                    max={12}
+                    step={0.5}
+                    disabled={!enabled}
+                    trackHeight={5}
+                    thumbSize={18}
+                    style={styles.slider}
+                    activeTrackStyle={styles.activeTrack}
+                  />
+                  <Text style={styles.bandValue}>{value > 0 ? '+' : ''}{value.toFixed(1)} dB</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.presets}>
+              <Text style={styles.presetsTitle}>Presets</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsRow}>
+                {Object.entries(EQ_PRESETS).map(([key]) => {
+                  const presetData = EQ_PRESETS[key];
+                  return (
+                    <PressableFluid
+                      key={key}
+                      onPress={() => setPreset(key)}
+                      haptic="selection"
+                      style={[
+                        styles.presetBtn,
+                        key === preset && styles.presetBtnActive,
+                      ]}
+                      hitSlop={8}
+                    >
+                      <Text style={[
+                        styles.presetBtnText,
+                        key === preset && styles.presetBtnTextActive,
+                      ]}>
+                        {presetData?.name ?? key}
+                      </Text>
+                    </PressableFluid>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View style={styles.actionRow}>
+              <PressableFluid
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  smooth();
+                }}
+                haptic="light"
+                style={styles.actionPill}
+              >
+                <Ionicons name="pulse" size={16} color={colors.secondary} />
+                <Text style={styles.actionPillText}>Suavizar</Text>
+              </PressableFluid>
+
+              <PressableFluid
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  vibe();
+                }}
+                haptic="medium"
+                style={styles.actionPill}
+              >
+                <Ionicons name="sparkles" size={16} color={colors.accent} />
+                <Text style={styles.actionPillText}>Vibe</Text>
+              </PressableFluid>
+
+              <PressableFluid
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  reset();
+                }}
+                haptic="light"
+                style={styles.actionPill}
+              >
+                <Ionicons name="refresh" size={16} color={colors.textMuted} />
+                <Text style={styles.actionPillText}>Reset</Text>
+              </PressableFluid>
+            </View>
+          </ScrollView>
+        </Animated.View>
+      </Modal>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingTop: 44,
+    paddingBottom: 16,
+    zIndex: 10,
   },
-  headerLeft: {
+  dismissBtn: {
+    padding: 8,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    color: colors.white,
+    fontFamily: typography.headlineMedium.fontFamily,
+    fontSize: typography.headlineMedium.fontSize,
+    letterSpacing: typography.headlineMedium.letterSpacing,
+  },
+  toggleBtn: {
+    padding: 8,
+  },
+  toggleBtnOn: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryStrong,
+  },
+  content: {
+    flex: 1,
+    paddingTop: 100,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+    gap: 24,
+  },
+  visualizer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  bands: {
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: radius.xl,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  band: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    paddingVertical: 2,
   },
-  eqIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,240,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,240,255,0.3)',
+  bandLabel: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: 13,
+    fontWeight: '600',
+    width: 44,
   },
-  title: {
-    color: colors.text,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: 17,
-    letterSpacing: -0.3,
+  slider: {
+    flex: 1,
   },
-  subtitle: {
+  activeTrack: {
+    backgroundColor: colors.secondary,
+  },
+  bandValue: {
     color: colors.textMuted,
-    fontFamily: typography.bodyMedium.fontFamily,
+    fontFamily: typography.monoSmall.fontFamily,
     fontSize: 12,
-    marginTop: 1,
-  },
-  closeBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: 20,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  toggleLabel: {
-    color: colors.text,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 14,
-  },
-  toggleHint: {
-    color: colors.textMuted,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: 11.5,
-    marginTop: 1,
-  },
-  switch: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    padding: 3,
-  },
-  switchOn: {
-    backgroundColor: colors.primary,
-  },
-  switchThumb: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.textMuted,
-  },
-  switchThumbOn: {
-    backgroundColor: colors.white,
-    transform: [{ translateX: 20 }],
-  },
-  presetsScroll: {
-    marginTop: 14,
+    width: 58,
+    textAlign: 'right',
   },
   presets: {
-    paddingHorizontal: 20,
-    gap: 8,
+    gap: 12,
   },
-  preset: {
-    paddingHorizontal: 18,
+  presetsTitle: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: typography.labelSmall.fontSize,
+    letterSpacing: typography.labelSmall.letterSpacing,
+    textTransform: 'uppercase',
+    marginLeft: 4,
+  },
+  presetsRow: {
+    gap: 10,
+    paddingHorizontal: 4,
+  },
+  presetBtn: {
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
     borderColor: colors.border,
-    minHeight: touch.comfortable,
   },
-  presetActive: {
-    backgroundColor: 'rgba(127,0,255,0.22)',
-    borderColor: 'rgba(127,0,255,0.6)',
+  presetBtnActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryStrong,
   },
-  presetText: {
-    color: colors.textMuted,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 12.5,
-  },
-  presetTextActive: {
-    color: colors.white,
-  },
-  slidersRow: {
-    flexDirection: 'row',
-    marginTop: 18,
-    marginBottom: 6,
-    paddingHorizontal: 16,
-    gap: 4,
-  },
-  sliderCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  sliderValue: {
-    color: colors.textMuted,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 11,
-    marginBottom: 6,
-    minWidth: 30,
-    textAlign: 'center',
-  },
-  sliderValuePos: {
-    color: colors.secondary,
-  },
-  sliderValueNeg: {
-    color: colors.accent,
-  },
-  sliderTrack: {
-    width: 34,
-    height: 168,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  sliderZero: {
-    position: 'absolute',
-    left: 4,
-    right: 4,
-    top: '50%',
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  sliderFill: {
-    width: '100%',
-    borderRadius: 17,
-  },
-  sliderMarker: {
-    position: 'absolute',
-    left: 5,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.white,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    marginBottom: -11,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 5,
-  },
-  sliderLabel: {
-    color: colors.textDim,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: 10,
-    marginTop: 8,
-  },
-  resetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    marginHorizontal: 20,
-    marginTop: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    minHeight: touch.comfortable,
-  },
-  resetText: {
+  presetBtnText: {
     color: colors.text,
     fontFamily: typography.labelMedium.fontFamily,
-    fontSize: 13,
+    fontSize: typography.labelMedium.fontSize,
+    letterSpacing: typography.labelMedium.letterSpacing,
   },
-  notice: {
+  presetBtnTextActive: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 16,
+    paddingBottom: 24,
+  },
+  actionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginHorizontal: 20,
-    marginTop: 14,
-    padding: 16,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderColor: colors.border,
   },
-  noticeText: {
-    flex: 1,
-    color: colors.textMuted,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: 12.5,
-    lineHeight: 18,
+  actionPillText: {
+    color: colors.text,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: typography.labelMedium.fontSize,
+    letterSpacing: typography.labelMedium.letterSpacing,
   },
 });

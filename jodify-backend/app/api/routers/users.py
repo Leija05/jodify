@@ -5,7 +5,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...core.database import col, sid
-from ...models.schemas import DiscordRequest, HeartbeatRequest, NowPlayingRequest
+from ...models.schemas import DiscordRequest, HeartbeatRequest, NowPlayingRequest, UserPreferencesRequest
 from ..dependencies import require_admin
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -110,3 +110,31 @@ async def now_playing(username: str, body: NowPlayingRequest) -> None:
             }
         },
     )
+
+
+@router.get("/{username}/preferences")
+async def get_preferences(username: str) -> dict:
+    doc = await col("users").find_one({"username": username}, {"preferences": 1})
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    prefs = doc.get("preferences") or {}
+    return {
+        "eq_preset": prefs.get("eq_preset", "flat"),
+        "eq_bands": prefs.get("eq_bands", [0.0] * 10),
+        "custom_eq_presets": prefs.get("custom_eq_presets", {}),
+        "fade_enabled": prefs.get("fade_enabled", True),
+        "fade_duration": prefs.get("fade_duration", 3.0),
+        "sleep_timer_default": prefs.get("sleep_timer_default", 0),
+        "theme": prefs.get("theme", "dark"),
+    }
+
+
+@router.put("/{username}/preferences")
+async def update_preferences(username: str, body: UserPreferencesRequest) -> dict:
+    update_data = {}
+    for key, val in body.model_dump(exclude_unset=True).items():
+        if val is not None:
+            update_data[f"preferences.{key}"] = val
+    if update_data:
+        await col("users").update_one({"username": username}, {"$set": update_data})
+    return await get_preferences(username)

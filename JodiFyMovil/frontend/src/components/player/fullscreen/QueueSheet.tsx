@@ -1,240 +1,193 @@
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { PressableFluid } from '../../ui/PressableFluid';
-import { SongRow } from '../SongRow';
-import { usePlayerStore } from '../../../store/player.store';
-import { colors, typography, radius, safeArea } from '../../../theme';
+import { BlurView } from 'expo-blur';
+import { PressableFluid } from '@components/ui/PressableFluid';
+import { SongRow } from '@components/player/SongRow';
+import { colors, typography, elevation } from '@theme';
+import type { Song } from '@lib/types';
+import { usePlayerStore } from '@stores/player.store';
 
-
-interface Props {
+interface QueueSheetProps {
   open: boolean;
   onClose: () => void;
 }
 
-export function QueueSheet({ open, onClose }: Props) {
-  const { queue, currentSong, isPlaying, playSong, removeFromQueue, clearQueue, error } = usePlayerStore();
-  const togglePlay = usePlayerStore((s) => s.togglePlay);
+export const QueueSheet = React.forwardRef<View, QueueSheetProps>(
+  ({ open, onClose }, ref) => {
+    const queue = usePlayerStore((s) => s.queue);
+    const queueIndex = usePlayerStore((s) => s.queueIndex);
+    const currentSong = usePlayerStore((s) => s.currentSong);
+    const isPlaying = usePlayerStore((s) => s.isPlaying);
+    const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
+    const playSong = usePlayerStore((s) => s.playSong);
 
-  return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.sheetOverlay}>
-        <Pressable style={styles.sheetBackdrop} onPress={onClose} />
-        <View style={styles.sheet}>
-          <View style={styles.sheetHandle} />
-          <View style={styles.sheetHeader}>
-            <View>
-              <Text style={styles.sheetTitle}>Cola de reproducción</Text>
-              <Text style={styles.sheetSubtitle}>
-                {queue.length} canción{queue.length === 1 ? '' : 'es'}
-              </Text>
-            </View>
-            <View style={styles.sheetHeaderActions}>
-              {queue.length > 0 && (
-                <PressableFluid
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    clearQueue();
-                  }}
-                  haptic
-                  style={styles.sheetClearBtn}
-                >
-                  <Ionicons name="trash-outline" size={15} color={colors.error} />
-                  <Text style={styles.sheetClearText}>Vaciar</Text>
-                </PressableFluid>
-              )}
-              <PressableFluid onPress={onClose} haptic style={styles.sheetCloseBtn}>
-                <Ionicons name="chevron-down" size={22} color={colors.textMuted} />
-              </PressableFluid>
-            </View>
+    const handlePlaySong = (song: Song) => {
+      playSong(song, queue);
+      onClose();
+    };
+
+    const handleClearQueue = () => {
+      if (currentSong) {
+        usePlayerStore.setState({ queue: [currentSong], queueIndex: 0 });
+      } else {
+        usePlayerStore.setState({ queue: [], queueIndex: -1 });
+      }
+    };
+
+    const renderItem = useMemo(() => ({ item }: { item: Song }) => {
+      const isCurrent = queueIndex === queue.findIndex((s) => String(s.id) === String(item.id));
+      return (
+        <SongRow
+          song={item}
+          isCurrent={isCurrent}
+          isPlaying={isPlaying && isCurrent}
+          onPress={() => handlePlaySong(item)}
+          right={
+            <PressableFluid onPress={() => removeFromQueue(item.id)} haptic="light" hitSlop={8} style={styles.removeBtn}>
+              <Ionicons name="close-circle-outline" size={20} color={colors.textMuted} />
+            </PressableFluid>
+          }
+        />
+      );
+    }, [queue, queueIndex, isPlaying, removeFromQueue]);
+
+    if (!open) return null;
+
+    return (
+      <Animated.View
+        ref={ref}
+        style={[
+          styles.sheet,
+          { opacity: open ? 1 : 0 },
+          { transform: [{ translateX: open ? 0 : 300 }] },
+        ]}
+        pointerEvents={open ? 'auto' : 'none'}
+      >
+        <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={styles.header}>
+          <View style={styles.titleWrap}>
+            <Text style={styles.title}>Cola de reproducción</Text>
+            <Text style={styles.subtitle}>{queue.length} canciones</Text>
           </View>
+          <View style={styles.headerActions}>
+            {queue.length > 1 && (
+              <PressableFluid onPress={handleClearQueue} haptic="medium" style={styles.clearBtn}>
+                <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.clearText}>Vaciar</Text>
+              </PressableFluid>
+            )}
+            <PressableFluid onPress={onClose} haptic="light" hitSlop={12} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color={colors.textSecondary} />
+            </PressableFluid>
+          </View>
+        </View>
 
-          {error ? (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={15} color={colors.error} />
-              <Text style={styles.errorBannerText}>{error}</Text>
-            </View>
-          ) : null}
-
+        {queue.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="list-outline" size={44} color={colors.textMuted} />
+            <Text style={styles.emptyText}>La cola está vacía</Text>
+          </View>
+        ) : (
           <FlatList
             data={queue}
-            keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={styles.sheetList}
+            keyExtractor={(item, idx) => `${item.id}-${idx}`}
+            renderItem={renderItem}
+            contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item, index }) => {
-              const isCurrent = String(currentSong?.id) === String(item.id);
-              return (
-                <View style={styles.sheetRow}>
-                  <Text style={styles.sheetIndex}>{String(index + 1).padStart(2, '0')}</Text>
-                  <View style={styles.sheetRowMain}>
-                    <SongRow
-                      song={item}
-                      isCurrent={isCurrent}
-                      isPlaying={isPlaying && isCurrent}
-                      onPress={() => playSong(item, queue)}
-                      right={
-                        isCurrent ? (
-                          <PressableFluid onPress={togglePlay} haptic>
-                            <Ionicons name={isPlaying ? 'pause' : 'play'} size={19} color={colors.secondary} />
-                          </PressableFluid>
-                        ) : undefined
-                      }
-                    />
-                  </View>
-                  <PressableFluid
-                    onPress={() => removeFromQueue(item.id)}
-                    haptic
-                    style={styles.sheetRemoveBtn}
-                  >
-                    <Ionicons name="close" size={16} color={colors.textDim} />
-                  </PressableFluid>
-                </View>
-              );
-            }}
-            ListEmptyComponent={
-              <View style={styles.sheetEmpty}>
-                <Ionicons name="list-outline" size={30} color={colors.textDim} />
-                <Text style={styles.sheetEmptyText}>La cola está vacía</Text>
-              </View>
-            }
           />
-        </View>
-      </View>
-    </Modal>
-  );
-}
+        )}
+      </Animated.View>
+    );
+  }
+);
+
+QueueSheet.displayName = 'QueueSheet';
 
 const styles = StyleSheet.create({
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(5,5,7,0.72)',
-    justifyContent: 'flex-end',
-  },
-  sheetBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-  },
   sheet: {
-    backgroundColor: colors.surfaceSolid,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    maxHeight: '78%',
-    paddingBottom: safeArea.bottom + 12,
-    paddingTop: 10,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 340,
+    maxWidth: '90%',
+    backgroundColor: 'rgba(16, 16, 24, 0.85)',
+    borderLeftWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    zIndex: 100,
+    ...elevation.level4,
+    overflow: 'hidden',
   },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 42,
-    height: 4.5,
-    borderRadius: 2.5,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: 12,
-  },
-  sheetHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    marginBottom: 8,
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  sheetTitle: {
-    color: colors.text,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: typography.headlineMedium.fontSize,
-    letterSpacing: typography.headlineMedium.letterSpacing,
-    lineHeight: typography.headlineMedium.lineHeight,
-  },
-  sheetSubtitle: {
-    color: colors.textMuted,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: typography.bodyMedium.fontSize,
-    letterSpacing: typography.bodyMedium.letterSpacing,
-    lineHeight: typography.bodyMedium.lineHeight,
-    marginTop: 2,
-  },
-  sheetHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  sheetClearBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,61,102,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,61,102,0.3)',
-  },
-  sheetClearText: {
-    color: colors.error,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
-    lineHeight: typography.labelMedium.lineHeight,
-  },
-  sheetCloseBtn: {
-    padding: 9,
-  },
-  sheetList: {
-    paddingBottom: 8,
-  },
-  sheetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: 10,
-  },
-  sheetIndex: {
-    width: 32,
-    textAlign: 'center',
-    color: colors.textDim,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
-    lineHeight: typography.labelMedium.lineHeight,
-  },
-  sheetRowMain: {
+  titleWrap: {
     flex: 1,
   },
-  sheetRemoveBtn: {
-    padding: 11,
+  title: {
+    color: colors.white,
+    fontFamily: typography.headlineMedium.fontFamily,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
-  sheetEmpty: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 40,
-  },
-  sheetEmptyText: {
+  subtitle: {
     color: colors.textMuted,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: typography.bodyMedium.fontSize,
-    letterSpacing: typography.bodyMedium.letterSpacing,
-    lineHeight: typography.bodyMedium.lineHeight,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 12,
+    marginTop: 2,
   },
-  errorBanner: {
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginHorizontal: 18,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,61,102,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,61,102,0.3)',
   },
-  errorBannerText: {
-    flex: 1,
-    color: colors.error,
+  clearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  clearText: {
+    color: colors.textMuted,
     fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
-    lineHeight: typography.labelMedium.lineHeight,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  list: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingBottom: 40,
+  },
+  empty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    color: colors.textMuted,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: typography.bodyMedium.fontSize,
+    letterSpacing: typography.bodyMedium.letterSpacing,
+    textAlign: 'center',
+  },
+  removeBtn: {
+    padding: 8,
   },
 });
-

@@ -1,449 +1,291 @@
+import React, { useRef, useMemo } from 'react';
+import { View, Text, Image, StyleProp, ViewStyle, StyleSheet, Animated, PanResponder } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { PressableFluid } from '@components/ui/PressableFluid';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View, PanResponder } from 'react-native';
+import { EqualizerBars } from '@components/ui/EqualizerBars';
+import { colors, typography, motion } from '@theme';
+import { pickCoverUrl, resolveArtist } from '@lib/utils';
+import { getSongPalette } from '@lib/palette';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLibraryStore } from '../../store/library.store';
-import { usePlayerStore } from '../../store/player.store';
-import { useSettingsStore } from '../../store/settings.store';
-import { useUiStore } from '../../store/ui.store';
-import { formatTime, resolveArtist } from '../../lib/utils';
-import { colors, typography, gradients, radius, touch, motion, elevation } from '../../theme';
-import { PressableFluid } from '../ui/PressableFluid';
-import { EqualizerBars } from '../ui/EqualizerBars';
-import { CoverArt } from './SongRow';
+import { usePlayerStore } from '@stores/player.store';
+import { useUiStore } from '@stores/ui.store';
+import { useSettingsStore } from '@stores/settings.store';
 
-const EXPAND_THRESHOLD = 80;
-const DISMISS_THRESHOLD = 120;
-const CUBIC_EASING = Easing.bezier(0.23, 1, 0.32, 1);
+const MINI_PLAYER_HEIGHT = 68;
 
-export function MiniPlayer() {
+interface MiniPlayerProps {
+  style?: StyleProp<ViewStyle>;
+}
+
+export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, ref) => {
   const insets = useSafeAreaInsets();
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
-  const next = usePlayerStore((s) => s.next);
   const previous = usePlayerStore((s) => s.previous);
+  const next = usePlayerStore((s) => s.next);
   const openFullscreen = useUiStore((s) => s.openFullscreen);
-  const openEqualizer = useUiStore((s) => s.openEqualizer);
-  const likedIds = useLibraryStore((s) => s.likedIds);
-  const toggleLike = useLibraryStore((s) => s.toggleLike);
-  const user = useSettingsStore((s) => s.user);
-  const openAuth = useUiStore((s) => s.openAuth);
-
-  const liked = currentSong ? likedIds.some((id) => String(id) === String(currentSong.id)) : false;
+  const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
 
   const translateY = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(1)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
-  const coverScale = useRef(new Animated.Value(1)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const glowOpacity = useRef(new Animated.Value(0)).current;
-  const coverOpacity = useRef(new Animated.Value(1)).current;
-  const blurOpacity = useRef(new Animated.Value(0)).current;
-  const chevronPulse = useRef(new Animated.Value(1)).current;
-  const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
-  const isExpandingRef = useRef(false);
-  const isDismissingRef = useRef(false);
-  const expandHapticFiredRef = useRef(false);
 
-  const handleLike = useCallback(async () => {
-    if (!currentSong) return;
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (!user) {
-      openAuth();
-      return;
-    }
-    await toggleLike(currentSong);
-  }, [currentSong, user, toggleLike, openAuth]);
+  const coverUrl = useMemo(() => (currentSong ? pickCoverUrl(currentSong) : null), [currentSong]);
+  const artist = useMemo(() => (currentSong ? resolveArtist(currentSong) : null), [currentSong]);
+  const palette = useMemo(() => getSongPalette(currentSong), [currentSong]);
+  const progressPercent = duration > 0 ? Math.min(Math.max((position / duration) * 100, 0), 100) : 0;
 
-  const springBack = useCallback(() => {
-    if (isExpandingRef.current || isDismissingRef.current) return;
-    expandHapticFiredRef.current = false;
-    Animated.parallel([
-      Animated.spring(translateY, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(opacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(coverScale, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(coverOpacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(glowOpacity, { toValue: isPlaying ? 1 : 0, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(blurOpacity, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
-    ]).start();
-  }, [translateY, scale, opacity, coverScale, coverOpacity, glowOpacity, blurOpacity, isPlaying]);
-
-  const expand = useCallback(() => {
-    isExpandingRef.current = true;
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: -EXPAND_THRESHOLD, duration: 250, useNativeDriver: true, easing: CUBIC_EASING }),
-      Animated.spring(scale, { toValue: 0.9, ...motion.springDefault, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true, easing: CUBIC_EASING }),
-      Animated.spring(coverScale, { toValue: 1.08, ...motion.springDefault, useNativeDriver: true }),
-      Animated.timing(coverOpacity, { toValue: 0, duration: 180, useNativeDriver: true, easing: CUBIC_EASING }),
-      Animated.timing(blurOpacity, { toValue: 0.5, duration: 200, useNativeDriver: true, easing: CUBIC_EASING }),
-    ]).start(() => {
-      openFullscreen();
-      translateY.setValue(0);
-      scale.setValue(1);
-      opacity.setValue(1);
-      coverScale.setValue(1);
-      coverOpacity.setValue(1);
-      blurOpacity.setValue(0);
-      isExpandingRef.current = false;
-      expandHapticFiredRef.current = false;
-    });
-  }, [translateY, scale, opacity, coverScale, coverOpacity, blurOpacity, openFullscreen]);
-
-  const dismiss = useCallback(() => {
-    isDismissingRef.current = true;
-    Animated.parallel([
-      Animated.spring(translateY, { toValue: 180, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 0.8, ...motion.springDefault, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true, easing: CUBIC_EASING }),
-      Animated.spring(coverScale, { toValue: 0.85, ...motion.springDefault, useNativeDriver: true }),
-      Animated.timing(coverOpacity, { toValue: 0, duration: 180, useNativeDriver: true, easing: CUBIC_EASING }),
-      Animated.timing(blurOpacity, { toValue: 0, duration: 150, useNativeDriver: true, easing: CUBIC_EASING }),
-    ]).start(() => {
-      isDismissingRef.current = false;
-      translateY.setValue(0);
-      scale.setValue(1);
-      opacity.setValue(1);
-      coverScale.setValue(1);
-      coverOpacity.setValue(1);
-      blurOpacity.setValue(0);
-    });
-  }, [translateY, scale, opacity, coverScale, coverOpacity, blurOpacity]);
-
-  useEffect(() => {
-    panResponderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_event, gestureState) => Math.abs(gestureState.dy) > 3,
-      onPanResponderGrant: () => {
-        translateY.extractOffset();
-        isExpandingRef.current = false;
-        isDismissingRef.current = false;
-      },
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_event, gestureState) => Math.abs(gestureState.dy) > 5,
       onPanResponderMove: (_event, gestureState) => {
-        const dy = gestureState.dy;
-        const progress = Math.abs(dy) / EXPAND_THRESHOLD;
-        
-        if (dy < 0) {
-          const clampedDy = Math.max(dy, -240);
-          translateY.setValue(clampedDy);
-          const p = Math.min(progress, 1);
-          scale.setValue(1 - p * 0.1);
-          opacity.setValue(1 - p * 0.8);
-          coverScale.setValue(1 + p * 0.15);
-          coverOpacity.setValue(1 - p * 0.3);
-          glowOpacity.setValue(p * 0.6);
-          blurOpacity.setValue(p * 0.4);
-          if (progress >= 1 && !expandHapticFiredRef.current) {
-            expandHapticFiredRef.current = true;
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-        } else {
-          expandHapticFiredRef.current = false;
-          const clampedDy = Math.min(dy, 140);
-          translateY.setValue(clampedDy);
-          const p = Math.min(dy / DISMISS_THRESHOLD, 1);
-          scale.setValue(1 - p * 0.15);
-          opacity.setValue(1 - p * 0.8);
-          coverScale.setValue(1 - p * 0.1);
-          coverOpacity.setValue(1 - p * 0.3);
-          glowOpacity.setValue(0);
-          blurOpacity.setValue(0);
+        if (gestureState.dy < 0) {
+          translateY.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (_event, gestureState) => {
-        translateY.flattenOffset();
-        const { dy, vy } = gestureState;
-
-        if (dy < -EXPAND_THRESHOLD || (dy < -40 && vy < -0.5)) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          expand();
-        } else if (dy > DISMISS_THRESHOLD || (dy > 50 && vy > 0.5)) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          dismiss();
-        } else {
-          springBack();
+        if (gestureState.dy < -35 || gestureState.vy < -0.4) {
+          openFullscreen();
         }
+        Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }).start();
       },
-      onPanResponderTerminate: springBack,
-    });
-  }, [translateY, scale, opacity, coverScale, coverOpacity, glowOpacity, expand, dismiss, springBack]);
-
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(chevronPulse, { toValue: -4, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-        Animated.timing(chevronPulse, { toValue: 0, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
-      ]),
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [chevronPulse]);
-
-  useEffect(() => {
-    if (duration > 0) {
-      Animated.timing(progressAnim, {
-        toValue: Math.min(1, position / duration),
-        duration: 800,
-        useNativeDriver: false,
-        easing: Easing.linear,
-      }).start();
-    } else {
-      progressAnim.setValue(0);
-    }
-  }, [position, duration, progressAnim]);
-
-  useEffect(() => {
-    Animated.spring(glowOpacity, { toValue: isPlaying ? 1 : 0, ...motion.springDefault, useNativeDriver: true }).start();
-  }, [isPlaying, glowOpacity]);
+      onPanResponderTerminate: () => {
+        Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }).start();
+      },
+    })
+  ).current;
 
   if (!currentSong) return null;
 
   return (
     <Animated.View
+      ref={ref}
+      {...panResponder.panHandlers}
       style={[
-        styles.wrap,
-        { bottom: insets.bottom + 66 },
-        { transform: [{ translateY }, { scale }], opacity },
+        styles.container,
+        {
+          bottom: Math.max(insets.bottom, 8) + 76,
+          transform: [{ translateY }],
+        },
+        style,
       ]}
-      {...panResponderRef.current?.panHandlers}
     >
-      <LinearGradient colors={gradients.surface} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: blurOpacity, backgroundColor: 'rgba(5,5,7,0.45)', pointerEvents: 'none' }]} />
-      <View style={styles.glowRing} />
-      <Animated.View style={[styles.glowOverlay, { opacity: glowOpacity }]} />
-
-      <PressableFluid onPress={openFullscreen} style={styles.main} scaleTo={0.99}>
-        <View style={styles.coverWrap}>
-          <Animated.View style={[
-            styles.coverGlow,
-            { opacity: glowOpacity, transform: [{ scale: coverScale }] }
-          ]} />
-          <Animated.View style={[styles.coverInner, { transform: [{ scale: coverScale }], opacity: coverOpacity }]}>
-            <CoverArt song={currentSong} size={56} radiusSize={14} />
-          </Animated.View>
+      <View style={styles.cardInner}>
+        <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        {/* Progress Bar Hairline */}
+        <View style={styles.progressContainer}>
+          <LinearGradient
+            colors={[palette.primary, palette.secondary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.progressFill, { width: `${progressPercent}%` }]}
+          />
         </View>
 
-        <View style={styles.texts}>
-          <View style={styles.titleRow}>
-            <Text style={styles.name} numberOfLines={1}>
-              {currentSong.name}
-            </Text>
+        <PressableFluid
+          onPress={openFullscreen}
+          haptic={false}
+          style={styles.clickableZone}
+          testID="mini-player-expand"
+        >
+          {/* Cover Art with Doppelrand */}
+          <View style={styles.coverWrapper}>
+            {coverUrl ? (
+              <Image source={{ uri: coverUrl }} style={styles.coverImg} resizeMode="cover" />
+            ) : (
+              <LinearGradient colors={[palette.primary, palette.secondary]} style={styles.coverPlaceholder}>
+                <Ionicons name="musical-notes" size={20} color={colors.white} />
+              </LinearGradient>
+            )}
             {isPlaying && (
-              <View style={styles.waveWrap}>
-                <EqualizerBars playing bars={3} height={14} barWidth={3} color={colors.secondary} />
+              <View style={styles.miniEqualizerBadge}>
+                <EqualizerBars playing={isPlaying} bars={3} height={10} barWidth={2} color={palette.secondary} />
               </View>
             )}
           </View>
-          <Text style={styles.artist} numberOfLines={1}>
-            {resolveArtist(currentSong) ?? 'Desconocido'}
-          </Text>
-        </View>
 
-        <View style={styles.times}>
-          <Text style={styles.timeText}>{formatTime(position)}</Text>
-          <Text style={styles.timeDivider}>·</Text>
-          <Text style={styles.timeText}>{formatTime(duration)}</Text>
-        </View>
-      </PressableFluid>
-
-      <PressableFluid scaleTo={0.97} style={styles.controls}>
-        <PressableFluid onPress={openEqualizer} haptic="light" style={styles.controlBtn}>
-          <Ionicons name="options-outline" size={18} color={colors.secondary} />
-        </PressableFluid>
-        <PressableFluid onPress={handleLike} haptic="light" style={styles.controlBtn}>
-          <Animated.View style={{ transform: [{ scale: glowOpacity.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] }) }] }}>
-            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={19} color={liked ? colors.accent : colors.textMuted} />
-          </Animated.View>
-        </PressableFluid>
-        <PressableFluid onPress={previous} haptic="light" style={styles.controlBtn}>
-          <Ionicons name="play-skip-back" size={22} color={colors.text} />
-        </PressableFluid>
-        <PressableFluid onPress={togglePlay} haptic="medium" style={styles.controlBtn}>
-          <View style={styles.playChip}>
-            <Ionicons name={isPlaying ? 'pause' : 'play'} size={18} color={colors.white} />
+          {/* Song Metadata */}
+          <View style={styles.meta}>
+            <Text style={styles.title} numberOfLines={1}>
+              {currentSong.name}
+            </Text>
+            <Text style={styles.artist} numberOfLines={1}>
+              {artist ?? 'Artista Desconocido'}
+            </Text>
           </View>
         </PressableFluid>
-        <PressableFluid onPress={next} haptic="light" style={styles.controlBtn}>
-          <Ionicons name="play-skip-forward" size={22} color={colors.text} />
-        </PressableFluid>
-      </PressableFluid>
 
-      <View style={styles.progressTrack}>
-        <Animated.View
-          style={[
-            styles.progressFill,
-            { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) },
-          ]}
-        >
-          <LinearGradient
-            colors={[gradients.primary[0], gradients.play[1]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
+        {/* Action Controls */}
+        <View style={styles.controls}>
+          <PressableFluid
+            onPress={previous}
+            haptic="light"
+            hitSlop={6}
+            style={styles.iconBtn}
+            testID="mini-prev"
+          >
+            <Ionicons name="play-skip-back" size={20} color={colors.textMuted} />
+          </PressableFluid>
+
+          <PressableFluid
+            onPress={togglePlay}
+            haptic={hapticsEnabled ? 'medium' : false}
+            style={styles.playBtn}
+            testID="mini-play-toggle"
+          >
+            <LinearGradient
+              colors={[palette.primary, palette.secondary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.playBtnFill, { shadowColor: palette.primary }]}
+            >
+              <Ionicons
+                name={isPlaying ? 'pause' : 'play'}
+                size={20}
+                color={colors.white}
+                style={{ marginLeft: isPlaying ? 0 : 2 }}
+              />
+            </LinearGradient>
+          </PressableFluid>
+
+          <PressableFluid
+            onPress={next}
+            haptic="light"
+            hitSlop={6}
+            style={styles.iconBtn}
+            testID="mini-next"
+          >
+            <Ionicons name="play-skip-forward" size={20} color={colors.textMuted} />
+          </PressableFluid>
+        </View>
       </View>
-
-      <Animated.View style={[
-        styles.swipeHint,
-        { opacity: translateY.interpolate({ inputRange: [-20, 0, 20], outputRange: [0, 1, 0], extrapolate: 'clamp' }), transform: [{ translateY: chevronPulse }] }
-      ]}>
-        <Ionicons name="chevron-up" size={16} color={colors.textMuted} />
-      </Animated.View>
     </Animated.View>
   );
-}
+});
+
+MiniPlayer.displayName = 'MiniPlayer';
 
 const styles = StyleSheet.create({
-  wrap: {
+  container: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    ...elevation.level4,
-    borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.25)',
+    left: 16,
+    right: 16,
+    height: MINI_PLAYER_HEIGHT,
+    zIndex: 99,
   },
-  main: {
+  cardInner: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 14,
-    paddingTop: 12,
-    paddingBottom: 6,
-    gap: 14,
-  },
-  coverWrap: {
-    position: 'relative',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.4)',
-    padding: 1,
-  },
-  coverInner: {
-    borderRadius: 15,
+    backgroundColor: 'rgba(20, 20, 30, 0.72)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 22,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 14,
     overflow: 'hidden',
   },
-  coverGlow: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 16,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.6,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 14,
+  progressContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
-  texts: {
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  clickableZone: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     minWidth: 0,
   },
-  titleRow: {
-    flexDirection: 'row',
+  coverWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    backgroundColor: '#101018',
+    position: 'relative',
+  },
+  coverImg: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPlaceholder: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  name: {
-    color: colors.text,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: typography.bodyMedium.fontSize,
-    letterSpacing: typography.bodyMedium.letterSpacing,
-    lineHeight: typography.bodyMedium.lineHeight,
-    flexShrink: 1,
+  miniEqualizerBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: 4,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
   },
-  waveWrap: {
-    height: 14,
+  meta: {
+    flex: 1,
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  title: {
+    color: colors.white,
+    fontFamily: typography.headlineSmall.fontFamily,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   artist: {
     color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
-    fontSize: typography.bodySmall.fontSize,
-    letterSpacing: typography.bodySmall.letterSpacing,
-    lineHeight: typography.bodySmall.lineHeight,
-    marginTop: 1,
-  },
-  times: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingRight: 10,
-  },
-  timeText: {
-    color: colors.textMuted,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: typography.labelSmall.fontSize,
-    letterSpacing: typography.labelSmall.letterSpacing,
-  },
-  timeDivider: {
-    color: 'rgba(255,255,255,0.18)',
-    fontSize: 8,
+    fontSize: 12,
+    marginTop: 2,
   },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    gap: 8,
+    paddingLeft: 4,
   },
-  controlBtn: {
-    padding: 12,
-    borderRadius: radius.pill,
+  iconBtn: {
+    padding: 6,
+  },
+  playBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: touch.comfortable,
-    minHeight: touch.comfortable,
   },
-  playChip: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
-  },
-  progressTrack: {
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  progressFill: {
+  playBtnFill: {
+    width: '100%',
     height: '100%',
-    borderRadius: radius.pill,
-    overflow: 'hidden',
-  },
-  swipeHint: {
-    position: 'absolute',
-    top: 6,
-    left: 0,
-    right: 0,
+    borderRadius: 20,
     alignItems: 'center',
-    paddingTop: 2,
-  },
-  glowRing: {
-    position: 'absolute',
-    top: -2,
-    left: -2,
-    right: -2,
-    bottom: -2,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.3)',
-    pointerEvents: 'none',
-  },
-  glowOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.xl,
-    backgroundColor: 'rgba(127,0,255,0.15)',
-    pointerEvents: 'none',
+    justifyContent: 'center',
+    shadowColor: '#7F00FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8,
   },
 });

@@ -1,89 +1,227 @@
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
-import { PressableFluid } from '../../ui/PressableFluid';
-import { EqualizerBars } from '../../ui/EqualizerBars';
-import { KaraokeLyrics } from '../../lyrics/KaraokeLyrics';
-import { colors, typography } from '../../../theme';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { Animated, Text, View, StyleSheet, ScrollView } from 'react-native';
+import { colors, typography } from '@theme';
+import { PressableFluid } from '@components/ui/PressableFluid';
+import type { LyricsLine } from '@lib/types';
 
-interface Props {
+interface LyricsZoneProps {
   showLyrics: boolean;
   lyricsLoading: boolean;
-  lyrics: any[] | null;
-  synced: boolean;
+  lyrics: LyricsLine[] | null;
+  synced?: boolean;
   position: number;
   onSeek: (seconds: number) => void;
   onLyricsToggle: () => void;
 }
 
-export function LyricsZone({
-  showLyrics,
-  lyricsLoading,
-  lyrics,
-  synced,
-  position,
-  onSeek,
-  onLyricsToggle,
-}: Props) {
-  return (
-    <View style={[styles.lyricsZone, showLyrics && styles.lyricsZoneVisible]}>
-      {showLyrics ? (
-        lyricsLoading ? (
-          <View style={styles.lyricsEmpty}>
-            <EqualizerBars playing bars={5} height={16} color={colors.primary} />
-            <Text style={styles.lyricsEmptyText}>Buscando letras…</Text>
+export const LyricsZone = React.forwardRef<View, LyricsZoneProps>(
+  ({
+    showLyrics,
+    lyricsLoading,
+    lyrics,
+    position,
+    onSeek,
+    onLyricsToggle,
+  }, ref) => {
+    const containerHeight = useRef(new Animated.Value(0)).current;
+    const activeIndex = useRef(-1);
+
+    if (!showLyrics) return null;
+
+    const activeLineIndex = useMemo(() => {
+      if (!lyrics || !lyrics.length) return -1;
+      let low = 0;
+      let high = lyrics.length - 1;
+      let result = -1;
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const midLine = lyrics[mid];
+        if (midLine && midLine.time <= position) {
+          result = mid;
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+      return result;
+    }, [lyrics, position]);
+
+    useEffect(() => {
+      if (activeLineIndex !== activeIndex.current) {
+        activeIndex.current = activeLineIndex;
+      }
+    }, [activeLineIndex]);
+
+    if (lyricsLoading) {
+      return (
+        <Animated.View
+          ref={ref}
+          style={[
+            styles.container,
+            { opacity: 1 },
+          ]}
+        >
+          <View style={styles.loading}>
+            <Text style={styles.loadingText}>Cargando letra…</Text>
           </View>
-        ) : lyrics && lyrics.length > 0 ? (
-          <KaraokeLyrics lines={lyrics} currentTime={position} synced={synced} onSeek={onSeek} />
-        ) : (
-          <View style={styles.lyricsEmpty}>
-            <Ionicons name="document-text-outline" size={26} color={colors.textMuted} />
-            <Text style={styles.lyricsEmptyText}>No se encontraron letras para esta canción</Text>
+        </Animated.View>
+      );
+    }
+
+    if (!lyrics || !lyrics.length) {
+      return (
+        <Animated.View
+          ref={ref}
+          style={[
+            styles.container,
+            { opacity: 1 },
+          ]}
+        >
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>Esta canción no tiene letra disponible</Text>
+            <PressableFluid onPress={onLyricsToggle} haptic="light" style={styles.emptyBtn}>
+              <Text style={styles.emptyBtnText}>Ocultar</Text>
+            </PressableFluid>
           </View>
-        )
-      ) : (
-        <PressableFluid onPress={onLyricsToggle} haptic style={styles.lyricsHint}>
-          <Ionicons name="mic-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.lyricsHintText}>Letras</Text>
-        </PressableFluid>
-      )}
-    </View>
-  );
-}
+        </Animated.View>
+      );
+    }
+
+    return (
+      <Animated.View
+        ref={ref}
+        style={[
+          styles.container,
+          { opacity: 1 },
+        ]}
+        onLayout={(e) => {
+          containerHeight.setValue(e.nativeEvent.layout.height);
+        }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+        >
+          {lyrics.map((line, index) => {
+            const isActive = index === activeLineIndex;
+            const isPast = index < activeLineIndex;
+            const isFuture = index > activeLineIndex;
+
+            return (
+              <PressableFluid
+                key={index}
+                onPress={() => onSeek(line.time)}
+                haptic="selection"
+                style={[
+                  styles.line,
+                  isActive && styles.lineActive,
+                  isPast && styles.linePast,
+                  isFuture && styles.lineFuture,
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+              >
+                <Animated.Text
+                  style={[
+                    styles.lineText,
+                    isActive && styles.lineTextActive,
+                    isPast && styles.lineTextPast,
+                    isFuture && styles.lineTextFuture,
+                  ]}
+                >
+                  {line.text}
+                </Animated.Text>
+              </PressableFluid>
+            );
+          })}
+        </ScrollView>
+      </Animated.View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
-  lyricsZone: {
-    minHeight: 58,
-    marginTop: 10,
+  container: {
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
-  lyricsZoneVisible: {
-    backgroundColor: 'rgba(8,8,14,0.66)',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  list: {
+    gap: 12,
   },
-  lyricsEmpty: {
+  line: {
+    paddingVertical: 4,
+  },
+  lineActive: {
+    backgroundColor: 'rgba(127,0,255,0.1)',
+    borderRadius: 12,
+  },
+  linePast: {
+    opacity: 0.5,
+  },
+  lineFuture: {
+    opacity: 0.3,
+  },
+  lineText: {
+    color: colors.text,
+    fontFamily: typography.bodyLarge.fontFamily,
+    fontSize: typography.bodyLarge.fontSize,
+    letterSpacing: typography.bodyLarge.letterSpacing,
+    lineHeight: typography.bodyLarge.lineHeight,
+    textAlign: 'center',
+  },
+  lineTextActive: {
+    color: colors.secondary,
+    fontWeight: '600',
+    textShadowColor: colors.secondary,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
+  lineTextPast: {
+    color: colors.textSecondary,
+  },
+  lineTextFuture: {
+    color: colors.textDim,
+  },
+  loading: {
+    flex: 1,
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 30,
+    justifyContent: 'center',
+    paddingVertical: 60,
   },
-  lyricsEmptyText: {
+  loadingText: {
     color: colors.textMuted,
     fontFamily: typography.bodyMedium.fontFamily,
     fontSize: typography.bodyMedium.fontSize,
     letterSpacing: typography.bodyMedium.letterSpacing,
-    lineHeight: typography.bodyMedium.lineHeight,
   },
-  lyricsHint: {
-    flexDirection: 'row',
+  empty: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
+    paddingVertical: 60,
+    gap: 16,
   },
-  lyricsHintText: {
+  emptyText: {
     color: colors.textMuted,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: typography.bodyMedium.fontSize,
+    letterSpacing: typography.bodyMedium.letterSpacing,
+    textAlign: 'center',
+  },
+  emptyBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 100,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primaryStrong,
+  },
+  emptyBtnText: {
+    color: colors.white,
     fontFamily: typography.labelMedium.fontFamily,
     fontSize: typography.labelMedium.fontSize,
     letterSpacing: typography.labelMedium.letterSpacing,
-    lineHeight: typography.labelMedium.lineHeight,
   },
 });
+
+LyricsZone.displayName = 'LyricsZone';

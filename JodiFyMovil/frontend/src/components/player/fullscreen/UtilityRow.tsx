@@ -1,124 +1,189 @@
+import React from 'react';
+import { Animated, View, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
-import { PressableFluid } from '../../ui/PressableFluid';
-import { EqualizerBars } from '../../ui/EqualizerBars';
-import { colors, shadows } from '../../../theme';
+import { PressableFluid } from '@components/ui/PressableFluid';
+import { EqualizerBars } from '@components/ui/EqualizerBars';
+import { colors } from '@theme';
 
-interface Props {
-  liked: boolean;
+interface UtilityRowProps {
   downloaded: boolean;
   downloading: boolean;
-  onLike: () => void;
   onDownload: () => void;
   onEqualizer: () => void;
   onLyricsToggle: () => void;
   showLyrics: boolean;
-  onLyricsFullscreen?: () => void;
+  onLyricsFullscreen: () => void;
   hasLyrics: boolean;
+  onStartRadio?: () => void;
+  onOpenJam?: () => void;
+  jamActive?: boolean;
 }
 
-const BTN = 58;
-
-export function UtilityRow({
-  liked,
-  downloaded,
-  downloading,
-  onLike,
-  onDownload,
-  onEqualizer,
-  onLyricsToggle,
-  showLyrics,
-  onLyricsFullscreen,
-  hasLyrics,
-}: Props) {
-  return (
-    <View style={styles.utilityRow}>
-      <PressableFluid onPress={onLike} haptic="light" style={styles.utilityBtn} hitSlop={4}>
-        <View style={[styles.utilityInner, liked && styles.utilityLiked]}>
-          <Ionicons
-            name={liked ? 'heart' : 'heart-outline'}
-            size={24}
-            color={liked ? colors.accent : colors.textSecondary}
-          />
-        </View>
-      </PressableFluid>
-      <PressableFluid onPress={onDownload} haptic="light" style={styles.utilityBtn} hitSlop={4}>
-        <View style={[styles.utilityInner, downloaded && styles.utilityDownloaded]}>
-          {downloading ? (
-            <EqualizerBars playing bars={3} height={16} barWidth={3} color={colors.success} />
-          ) : (
+export const UtilityRow = React.forwardRef<View, UtilityRowProps>(
+  ({
+    downloaded,
+    downloading,
+    onDownload,
+    onEqualizer,
+    onLyricsToggle,
+    showLyrics,
+    onLyricsFullscreen,
+    hasLyrics,
+    onStartRadio,
+    onOpenJam,
+    jamActive = false,
+  }, ref) => {
+    return (
+      <Animated.View ref={ref} style={styles.container}>
+        <View style={styles.row}>
+          {/* Apple Music Sing / Lyrics Button */}
+          <PressableFluid
+            onPress={onLyricsFullscreen ?? onLyricsToggle}
+            disabled={!hasLyrics}
+            haptic="light"
+            style={[
+              styles.actionPill,
+              showLyrics && styles.actionPillActive,
+              !hasLyrics && { opacity: 0.5 },
+            ]}
+            hitSlop={6}
+          >
             <Ionicons
-              name={downloaded ? 'cloud-done' : 'cloud-download-outline'}
-              size={24}
-              color={downloaded ? colors.success : colors.textSecondary}
+              name="mic-outline"
+              size={18}
+              color={showLyrics ? colors.secondary : 'rgba(255, 255, 255, 0.85)'}
             />
+            <Text style={[styles.pillLabel, showLyrics && styles.pillLabelActive]}>
+              Letras Sing
+            </Text>
+          </PressableFluid>
+
+          {/* YouTube Music Dynamic Radio */}
+          {onStartRadio && (
+            <PressableFluid
+              onPress={onStartRadio}
+              haptic="light"
+              style={styles.actionPill}
+              hitSlop={6}
+            >
+              <Ionicons name="radio-outline" size={17} color="rgba(255, 255, 255, 0.85)" />
+              <Text style={styles.pillLabel}>Radio</Text>
+            </PressableFluid>
           )}
+
+          {/* Spotify Jam Collaborative Session */}
+          {onOpenJam && (
+            <PressableFluid
+              onPress={onOpenJam}
+              haptic="light"
+              style={[
+                styles.actionPill,
+                jamActive && styles.jamPillActive,
+              ]}
+              hitSlop={6}
+            >
+              <Ionicons
+                name="people-outline"
+                size={17}
+                color={jamActive ? colors.secondary : 'rgba(255, 255, 255, 0.85)'}
+              />
+              <Text style={[styles.pillLabel, jamActive && styles.pillLabelActive]}>
+                Jam
+              </Text>
+            </PressableFluid>
+          )}
+
+          {/* Audiophile Equalizer */}
+          <PressableFluid
+            onPress={onEqualizer}
+            haptic="light"
+            style={styles.iconCircle}
+            hitSlop={8}
+          >
+            <Ionicons name="options-outline" size={20} color="rgba(255, 255, 255, 0.75)" />
+          </PressableFluid>
+
+          {/* Offline Download */}
+          <PressableFluid
+            onPress={onDownload}
+            disabled={downloading}
+            haptic="light"
+            style={[
+              styles.iconCircle,
+              downloaded && styles.downloadedCircle,
+            ]}
+            hitSlop={8}
+          >
+            {downloading ? (
+              <EqualizerBars playing bars={3} height={12} barWidth={2.5} color={colors.primary} />
+            ) : (
+              <Ionicons
+                name={downloaded ? 'cloud-done' : 'cloud-download-outline'}
+                size={20}
+                color={downloaded ? colors.success : 'rgba(255, 255, 255, 0.75)'}
+              />
+            )}
+          </PressableFluid>
         </View>
-      </PressableFluid>
-      <PressableFluid onPress={onEqualizer} haptic="light" style={styles.utilityBtn} hitSlop={4}>
-        <View style={[styles.utilityInner, styles.utilityEq]}>
-          <Ionicons name="options-outline" size={24} color={colors.secondary} />
-        </View>
-      </PressableFluid>
-      <PressableFluid onPress={onLyricsToggle} haptic="light" style={styles.utilityBtn} hitSlop={4}>
-        <View style={[styles.utilityInner, showLyrics && styles.utilityActive]}>
-          <Ionicons
-            name={showLyrics ? 'mic' : 'mic-outline'}
-            size={24}
-            color={showLyrics ? colors.secondary : colors.textSecondary}
-          />
-        </View>
-      </PressableFluid>
-      {hasLyrics && onLyricsFullscreen ? (
-        <PressableFluid onPress={onLyricsFullscreen} haptic="light" style={styles.utilityBtn} hitSlop={4}>
-          <View style={styles.utilityInner}>
-            <Ionicons name="expand-outline" size={22} color={colors.textMuted} />
-          </View>
-        </PressableFluid>
-      ) : null}
-    </View>
-  );
-}
+      </Animated.View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
-  utilityRow: {
+  container: {
+    paddingHorizontal: 28,
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  row: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 14,
-    marginTop: 18,
-    minHeight: BTN,
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  utilityBtn: {
-    width: BTN,
-    height: BTN,
-    borderRadius: BTN / 2,
+  actionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  utilityInner: {
-    width: BTN,
-    height: BTN,
-    borderRadius: BTN / 2,
+  actionPillActive: {
+    backgroundColor: 'rgba(0, 229, 255, 0.14)',
+    borderColor: 'rgba(0, 229, 255, 0.35)',
+  },
+  jamPillActive: {
+    backgroundColor: 'rgba(127, 0, 255, 0.18)',
+    borderColor: 'rgba(127, 0, 255, 0.4)',
+  },
+  pillLabel: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    letterSpacing: 0.1,
+  },
+  pillLabelActive: {
+    color: colors.white,
+  },
+  iconCircle: {
+    width: 38,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  utilityLiked: {
-    backgroundColor: colors.accentSoft,
-    borderColor: 'rgba(255,0,122,0.45)',
-    ...shadows.soft,
-  },
-  utilityDownloaded: {
-    backgroundColor: colors.successSoft,
-    borderColor: 'rgba(0,230,118,0.4)',
-  },
-  utilityEq: {
-    backgroundColor: colors.secondarySoft,
-    borderColor: 'rgba(0,229,255,0.4)',
-  },
-  utilityActive: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primaryStrong,
+  downloadedCircle: {
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    borderColor: 'rgba(0, 230, 118, 0.3)',
   },
 });
+
+UtilityRow.displayName = 'UtilityRow';

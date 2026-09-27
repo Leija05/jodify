@@ -1,31 +1,38 @@
-import { VinylDisc } from '../VinylDisc';
-import { Animated, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { Animated, View, StyleSheet } from 'react-native';
+import { VinylDisc } from '@components/player/VinylDisc';
 
-interface Props {
+interface VinylZoneProps {
   song: any;
   vinylScale: Animated.Value;
   size: number;
   isPlaying: boolean;
 }
 
-export function VinylZone({
-  song,
-  vinylScale,
-  size,
-  isPlaying,
-}: Props) {
-  return (
-    <View style={styles.vinylZone}>
-      <Animated.View style={{ transform: [{ scale: vinylScale }] }}>
-        <VinylDisc song={song} size={size} playing={isPlaying} />
+export const VinylZone = React.forwardRef<View, VinylZoneProps>(
+  ({ song, vinylScale, size, isPlaying }, ref) => {
+    return (
+      <Animated.View
+        ref={ref}
+        style={[
+          styles.container,
+          { transform: [{ scale: vinylScale }] },
+        ]}
+      >
+        <VinylDisc
+          song={song}
+          size={size}
+          isPlaying={isPlaying}
+        />
       </Animated.View>
-    </View>
-  );
-}
+    );
+  }
+);
 
 const styles = StyleSheet.create({
-  vinylZone: {
+  container: {
     alignItems: 'center',
-    paddingTop: 12,
+    marginTop: 20,
+    marginBottom: 8,
   },
 });

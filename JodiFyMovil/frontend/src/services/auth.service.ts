@@ -1,125 +1,79 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '../lib/constants';
-import type { AuthUser } from '../lib/types';
 import { apiFetch } from './api';
+import { mmkv, STORAGE_KEYS } from '../lib/mmkv';
+import { secureStorage, AUTH_KEYS } from '../lib/secure-store';
+import type { UserAccess } from '../lib/types';
 
-interface LoginResponse {
-  token?: string;
-  username?: string;
-  role?: string;
-  access_token?: string;
-  accessToken?: string;
+export interface LoginResponse {
+  token: string;
+  user: UserAccess;
 }
 
-async function saveUser(user: AuthUser): Promise<AuthUser> {
-  await AsyncStorage.setItem(STORAGE_KEYS.token, user.token);
-  await AsyncStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
-  return user;
-}
-
-export async function login(username: string, password: string): Promise<AuthUser> {
-  const data = await apiFetch<LoginResponse>('/auth/login', {
+export async function login(username: string, password: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>('/api/auth/login', {
     method: 'POST',
     body: { username, password },
   });
-  const token = data.token ?? data.access_token ?? data.accessToken;
-  if (!token) throw new Error('Respuesta de login inválida');
-  return saveUser({
-    username: data.username ?? username,
-    role: data.role ?? 'user',
-    token,
-  });
 }
 
-/**
- * Acceso especial con clave de desarrollo (rol dev/admin).
- * Endpoint público: POST /api/dev/access con la clave JDFYDEV-….
- */
-export async function devAccess(devKey: string): Promise<AuthUser> {
-  const data = await apiFetch<LoginResponse>('/dev/access', {
+export async function register(username: string, password: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>('/api/auth/register', {
     method: 'POST',
-    body: { dev_key: devKey },
-  });
-  const token = data.token ?? data.access_token ?? data.accessToken;
-  if (!token) throw new Error('Respuesta de acceso inválida');
-  return saveUser({
-    username: data.username ?? 'dev',
-    role: data.role ?? 'dev',
-    token,
+    body: { username, password },
   });
 }
 
-/**
- * Canjea un token de acceso generado por el dev: crea la cuenta con su rol
- * (admin/mod) y entra directamente. Endpoint: POST /api/dev/redeem.
- */
-export async function redeemAccessToken(
-  token: string,
-  username: string,
-  password: string,
-): Promise<AuthUser> {
-  const data = await apiFetch<LoginResponse>('/dev/redeem', {
+export async function validateToken(token: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>('/api/auth/validate', {
     method: 'POST',
-    body: { token, username, password },
-  });
-  const accessToken = data.token ?? data.access_token ?? data.accessToken;
-  if (!accessToken) throw new Error('Respuesta de canje inválida');
-  return saveUser({
-    username: data.username ?? username,
-    role: data.role ?? 'admin',
-    token: accessToken,
+    body: { token },
+    auth: true,
   });
 }
 
-/**
- * Obtiene el usuario autenticado desde AsyncStorage (caché local).
- * Para revalidar con el backend, usar revalidateAuthUser().
- */
-export async function getAuthUser(): Promise<AuthUser | null> {
-  const raw = await AsyncStorage.getItem(STORAGE_KEYS.user);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as AuthUser;
-  } catch {
-    return null;
-  }
+export async function refreshToken(): Promise<{ token: string }> {
+  return apiFetch<{ token: string }>('/api/auth/refresh', {
+    method: 'POST',
+    auth: true,
+  });
 }
 
-/**
- * Revalida el token actual con el backend (GET /auth/me).
- * Si el token es válido, retorna el usuario actualizado y actualiza la caché.
- * Si no, limpia la sesión y retorna null.
- */
-export async function revalidateAuthUser(): Promise<AuthUser | null> {
-  try {
-    const user = await apiFetch<{ username: string; role: string }>('/auth/me', {
-      auth: true,
-    });
-    const cached = await getAuthUser();
-    if (cached) {
-      const updated: AuthUser = {
-        ...cached,
-        username: user.username ?? cached.username,
-        role: user.role ?? cached.role,
-      };
-      await AsyncStorage.setItem(STORAGE_KEYS.user, JSON.stringify(updated));
-      return updated;
-    }
-    return null;
-  } catch {
-    await logout();
-    return null;
-  }
+export async function getAuthUser(): Promise<UserAccess | null> {
+  const user = mmkv.getObject<UserAccess>(STORAGE_KEYS.authUser);
+  return user ?? null;
 }
 
-/**
- * Valida el token actual con el backend (GET /auth/me).
- * Alias para revalidateAuthUser() por compatibilidad.
- */
-export async function validateToken(): Promise<AuthUser | null> {
-  return revalidateAuthUser();
+export async function setAuthUser(user: UserAccess): Promise<void> {
+  mmkv.setObject(STORAGE_KEYS.authUser, user);
+}
+
+export async function clearAuth(): Promise<void> {
+  mmkv.delete(STORAGE_KEYS.authUser);
+  await secureStorage.deleteItem(AUTH_KEYS.accessToken);
+  await secureStorage.deleteItem(AUTH_KEYS.refreshToken);
+  mmkv.delete(STORAGE_KEYS.authToken);
+  mmkv.delete(STORAGE_KEYS.authRefreshToken);
+}
+
+export async function saveToken(token: string): Promise<void> {
+  await secureStorage.setItem(AUTH_KEYS.accessToken, token);
+  mmkv.setString(STORAGE_KEYS.authToken, token);
+}
+
+export async function saveRefreshToken(refreshToken: string): Promise<void> {
+  await secureStorage.setItem(AUTH_KEYS.refreshToken, refreshToken);
+  mmkv.setString(STORAGE_KEYS.authRefreshToken, refreshToken);
+}
+
+export async function getToken(): Promise<string | null> {
+  const token = await secureStorage.getItem(AUTH_KEYS.accessToken);
+  return token ?? mmkv.getString(STORAGE_KEYS.authToken) ?? null;
+}
+
+export async function getStoredRefreshToken(): Promise<string | null> {
+  const token = await secureStorage.getItem(AUTH_KEYS.refreshToken);
+  return token ?? mmkv.getString(STORAGE_KEYS.authRefreshToken) ?? null;
 }
 
 export async function logout(): Promise<void> {
-  await (AsyncStorage as unknown as { multiRemove: (keys: string[]) => Promise<void> }).multiRemove([STORAGE_KEYS.token, STORAGE_KEYS.user, STORAGE_KEYS.likedIds]);
+  await clearAuth();
 }

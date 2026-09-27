@@ -1,36 +1,104 @@
 {
   "expo": {
-    "name": "JodiFy Mobile",
+    "name": "JodiFy",
     "slug": "jodify-mobile",
-    "version": "1.1.0",
-    "sdkVersion": "54.0.0",
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
-    "newArchEnabled": true,
+    "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "android": {
-      "package": "com.leija.jodify",
-      "versionCode": 2
-    },
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#050507"
+      "backgroundColor": "#030305"
     },
     "updates": {
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/your-project-id"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "runtimeVersion": { "policy": "appVersion" },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jodify.mobile",
+      "buildNumber": "1",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio", "remote-notification"],
+        "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": true },
+        "NSCameraUsageDescription": "JodiFy needs camera access for profile photos",
+        "NSPhotoLibraryUsageDescription": "JodiFy needs photo library access for cover art",
+        "NSMicrophoneUsageDescription": "JodiFy needs microphone for voice messages"
+      },
+      "associatedDomains": ["applinks:jodify.app"]
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#030305"
+      },
+      "package": "com.jodify.mobile",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.MEDIA_CONTENT_CONTROL"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": { "scheme": "jodify", "host": "*" },
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro",
+      "output": "static"
+    },
     "plugins": [
-      "expo-audio",
+      "expo-router",
       "expo-font",
-      "./plugins/with-jodify-equalizer"
-    ]
+      "expo-audio",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#030305",
+          "image": "./assets/images/splash.png",
+          "dark": { "image": "./assets/images/splash.png", "backgroundColor": "#030305" },
+          "imageWidth": 200
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#7F00FF",
+          "sounds": ["./assets/sounds/notification.wav"]
+        }
+      ],
+      [
+        "expo-updates",
+        {
+          "username": "your-expo-username"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "extra": {
+      "router": { "origin": false },
+      "eas": { "projectId": "your-project-id" },
+      "apiBase": "https://jodify-backend.onrender.com",
+      "socketUrl": "wss://jodify-backend.onrender.com"
+    },
+    "owner": "your-expo-username"
   }
 }

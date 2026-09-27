@@ -127,3 +127,15 @@ class SetRoleRequest(BaseModel):
 class MaintenanceRequest(BaseModel):
     enabled: bool = False
     message: str = ""
+
+
+# ---------- Preferences ----------
+
+class UserPreferencesRequest(BaseModel):
+    eq_preset: str | None = None
+    eq_bands: list[float] | None = None
+    custom_eq_presets: dict[str, list[float]] | None = None
+    fade_enabled: bool | None = None
+    fade_duration: float | None = None
+    sleep_timer_default: int | None = None
+    theme: str | None = None

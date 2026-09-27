@@ -1,27 +1,45 @@
-import { act, renderHook } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { usePlayerStore } from '../../stores/player.store';
 
-// El motor de audio nativo no existe en entorno de pruebas: se simula.
 const mockPlayer = {
-  play: jest.fn(),
-  pause: jest.fn(),
-  seekTo: jest.fn(),
-  release: jest.fn(),
-  duration: 0,
+  play: vi.fn(),
+  pause: vi.fn(),
+  seekTo: vi.fn(),
+  release: vi.fn(),
+  duration: 200,
   currentTime: 0,
 };
 
-jest.mock('../../store/audio', () => ({
-  ensurePlayerWithSource: jest.fn(() => mockPlayer),
-  getPlayer: jest.fn(() => mockPlayer),
-  onPlayerStatus: jest.fn(),
+vi.mock('../../stores/audio', () => ({
+  ensurePlayerWithSource: vi.fn(() => mockPlayer),
+  getPlayer: vi.fn(() => mockPlayer),
+  onPlayerStatus: vi.fn((cb) => cb({ playbackState: 3, currentTime: 0, duration: 200 })),
 }));
 
-import { usePlayerStore } from '../../store/player.store';
+vi.mock('../../services/lockscreen.service', () => ({
+  activateLockScreenForSong: vi.fn(),
+  syncLockScreen: vi.fn(),
+}));
+
+vi.mock('../../services/equalizer.service', () => ({
+  applyNative: vi.fn(),
+}));
+
+vi.mock('../../services/history.service', () => ({
+  recordHistory: vi.fn(),
+}));
+
+vi.mock('../../stores/settings.store', () => ({
+  useSettingsStore: { getState: () => ({ user: null }) },
+}));
+
+vi.mock('../../stores/eq.store', () => ({
+  useEqStore: { getState: () => ({ enabled: false, values: [] }) },
+}));
 
 describe('player.store', () => {
   beforeEach(() => {
-    mockPlayer.play.mockClear();
-    mockPlayer.pause.mockClear();
+    vi.clearAllMocks();
     usePlayerStore.setState({
       queue: [],
       queueIndex: -1,
@@ -40,7 +58,7 @@ describe('player.store', () => {
   describe('playSong', () => {
     it('should set current song and reset progress', () => {
       const { result } = renderHook(() => usePlayerStore());
-      const song = { id: '1', name: 'Test Song', artist: 'Test Artist' };
+      const song = { id: '1', name: 'Test Song', artist: 'Test Artist', url: 'https://test.com/song.mp3' };
 
       act(() => {
         result.current.playSong(song);
@@ -48,13 +66,15 @@ describe('player.store', () => {
 
       expect(result.current.currentSong).toEqual(song);
       expect(result.current.queueIndex).toBe(0);
+      expect(result.current.position).toBe(0);
+      expect(result.current.duration).toBe(0);
     });
 
     it('should replace queue when new queue provided', () => {
       const { result } = renderHook(() => usePlayerStore());
-      const song1 = { id: '1', name: 'Song 1' };
-      const song2 = { id: '2', name: 'Song 2' };
-      const song3 = { id: '3', name: 'Song 3' };
+      const song1 = { id: '1', name: 'Song 1', url: 'https://test.com/1.mp3' };
+      const song2 = { id: '2', name: 'Song 2', url: 'https://test.com/2.mp3' };
+      const song3 = { id: '3', name: 'Song 3', url: 'https://test.com/3.mp3' };
 
       act(() => {
         result.current.playSong(song1, [song1, song2, song3]);
@@ -66,14 +86,13 @@ describe('player.store', () => {
 
     it('should keep the queue untouched when none is provided', () => {
       const { result } = renderHook(() => usePlayerStore());
-      const existing = [{ id: '9', name: 'Existing' }];
+      const existing = [{ id: '9', name: 'Existing', url: 'https://test.com/9.mp3' }];
 
       act(() => {
         usePlayerStore.setState({ queue: existing, queueIndex: 0 });
-        result.current.playSong({ id: '2', name: 'Other' });
+        result.current.playSong({ id: '2', name: 'Other', url: 'https://test.com/2.mp3' });
       });
 
-      // Sin queue explicita, la cola actual no cambia (solo salta el indice).
       expect(result.current.queue).toEqual(existing);
     });
   });
@@ -81,7 +100,7 @@ describe('player.store', () => {
   describe('togglePlay', () => {
     it('should toggle isPlaying', () => {
       const { result } = renderHook(() => usePlayerStore());
-      const song = { id: '1', name: 'Test' };
+      const song = { id: '1', name: 'Test', url: 'https://test.com/test.mp3' };
 
       act(() => {
         result.current.playSong(song);
@@ -155,7 +174,7 @@ describe('player.store', () => {
   describe('queue management', () => {
     it('should add a song to the queue once', () => {
       const { result } = renderHook(() => usePlayerStore());
-      const song = { id: '5', name: 'Duplicated?' };
+      const song = { id: '5', name: 'Duplicated?', url: 'https://test.com/5.mp3' };
 
       act(() => {
         result.current.addToQueue(song);
@@ -169,7 +188,7 @@ describe('player.store', () => {
       const { result } = renderHook(() => usePlayerStore());
 
       act(() => {
-        result.current.playQueue([{ id: '1', name: 'A' }, { id: '2', name: 'B' }]);
+        result.current.playQueue([{ id: '1', name: 'A', url: 'https://test.com/a.mp3' }, { id: '2', name: 'B', url: 'https://test.com/b.mp3' }]);
         result.current.clearQueue();
       });
 
