@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routers import auth, dev, jam, logs, lyrics, social, songs, users
+from .api.routers import auth, dev, jam, logs, lyrics, social, songs, updates, users
 from .core import database as dbmod
 from .core.config import CORS_ORIGINS
 from .core.database import connect, create_indexes
@@ -44,6 +44,7 @@ app.include_router(social.router)
 app.include_router(logs.router)
 app.include_router(jam.router)
 app.include_router(lyrics.router)
+app.include_router(updates.router)
 
 # Alias para compatibilidad directa con URLs /songs/{id}/audio y /songs/{id}/cover
 app.add_api_route("/songs/{song_id}/audio", songs.stream_audio, methods=["GET"])

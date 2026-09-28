@@ -1,119 +1,219 @@
 import { create } from 'zustand';
+import {
+  checkForAppUpdate,
+  downloadApkWithProgress,
+  installDownloadedApk,
+  currentAppVersion,
+  currentBuildNumber,
+  type DownloadProgressData,
+  type UpdateCheckResult,
+} from '../services/update.service';
 
-export type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'installing' | 'error' | 'up-to-date';
-export type ModalStatus = 'idle' | 'downloading' | 'installing' | 'success' | 'error';
+export type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'ready_to_install'
+  | 'installing'
+  | 'up-to-date'
+  | 'error';
 
-interface UpdateInfo {
+export interface UpdateStoreInfo {
+  id?: string;
   current: string;
   latest: string;
+  buildNumber: number;
   notes: string;
   mandatory: boolean;
   downloadUrl: string;
+  filename: string;
+  sizeBytes: number;
+  uploadedAt?: string;
 }
 
 interface UpdateState {
   status: UpdateStatus;
   modalOpen: boolean;
-  modalStatus: ModalStatus;
-  info: UpdateInfo | null;
-  progress: number;
+  info: UpdateStoreInfo | null;
+  progress: DownloadProgressData;
+  downloadedFileUri: string | null;
   error: string | null;
   checked: boolean;
 
   runCheck: (manual?: boolean) => Promise<void>;
+  startDownload: () => Promise<void>;
   doInstall: () => Promise<void>;
-  handleLater: () => void;
   openModal: () => void;
   closeModal: () => void;
-  setProgress: (progress: number) => void;
+  cancelDownload: () => void;
 }
 
-export function updateLabel(status: UpdateStatus, info: UpdateInfo | null): string {
+const DEFAULT_PROGRESS: DownloadProgressData = {
+  percent: 0,
+  downloadedBytes: 0,
+  totalBytes: 0,
+  speedMBps: 0,
+  remainingSeconds: 0,
+};
+
+let activeCancelRef: { current: (() => void) | null } = { current: null };
+
+export function updateLabel(status: UpdateStatus, info: UpdateStoreInfo | null): string {
   switch (status) {
-    case 'checking': return 'Buscando actualizaciones...';
-    case 'available': return `v${info?.latest ?? '?'} disponible`;
-    case 'downloading': return 'Descargando...';
-    case 'installing': return 'Instalando...';
-    case 'error': return 'Error al actualizar';
-    case 'up-to-date': return 'Actualizado';
-    default: return 'Sin comprobar';
+    case 'checking':
+      return 'Buscando actualizaciones en la base de datos...';
+    case 'available':
+      return `v${info?.latest ?? '?'} disponible para descargar`;
+    case 'downloading':
+      return 'Descargando nueva versión...';
+    case 'ready_to_install':
+      return 'Actualización descargada · Lista para instalar';
+    case 'installing':
+      return 'Abriendo instalador del sistema...';
+    case 'error':
+      return 'Error al verificar actualizaciones';
+    case 'up-to-date':
+      return `Al día (v${currentAppVersion()})`;
+    default:
+      return `JodiFy v${currentAppVersion()}`;
   }
 }
 
 export const useUpdateStore = create<UpdateState>((set, get) => ({
   status: 'idle',
   modalOpen: false,
-  modalStatus: 'idle',
   info: null,
-  progress: 0,
+  progress: DEFAULT_PROGRESS,
+  downloadedFileUri: null,
   error: null,
   checked: false,
 
   runCheck: async (manual = false) => {
-    if (get().status === 'checking') return;
+    if (get().status === 'checking' || get().status === 'downloading') return;
     set({ status: 'checking', error: null });
+
     try {
-      const res = await fetch('https://api.github.com/repos/Leija05/jodify/releases/latest');
-      if (!res.ok) throw new Error('Failed to fetch release');
-      const data = await res.json();
-      const latestVersion = data.tag_name?.replace('v', '') ?? '0.0.0';
-      const currentVersion = '1.0.0';
+      const res: UpdateCheckResult = await checkForAppUpdate();
 
-      const isNewer = latestVersion
-        .split('.')
-        .map(Number)
-        .some((v: number, i: number) => v > (currentVersion.split('.').map(Number)[i] ?? 0));
+      if (res.update_available && res.download_url && res.version) {
+        const storeInfo: UpdateStoreInfo = {
+          id: res.id,
+          current: currentAppVersion(),
+          latest: res.version,
+          buildNumber: res.build_number || 1,
+          notes: res.release_notes || 'Mejoras de rendimiento y nuevas funciones.',
+          mandatory: Boolean(res.mandatory),
+          downloadUrl: res.download_url,
+          filename: res.filename || `JodiFy-v${res.version}.apk`,
+          sizeBytes: res.size_bytes || 0,
+          uploadedAt: res.uploaded_at,
+        };
 
-      if (isNewer) {
         set({
           status: 'available',
-          info: {
-            current: currentVersion,
-            latest: latestVersion,
-            notes: data.body ?? 'Sin notas de versión',
-            mandatory: false,
-            downloadUrl: data.assets?.[0]?.browser_download_url ?? '',
-          },
+          info: storeInfo,
+          checked: true,
+          modalOpen: manual || Boolean(res.mandatory),
         });
-        if (manual) {
-          set({ modalOpen: true, modalStatus: 'idle' });
-        }
       } else {
-        set({ status: 'up-to-date' });
+        set({
+          status: 'up-to-date',
+          checked: true,
+          error: null,
+        });
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error desconocido';
-      set({ status: 'error', error: msg });
+    } catch (err: any) {
+      const msg = err?.message || 'No se pudo conectar con el servidor de actualizaciones';
+      set({
+        status: 'error',
+        error: msg,
+        checked: true,
+      });
       if (manual) {
-        set({ modalOpen: true, modalStatus: 'error' });
+        set({ modalOpen: true });
       }
+    }
+  },
+
+  startDownload: async () => {
+    const info = get().info;
+    if (!info || !info.downloadUrl) return;
+
+    set({
+      status: 'downloading',
+      modalOpen: true,
+      error: null,
+      progress: { ...DEFAULT_PROGRESS, totalBytes: info.sizeBytes },
+    });
+
+    try {
+      activeCancelRef = { current: null };
+      const localUri = await downloadApkWithProgress(
+        info.downloadUrl,
+        info.filename,
+        (progressData) => {
+          set({ progress: progressData });
+        },
+        activeCancelRef
+      );
+
+      set({
+        status: 'ready_to_install',
+        downloadedFileUri: localUri,
+      });
+
+      // Automatically launch the installation package prompt
+      try {
+        await installDownloadedApk(localUri);
+      } catch (launchErr: any) {
+        console.warn('[Update] Auto-launch install prompt error:', launchErr);
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Error durante la descarga de la actualización';
+      set({
+        status: 'error',
+        error: msg,
+      });
     }
   },
 
   doInstall: async () => {
-    set({ modalStatus: 'installing', progress: 0 });
+    const fileUri = get().downloadedFileUri;
+    if (!fileUri) {
+      // If not yet downloaded, initiate download first
+      await get().startDownload();
+      return;
+    }
+
+    set({ status: 'installing' });
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      set({ modalStatus: 'success', progress: 100, status: 'up-to-date' });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error al instalar';
-      set({ modalStatus: 'error', error: msg });
+      await installDownloadedApk(fileUri);
+      set({ status: 'ready_to_install' });
+    } catch (err: any) {
+      set({
+        status: 'error',
+        error: err?.message || 'Error al iniciar el instalador de Android',
+      });
     }
   },
 
-  handleLater: () => {
-    set({ modalOpen: false, modalStatus: 'idle', progress: 0 });
+  cancelDownload: () => {
+    if (activeCancelRef.current) {
+      activeCancelRef.current();
+      activeCancelRef.current = null;
+    }
+    set({
+      status: 'available',
+      progress: DEFAULT_PROGRESS,
+    });
   },
 
-  openModal: () => {
-    set({ modalOpen: true, modalStatus: 'idle' });
-  },
-
+  openModal: () => set({ modalOpen: true }),
   closeModal: () => {
-    set({ modalOpen: false, modalStatus: 'idle', progress: 0 });
-  },
-
-  setProgress: (progress) => {
-    set({ progress: Math.max(0, Math.min(100, progress)) });
+    if (get().status === 'downloading') {
+      get().cancelDownload();
+    }
+    set({ modalOpen: false });
   },
 }));

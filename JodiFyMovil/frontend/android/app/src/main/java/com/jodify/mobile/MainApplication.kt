@@ -25,6 +25,7 @@ class MainApplication : Application(), ReactApplication {
             val packages = PackageList(this).packages.toMutableList()
             packages.add(com.jodify.mobile.eq.JodifyEqualizerPackage())
             packages.add(com.jodify.mobile.media.JodifyMediaPackage())
+            packages.add(com.jodify.mobile.installer.JodifyInstallerPackage())
             return packages
           }
 

@@ -20,7 +20,10 @@ COLLECTIONS = {
     "dev_tokens": "dev_tokens",
     "dev_keys": "dev_keys",
     "system_state": "system_state",
+    "app_updates": "app_updates",
 }
+
+APK_BUCKET = "apk_releases"
 
 
 def connect() -> None:
@@ -47,6 +50,18 @@ def audio_files() -> AgnosticCollection:
 
 def audio_chunks() -> AgnosticCollection:
     return col("songs").database[f"{AUDIO_BUCKET}.chunks"]
+
+
+def apk_bucket() -> str:
+    return APK_BUCKET
+
+
+def apk_files() -> AgnosticCollection:
+    return col("users").database[f"{APK_BUCKET}.files"]
+
+
+def apk_chunks() -> AgnosticCollection:
+    return col("users").database[f"{APK_BUCKET}.chunks"]
 
 
 def s(value: object) -> object:
@@ -108,4 +123,11 @@ async def create_indexes() -> None:
         IndexModel([("token_hash", ASCENDING)], unique=True),
         IndexModel([("created_at", DESCENDING)]),
         IndexModel([("revoked", ASCENDING)]),
+    ])
+    await col("app_updates").create_indexes([
+        IndexModel([("platform", ASCENDING), ("is_active", DESCENDING), ("created_at", DESCENDING)]),
+        IndexModel([("version", ASCENDING)]),
+    ])
+    await apk_files().create_indexes([
+        IndexModel([("uploadDate", DESCENDING)]),
     ])
