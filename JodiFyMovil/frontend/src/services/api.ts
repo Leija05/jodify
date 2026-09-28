@@ -17,12 +17,14 @@ function resolveUrl(path: string): string {
 
 export async function apiFetch<T>(
   path: string,
-  options: { method?: string; body?: unknown; auth?: boolean } = {}
+  options: { method?: string; body?: unknown; auth?: boolean; headers?: Record<string, string>; token?: string } = {}
 ): Promise<T> {
-  const { method = 'GET', body, auth = false } = options;
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const { method = 'GET', body, auth = false, headers: customHeaders, token: explicitToken } = options;
+  const headers: Record<string, string> = { Accept: 'application/json', ...customHeaders };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (auth) {
+  if (explicitToken) {
+    headers.Authorization = `Bearer ${explicitToken}`;
+  } else if (auth) {
     const token = await getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }

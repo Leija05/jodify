@@ -237,9 +237,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.white,
-    fontFamily: typography.headlineMedium.fontFamily,
+    fontFamily: typography.headlineLarge.fontFamily,
     fontSize: 17,
-    fontWeight: '700',
     letterSpacing: -0.3,
   },
   artist: {
@@ -277,9 +276,8 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: colors.text,
-    fontFamily: typography.bodyMedium.fontFamily,
+    fontFamily: typography.bodyLarge.fontFamily,
     fontSize: 15,
-    fontWeight: '500',
     letterSpacing: 0.1,
   },
 });

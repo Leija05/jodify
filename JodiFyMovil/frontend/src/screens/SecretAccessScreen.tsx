@@ -50,7 +50,7 @@ export const SecretAccessScreen = React.forwardRef<{ trigger: () => void }, any>
     return (
       <View style={styles.container} pointerEvents="box-none" {...props}>
         <View style={styles.backdrop} onStartShouldSetResponder={() => true} onResponderRelease={() => setVisible(false)} />
-        <View style={styles.sheet} pointerEvents="box-only">
+        <View style={styles.sheet} pointerEvents="auto">
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>JodiFy Dev Tools</Text>

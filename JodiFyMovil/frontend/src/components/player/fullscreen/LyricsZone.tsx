@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   lineTextActive: {
     color: colors.secondary,
-    fontWeight: '600',
+    fontFamily: typography.headlineSmall.fontFamily,
     textShadowColor: colors.secondary,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,

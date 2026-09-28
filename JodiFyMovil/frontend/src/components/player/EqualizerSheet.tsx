@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,26 +31,21 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
   ({ ...props }, _ref) => {
     const open = useUiStore((s) => s.equalizerOpen);
     const closeEqualizer = useUiStore((s) => s.closeEqualizer);
-    const { enabled, preset, values, setEnabled, setPreset, setBand, loadPersisted, smooth, vibe, reset } = useEqStore();
+    const enabled = useEqStore((s) => s.enabled);
+    const preset = useEqStore((s) => s.preset);
+    const values = useEqStore((s) => s.values);
+    const setEnabled = useEqStore((s) => s.setEnabled);
+    const setPreset = useEqStore((s) => s.setPreset);
+    const setBand = useEqStore((s) => s.setBand);
+    const smooth = useEqStore((s) => s.smooth);
+    const vibe = useEqStore((s) => s.vibe);
+    const reset = useEqStore((s) => s.reset);
     const insets = useSafeAreaInsets();
-
-    const [visualizerData, setVisualizerData] = useState<number[]>(Array(10).fill(0));
 
     const translateY = useRef(new Animated.Value(SCREEN.height)).current;
     const opacity = useRef(new Animated.Value(0)).current;
     const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
     const isAnimatingOutRef = useRef(false);
-
-    useEffect(() => {
-      loadPersisted();
-    }, [loadPersisted]);
-
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setVisualizerData(prev => prev.map(() => Math.random() * 0.5 + 0.2));
-      }, 200);
-      return () => clearInterval(interval);
-    }, []);
 
     const animateIn = useCallback(() => {
       isAnimatingOutRef.current = false;
@@ -166,7 +161,6 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
                 barWidth={12}
                 gap={4}
                 color={colors.secondary}
-                amplitudes={visualizerData}
               />
             </View>
 
@@ -330,7 +324,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: typography.labelMedium.fontFamily,
     fontSize: 13,
-    fontWeight: '600',
     width: 44,
   },
   slider: {
@@ -381,7 +374,6 @@ const styles = StyleSheet.create({
   },
   presetBtnTextActive: {
     color: colors.white,
-    fontWeight: '600',
   },
   actionRow: {
     flexDirection: 'row',

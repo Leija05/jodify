@@ -29,8 +29,20 @@ const CUBIC_EASING = Easing.bezier(0.23, 1, 0.32, 1);
 export default function FullscreenPlayer() {
   const open = useUiStore((s) => s.fullscreenOpen);
   const closeFullscreen = useUiStore((s) => s.closeFullscreen);
-  const { currentSong, isPlaying, position, duration, shuffle, repeat, isBuffering, error } = usePlayerStore();
-  const { togglePlay, next, previous, seek, toggleShuffle, cycleRepeat } = usePlayerStore();
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const position = usePlayerStore((s) => s.position);
+  const duration = usePlayerStore((s) => s.duration);
+  const shuffle = usePlayerStore((s) => s.shuffle);
+  const repeat = usePlayerStore((s) => s.repeat);
+  const isBuffering = usePlayerStore((s) => s.isBuffering);
+  const error = usePlayerStore((s) => s.error);
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
+  const next = usePlayerStore((s) => s.next);
+  const previous = usePlayerStore((s) => s.previous);
+  const seek = usePlayerStore((s) => s.seek);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+  const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
   const likedIds = useLibraryStore((s) => s.likedIds);
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
@@ -157,8 +169,8 @@ export default function FullscreenPlayer() {
 
   useEffect(() => {
     panResponderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 3,
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.5,
       onPanResponderGrant: () => {
         translateY.extractOffset();
         isAnimatingOutRef.current = false;
@@ -270,7 +282,13 @@ export default function FullscreenPlayer() {
         />
 
         {currentSong ? (
-          <ScrollView contentContainerStyle={[styles.playerScroll, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.playerScroll,
+              { paddingTop: insets.top + 56, paddingBottom: insets.bottom + 28 },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
             <ShowcaseHero
               song={currentSong}
               coverScale={coverScale}

@@ -25,7 +25,7 @@ export const FullscreenHeader = React.forwardRef<View, FullscreenHeaderProps>(
         ]}
         pointerEvents="box-none"
       >
-        <View style={styles.content} pointerEvents="box-only">
+        <View style={styles.content} pointerEvents="box-none">
           <PressableFluid onPress={onDismiss} haptic="light" hitSlop={12} style={styles.actionBtn}>
             <Ionicons name="chevron-down" size={26} color={colors.white} />
           </PressableFluid>

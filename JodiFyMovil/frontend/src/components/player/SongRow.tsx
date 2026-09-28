@@ -25,19 +25,54 @@ interface SongRowProps {
   coverSize?: number;
 }
 
-export const CoverArt = React.forwardRef<Image, { source?: any; size: number; radiusSize: number }>(
-  ({ source, size, radiusSize, ...props }, ref) => (
-    <Image
-      ref={ref}
-      source={source}
-      style={[
-        styles.cover,
-        { width: size, height: size, borderRadius: radiusSize },
-      ]}
-      resizeMode="cover"
-      {...props}
-    />
-  )
+import { LinearGradient } from 'expo-linear-gradient';
+
+export const CoverArt = React.forwardRef<View, { source?: any; size: number; radiusSize: number; style?: StyleProp<ViewStyle> }>(
+  ({ source, size, radiusSize, style, ...props }, ref) => {
+    const [hasError, setHasError] = React.useState(false);
+
+    React.useEffect(() => {
+      setHasError(false);
+    }, [source?.uri]);
+
+    if (!source?.uri || hasError) {
+      return (
+        <LinearGradient
+          ref={ref as any}
+          colors={['#7F00FF', '#00E5FF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.coverPlaceholder,
+            { width: size, height: size, borderRadius: radiusSize },
+            style,
+          ]}
+          {...props}
+        >
+          <Ionicons name="musical-notes" size={Math.max(16, size * 0.42)} color="#FFFFFF" />
+        </LinearGradient>
+      );
+    }
+
+    return (
+      <View
+        ref={ref as any}
+        style={[
+          styles.coverContainer,
+          { width: size, height: size, borderRadius: radiusSize },
+          style,
+        ]}
+      >
+        <Image
+          source={source}
+          style={{ width: size, height: size, borderRadius: radiusSize }}
+          resizeMode="cover"
+          onError={() => setHasError(true)}
+          {...props}
+        />
+      </View>
+    );
+  }
 );
 
 CoverArt.displayName = 'CoverArt';
@@ -136,6 +171,7 @@ export const SongRow = React.forwardRef<View, SongRowProps>(
           isCurrent && styles.containerCurrent,
           style,
         ]}
+        contentStyle={styles.contentWrap}
         hitSlop={8}
       >
         {content}
@@ -146,9 +182,7 @@ export const SongRow = React.forwardRef<View, SongRowProps>(
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    width: '100%',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 18,
@@ -161,12 +195,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(127, 0, 255, 0.12)',
     borderColor: 'rgba(127, 0, 255, 0.35)',
   },
+  contentWrap: {
+    width: '100%',
+  },
   row: {
-    flex: 1,
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    minWidth: 0,
   },
   coverWrapper: {
     position: 'relative',
@@ -177,8 +213,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.12)',
     backgroundColor: '#12121c',
   },
-  cover: {
-    ...StyleSheet.absoluteFillObject,
+  coverContainer: {
+    overflow: 'hidden',
+    backgroundColor: '#12121c',
+  },
+  coverPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   playingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -194,14 +236,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontFamily: typography.bodyMedium.fontFamily,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 15,
-    fontWeight: '600',
     letterSpacing: -0.2,
   },
   titleCurrent: {
     color: colors.secondary,
-    fontWeight: '700',
+    fontFamily: typography.headlineMedium.fontFamily,
   },
   artist: {
     color: colors.textMuted,
@@ -210,12 +251,13 @@ const styles = StyleSheet.create({
   },
   artistCurrent: {
     color: colors.secondary,
-    opacity: 0.8,
+    opacity: 0.85,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    flexShrink: 0,
   },
   actionBtn: {
     padding: 6,

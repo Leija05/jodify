@@ -15,5 +15,5 @@ export function useBootstrap() {
     loadEq();
     loadSettings();
     restoreJam();
-  }, [loadLibrary, loadEq, loadSettings, restoreJam]);
+  }, []);
 }

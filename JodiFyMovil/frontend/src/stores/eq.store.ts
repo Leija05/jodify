@@ -70,11 +70,13 @@ function smoothValues(values: number[]): number[] {
   });
 }
 
+const initialPersisted = loadPersistedState();
+
 export const useEqStore = create<EqState>()((set, get) => ({
-  enabled: true,
-  preset: 'flat',
-  values: DEFAULT_BANDS,
-  customPresets: {},
+  enabled: initialPersisted.enabled,
+  preset: initialPersisted.preset,
+  values: initialPersisted.values,
+  customPresets: initialPersisted.customPresets,
   frequencies: BAND_FREQUENCIES,
 
   setEnabled: (enabled) => {

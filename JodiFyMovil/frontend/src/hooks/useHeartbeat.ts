@@ -7,7 +7,6 @@ export function useHeartbeat() {
   const user = useSettingsStore((s) => s.user);
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const position = usePlayerStore((s) => s.position);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastHeartbeatRef = useRef(0);
@@ -43,9 +42,9 @@ export function useHeartbeat() {
     const songId = currentSong ? String(currentSong.id) : null;
     const songName = currentSong ? currentSong.name : null;
 
-    if (songId !== lastSongIdRef.current || isPlaying) {
+    if (songId !== lastSongIdRef.current) {
       lastSongIdRef.current = songId;
-      updateNowPlaying(user.username, songId ? Number(songId) : null, songName).catch(() => {});
+      updateNowPlaying(user.username, songId ? Number(songId) : null, isPlaying ? songName : null).catch(() => {});
     }
-  }, [user, currentSong, isPlaying, position]);
+  }, [user?.username, currentSong?.id, currentSong?.name, isPlaying]);
 }

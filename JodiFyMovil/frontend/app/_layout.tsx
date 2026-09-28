@@ -16,11 +16,15 @@ import {
 import {
   JetBrainsMono_400Regular,
 } from '@expo-google-fonts/jetbrains-mono';
+import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet } from 'react-native';
 import { colors } from '@theme';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+    ionicons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
+    Ionicons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
     Outfit_600SemiBold,
     Outfit_700Bold,
     Outfit_900Black,

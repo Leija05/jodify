@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { Animated, Pressable, StyleProp, ViewStyle, View } from 'react-native';
+import { Animated, Pressable, StyleProp, StyleSheet, ViewStyle, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useReducedMotion } from '@hooks/useReducedMotion';
 import { motion } from '@theme';
@@ -13,6 +13,7 @@ interface PressableFluidProps extends Omit<React.ComponentPropsWithoutRef<typeof
   hitSlop?: number | { top: number; bottom: number; left: number; right: number };
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
   scaleTo?: number;
   testID?: string;
   onLongPress?: (() => void) | undefined;
@@ -31,6 +32,7 @@ export const PressableFluid = React.forwardRef<View, PressableFluidProps>(
       hitSlop = 0,
       disabled = false,
       style,
+      contentStyle,
       scaleTo = DEFAULT_SCALE,
       testID,
       onLongPress,
@@ -90,6 +92,21 @@ export const PressableFluid = React.forwardRef<View, PressableFluidProps>(
       onPress?.();
     }, [disabled, haptic, onPress]);
 
+    const flatStyle = StyleSheet.flatten(style) as ViewStyle | undefined;
+    const layoutStyle: ViewStyle = {};
+    if (flatStyle) {
+      if (flatStyle.flexDirection) layoutStyle.flexDirection = flatStyle.flexDirection;
+      if (flatStyle.alignItems) layoutStyle.alignItems = flatStyle.alignItems;
+      if (flatStyle.justifyContent) layoutStyle.justifyContent = flatStyle.justifyContent;
+      if (flatStyle.gap !== undefined) layoutStyle.gap = flatStyle.gap;
+      if (flatStyle.rowGap !== undefined) layoutStyle.rowGap = flatStyle.rowGap;
+      if (flatStyle.columnGap !== undefined) layoutStyle.columnGap = flatStyle.columnGap;
+      if (flatStyle.flexWrap) layoutStyle.flexWrap = flatStyle.flexWrap;
+      if (flatStyle.width !== undefined) layoutStyle.width = '100%';
+      if (flatStyle.height !== undefined) layoutStyle.height = '100%';
+      layoutStyle.alignSelf = 'stretch';
+    }
+
     return (
       <Pressable
         ref={ref}
@@ -105,6 +122,8 @@ export const PressableFluid = React.forwardRef<View, PressableFluidProps>(
       >
         <Animated.View
           style={[
+            layoutStyle,
+            contentStyle,
             {
               transform: [{ scale }],
               opacity,

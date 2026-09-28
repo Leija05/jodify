@@ -25,9 +25,24 @@ const ROW_HEIGHT = 80;
 const ITEM_SPACING = 6;
 
 export default function LibraryScreen() {
-  const { songs, likedIds, downloadedIds, tab, search, sort, setTab, setSearch, setSort: _setSort, toggleLike, markDownloaded, unmarkDownloaded, refresh, refreshing } =
-    useLibraryStore();
-  const { playSong, playNext, addToQueue, currentSong, isPlaying } = usePlayerStore();
+  const songs = useLibraryStore((s) => s.songs);
+  const likedIds = useLibraryStore((s) => s.likedIds);
+  const downloadedIds = useLibraryStore((s) => s.downloadedIds);
+  const tab = useLibraryStore((s) => s.tab);
+  const search = useLibraryStore((s) => s.search);
+  const setTab = useLibraryStore((s) => s.setTab);
+  const setSearch = useLibraryStore((s) => s.setSearch);
+  const toggleLike = useLibraryStore((s) => s.toggleLike);
+  const markDownloaded = useLibraryStore((s) => s.markDownloaded);
+  const unmarkDownloaded = useLibraryStore((s) => s.unmarkDownloaded);
+  const refresh = useLibraryStore((s) => s.refresh);
+  const refreshing = useLibraryStore((s) => s.refreshing);
+
+  const playSong = usePlayerStore((s) => s.playSong);
+  const playNext = usePlayerStore((s) => s.playNext);
+  const addToQueue = usePlayerStore((s) => s.addToQueue);
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
   const user = useSettingsStore((s) => s.user);
   const openFullscreen = useUiStore((s) => s.openFullscreen);
   const openAuth = useUiStore((s) => s.openAuth);
@@ -84,7 +99,7 @@ export default function LibraryScreen() {
       const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
       return bTime - aTime;
     });
-  }, [songs, likedIds, downloadedIds, tab, search, sort]);
+  }, [songs, likedIds, downloadedIds, tab, search]);
 
   const handlePlay = useCallback(
     (song: Song) => {
@@ -217,87 +232,90 @@ export default function LibraryScreen() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[
-        styles.searchWrap,
-        {
-          shadowColor: colors.primary,
-          shadowOpacity: searchGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] }),
-          shadowRadius: searchGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 18] }),
-          elevation: searchGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 8] }),
-          borderColor: searchGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.border, colors.primaryStrong] }),
-        }
-      ]}>
-        <Ionicons name="search" size={20} color={colors.textMuted} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar canciones o artistas…"
-          placeholderTextColor={colors.textMuted}
-          value={search}
-          onChangeText={setSearch}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-        />
-        {search.length > 0 && (
-          <PressableFluid onPress={() => setSearch('')} style={styles.clearBtn} hitSlop={8}>
-            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-          </PressableFluid>
-        )}
-        {currentSong && (
-          <PressableFluid onPress={handleOpenFullscreen} haptic="light" style={styles.expandBtn} hitSlop={8}>
-            <Ionicons name="expand" size={20} color={colors.primary} />
-          </PressableFluid>
-        )}
-      </Animated.View>
-
-      <View style={styles.tabs}>
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          return (
-            <PressableFluid
-              key={t.id}
-              onPress={() => setTab(t.id)}
-              style={styles.tabPress}
-              scaleTo={0.97}
-              hitSlop={8}
-            >
-              {active ? (
-                <LinearGradient
-                  colors={[gradients.primary[0], gradients.play[1]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.tab, styles.tabActive]}
-                >
-                  <Ionicons name={t.icon} size={16} color={colors.white} />
-                  <Text style={[styles.tabText, styles.tabTextActive]}>{t.label}</Text>
-                  <Animated.View style={[
-                    styles.tabUnderline,
-                    {
-                      width: tabUnderlineAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-                      opacity: tabUnderlineAnim,
-                    }
-                  ]} />
-                </LinearGradient>
-              ) : (
-                <View style={styles.tab}>
-                  <Ionicons name={t.icon} size={16} color={colors.textMuted} />
-                  <Text style={styles.tabText}>{t.label}</Text>
-                </View>
-              )}
+      <View style={styles.fixedHeader}>
+        <Animated.View style={[
+          styles.searchWrap,
+          {
+            shadowColor: colors.primary,
+            shadowOpacity: searchGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] }),
+            shadowRadius: searchGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 18] }),
+            elevation: searchGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 8] }),
+            borderColor: searchGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.border, colors.primaryStrong] }),
+          }
+        ]}>
+          <Ionicons name="search" size={20} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar canciones o artistas…"
+            placeholderTextColor={colors.textMuted}
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+          />
+          {search.length > 0 && (
+            <PressableFluid onPress={() => setSearch('')} style={styles.clearBtn} hitSlop={8}>
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
             </PressableFluid>
-          );
-        })}
-      </View>
+          )}
+          {currentSong && (
+            <PressableFluid onPress={handleOpenFullscreen} haptic="light" style={styles.expandBtn} hitSlop={8}>
+              <Ionicons name="expand" size={20} color={colors.primary} />
+            </PressableFluid>
+          )}
+        </Animated.View>
 
-      <View style={styles.hintRow}>
-        <Ionicons name="arrow-back" size={12} color={colors.textMuted} />
-        <Text style={styles.hintText}>Desliza para favoritas · izq. para cola · mantén para más</Text>
+        <View style={styles.tabs}>
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <PressableFluid
+                key={t.id}
+                onPress={() => setTab(t.id)}
+                style={styles.tabPress}
+                scaleTo={0.97}
+                hitSlop={8}
+              >
+                {active ? (
+                  <LinearGradient
+                    colors={[gradients.primary[0], gradients.play[1]]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.tab, styles.tabActive]}
+                  >
+                    <Ionicons name={t.icon} size={16} color={colors.white} />
+                    <Text style={[styles.tabText, styles.tabTextActive]}>{t.label}</Text>
+                    <Animated.View style={[
+                      styles.tabUnderline,
+                      {
+                        width: tabUnderlineAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                        opacity: tabUnderlineAnim,
+                      }
+                    ]} />
+                  </LinearGradient>
+                ) : (
+                  <View style={styles.tab}>
+                    <Ionicons name={t.icon} size={16} color={colors.textMuted} />
+                    <Text style={styles.tabText}>{t.label}</Text>
+                  </View>
+                )}
+              </PressableFluid>
+            );
+          })}
+        </View>
+
+        <View style={styles.hintRow}>
+          <Ionicons name="arrow-back" size={12} color={colors.textMuted} />
+          <Text style={styles.hintText}>Desliza para favoritas · izq. para cola · mantén para más</Text>
+        </View>
       </View>
 
       <FlatList
         data={filtered}
+        style={styles.list}
         keyExtractor={keyExtractor}
         getItemLayout={getItemLayout}
         initialNumToRender={8}
@@ -346,6 +364,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  fixedHeader: {
+    backgroundColor: colors.background,
+    zIndex: 10,
+  },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -380,21 +402,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 16,
     marginBottom: 8,
+    height: 48,
   },
   tabPress: {
     flex: 1,
+    height: 48,
   },
   tab: {
+    flex: 1,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
     borderRadius: radius.pill,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
     borderColor: colors.border,
-    minHeight: touch.comfortable,
   },
   tabActive: {
     borderColor: 'rgba(255,255,255,0.25)',
@@ -428,7 +452,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 22,
-    paddingVertical: 8,
+    paddingVertical: 6,
+    marginBottom: 6,
   },
   hintText: {
     flex: 1,
@@ -438,11 +463,15 @@ const styles = StyleSheet.create({
     letterSpacing: typography.bodySmall.letterSpacing,
     lineHeight: typography.bodySmall.lineHeight,
   },
+  list: {
+    flex: 1,
+  },
   listContent: {
     paddingBottom: 220,
-    paddingTop: 6,
+    paddingTop: 4,
   },
   listItem: {
     marginHorizontal: 12,
+    alignSelf: 'stretch',
   },
 });

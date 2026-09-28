@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback, useImperativeHandle } from 'react';
 import { View, Text, PanResponder, StyleProp, ViewStyle, StyleSheet } from 'react-native';
-import { colors, radius, touch } from '@theme';
+import { colors, radius } from '@theme';
 
 interface TimelineSliderProps {
   position: number;
@@ -13,6 +13,7 @@ interface TimelineSliderProps {
   thumbSize?: number;
   showPreview?: boolean;
   previewTime?: number;
+  showLabels?: boolean;
 }
 
 export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => void }, TimelineSliderProps>(
@@ -25,9 +26,10 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
       onSlidingComplete,
       style,
       trackHeight = 4,
-      thumbSize = touch.iconComfortable,
+      thumbSize = 14,
       showPreview = false,
       previewTime,
+      showLabels = true,
     },
     ref
   ) => {
@@ -97,7 +99,7 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
     return (
       <View style={[styles.container, style]} {...panResponder.current?.panHandlers}>
         <View
-          style={styles.trackWrapper}
+          style={styles.touchArea}
           onLayout={(e) => {
             trackWidth.current = e.nativeEvent.layout.width;
           }}
@@ -112,16 +114,19 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
                 height: thumbSize,
                 borderRadius: thumbSize / 2,
                 left: `${progressPercent}%`,
-                transform: [{ translateX: -thumbSize / 2 }],
+                top: trackHeight / 2,
+                transform: [{ translateX: -thumbSize / 2 }, { translateY: -thumbSize / 2 }],
               },
             ]}
           />
         </View>
 
-        <View style={styles.timeLabels}>
-          <Text style={styles.timeLabel}>{formatTime(currentPos)}</Text>
-          <Text style={styles.timeLabel}>{formatTime(duration)}</Text>
-        </View>
+        {showLabels && (
+          <View style={styles.timeLabels}>
+            <Text style={styles.timeLabel}>{formatTime(currentPos)}</Text>
+            <Text style={styles.timeLabel}>{formatTime(duration)}</Text>
+          </View>
+        )}
 
         {showPreview && previewTime !== undefined && (
           <View style={styles.preview}>
@@ -138,33 +143,30 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 8,
   },
-  trackWrapper: {
+  touchArea: {
     position: 'relative',
+    justifyContent: 'center',
+    paddingVertical: 10,
   },
   track: {
-    backgroundColor: colors.track,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
     borderRadius: radius.pill,
     overflow: 'hidden',
   },
   activeTrack: {
     position: 'absolute',
-    top: 0,
     left: 0,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.white,
     borderRadius: radius.pill,
   },
   thumb: {
     position: 'absolute',
-    top: '50%',
     backgroundColor: colors.white,
     borderRadius: 9999,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    transform: [{ translateY: -12 }],
-    shadowColor: colors.primary,
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },
   timeLabels: {

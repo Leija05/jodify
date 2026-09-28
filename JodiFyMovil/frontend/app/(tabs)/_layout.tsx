@@ -28,22 +28,34 @@ export default function TabsLayout() {
 
   const authOpen = useUiStore((s) => s.authOpen);
   const closeAuth = useUiStore((s) => s.closeAuth);
-  const update = useUpdateStore();
+
+  const modalOpen = useUpdateStore((s) => s.modalOpen);
+  const modalStatus = useUpdateStore((s) => s.modalStatus);
+  const info = useUpdateStore((s) => s.info);
+  const doInstall = useUpdateStore((s) => s.doInstall);
+  const handleLater = useUpdateStore((s) => s.handleLater);
 
   React.useEffect(() => {
-    if (update.checked) return;
-    useUpdateStore.setState({ checked: true });
-    void update.runCheck();
-  }, [update]);
+    const { checked, runCheck } = useUpdateStore.getState();
+    if (!checked) {
+      useUpdateStore.setState({ checked: true });
+      void runCheck();
+    }
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" translucent backgroundColor={colors.background} />
-      <Tabs screenOptions={{ tabBarStyle: { display: 'none' } }}>
-        <Tabs.Screen name="index" options={{ title: 'Inicio' }} />
-        <Tabs.Screen name="library" options={{ title: 'Biblioteca' }} />
-        <Tabs.Screen name="community" options={{ title: 'Comunidad' }} />
-        <Tabs.Screen name="settings" options={{ title: 'Ajustes' }} />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
+        }}
+      >
+        <Tabs.Screen name="index" options={{ headerShown: false, title: 'Inicio' }} />
+        <Tabs.Screen name="library" options={{ headerShown: false, title: 'Biblioteca' }} />
+        <Tabs.Screen name="community" options={{ headerShown: false, title: 'Comunidad' }} />
+        <Tabs.Screen name="settings" options={{ headerShown: false, title: 'Ajustes' }} />
       </Tabs>
       <MiniPlayer />
       <TabBar />
@@ -54,14 +66,14 @@ export default function TabsLayout() {
       <SecretAccessScreen />
       <AuthScreen visible={authOpen} onClose={closeAuth} />
       <UpdateModal
-        visible={update.modalOpen}
-        current={update.info?.current ?? ''}
-        latest={update.info?.latest ?? ''}
-        notes={update.info?.notes ?? ''}
-        status={update.modalStatus}
-        onInstall={() => void update.doInstall()}
-        onLater={update.handleLater}
-        onClose={update.handleLater}
+        visible={modalOpen}
+        current={info?.current ?? ''}
+        latest={info?.latest ?? ''}
+        notes={info?.notes ?? ''}
+        status={modalStatus}
+        onInstall={() => void doInstall()}
+        onLater={handleLater}
+        onClose={handleLater}
       />
     </SafeAreaView>
   );

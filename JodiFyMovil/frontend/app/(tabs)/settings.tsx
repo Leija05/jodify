@@ -19,7 +19,10 @@ export default function SettingsScreen() {
   const startSleepTimer = useSettingsStore((s) => s.startSleepTimer);
   const cancelSleepTimer = useSettingsStore((s) => s.cancelSleepTimer);
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
-  const update = useUpdateStore();
+  const updateStatus = useUpdateStore((s) => s.status);
+  const updateInfo = useUpdateStore((s) => s.info);
+  const runCheck = useUpdateStore((s) => s.runCheck);
+  const openModal = useUpdateStore((s) => s.openModal);
   const openAuth = useUiStore((s) => s.openAuth);
   const openEqualizer = useUiStore((s) => s.openEqualizer);
 
@@ -132,22 +135,22 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.cardRowText}>
             <Text style={styles.cardRowTitle}>JodiFy Mobile</Text>
-            <Text style={styles.cardRowSubtitle}>{updateLabel(update.status, update.info)}</Text>
+            <Text style={styles.cardRowSubtitle}>{updateLabel(updateStatus, updateInfo)}</Text>
           </View>
         </View>
         <View style={styles.sleepOptions}>
           <PressableFluid
-            onPress={() => void update.runCheck(true)}
-            disabled={update.status === 'checking' || update.status === 'installing'}
+            onPress={() => void runCheck(true)}
+            disabled={updateStatus === 'checking' || updateStatus === 'installing'}
             haptic="light"
             style={styles.chipBtn}
           >
             <Text style={styles.chipBtnText}>
-              {update.status === 'checking' ? 'Buscando…' : 'Buscar actualizaciones'}
+              {updateStatus === 'checking' ? 'Buscando…' : 'Buscar actualizaciones'}
             </Text>
           </PressableFluid>
-          {update.status === 'available' && (
-            <PressableFluid onPress={update.openModal} haptic="medium" style={[styles.chipBtn, styles.chipBtnPrimary]}>
+          {updateStatus === 'available' && (
+            <PressableFluid onPress={openModal} haptic="medium" style={[styles.chipBtn, styles.chipBtnPrimary]}>
               <Text style={[styles.chipBtnText, styles.chipBtnTextPrimary]}>Instalar actualización</Text>
             </PressableFluid>
           )}

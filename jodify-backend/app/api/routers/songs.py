@@ -40,7 +40,7 @@ def song_view(doc: dict) -> dict:
         "category": doc.get("category"),
         "genre": doc.get("genre"),
         "lyrics": doc.get("lyrics"),
-        "cover_url": f"/songs/{song_id}/cover" if doc.get("cover_file_id") else None,
+        "cover_url": f"/songs/{song_id}/cover" if doc.get("cover_file_id") else (doc.get("cover_url") or None),
         "play_count": doc.get("play_count", 0),
     }
 

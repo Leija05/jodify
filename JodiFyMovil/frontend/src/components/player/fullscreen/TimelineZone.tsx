@@ -32,8 +32,9 @@ export const TimelineZone = React.forwardRef<View, TimelineZoneProps>(
           position={position}
           duration={duration}
           onSeek={onSeek}
-          trackHeight={4.5}
-          thumbSize={48}
+          trackHeight={4}
+          thumbSize={14}
+          showLabels={false}
         />
 
         {/* Apple Music Style Time Labels directly beneath the slider */}

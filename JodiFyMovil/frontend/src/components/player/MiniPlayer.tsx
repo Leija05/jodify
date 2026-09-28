@@ -90,6 +90,7 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
           onPress={openFullscreen}
           haptic={false}
           style={styles.clickableZone}
+          contentStyle={styles.clickableInner}
           testID="mini-player-expand"
         >
           {/* Cover Art with Doppelrand */}
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(20, 20, 30, 0.72)',
+    backgroundColor: 'rgba(18, 18, 28, 0.96)',
     borderWidth: 1.2,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 22,
@@ -208,9 +209,14 @@ const styles = StyleSheet.create({
   },
   clickableZone: {
     flex: 1,
+    minWidth: 0,
+  },
+  clickableInner: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    width: '100%',
     minWidth: 0,
   },
   coverWrapper: {
@@ -249,9 +255,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.white,
-    fontFamily: typography.headlineSmall.fontFamily,
+    fontFamily: typography.headlineMedium.fontFamily,
     fontSize: 14,
-    fontWeight: '700',
     letterSpacing: -0.2,
   },
   artist: {

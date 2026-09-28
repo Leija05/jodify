@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
+import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Animated, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Animated, StyleSheet, Text, View, Pressable, type LayoutChangeEvent } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { usePlayerStore } from '@stores/player.store';
 import { useUiStore, type TabId } from '@stores/ui.store';
 import { colors, typography, motion } from '@theme';
-import { PressableFluid } from '@components/ui/PressableFluid';
 
 const TABS: Array<{ id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = [
   { id: 'home', label: 'Inicio', icon: 'home-outline', iconActive: 'home' },
@@ -15,9 +16,18 @@ const TABS: Array<{ id: TabId; label: string; icon: keyof typeof Ionicons.glyphM
   { id: 'settings', label: 'Ajustes', icon: 'settings-outline', iconActive: 'settings' },
 ];
 
+const TAB_ROUTES: Record<TabId, string> = {
+  home: '/(tabs)',
+  library: '/(tabs)/library',
+  community: '/(tabs)/community',
+  settings: '/(tabs)/settings',
+};
+
 const TAB_BAR_HEIGHT = 68;
 
 export function TabBar() {
+  const router = useRouter();
+  const pathname = usePathname();
   const tab = useUiStore((s) => s.tab);
   const setTab = useUiStore((s) => s.setTab);
   const queueLength = usePlayerStore((s) => s.queue.length);
@@ -25,6 +35,19 @@ export function TabBar() {
 
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorTranslate = React.useRef(new Animated.Value(0)).current;
+
+  // Sync active tab indicator from URL path
+  React.useEffect(() => {
+    if (pathname.includes('/library')) {
+      setTab('library');
+    } else if (pathname.includes('/community')) {
+      setTab('community');
+    } else if (pathname.includes('/settings')) {
+      setTab('settings');
+    } else if (pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/index') {
+      setTab('home');
+    }
+  }, [pathname, setTab]);
 
   const onBarLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -47,6 +70,15 @@ export function TabBar() {
     }).start();
   }, [tab, tabWidth, indicatorTranslate]);
 
+  const handleTabPress = (tabId: TabId) => {
+    setTab(tabId);
+    void Haptics.selectionAsync();
+    const target = TAB_ROUTES[tabId];
+    if (target) {
+      router.navigate(target as any);
+    }
+  };
+
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.bar} onLayout={onBarLayout}>
@@ -66,12 +98,11 @@ export function TabBar() {
         {TABS.map((t) => {
           const active = tab === t.id;
           return (
-            <PressableFluid
+            <Pressable
               key={t.id}
-              onPress={() => setTab(t.id)}
-              haptic="selection"
+              onPress={() => handleTabPress(t.id)}
               style={styles.item}
-              hitSlop={8}
+              hitSlop={6}
               testID={`tab-${t.id}`}
             >
               <View style={styles.itemInner}>
@@ -87,7 +118,7 @@ export function TabBar() {
                 />
                 <Text style={[styles.label, active && styles.labelActive]}>{t.label}</Text>
               </View>
-            </PressableFluid>
+            </Pressable>
           );
         })}
       </View>
@@ -104,7 +135,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(14, 14, 22, 0.72)',
+    backgroundColor: 'rgba(18, 18, 28, 0.97)',
     borderWidth: 1.2,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 26,
@@ -123,20 +154,22 @@ const styles = StyleSheet.create({
     bottom: 6,
     left: 4,
     borderRadius: 20,
-    backgroundColor: 'rgba(127, 0, 255, 0.25)',
+    backgroundColor: 'rgba(127, 0, 255, 0.28)',
     borderWidth: 1,
-    borderColor: 'rgba(127, 0, 255, 0.5)',
+    borderColor: 'rgba(127, 0, 255, 0.55)',
   },
   item: {
     flex: 1,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
   },
   itemInner: {
-    flex: 1,
-    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   badge: {
     position: 'absolute',
@@ -154,21 +187,18 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: colors.white,
-    fontFamily: typography.labelMedium.fontFamily,
+    fontFamily: typography.labelLarge.fontFamily,
     fontSize: 10,
-    fontWeight: '700',
   },
   label: {
     color: colors.textMuted,
-    fontFamily: typography.labelMedium.fontFamily,
+    fontFamily: typography.bodySmall.fontFamily,
     fontSize: 11,
-    fontWeight: '500',
     letterSpacing: 0.2,
   },
   labelActive: {
     color: colors.white,
     fontFamily: typography.labelLarge.fontFamily,
     fontSize: 11,
-    fontWeight: '700',
   },
 });

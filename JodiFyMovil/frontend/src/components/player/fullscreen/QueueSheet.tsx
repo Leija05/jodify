@@ -133,9 +133,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.white,
-    fontFamily: typography.headlineMedium.fontFamily,
+    fontFamily: typography.headlineLarge.fontFamily,
     fontSize: 16,
-    fontWeight: '700',
     letterSpacing: -0.2,
   },
   subtitle: {
@@ -164,7 +163,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontFamily: typography.labelMedium.fontFamily,
     fontSize: 11,
-    fontWeight: '600',
   },
   closeBtn: {
     padding: 6,

@@ -8,26 +8,58 @@ export interface LoginResponse {
   user: UserAccess;
 }
 
+interface BackendAuthPayload {
+  token: string;
+  username: string;
+  role: string;
+}
+
 export async function login(username: string, password: string): Promise<LoginResponse> {
-  return apiFetch<LoginResponse>('/api/auth/login', {
+  const data = await apiFetch<BackendAuthPayload>('/api/auth/login', {
     method: 'POST',
     body: { username, password },
   });
+  return {
+    token: data.token,
+    user: {
+      id: 0,
+      username: data.username,
+      role: (data.role as any) || 'user',
+      is_online: 1,
+    },
+  };
 }
 
 export async function register(username: string, password: string): Promise<LoginResponse> {
-  return apiFetch<LoginResponse>('/api/auth/register', {
+  const data = await apiFetch<BackendAuthPayload>('/api/auth/register', {
     method: 'POST',
     body: { username, password },
   });
+  return {
+    token: data.token,
+    user: {
+      id: 0,
+      username: data.username,
+      role: (data.role as any) || 'user',
+      is_online: 1,
+    },
+  };
 }
 
 export async function validateToken(token: string): Promise<LoginResponse> {
-  return apiFetch<LoginResponse>('/api/auth/validate', {
-    method: 'POST',
-    body: { token },
-    auth: true,
+  const data = await apiFetch<BackendAuthPayload>('/api/auth/me', {
+    method: 'GET',
+    token,
   });
+  return {
+    token: data.token || token,
+    user: {
+      id: 0,
+      username: data.username,
+      role: (data.role as any) || 'user',
+      is_online: 1,
+    },
+  };
 }
 
 export async function refreshToken(): Promise<{ token: string }> {

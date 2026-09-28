@@ -546,7 +546,12 @@ const styles = StyleSheet.create({
     width: 120,
   },
   topCoverWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 18,
+    overflow: 'hidden',
     position: 'relative',
+    backgroundColor: '#12121c',
   },
   topPlayingBadge: {
     position: 'absolute',

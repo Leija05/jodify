@@ -1,4 +1,5 @@
 import type { Song, LibraryTab, SortMode, LyricsLine, ParsedLyrics } from './types';
+import { API_BASE } from './constants';
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -16,7 +17,7 @@ export function shuffleArray<T>(array: T[]): T[] {
 }
 
 export function pickCoverUrl(song: Song): string | null {
-  return (
+  const relativePath = (
     song.cover_url ??
     song.coverUrl ??
     song.cover ??
@@ -26,6 +27,15 @@ export function pickCoverUrl(song: Song): string | null {
     song.picture ??
     null
   );
+  if (!relativePath) return null;
+  // If already absolute URL, return as-is
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('blob:') || relativePath.startsWith('data:')) {
+    return relativePath;
+  }
+  // Prepend API base for relative paths
+  const base = API_BASE.replace(/\/+$/, '');
+  const cleanPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  return `${base}${cleanPath}`;
 }
 
 export function resolveArtist(song: Song): string | null {
