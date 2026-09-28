@@ -9,6 +9,8 @@ import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { Slider } from '@components/ui/Slider';
 import { useEqStore } from '@stores/eq.store';
 import { useUiStore } from '@stores/ui.store';
+import { usePlayerStore } from '@stores/player.store';
+import { useLibraryStore } from '@stores/library.store';
 import { colors, typography, radius, motion } from '@theme';
 
 const SCREEN = Dimensions.get('window');
@@ -45,6 +47,12 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
     const vibe = useEqStore((s) => s.vibe);
     const reset = useEqStore((s) => s.reset);
     const insets = useSafeAreaInsets();
+
+    const currentSong = usePlayerStore((s) => s.currentSong);
+    const isPlaying = usePlayerStore((s) => s.isPlaying);
+    const togglePlay = usePlayerStore((s) => s.togglePlay);
+    const playSong = usePlayerStore((s) => s.playSong);
+    const librarySongs = useLibraryStore((s) => s.songs);
 
     const translateY = useRef(new Animated.Value(SCREEN.height)).current;
     const opacity = useRef(new Animated.Value(0)).current;
@@ -135,15 +143,17 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
             styles.container,
             { opacity, transform: [{ translateY }] },
           ]}
-          {...panResponderRef.current?.panHandlers}
         >
           <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-          <View style={[styles.header, { paddingTop: Math.max(44, insets.top) }]}>
+
+          {/* Drag Handle Bar and Header with Dismiss Gesture */}
+          <View {...panResponderRef.current?.panHandlers} style={[styles.header, { paddingTop: Math.max(44, insets.top) }]}>
             <PressableFluid onPress={dismiss} haptic="light" hitSlop={12} style={styles.dismissBtn}>
               <Ionicons name="chevron-down-outline" size={28} color={colors.white} />
             </PressableFluid>
             <View style={styles.headerCenter}>
-              <Text style={styles.headerTitle}>Ecualizador</Text>
+              <View style={styles.headerDragPill} />
+              <Text style={styles.headerTitle}>Ecualizador de Estudio</Text>
             </View>
             <PressableFluid
               onPress={() => setEnabled(!enabled)}
@@ -154,21 +164,68 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
               ]}
               hitSlop={8}
             >
-              <Ionicons name={enabled ? 'toggle' : 'toggle-outline'} size={24} color={enabled ? colors.secondary : colors.textMuted} />
+              <Ionicons name={enabled ? 'toggle' : 'toggle-outline'} size={28} color={enabled ? colors.secondary : colors.textMuted} />
             </PressableFluid>
           </View>
 
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {/* Visualizer & Status */}
             <View style={styles.visualizer}>
               <EqualizerBars
-                playing={enabled}
-                bars={10}
-                height={60}
-                barWidth={12}
-                gap={4}
-                color={colors.secondary}
+                playing={enabled && isPlaying}
+                bars={12}
+                height={64}
+                barWidth={10}
+                gap={5}
+                color={enabled ? colors.secondary : colors.textMuted}
               />
+              <Text style={[styles.statusIndicatorText, { color: enabled ? colors.secondary : colors.warning }]}>
+                {enabled ? '● PROCESADOR DSP ACTIVO' : '○ EN BYPASS DIRECTO (DESACTIVADO)'}
+              </Text>
             </View>
+
+            {/* Test Audio Preview Bar */}
+            <View style={styles.testBarCard}>
+              <View style={styles.testBarLeft}>
+                <Ionicons name="musical-notes" size={20} color={colors.secondary} />
+                <View style={styles.testBarTexts}>
+                  <Text style={styles.testBarTitle} numberOfLines={1}>
+                    {currentSong ? currentSong.name : 'Probar Ecualización'}
+                  </Text>
+                  <Text style={styles.testBarSubtitle}>
+                    {currentSong ? (isPlaying ? 'Reproduciendo audio en vivo' : 'En pausa · Toca play para probar') : 'Toca el botón para cargar una pista de prueba'}
+                  </Text>
+                </View>
+              </View>
+              <PressableFluid
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  if (currentSong) {
+                    togglePlay();
+                  } else if (librarySongs.length > 0) {
+                    const first = librarySongs[0];
+                    if (first) playSong(first, librarySongs);
+                  }
+                }}
+                haptic="medium"
+                style={styles.testPlayBtn}
+              >
+                <Ionicons
+                  name={isPlaying ? 'pause' : 'play'}
+                  size={18}
+                  color={colors.white}
+                />
+              </PressableFluid>
+            </View>
+
+            {!enabled && (
+              <View style={styles.bypassWarning}>
+                <Ionicons name="information-circle" size={18} color={colors.warning} />
+                <Text style={styles.bypassWarningText}>
+                  El ecualizador está apagado. Toca el interruptor arriba a la derecha para activar las 10 bandas y los efectos DSP.
+                </Text>
+              </View>
+            )}
 
             {/* Master FX DSP: Bass Boost & Surround 3D */}
             <View style={styles.fxGrid}>
@@ -349,6 +406,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  headerDragPill: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    marginBottom: 6,
+  },
   headerTitle: {
     color: colors.white,
     fontFamily: typography.headlineMedium.fontFamily,
@@ -367,11 +431,76 @@ const styles = StyleSheet.create({
     paddingTop: 100,
     paddingBottom: 40,
     paddingHorizontal: 20,
-    gap: 24,
+    gap: 20,
   },
   visualizer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  statusIndicatorText: {
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  testBarCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: radius.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  testBarLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginRight: 12,
+  },
+  testBarTexts: {
+    flex: 1,
+  },
+  testBarTitle: {
+    color: colors.white,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  testBarSubtitle: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  testPlayBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bypassWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255, 179, 0, 0.12)',
+    borderRadius: radius.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 179, 0, 0.3)',
+  },
+  bypassWarningText: {
+    flex: 1,
+    color: colors.warning,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 12,
+    lineHeight: 16,
   },
   bands: {
     gap: 8,

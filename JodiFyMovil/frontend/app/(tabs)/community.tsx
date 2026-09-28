@@ -141,15 +141,19 @@ export default function CommunityScreen() {
     setShowProfile(true);
   }, []);
 
-  const onlineUsers = useMemo(() => users.filter(u => u.online).length, [users]);
+  const onlineUsers = useMemo(
+    () => users.filter(u => u.online || u.is_online === 1 || u.presence === 'online' || u.presence === 'background').length,
+    [users]
+  );
   const totalUsers = users.length;
-  const listeningUsers = useMemo(() => users.filter(u => u.now_playing).length, [users]);
+  const listeningUsers = useMemo(() => users.filter(u => !!u.now_playing).length, [users]);
 
   const currentUserData = useMemo(() => users.find(u => u.username === user?.username), [users, user]);
   const youAvatarUri = currentUserData?.avatar_source === 'discord' && currentUserData.discord?.avatar_url
     ? currentUserData.discord.avatar_url
     : currentUserData?.avatar_url ?? currentUserData?.discord?.avatar_url;
-  const youPresence = currentUserData?.presence ?? (currentUserData?.online ? 'online' : 'offline');
+  const isYouOnline = !!user && (currentUserData?.presence === 'online' || currentUserData?.is_online === 1 || currentUserData?.online || true);
+  const youPresence = currentUserData?.presence ?? (isYouOnline ? 'online' : 'offline');
 
   return (
     <View style={styles.container}>
@@ -192,7 +196,7 @@ export default function CommunityScreen() {
             </View>
             <View style={styles.youInfo}>
               <View style={styles.youHeader}>
-                <Text style={styles.youName}>{currentUserData.username}</Text>
+                <Text style={styles.youName}>{currentUserData.display_name ?? currentUserData.username}</Text>
                 <Text style={styles.youBadge}>TÚ</Text>
               </View>
               {currentUserData.now_playing ? (
@@ -208,7 +212,9 @@ export default function CommunityScreen() {
                 </View>
               ) : (
                 <Text style={styles.youStatus}>
-                  {currentUserData.online ? 'En línea · Listo para escuchar' : 'Desconectado'}
+                  {isYouOnline
+                    ? (youPresence === 'background' ? 'En 2do plano · En la red JodiFy' : 'En línea · Listo para escuchar')
+                    : 'Desconectado'}
                 </Text>
               )}
             </View>

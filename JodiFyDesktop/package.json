@@ -52,8 +52,5 @@
       "createDesktopShortcut": true,
       "shortcutName": "JodiFy"
     }
-  },
-  "dependencies": {
-    "electron-updater": "^6.3.9"
   }
 }

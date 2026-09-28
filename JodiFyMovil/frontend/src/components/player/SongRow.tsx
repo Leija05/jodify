@@ -89,10 +89,10 @@ export const SongRow = React.forwardRef<View, SongRowProps>(
       onLike,
       onUnlike,
       liked = false,
-      onDownload,
+      onDownload: _onDownload,
       downloaded = false,
-      onAddToQueue,
-      onPlayNext,
+      onAddToQueue: _onAddToQueue,
+      onPlayNext: _onPlayNext,
       right,
       style,
       coverSize = 56,
@@ -131,29 +131,24 @@ export const SongRow = React.forwardRef<View, SongRowProps>(
 
         {right ?? (
           <View style={styles.actions}>
+            {downloaded && (
+              <View style={styles.downloadedBadge}>
+                <Ionicons name="cloud-done" size={16} color={colors.success} />
+              </View>
+            )}
             {onLike && !liked && (
               <PressableFluid onPress={onLike} haptic="light" hitSlop={8} style={styles.actionBtn}>
-                <Ionicons name="heart-outline" size={22} color={colors.textMuted} />
+                <Ionicons name="heart-outline" size={20} color={colors.textMuted} />
               </PressableFluid>
             )}
             {onUnlike && liked && (
               <PressableFluid onPress={onUnlike} haptic="light" hitSlop={8} style={styles.actionBtn}>
-                <Ionicons name="heart" size={22} color={colors.accent} />
+                <Ionicons name="heart" size={20} color="#FF0055" />
               </PressableFluid>
             )}
-            {onDownload && (
-              <PressableFluid onPress={onDownload} haptic="light" hitSlop={8} style={styles.actionBtn}>
-                <Ionicons name={downloaded ? 'cloud-done' : 'cloud-download-outline'} size={22} color={downloaded ? colors.success : colors.textMuted} />
-              </PressableFluid>
-            )}
-            {onAddToQueue && (
-              <PressableFluid onPress={onAddToQueue} haptic="light" hitSlop={8} style={styles.actionBtn}>
-                <Ionicons name="list-outline" size={22} color={colors.textMuted} />
-              </PressableFluid>
-            )}
-            {onPlayNext && (
-              <PressableFluid onPress={onPlayNext} haptic="light" hitSlop={8} style={styles.actionBtn}>
-                <Ionicons name="play-skip-forward-outline" size={22} color={colors.textMuted} />
+            {onLongPress && (
+              <PressableFluid onPress={onLongPress} haptic="light" hitSlop={8} style={styles.actionBtn}>
+                <Ionicons name="ellipsis-vertical" size={18} color={colors.textSecondary} />
               </PressableFluid>
             )}
           </View>
@@ -211,17 +206,26 @@ export const SongRow = React.forwardRef<View, SongRowProps>(
       [liked, onLike, onUnlike, translateX]
     );
 
+    const backdropOpacity = translateX.interpolate({
+      inputRange: [0, 8, 45],
+      outputRange: [0, 0.4, 1],
+      extrapolate: 'clamp',
+    });
+
     return (
       <View style={styles.swipeWrapper}>
-        <View
+        <Animated.View
           style={[
             styles.swipeBackdrop,
-            { backgroundColor: liked ? 'rgba(255, 0, 85, 0.16)' : 'rgba(255, 0, 85, 0.28)' },
+            {
+              opacity: backdropOpacity,
+              backgroundColor: liked ? 'rgba(255, 0, 85, 0.22)' : 'rgba(255, 0, 85, 0.35)',
+            },
           ]}
         >
           <Ionicons name={liked ? 'heart-dislike' : 'heart'} size={22} color="#FF0055" />
           <Text style={styles.swipeText}>{liked ? 'Quitar favorita' : 'Favorita'}</Text>
-        </View>
+        </Animated.View>
 
         <Animated.View
           style={{ transform: [{ translateX }] }}
@@ -254,14 +258,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 18,
-    backgroundColor: 'transparent',
+    backgroundColor: '#0c0c16',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     marginBottom: 4,
   },
   containerCurrent: {
-    backgroundColor: 'rgba(127, 0, 255, 0.12)',
-    borderColor: 'rgba(127, 0, 255, 0.35)',
+    backgroundColor: 'rgba(127, 0, 255, 0.16)',
+    borderColor: 'rgba(127, 0, 255, 0.45)',
   },
   contentWrap: {
     width: '100%',
@@ -326,6 +330,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     flexShrink: 0,
+  },
+  downloadedBadge: {
+    padding: 6,
+    marginRight: 2,
   },
   actionBtn: {
     padding: 6,

@@ -29,12 +29,6 @@ export default function TabsLayout() {
   const authOpen = useUiStore((s) => s.authOpen);
   const closeAuth = useUiStore((s) => s.closeAuth);
 
-  const modalOpen = useUpdateStore((s) => s.modalOpen);
-  const modalStatus = useUpdateStore((s) => s.modalStatus);
-  const info = useUpdateStore((s) => s.info);
-  const doInstall = useUpdateStore((s) => s.doInstall);
-  const handleLater = useUpdateStore((s) => s.handleLater);
-
   React.useEffect(() => {
     const { checked, runCheck } = useUpdateStore.getState();
     if (!checked) {
@@ -65,16 +59,7 @@ export default function TabsLayout() {
       <SongActionsSheet />
       <SecretAccessScreen />
       <AuthScreen visible={authOpen} onClose={closeAuth} />
-      <UpdateModal
-        visible={modalOpen}
-        current={info?.current ?? ''}
-        latest={info?.latest ?? ''}
-        notes={info?.notes ?? ''}
-        status={modalStatus}
-        onInstall={() => void doInstall()}
-        onLater={handleLater}
-        onClose={handleLater}
-      />
+      <UpdateModal />
     </SafeAreaView>
   );
 }

@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -222,7 +223,11 @@ export function SongActionsSheet() {
           <View style={styles.separator} />
 
           {/* Action Items List */}
-          <View style={styles.actionsList}>
+          <ScrollView
+            style={styles.scrollList}
+            contentContainerStyle={styles.actionsList}
+            showsVerticalScrollIndicator={false}
+          >
             <PressableFluid onPress={handlePlayNow} haptic="medium" style={styles.actionRow}>
               <View style={[styles.actionIconBox, { backgroundColor: 'rgba(127, 0, 255, 0.2)' }]}>
                 <Ionicons name="play" size={20} color="#00E5FF" />
@@ -301,7 +306,7 @@ export function SongActionsSheet() {
                 <Text style={styles.halfActionText}>Ecualizador</Text>
               </PressableFluid>
             </View>
-          </View>
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>
@@ -318,6 +323,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(5, 5, 10, 0.75)',
   },
   sheetCard: {
+    maxHeight: '88%',
     backgroundColor: 'rgba(18, 18, 28, 0.95)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -326,6 +332,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 20,
     paddingTop: 8,
+  },
+  scrollList: {
+    maxHeight: SCREEN_HEIGHT * 0.58,
   },
   handleWrap: {
     alignItems: 'center',

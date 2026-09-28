@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 import time
 from typing import Annotated
 
@@ -27,15 +28,27 @@ def invalidate_songs_cache():
 
 def song_view(doc: dict) -> dict:
     song_id = sid(doc.get("_id"))
+    raw_name = (doc.get("name") or "").strip()
+    raw_artist = (doc.get("artist") or "").strip()
+
+    clean_artist = raw_artist if raw_artist and raw_artist.lower() != raw_name.lower() else None
+    clean_name = raw_name
+
+    if not clean_artist:
+        match = re.match(r"^(.*?)\s*[-–—]\s*(.+)$", raw_name)
+        if match:
+            clean_artist = match.group(1).strip()
+            clean_name = match.group(2).strip()
+
     return {
         "id": song_id,
-        "name": doc.get("name", ""),
+        "name": clean_name or raw_name,
         "url": f"/songs/{song_id}/audio",
         "likes": doc.get("likes", 0),
         "added_by": doc.get("added_by"),
         "created_at": doc.get("created_at"),
         "duration": doc.get("duration"),
-        "artist": doc.get("artist"),
+        "artist": clean_artist,
         "album": doc.get("album"),
         "category": doc.get("category"),
         "genre": doc.get("genre"),
@@ -125,7 +138,12 @@ async def upload_song(
     if lyrics_clean:
         doc["lyrics"] = lyrics_clean
     artist_clean = (artist or "").strip()
-    if artist_clean:
+    if not artist_clean:
+        match = re.match(r"^(.*?)\s*[-–—]\s*(.+)$", raw_name)
+        if match:
+            doc["artist"] = match.group(1).strip()
+            doc["name"] = match.group(2).strip()
+    elif artist_clean.lower() != raw_name.lower():
         doc["artist"] = artist_clean
     if cover is not None:
         cover_bytes = await cover.read()

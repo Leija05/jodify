@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
+  CloudArrowUp,
   Gauge,
   Keyhole,
   Power,
@@ -18,14 +19,16 @@ import { DevAccess } from './DevAccess';
 import { DevUsers } from './DevUsers';
 import { DevConsole } from './DevConsole';
 import { DevControl } from './DevControl';
+import { DevUpdates } from './DevUpdates';
 import type { DevOverview, DevState, DevToken, DevUserRow } from '../../lib/types';
 
-type Panel = 'general' | 'access' | 'users' | 'console' | 'control';
+type Panel = 'general' | 'access' | 'users' | 'console' | 'control' | 'updates';
 
 const PANELS: Array<{ id: Panel; label: string; icon: typeof Gauge }> = [
   { id: 'general', label: 'General', icon: Gauge },
   { id: 'access', label: 'Acceso', icon: Keyhole },
   { id: 'users', label: 'Usuarios', icon: Users },
+  { id: 'updates', label: 'Actualizaciones APK', icon: CloudArrowUp },
   { id: 'console', label: 'Consola', icon: TerminalWindow },
   { id: 'control', label: 'Control', icon: Power },
 ];
@@ -188,6 +191,7 @@ export function DevView() {
               {panel === 'general' && <DevGeneral overview={overview} plays={plays} />}
               {panel === 'access' && <DevAccess tokens={tokens} onChanged={reloadTokens} state={state} />}
               {panel === 'users' && <DevUsers users={devUsers} onChanged={reloadUsers} loading={devUsers.length === 0 && !overview} />}
+              {panel === 'updates' && <DevUpdates />}
               {panel === 'console' && <DevConsole live={live} onLiveChange={setLive} />}
               {panel === 'control' && <DevControl state={state} onChanged={loadAll} />}
             </motion.div>

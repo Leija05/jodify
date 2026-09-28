@@ -1,5 +1,5 @@
 import { api, API_BASE, getAuthToken } from '../lib/api';
-import type { DevKeyRow, DevLogEvent, DevOverview, DevState, DevToken, DevUserRow } from '../lib/types';
+import type { AppUpdateItem, DevKeyRow, DevLogEvent, DevOverview, DevState, DevToken, DevUserRow } from '../lib/types';
 
 export interface DevAccessResult {
   token: string;
@@ -123,5 +123,58 @@ export const devService = {
 
     void run();
     return () => controller.abort();
+  },
+
+  async listAppUpdates(): Promise<AppUpdateItem[]> {
+    return api.get<AppUpdateItem[]>('/updates/list');
+  },
+
+  async uploadAppUpdate(
+    formData: FormData,
+    onProgress?: (percent: number) => void
+  ): Promise<{ success: boolean; message: string; update: AppUpdateItem }> {
+    const token = getAuthToken();
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE}/updates/upload`);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            const percent = Math.round((evt.loaded / evt.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            resolve({ success: true, message: 'Actualización subida con éxito', update: {} as any });
+          }
+        } else {
+          try {
+            const err = JSON.parse(xhr.responseText);
+            reject(new Error(err.detail || 'Error al subir archivo APK a la base de datos'));
+          } catch {
+            reject(new Error(`Error del servidor (${xhr.status})`));
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Error de conexión con el servidor al subir APK'));
+      xhr.send(formData);
+    });
+  },
+
+  async activateAppUpdate(updateId: string): Promise<{ success: boolean; message: string }> {
+    return api.put<{ success: boolean; message: string }>(`/updates/${updateId}/activate`);
+  },
+
+  async deleteAppUpdate(updateId: string): Promise<{ success: boolean; message: string }> {
+    return api.del<{ success: boolean; message: string }>(`/updates/${updateId}`);
   },
 };

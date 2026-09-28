@@ -39,7 +39,31 @@ export function pickCoverUrl(song: Song): string | null {
 }
 
 export function resolveArtist(song: Song): string | null {
-  return song.artist ?? song.album ?? null;
+  const rawArtist = (song.artist || '').trim();
+  const rawName = (song.name || '').trim();
+
+  // 1. If artist is provided and distinct from song name
+  if (rawArtist && rawArtist.toLowerCase() !== rawName.toLowerCase()) {
+    return rawArtist;
+  }
+
+  // 2. If song name has "Artist - Title" or "Artist – Title"
+  const delimiterMatch = rawName.match(/^([^-–—]+)\s*[-–—]\s*(.+)$/);
+  if (delimiterMatch && delimiterMatch[1] && delimiterMatch[2]) {
+    return delimiterMatch[1].trim();
+  }
+
+  // 3. Fallback to album only if distinct from name and not generic
+  const rawAlbum = (song.album || '').trim();
+  if (
+    rawAlbum &&
+    rawAlbum.toLowerCase() !== rawName.toLowerCase() &&
+    !/^(single|ep|album|álbum|desconocido|unknown)$/i.test(rawAlbum)
+  ) {
+    return rawAlbum;
+  }
+
+  return 'Artista Desconocido';
 }
 
 export function formatDuration(seconds: number): string {

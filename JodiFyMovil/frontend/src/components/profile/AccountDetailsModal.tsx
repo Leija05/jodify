@@ -151,7 +151,7 @@ export function AccountDetailsModal({ visible, onClose }: AccountDetailsModalPro
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable style={styles.backdropDismissZone} onPress={onClose} />
 
         <View style={styles.container}>
           <LinearGradient
@@ -342,6 +342,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.72)',
     justifyContent: 'flex-end',
+  },
+  backdropDismissZone: {
+    flex: 1,
+    width: '100%',
   },
   container: {
     width: '100%',

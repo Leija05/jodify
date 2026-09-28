@@ -260,3 +260,19 @@ export interface LanyardProfile {
     };
   };
 }
+
+export interface AppUpdateItem {
+  id: string;
+  platform: string;
+  version: string;
+  build_number: number;
+  release_notes: string;
+  filename: string;
+  size_bytes: number;
+  sha256?: string;
+  mandatory: boolean;
+  is_active: boolean;
+  uploaded_by?: string;
+  created_at: string;
+  download_url: string;
+}

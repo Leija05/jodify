@@ -6,13 +6,16 @@ import {
   View,
   Image,
   Alert,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { API_HOST } from '@lib/constants';
 import { EmptyState } from '@components/ui/EmptyState';
 import { DoubleBezelCard } from '@components/ui/DoubleBezelCard';
 import { PressableFluid } from '@components/ui/PressableFluid';
+import { Slider } from '@components/ui/Slider';
 import { currentAppVersion } from '@services/update.service';
 import { clearAllDownloads } from '@services/downloads.service';
 import { useLibraryStore } from '@stores/library.store';
@@ -23,6 +26,15 @@ import { useUiStore } from '@stores/ui.store';
 import { UserProfileModal } from '@components/profile/UserProfileModal';
 import { AccountDetailsModal } from '@components/profile/AccountDetailsModal';
 import { colors, typography, radius, gradients } from '@theme';
+
+const QUICK_PRESETS = [
+  { id: 'flat', label: 'Flat' },
+  { id: 'bass', label: 'Bass Boost' },
+  { id: 'rock', label: 'Rock' },
+  { id: 'electronic', label: 'Electronic' },
+  { id: 'vocal', label: 'Vocal' },
+  { id: 'pop', label: 'Pop' },
+];
 
 export default function SettingsScreen() {
   const [profileOpen, setProfileOpen] = useState(false);
@@ -48,6 +60,10 @@ export default function SettingsScreen() {
   const eqPreset = useEqStore((s) => s.preset);
   const bassBoost = useEqStore((s) => s.bassBoost);
   const virtualizer = useEqStore((s) => s.virtualizer);
+  const setEqEnabled = useEqStore((s) => s.setEnabled);
+  const setEqPreset = useEqStore((s) => s.setPreset);
+  const setBassBoost = useEqStore((s) => s.setBassBoost);
+  const setVirtualizer = useEqStore((s) => s.setVirtualizer);
 
   const sleepActive = sleepTimer.endAt !== null && !sleepTimer.triggered;
 
@@ -105,7 +121,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <View style={styles.screenWrapper}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Screen Header */}
       <View style={styles.header}>
         <Text style={styles.screenTitle}>Ajustes</Text>
@@ -154,23 +171,35 @@ export default function SettingsScreen() {
           </PressableFluid>
 
           {/* Quick Account Actions */}
-          <View style={styles.accountActionsGrid}>
+          <View style={styles.accountActionList}>
             <PressableFluid
               onPress={() => setAccountDetailsOpen(true)}
               haptic="medium"
-              style={styles.actionBtnOutline}
+              style={styles.accountActionTile}
             >
-              <Ionicons name="color-palette-outline" size={16} color={colors.secondary} />
-              <Text style={styles.actionBtnOutlineText}>Personalizar Foto y Perfil</Text>
+              <View style={[styles.accountActionIconWrap, { backgroundColor: 'rgba(0, 229, 255, 0.12)' }]}>
+                <Ionicons name="color-palette" size={18} color={colors.secondary} />
+              </View>
+              <View style={styles.accountActionTextWrap}>
+                <Text style={styles.accountActionTitle}>Personalizar Foto y Perfil</Text>
+                <Text style={styles.accountActionSub}>Nombre en pantalla, avatar de Discord o personalizado</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </PressableFluid>
 
             <PressableFluid
               onPress={() => setProfileOpen(true)}
               haptic="light"
-              style={styles.actionBtnOutline}
+              style={styles.accountActionTile}
             >
-              <Ionicons name="stats-chart-outline" size={16} color={colors.primary} />
-              <Text style={styles.actionBtnOutlineText}>Ver Estadísticas</Text>
+              <View style={[styles.accountActionIconWrap, { backgroundColor: 'rgba(127, 0, 255, 0.15)' }]}>
+                <Ionicons name="stats-chart" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.accountActionTextWrap}>
+                <Text style={styles.accountActionTitle}>Ver Estadísticas de Escucha</Text>
+                <Text style={styles.accountActionSub}>Canciones favoritas, reproducciones y actividad</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </PressableFluid>
           </View>
 
@@ -215,22 +244,116 @@ export default function SettingsScreen() {
       {/* SECTION 2: AUDIO & ECUALIZADOR DSP */}
       <Text style={styles.sectionTitle}>Audio & Ecualizador DSP</Text>
       <DoubleBezelCard style={styles.card} elevated>
-        <PressableFluid onPress={openEqualizer} haptic="light" style={styles.cardRow} scaleTo={0.98}>
-          <View style={styles.cardIcon}>
-            <Ionicons name="options" size={22} color={colors.secondary} />
-          </View>
-          <View style={styles.cardRowText}>
-            <View style={styles.rowTitleBadge}>
-              <Text style={styles.cardRowTitle}>Ecualizador de 10 Bandas & DSP</Text>
-              <View style={[styles.statusPill, eqEnabled ? styles.statusPillActive : styles.statusPillInactive]}>
-                <Text style={styles.statusPillText}>{eqEnabled ? 'ACTIVO' : 'DIRECTO'}</Text>
-              </View>
+        {/* Master DSP Switch Header */}
+        <View style={styles.dspHeaderRow}>
+          <View style={styles.dspHeaderLeft}>
+            <View style={[styles.cardIcon, { backgroundColor: eqEnabled ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)' }]}>
+              <Ionicons name="options" size={22} color={eqEnabled ? colors.secondary : colors.textMuted} />
             </View>
-            <Text style={styles.cardRowSubtitle}>
-              Calibración espectral analógica (32Hz - 16kHz) con refuerzo nativo BassBoost ({bassBoost}%) y espacializador envolvente 3D ({virtualizer}%). Preset: {eqPreset.toUpperCase()}.
-            </Text>
+            <View style={{ flex: 1 }}>
+              <View style={styles.rowTitleBadge}>
+                <Text style={styles.cardRowTitle}>Procesador de Audio DSP</Text>
+                <View style={[styles.statusPill, eqEnabled ? styles.statusPillActive : styles.statusPillInactive]}>
+                  <Text style={styles.statusPillText}>{eqEnabled ? 'ACTIVO' : 'BYPASS'}</Text>
+                </View>
+              </View>
+              <Text style={styles.dspStatusDesc}>
+                {eqEnabled ? 'Ecualización analógica 10 bandas y refuerzos activos' : 'Audio directo sin procesamiento'}
+              </Text>
+            </View>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          <Switch
+            value={eqEnabled}
+            onValueChange={(val) => {
+              void Haptics.selectionAsync();
+              setEqEnabled(val);
+            }}
+            trackColor={{ false: 'rgba(255, 255, 255, 0.1)', true: colors.primary }}
+            thumbColor={eqEnabled ? colors.secondary : '#888'}
+          />
+        </View>
+
+        {/* Quick Presets Scroll */}
+        <View style={styles.presetsSection}>
+          <Text style={styles.presetsSubheading}>PRESETS DE AUDIO RÁPIDOS</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsPillRow}>
+            {QUICK_PRESETS.map((p) => {
+              const isActive = eqPreset === p.id;
+              return (
+                <PressableFluid
+                  key={p.id}
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setEqPreset(p.id);
+                  }}
+                  haptic="selection"
+                  style={[styles.presetQuickPill, isActive && styles.presetQuickPillActive]}
+                >
+                  <Text style={[styles.presetQuickText, isActive && styles.presetQuickTextActive]}>
+                    {p.label}
+                  </Text>
+                </PressableFluid>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Quick DSP Sliders: Bass Boost & Surround 3D */}
+        <View style={styles.quickSlidersWrap}>
+          <View style={styles.quickSliderBlock}>
+            <View style={styles.quickSliderHeader}>
+              <View style={styles.quickSliderLabelWrap}>
+                <Ionicons name="flame" size={15} color="#FF007A" />
+                <Text style={styles.quickSliderTitle}>BASS BOOST</Text>
+              </View>
+              <Text style={[styles.quickSliderVal, { color: '#FF007A' }]}>{bassBoost}%</Text>
+            </View>
+            <Slider
+              value={bassBoost}
+              onValueChange={setBassBoost}
+              min={0}
+              max={100}
+              step={1}
+              disabled={!eqEnabled}
+              trackHeight={4}
+              thumbSize={16}
+              activeTrackStyle={{ backgroundColor: '#FF007A' }}
+            />
+          </View>
+
+          <View style={styles.quickSliderBlock}>
+            <View style={styles.quickSliderHeader}>
+              <View style={styles.quickSliderLabelWrap}>
+                <Ionicons name="headset" size={15} color={colors.secondary} />
+                <Text style={styles.quickSliderTitle}>SURROUND 3D</Text>
+              </View>
+              <Text style={[styles.quickSliderVal, { color: colors.secondary }]}>{virtualizer}%</Text>
+            </View>
+            <Slider
+              value={virtualizer}
+              onValueChange={setVirtualizer}
+              min={0}
+              max={100}
+              step={1}
+              disabled={!eqEnabled}
+              trackHeight={4}
+              thumbSize={16}
+              activeTrackStyle={{ backgroundColor: colors.secondary }}
+            />
+          </View>
+        </View>
+
+        {/* Button to open full studio equalizer */}
+        <PressableFluid
+          onPress={openEqualizer}
+          haptic="medium"
+          style={styles.openEqFullBtn}
+        >
+          <View style={styles.openEqFullLeft}>
+            <Ionicons name="options-outline" size={18} color={colors.white} />
+            <Text style={styles.openEqFullText}>Abrir Consola Completa de 10 Bandas</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="rgba(255, 255, 255, 0.6)" />
         </PressableFluid>
       </DoubleBezelCard>
 
@@ -357,26 +480,26 @@ export default function SettingsScreen() {
         title="JodiFy Music Experience"
         subtitle="Música libre de anuncios, con renderizado en tiempo real y ecualización de estudio."
       />
-
-      {/* User Profile Modal */}
-      <UserProfileModal
-        user={user}
-        isCurrentUser
-        visible={profileOpen && !!user}
-        onClose={() => setProfileOpen(false)}
-        onOpenAccountDetails={() => setAccountDetailsOpen(true)}
-        onLogout={() => {
-          setProfileOpen(false);
-          void logout();
-        }}
-      />
-
-      {/* Account Details & Avatar Customization Modal */}
-      <AccountDetailsModal
-        visible={accountDetailsOpen && !!user}
-        onClose={() => setAccountDetailsOpen(false)}
-      />
     </ScrollView>
+
+    {/* Modales a nivel raíz de pantalla para evitar fugas táctiles de ScrollView */}
+    <UserProfileModal
+      user={user}
+      isCurrentUser
+      visible={profileOpen && !!user}
+      onClose={() => setProfileOpen(false)}
+      onOpenAccountDetails={() => setAccountDetailsOpen(true)}
+      onLogout={() => {
+        setProfileOpen(false);
+        void logout();
+      }}
+    />
+
+    <AccountDetailsModal
+      visible={accountDetailsOpen && !!user}
+      onClose={() => setAccountDetailsOpen(false)}
+    />
+  </View>
   );
 }
 
@@ -500,30 +623,161 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 15,
   },
-  accountActionsGrid: {
-    flexDirection: 'row',
-    gap: 10,
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  accountActionList: {
+    gap: 8,
     marginTop: 6,
     marginBottom: 12,
   },
-  actionBtnOutline: {
+  accountActionTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  accountActionIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountActionTextWrap: {
+    flex: 1,
+  },
+  accountActionTitle: {
+    color: colors.white,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  accountActionSub: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  dspHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  dspHeaderLeft: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    gap: 12,
+    marginRight: 12,
   },
-  actionBtnOutlineText: {
-    color: colors.white,
-    fontFamily: typography.labelMedium.fontFamily,
+  dspStatusDesc: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
     fontSize: 11.5,
-    fontWeight: '600',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  presetsSection: {
+    marginTop: 14,
+  },
+  presetsSubheading: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  presetsPillRow: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  presetQuickPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  presetQuickPillActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryStrong,
+  },
+  presetQuickText: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  presetQuickTextActive: {
+    color: colors.secondary,
+    fontWeight: '700',
+  },
+  quickSlidersWrap: {
+    marginTop: 14,
+    gap: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: radius.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  quickSliderBlock: {
+    gap: 4,
+  },
+  quickSliderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quickSliderLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  quickSliderTitle: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10.5,
+    letterSpacing: 0.6,
+    fontWeight: '700',
+  },
+  quickSliderVal: {
+    fontFamily: typography.monoSmall.fontFamily,
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  openEqFullBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+  },
+  openEqFullLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  openEqFullText: {
+    color: colors.white,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 13,
+    fontWeight: '700',
   },
   guestContainer: {
     flexDirection: 'row',

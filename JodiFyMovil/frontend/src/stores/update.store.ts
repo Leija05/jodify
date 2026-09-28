@@ -4,7 +4,6 @@ import {
   downloadApkWithProgress,
   installDownloadedApk,
   currentAppVersion,
-  currentBuildNumber,
   type DownloadProgressData,
   type UpdateCheckResult,
 } from '../services/update.service';
@@ -20,7 +19,7 @@ export type UpdateStatus =
   | 'error';
 
 export interface UpdateStoreInfo {
-  id?: string;
+  id?: string | undefined;
   current: string;
   latest: string;
   buildNumber: number;
@@ -29,7 +28,7 @@ export interface UpdateStoreInfo {
   downloadUrl: string;
   filename: string;
   sizeBytes: number;
-  uploadedAt?: string;
+  uploadedAt?: string | undefined;
 }
 
 interface UpdateState {

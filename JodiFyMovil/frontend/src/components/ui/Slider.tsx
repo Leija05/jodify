@@ -52,6 +52,8 @@ export const Slider = React.forwardRef<View, SliderProps>(
       }
     }, [value]);
 
+    const trackViewRef = useRef<View>(null);
+    const trackPageX = useRef(0);
     const startValueRef = useRef(value);
 
     const stepValue = useCallback(
@@ -62,31 +64,47 @@ export const Slider = React.forwardRef<View, SliderProps>(
       [min, max, step]
     );
 
+    const updateFromPageX = useCallback(
+      (pageX: number) => {
+        if (trackWidth.current <= 0) return;
+        const relativeX = Math.max(0, Math.min(pageX - trackPageX.current, trackWidth.current));
+        const ratio = relativeX / trackWidth.current;
+        const finalVal = stepValue(min + ratio * (max - min));
+        currentValueRef.current = finalVal;
+        setLocalValue(finalVal);
+        onValueChange(finalVal);
+      },
+      [min, max, stepValue, onValueChange]
+    );
+
     useEffect(() => {
       panResponder.current = PanResponder.create({
         onStartShouldSetPanResponder: () => !disabled,
-        onMoveShouldSetPanResponder: (_event, gestureState) => !disabled && Math.abs(gestureState.dx) > 2,
-        onPanResponderGrant: (event, gestureState) => {
+        onStartShouldSetPanResponderCapture: () => !disabled,
+        onMoveShouldSetPanResponder: (_event, gestureState) => !disabled && Math.abs(gestureState.dx) > 1,
+        onMoveShouldSetPanResponderCapture: (_event, gestureState) => !disabled && Math.abs(gestureState.dx) > 1,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: (event) => {
           if (disabled) return;
           isDragging.current = true;
-          startValueRef.current = currentValueRef.current;
-          if (trackWidth.current > 0 && Math.abs(gestureState.dx) < 2) {
-            const locX = Math.max(0, Math.min(event.nativeEvent.locationX, trackWidth.current));
-            const ratio = locX / trackWidth.current;
-            const finalVal = stepValue(min + ratio * (max - min));
+          trackViewRef.current?.measure((_x, _y, width, _height, pageX) => {
+            if (width > 0) trackWidth.current = width;
+            if (pageX > 0) trackPageX.current = pageX;
+            updateFromPageX(event.nativeEvent.pageX);
+          });
+        },
+        onPanResponderMove: (event, gestureState) => {
+          if (disabled || trackWidth.current <= 0) return;
+          if (trackPageX.current > 0) {
+            updateFromPageX(event.nativeEvent.pageX);
+          } else {
+            const deltaRatio = gestureState.dx / trackWidth.current;
+            const rawVal = startValueRef.current + deltaRatio * (max - min);
+            const finalVal = stepValue(rawVal);
             currentValueRef.current = finalVal;
             setLocalValue(finalVal);
             onValueChange(finalVal);
           }
-        },
-        onPanResponderMove: (_event, gestureState) => {
-          if (disabled || trackWidth.current <= 0) return;
-          const deltaRatio = gestureState.dx / trackWidth.current;
-          const rawVal = startValueRef.current + deltaRatio * (max - min);
-          const finalVal = stepValue(rawVal);
-          currentValueRef.current = finalVal;
-          setLocalValue(finalVal);
-          onValueChange(finalVal);
         },
         onPanResponderRelease: () => {
           isDragging.current = false;
@@ -97,16 +115,20 @@ export const Slider = React.forwardRef<View, SliderProps>(
           onSlidingComplete?.(currentValueRef.current);
         },
       });
-    }, [disabled, min, max, stepValue, onValueChange, onSlidingComplete]);
+    }, [disabled, min, max, stepValue, updateFromPageX, onSlidingComplete]);
 
     const progressPercent = max > min ? Math.min(Math.max(((localValue - min) / (max - min)) * 100, 0), 100) : 0;
 
     return (
       <View ref={ref} style={[styles.container, style]} {...panResponder.current?.panHandlers}>
         <View
+          ref={trackViewRef}
           style={styles.trackWrapper}
-          onLayout={(e) => {
-            trackWidth.current = e.nativeEvent.layout.width;
+          onLayout={() => {
+            trackViewRef.current?.measure((_x, _y, width, _height, pageX) => {
+              if (width > 0) trackWidth.current = width;
+              if (pageX > 0) trackPageX.current = pageX;
+            });
           }}
         >
           <View

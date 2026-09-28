@@ -1,378 +1,583 @@
+import { useEffect, useRef, useMemo } from 'react';
+import {
+  Animated,
+  Modal,
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  Dimensions,
+  Easing,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { PressableFluid } from '@components/ui/PressableFluid';
-import { colors, typography, radius, motion, elevation } from '@theme';
+import { useUpdateStore } from '@stores/update.store';
+import { colors, typography, radius } from '@theme';
 
-interface UpdateModalProps {
-  visible: boolean;
-  current: string;
-  latest: string;
-  notes: string;
-  status: 'idle' | 'downloading' | 'installing' | 'success' | 'error';
-  onInstall: () => void;
-  onLater: () => void;
-  onClose: () => void;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 MB';
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(1)} MB`;
 }
 
-export const UpdateModal = React.forwardRef<View, UpdateModalProps>(
-  ({
-    visible,
-    current,
-    latest,
-    notes,
-    status,
-    onInstall,
-    onLater,
-    onClose,
-  }, ref) => {
-    const scale = useRef(new Animated.Value(0.9)).current;
-    const opacity = useRef(new Animated.Value(0)).current;
-    const [progress, setProgress] = useState(0);
+export function UpdateModal() {
+  const visible = useUpdateStore((s) => s.modalOpen);
+  const status = useUpdateStore((s) => s.status);
+  const info = useUpdateStore((s) => s.info);
+  const progress = useUpdateStore((s) => s.progress);
+  const error = useUpdateStore((s) => s.error);
+  const startDownload = useUpdateStore((s) => s.startDownload);
+  const doInstall = useUpdateStore((s) => s.doInstall);
+  const closeModal = useUpdateStore((s) => s.closeModal);
+  const cancelDownload = useUpdateStore((s) => s.cancelDownload);
 
-    useEffect(() => {
-      if (visible) {
-        Animated.parallel([
-          Animated.spring(scale, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 1, duration: motion.duration.fast, useNativeDriver: true }),
-        ]).start();
-        setProgress(0);
-      } else {
-        Animated.parallel([
-          Animated.spring(scale, { toValue: 0.9, ...motion.springDefault, useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 0, duration: motion.duration.fast, useNativeDriver: true }),
-        ]).start();
-      }
-    }, [visible]);
+  // Entrance animations
+  const scale = useRef(new Animated.Value(0.92)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
-    useEffect(() => {
-      if (status === 'downloading') {
-        const interval = setInterval(() => {
-          setProgress(p => Math.min(100, p + Math.random() * 15));
-        }, 500);
-        return () => clearInterval(interval);
-      } else if (status === 'installing') {
-        setProgress(100);
-      }
-      return undefined;
-    }, [status]);
+  // Pulse & spin animations for download state
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
-    if (!visible && ((opacity as any)._value ?? 0) === 0) return null;
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scale, { toValue: 1, friction: 8, tension: 50, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(scale, { toValue: 0.92, duration: 180, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
 
-    return (
-      <Modal
-        visible={visible}
-        animationType="none"
-        presentationStyle="fullScreen"
-        statusBarTranslucent
-      >
-        <Animated.View
-          style={[
-            styles.backdrop,
-            { opacity },
-          ]}
-          onStartShouldSetResponder={() => true}
-          onResponderRelease={onLater}
-        />
-        <Animated.View
-          ref={ref}
-          style={[
-            styles.modal,
-            { opacity, transform: [{ scale }] },
-          ]}
-        >
+  // Pulsing animation loop during downloading
+  useEffect(() => {
+    if (status === 'downloading') {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ])
+      );
+      const spin = Animated.loop(
+        Animated.timing(spinAnim, { toValue: 1, duration: 2400, easing: Easing.linear, useNativeDriver: true })
+      );
+      pulse.start();
+      spin.start();
+      return () => {
+        pulse.stop();
+        spin.stop();
+      };
+    } else {
+      pulseAnim.setValue(1);
+      spinAnim.setValue(0);
+    }
+    return undefined;
+  }, [status]);
+
+  // Smooth progress bar animation
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: Math.max(0, Math.min(100, progress.percent)),
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [progress.percent]);
+
+  const spinInterpolate = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
+  const notesList = useMemo(() => {
+    if (!info?.notes) return ['Mejoras de rendimiento y estabilidad'];
+    return info.notes
+      .split('\n')
+      .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+      .filter(Boolean);
+  }, [info?.notes]);
+
+  if (!visible && ((opacity as any)._value ?? 0) === 0) return null;
+
+  const isDownloading = status === 'downloading';
+  const isReady = status === 'ready_to_install';
+  const isInstalling = status === 'installing';
+  const isError = status === 'error';
+
+  return (
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={closeModal}>
+      <View style={styles.backdrop}>
+        <Animated.View style={[StyleSheet.absoluteFill, styles.backdropDim, { opacity }]} />
+
+        <Animated.View style={[styles.dialog, { opacity, transform: [{ scale }] }]}>
+          {/* Obsidian Glass Gradient Border */}
           <LinearGradient
-            colors={['rgba(127,0,255,0.3)', 'rgba(0,229,255,0.2)']}
+            colors={['#1F1A3A', '#0F0D1A']}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.content}>
-            <View style={styles.header}>
-              <Ionicons name="download-outline" size={32} color={colors.secondary} />
-              <Text style={styles.title}>Actualización disponible</Text>
-              <PressableFluid onPress={onClose} haptic="light" hitSlop={12} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color={colors.textMuted} />
-              </PressableFluid>
+            end={{ x: 0, y: 1 }}
+            style={styles.cardGradient}
+          >
+            {/* Header Glow Banner */}
+            <LinearGradient
+              colors={['rgba(127, 0, 255, 0.25)', 'rgba(0, 229, 255, 0.1)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.headerGlow}
+            />
+
+            {/* Icon Graphic Container */}
+            <View style={styles.iconContainer}>
+              <Animated.View
+                style={[
+                  styles.iconGlowHalo,
+                  isDownloading && { transform: [{ scale: pulseAnim }] },
+                ]}
+              >
+                <LinearGradient
+                  colors={isReady ? ['#00E676', '#00B0FF'] : isError ? ['#FF3D5C', '#7F00FF'] : ['#7F00FF', '#00E5FF']}
+                  style={styles.iconCircle}
+                >
+                  {isDownloading ? (
+                    <Animated.View style={{ transform: [{ rotate: spinInterpolate }] }}>
+                      <Ionicons name="sync" size={32} color={colors.white} />
+                    </Animated.View>
+                  ) : isReady ? (
+                    <Ionicons name="checkmark-done" size={34} color={colors.white} />
+                  ) : isError ? (
+                    <Ionicons name="alert-circle" size={34} color={colors.white} />
+                  ) : (
+                    <Ionicons name="cloud-download" size={32} color={colors.white} />
+                  )}
+                </LinearGradient>
+              </Animated.View>
             </View>
 
-            <View style={styles.versionRow}>
-              <View style={styles.versionBox}>
-                <Text style={styles.versionLabel}>Actual</Text>
-                <Text style={styles.versionValue}>v{current}</Text>
-              </View>
-              <Ionicons name="arrow-forward" size={20} color={colors.textMuted} />
-              <View style={styles.versionBox}>
-                <Text style={styles.versionLabel}>Nueva</Text>
-                <Text style={styles.versionValueNew}>v{latest}</Text>
-              </View>
+            {/* Modal Titles */}
+            <View style={styles.titleWrap}>
+              <Text style={styles.title}>
+                {isDownloading
+                  ? 'Descargando Actualización…'
+                  : isReady
+                  ? '¡Descarga Completa!'
+                  : isInstalling
+                  ? 'Instalando en el Sistema…'
+                  : isError
+                  ? 'Error de Actualización'
+                  : 'Nueva Versión Disponible'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {isDownloading
+                  ? 'Obteniendo el paquete APK oficial desde la base de datos'
+                  : isReady
+                  ? 'El paquete está verificado y listo para ser instalado'
+                  : isError
+                  ? (error || 'No se pudo completar la operación')
+                  : 'Una nueva versión de JodiFy Mobile está lista para instalar'}
+              </Text>
             </View>
 
-            {notes && (
-              <View style={styles.notes}>
-                <Text style={styles.notesTitle}>Novedades</Text>
-                <Text style={styles.notesText}>{notes}</Text>
+            {/* Version Transition Badge */}
+            <View style={styles.versionBadgeRow}>
+              <View style={styles.versionBadge}>
+                <Text style={styles.versionBadgeLabel}>ACTUAL</Text>
+                <Text style={styles.versionBadgeText}>v{info?.current || '1.0.0'}</Text>
               </View>
-            )}
-
-            {status === 'downloading' && (
-              <View style={styles.progressContainer}>
-                <View style={styles.progressTrack}>
-                  <Animated.View
-                    style={[
-                      styles.progressFill,
-                      { width: `${progress}%` },
-                    ]}
-                  />
+              <Ionicons name="arrow-forward" size={16} color={colors.secondary} />
+              <View style={[styles.versionBadge, styles.versionBadgeActive]}>
+                <Text style={[styles.versionBadgeLabel, { color: colors.secondary }]}>NUEVA</Text>
+                <Text style={[styles.versionBadgeText, { color: colors.white }]}>v{info?.latest || '2.0.0'}</Text>
+              </View>
+              {info?.sizeBytes && info.sizeBytes > 0 ? (
+                <View style={styles.sizePill}>
+                  <Text style={styles.sizePillText}>{formatBytes(info.sizeBytes)}</Text>
                 </View>
-                <Text style={styles.progressText}>Descargando… {Math.round(progress)}%</Text>
+              ) : null}
+            </View>
+
+            {/* Download Progress Box */}
+            {isDownloading && (
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBarTrack}>
+                  <Animated.View style={[styles.progressBarFill, { width: progressWidth }]}>
+                    <LinearGradient
+                      colors={['#7F00FF', '#00E5FF']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </Animated.View>
+                </View>
+
+                <View style={styles.progressMetricsRow}>
+                  <Text style={styles.progressPercentText}>{progress.percent}%</Text>
+                  <Text style={styles.progressBytesText}>
+                    {formatBytes(progress.downloadedBytes)} de {formatBytes(progress.totalBytes)}
+                  </Text>
+                </View>
+
+                <View style={styles.speedRow}>
+                  <Text style={styles.speedText}>
+                    <Ionicons name="flash" size={11} color={colors.secondary} /> {progress.speedMBps} MB/s
+                  </Text>
+                  {progress.remainingSeconds > 0 && (
+                    <Text style={styles.speedText}>
+                      <Ionicons name="time-outline" size={11} color={colors.textMuted} /> ~{progress.remainingSeconds}s restantes
+                    </Text>
+                  )}
+                </View>
               </View>
             )}
 
-            {status === 'installing' && (
-              <View style={styles.installing}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.installingText}>Instalando actualización…</Text>
+            {/* Release Notes / Changelog List */}
+            {!isDownloading && notesList.length > 0 && (
+              <View style={styles.notesContainer}>
+                <Text style={styles.notesHeader}>NOVEDADES DE ESTA VERSIÓN</Text>
+                <ScrollView style={styles.notesScroll} showsVerticalScrollIndicator={false}>
+                  {notesList.map((item, index) => (
+                    <View key={index} style={styles.noteItem}>
+                      <Ionicons name="sparkles" size={12} color={colors.secondary} style={styles.noteIcon} />
+                      <Text style={styles.noteText}>{item}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
               </View>
             )}
 
-            {status === 'success' && (
-              <View style={styles.success}>
-                <Ionicons name="checkmark-circle" size={48} color={colors.success} />
-                <Text style={styles.successText}>¡Actualizado a v{latest}!</Text>
-                <Text style={styles.successSub}>Reinicia la app para aplicar cambios</Text>
-              </View>
-            )}
-
-            {status === 'error' && (
-              <View style={styles.error}>
-                <Ionicons name="alert-circle" size={48} color={colors.error} />
-                <Text style={styles.errorText}>Error al actualizar</Text>
-                <PressableFluid onPress={onInstall} haptic="medium" style={styles.retryBtn}>
-                  <Text style={styles.retryBtnText}>Reintentar</Text>
-                </PressableFluid>
-              </View>
-            )}
-
-            {status === 'idle' ? (
-              <View style={styles.buttons}>
-                <PressableFluid onPress={onLater} haptic="light" style={styles.laterBtn}>
-                  <Text style={styles.laterBtnText}>Más tarde</Text>
-                </PressableFluid>
-                <PressableFluid onPress={onInstall} haptic="medium" style={styles.installBtn}>
+            {/* Action Buttons */}
+            <View style={styles.actionContainer}>
+              {isReady ? (
+                <PressableFluid
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    void doInstall();
+                  }}
+                  haptic="medium"
+                  style={styles.primaryBtn}
+                >
                   <LinearGradient
-                    colors={['#7F00FF', '#B800FF']}
+                    colors={['#00E676', '#00B0FF']}
                     start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.installBtnFill}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.primaryBtnFill}
                   >
-                    <Text style={styles.installBtnText}>Instalar ahora</Text>
+                    <Ionicons name="checkmark-circle" size={18} color={colors.white} />
+                    <Text style={styles.primaryBtnText}>Instalar Actualización</Text>
                   </LinearGradient>
                 </PressableFluid>
-              </View>
-            ) : null}
-          </View>
+              ) : isDownloading ? (
+                <PressableFluid
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    cancelDownload();
+                  }}
+                  haptic="light"
+                  style={styles.cancelBtn}
+                >
+                  <Text style={styles.cancelBtnText}>Cancelar Descarga</Text>
+                </PressableFluid>
+              ) : (
+                <PressableFluid
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    void startDownload();
+                  }}
+                  haptic="medium"
+                  style={styles.primaryBtn}
+                >
+                  <LinearGradient
+                    colors={['#7F00FF', '#00E5FF']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.primaryBtnFill}
+                  >
+                    <Ionicons name="cloud-download-outline" size={18} color={colors.white} />
+                    <Text style={styles.primaryBtnText}>Descargar e Instalar</Text>
+                  </LinearGradient>
+                </PressableFluid>
+              )}
+
+              {!info?.mandatory && !isDownloading && (
+                <PressableFluid
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    closeModal();
+                  }}
+                  haptic="light"
+                  style={styles.dismissBtn}
+                >
+                  <Text style={styles.dismissBtnText}>Más tarde</Text>
+                </PressableFluid>
+              )}
+            </View>
+          </LinearGradient>
         </Animated.View>
-      </Modal>
-    );
-  }
-);
+      </View>
+    </Modal>
+  );
+}
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  modal: {
-    margin: 24,
-    borderRadius: radius.xxl,
-    backgroundColor: colors.surfaceSolid,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    overflow: 'hidden',
-    ...elevation.level4,
-  },
-  content: {
-    padding: 24,
-    gap: 20,
-  },
-  header: {
-    flexDirection: 'row',
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  backdropDim: {
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
+  },
+  dialog: {
+    width: Math.min(SCREEN_WIDTH - 36, 400),
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(127, 0, 255, 0.35)',
+    elevation: 24,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+  },
+  cardGradient: {
+    padding: 24,
+  },
+  headerGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  iconGlowHalo: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(127, 0, 255, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.3)',
+  },
+  iconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleWrap: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   title: {
     color: colors.white,
     fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: typography.headlineMedium.fontSize,
-    letterSpacing: typography.headlineMedium.letterSpacing,
-    marginLeft: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.2,
   },
-  closeBtn: {
-    padding: 8,
+  subtitle: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 12.5,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 17,
   },
-  versionRow: {
+  versionBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-  },
-  versionBox: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 16,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: radius.lg,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 18,
   },
-  versionLabel: {
+  versionBadge: {
+    alignItems: 'center',
+  },
+  versionBadgeActive: {
+    backgroundColor: 'rgba(127, 0, 255, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.md,
+  },
+  versionBadgeLabel: {
     color: colors.textMuted,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: typography.labelSmall.fontSize,
-    letterSpacing: typography.labelSmall.letterSpacing,
-    textTransform: 'uppercase',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
   },
-  versionValue: {
-    color: colors.text,
-    fontFamily: typography.displaySmall.fontFamily,
-    fontSize: typography.displaySmall.fontSize,
-    letterSpacing: typography.displaySmall.letterSpacing,
-    marginTop: 4,
+  versionBadgeText: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 13,
+    fontWeight: '700',
   },
-  versionValueNew: {
+  sizePill: {
+    backgroundColor: 'rgba(0, 229, 255, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.3)',
+  },
+  sizePillText: {
     color: colors.secondary,
-    fontFamily: typography.displaySmall.fontFamily,
-    fontSize: typography.displaySmall.fontSize,
-    letterSpacing: typography.displaySmall.letterSpacing,
-    marginTop: 4,
-  },
-  notes: {
-    gap: 8,
-  },
-  notesTitle: {
-    color: colors.textSecondary,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: typography.labelSmall.fontSize,
-    letterSpacing: typography.labelSmall.letterSpacing,
-    textTransform: 'uppercase',
-  },
-  notesText: {
-    color: colors.textSecondary,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: typography.bodySmall.fontSize,
-    letterSpacing: typography.bodySmall.letterSpacing,
-    lineHeight: typography.bodySmall.lineHeight,
+    fontSize: 10.5,
+    fontWeight: '700',
   },
   progressContainer: {
-    gap: 8,
-    paddingTop: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 0, 255, 0.25)',
+    marginBottom: 18,
   },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.track,
+  progressBarTrack: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
+    marginBottom: 10,
   },
-  progressFill: {
+  progressBarFill: {
     height: '100%',
-    borderRadius: 3,
-    backgroundColor: colors.primary,
+    borderRadius: 5,
   },
-  progressText: {
-    color: colors.textSecondary,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
-    textAlign: 'center',
-  },
-  installing: {
+  progressMetricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 24,
   },
-  installingText: {
-    color: colors.textSecondary,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: typography.bodyMedium.fontSize,
-    letterSpacing: typography.bodyMedium.letterSpacing,
+  progressPercentText: {
+    color: colors.white,
+    fontFamily: typography.displaySmall.fontFamily,
+    fontSize: 16,
+    fontWeight: '700',
   },
-  success: {
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 16,
-  },
-  successText: {
-    color: colors.success,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: typography.headlineMedium.fontSize,
-    letterSpacing: typography.headlineMedium.letterSpacing,
-  },
-  successSub: {
+  progressBytesText: {
     color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
-    fontSize: typography.bodySmall.fontSize,
-    letterSpacing: typography.bodySmall.letterSpacing,
+    fontSize: 11.5,
   },
-  error: {
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 16,
-  },
-  errorText: {
-    color: colors.error,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: typography.headlineMedium.fontSize,
-    letterSpacing: typography.headlineMedium.letterSpacing,
-  },
-  retryBtn: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: radius.pill,
-    backgroundColor: colors.error,
-  },
-  retryBtnText: {
-    color: colors.white,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
-  },
-  buttons: {
+  speedRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  laterBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: colors.border,
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
-  laterBtnText: {
-    color: colors.text,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
+  speedText: {
+    color: colors.textSecondary,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 11,
   },
-  installBtn: {
+  notesContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: radius.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    marginBottom: 20,
+    maxHeight: 120,
+  },
+  notesHeader: {
+    color: colors.secondary,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  notesScroll: {
+    maxHeight: 85,
+  },
+  noteItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 6,
+  },
+  noteIcon: {
+    marginTop: 2,
+  },
+  noteText: {
     flex: 1,
+    color: colors.textSecondary,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  actionContainer: {
+    gap: 10,
+  },
+  primaryBtn: {
     borderRadius: radius.pill,
     overflow: 'hidden',
   },
-  installBtnFill: {
-    paddingVertical: 14,
+  primaryBtnFill: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
   },
-  installBtnText: {
+  primaryBtnText: {
     color: colors.white,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  cancelBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 61, 92, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 61, 92, 0.3)',
+  },
+  cancelBtnText: {
+    color: colors.error,
     fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
+    fontSize: 13,
     fontWeight: '600',
+  },
+  dismissBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  dismissBtnText: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 13,
   },
 });

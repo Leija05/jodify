@@ -86,8 +86,7 @@ export async function downloadApkWithProgress(
     return destinationUri;
   }
 
-  let startTime = Date.now();
-  let lastBytes = 0;
+  const startTime = Date.now();
 
   const downloadResumable = FileSystem.createDownloadResumable(
     absoluteUrl,
@@ -113,8 +112,6 @@ export async function downloadApkWithProgress(
         speedMBps: Math.max(0.1, speedMBps),
         remainingSeconds,
       });
-
-      lastBytes = totalBytesWritten;
     }
   );
 

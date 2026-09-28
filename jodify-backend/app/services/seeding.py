@@ -24,10 +24,10 @@ AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".opus"}
 
 
 def split_artist_title(name: str) -> tuple[str, str]:
-    """Separa 'Artista - Título' en (artista, título). Sin ' - ', devuelve (name, name)."""
-    match = re.match(r"^(.*?)\s*-\s*(.+)$", name.strip())
+    """Separa 'Artista - Título' en (artista, título). Sin delimitador, devuelve ('', title)."""
+    match = re.match(r"^(.*?)\s*[-–—]\s*(.+)$", name.strip())
     if not match:
-        return name.strip(), name.strip()
+        return "", name.strip()
     artist, title = match.group(1).strip(), match.group(2).strip()
     return artist, title
 

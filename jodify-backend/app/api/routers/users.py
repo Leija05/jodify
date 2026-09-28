@@ -22,6 +22,7 @@ def user_view(doc: dict) -> dict:
         "display_name": doc.get("display_name"),
         "role": doc.get("role", "user"),
         "is_online": is_online,
+        "online": is_online == 1,
         "presence": presence,
         "last_seen": doc.get("last_seen"),
         "avatar_url": doc.get("avatar_url"),
