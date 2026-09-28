@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { useSettingsStore } from '../stores/settings.store';
 import { usePlayerStore } from '../stores/player.store';
 import { sendHeartbeat, updateNowPlaying } from '../services/users.service';
@@ -9,32 +10,44 @@ export function useHeartbeat() {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const currentAppState = useRef<AppStateStatus>(AppState.currentState);
   const lastHeartbeatRef = useRef(0);
   const lastSongIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
 
-    const beat = async () => {
+    const beat = async (forcePresence?: 'online' | 'background' | 'offline') => {
       const now = Date.now();
-      if (now - lastHeartbeatRef.current >= 30000) {
-        try {
-          await sendHeartbeat(user.username, true);
-          lastHeartbeatRef.current = now;
-        } catch {
-          // ignore
-        }
+      const state = currentAppState.current;
+      const presence: 'online' | 'background' | 'offline' =
+        forcePresence ?? (state === 'active' ? 'online' : 'background');
+
+      try {
+        await sendHeartbeat(user.username, presence !== 'offline', presence);
+        lastHeartbeatRef.current = now;
+      } catch {
+        // ignore network error
       }
     };
 
-    beat();
-    intervalRef.current = setInterval(beat, 15000);
+    void beat();
+    intervalRef.current = setInterval(() => {
+      void beat();
+    }, 25000);
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      currentAppState.current = nextAppState;
+      const presence = nextAppState === 'active' ? 'online' : 'background';
+      void beat(presence);
+    });
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      sendHeartbeat(user.username, false).catch(() => {});
+      subscription.remove();
+      void sendHeartbeat(user.username, false, 'offline').catch(() => {});
     };
-  }, [user]);
+  }, [user?.username]);
 
   useEffect(() => {
     if (!user) return;

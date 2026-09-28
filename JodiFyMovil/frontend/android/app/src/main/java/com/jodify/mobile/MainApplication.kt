@@ -24,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
           override fun getPackages(): List<ReactPackage> {
             val packages = PackageList(this).packages.toMutableList()
             packages.add(com.jodify.mobile.eq.JodifyEqualizerPackage())
+            packages.add(com.jodify.mobile.media.JodifyMediaPackage())
             return packages
           }
 

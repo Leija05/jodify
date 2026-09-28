@@ -17,9 +17,16 @@ function resolveUrl(path: string): string {
 
 export async function apiFetch<T>(
   path: string,
-  options: { method?: string; body?: unknown; auth?: boolean; headers?: Record<string, string>; token?: string } = {}
+  options: {
+    method?: string;
+    body?: unknown;
+    auth?: boolean;
+    headers?: Record<string, string>;
+    token?: string;
+    timeoutMs?: number;
+  } = {}
 ): Promise<T> {
-  const { method = 'GET', body, auth = false, headers: customHeaders, token: explicitToken } = options;
+  const { method = 'GET', body, auth = false, headers: customHeaders, token: explicitToken, timeoutMs = 10000 } = options;
   const headers: Record<string, string> = { Accept: 'application/json', ...customHeaders };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (explicitToken) {
@@ -29,23 +36,35 @@ export async function apiFetch<T>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const init: RequestInit = { method, headers };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const init: RequestInit = { method, headers, signal: controller.signal };
   if (body !== undefined) {
     init.body = JSON.stringify(body);
   }
 
-  const res = await fetch(resolveUrl(path), init);
-  if (!res.ok) {
-    let message = `HTTP ${res.status}`;
-    try {
-      const data = (await res.json()) as { detail?: string };
-      if (data?.detail) message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
-    } catch {
+  try {
+    const res = await fetch(resolveUrl(path), init);
+    clearTimeout(timer);
+    if (!res.ok) {
+      let message = `HTTP ${res.status}`;
+      try {
+        const data = (await res.json()) as { detail?: string };
+        if (data?.detail) message = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+      } catch {
+      }
+      throw new Error(message);
     }
-    throw new Error(message);
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
+  } catch (err: any) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      throw new Error('Tiempo de espera agotado. Verifica tu conexión.');
+    }
+    throw err;
   }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
 }
 
 export async function apiFetchBlob(path: string): Promise<Blob> {

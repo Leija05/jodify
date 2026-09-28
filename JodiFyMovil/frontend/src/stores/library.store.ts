@@ -51,11 +51,28 @@ async function mergeDownloadedLocalUris(songs: Song[]): Promise<Song[]> {
   }
 }
 
+import { mmkv } from '../lib/mmkv';
+
+const CACHED_SONGS_KEY = 'library.cached_songs';
+const CACHED_LIKES_KEY = 'library.cached_likes';
+
+function getCachedLibrary(): { songs: Song[]; likedIds: Array<number | string> } {
+  try {
+    const songs = mmkv.getObject<Song[]>(CACHED_SONGS_KEY) ?? [];
+    const likedIds = mmkv.getObject<Array<number | string>>(CACHED_LIKES_KEY) ?? [];
+    return { songs, likedIds };
+  } catch {
+    return { songs: [], likedIds: [] };
+  }
+}
+
+const initialCached = getCachedLibrary();
+
 export const useLibraryStore = create<LibraryState>((set, get) => ({
-  songs: [],
-  likedIds: [],
+  songs: initialCached.songs,
+  likedIds: initialCached.likedIds,
   downloadedIds: [],
-  loading: true,
+  loading: initialCached.songs.length === 0,
   error: null,
   search: '',
   tab: 'global',
@@ -69,7 +86,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
     if (get().lastUserId === userId && get().songs.length > 0 && userId) return;
 
-    set({ loading: true, error: null });
+    if (get().songs.length === 0) {
+      set({ loading: true, error: null });
+    }
     try {
       const [songs, likedIds, downloadedIds] = await Promise.all([
         fetchSongs(),
@@ -77,9 +96,17 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         getDownloadedIds(),
       ]);
       const songsWithLocal = await mergeDownloadedLocalUris(songs);
-      set({ songs: songsWithLocal, likedIds, downloadedIds, loading: false, lastUserId: userId });
+      set({ songs: songsWithLocal, likedIds, downloadedIds, loading: false, error: null, lastUserId: userId });
+      try {
+        mmkv.setObject(CACHED_SONGS_KEY, songsWithLocal);
+        mmkv.setObject(CACHED_LIKES_KEY, likedIds);
+      } catch {}
     } catch {
-      set({ loading: false, error: 'No se pudo conectar con el servidor de JodiFy.' });
+      if (get().songs.length === 0) {
+        set({ loading: false, error: 'No se pudo conectar con el servidor de JodiFy.' });
+      } else {
+        set({ loading: false });
+      }
     }
   },
 
@@ -93,8 +120,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       ]);
       const songsWithLocal = await mergeDownloadedLocalUris(songs);
       set({ songs: songsWithLocal, likedIds, downloadedIds, refreshing: false });
+      try {
+        mmkv.setObject(CACHED_SONGS_KEY, songsWithLocal);
+        mmkv.setObject(CACHED_LIKES_KEY, likedIds);
+      } catch {}
     } catch {
-      set({ refreshing: false, error: 'No se pudo conectar con el servidor de JodiFy.' });
+      set({ refreshing: false });
     }
   },
 
@@ -107,6 +138,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       const user = await getAuthUser();
       const likedIds = user ? await fetchLikedIds(user.username) : [];
       set({ likedIds });
+      try {
+        mmkv.setObject(CACHED_LIKES_KEY, likedIds);
+      } catch {}
     } catch {
       set({ likedIds: [] });
     }
@@ -118,10 +152,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const liked = get().likedIds.some((id) => String(id) === String(song.id));
     const next = !liked;
     const delta = next ? 1 : -1;
+    const nextLikedIds = next
+      ? [...get().likedIds, song.id]
+      : get().likedIds.filter((id) => String(id) !== String(song.id));
+
     set({
-      likedIds: next
-        ? [...get().likedIds, song.id]
-        : get().likedIds.filter((id) => String(id) !== String(song.id)),
+      likedIds: nextLikedIds,
       songs: get().songs.map((s) =>
         String(s.id) === String(song.id)
           ? { ...s, likes: Math.max(0, (s.likes ?? 0) + delta) }
@@ -129,24 +165,18 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       ),
     });
     try {
+      mmkv.setObject(CACHED_LIKES_KEY, nextLikedIds);
+    } catch {}
+
+    try {
       if (next) {
         await addLike(song.id, user.username);
       } else {
         await removeLike(song.id, user.username);
       }
-      await updateLikeCount(song.id, user.username, delta);
-    } catch {
-      set({
-        likedIds: liked
-          ? [...get().likedIds, song.id]
-          : get().likedIds.filter((id) => String(id) !== String(song.id)),
-        songs: get().songs.map((s) =>
-          String(s.id) === String(song.id)
-            ? { ...s, likes: Math.max(0, (s.likes ?? 0) + (liked ? 1 : -1)) }
-            : s,
-        ),
-      });
-      return false;
+      void updateLikeCount(song.id, user.username, delta).catch(() => {});
+    } catch (e: any) {
+      console.warn('[Like] Network sync warning, kept in local cache:', e);
     }
     return true;
   },

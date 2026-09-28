@@ -52,31 +52,41 @@ export const Slider = React.forwardRef<View, SliderProps>(
       }
     }, [value]);
 
-    const updateValue = useCallback(
-      (x: number) => {
-        if (trackWidth.current <= 0) return;
-        const clampedX = Math.max(0, Math.min(x, trackWidth.current));
-        const ratio = clampedX / trackWidth.current;
-        const newValue = min + ratio * (max - min);
-        const steppedValue = step > 0 ? Math.round(newValue / step) * step : newValue;
-        const finalValue = Math.max(min, Math.min(max, steppedValue));
-        currentValueRef.current = finalValue;
-        setLocalValue(finalValue);
-        onValueChange(finalValue);
+    const startValueRef = useRef(value);
+
+    const stepValue = useCallback(
+      (v: number) => {
+        const stepped = step > 0 ? Math.round(v / step) * step : v;
+        return Math.max(min, Math.min(max, Math.round(stepped * 100) / 100));
       },
-      [min, max, step, onValueChange]
+      [min, max, step]
     );
 
     useEffect(() => {
       panResponder.current = PanResponder.create({
         onStartShouldSetPanResponder: () => !disabled,
         onMoveShouldSetPanResponder: (_event, gestureState) => !disabled && Math.abs(gestureState.dx) > 2,
-        onPanResponderGrant: (event) => {
+        onPanResponderGrant: (event, gestureState) => {
+          if (disabled) return;
           isDragging.current = true;
-          updateValue(event.nativeEvent.locationX);
+          startValueRef.current = currentValueRef.current;
+          if (trackWidth.current > 0 && Math.abs(gestureState.dx) < 2) {
+            const locX = Math.max(0, Math.min(event.nativeEvent.locationX, trackWidth.current));
+            const ratio = locX / trackWidth.current;
+            const finalVal = stepValue(min + ratio * (max - min));
+            currentValueRef.current = finalVal;
+            setLocalValue(finalVal);
+            onValueChange(finalVal);
+          }
         },
-        onPanResponderMove: (event) => {
-          if (!disabled) updateValue(event.nativeEvent.locationX);
+        onPanResponderMove: (_event, gestureState) => {
+          if (disabled || trackWidth.current <= 0) return;
+          const deltaRatio = gestureState.dx / trackWidth.current;
+          const rawVal = startValueRef.current + deltaRatio * (max - min);
+          const finalVal = stepValue(rawVal);
+          currentValueRef.current = finalVal;
+          setLocalValue(finalVal);
+          onValueChange(finalVal);
         },
         onPanResponderRelease: () => {
           isDragging.current = false;
@@ -87,7 +97,7 @@ export const Slider = React.forwardRef<View, SliderProps>(
           onSlidingComplete?.(currentValueRef.current);
         },
       });
-    }, [disabled, updateValue, onSlidingComplete]);
+    }, [disabled, min, max, stepValue, onValueChange, onSlidingComplete]);
 
     const progressPercent = max > min ? Math.min(Math.max(((localValue - min) / (max - min)) * 100, 0), 100) : 0;
 

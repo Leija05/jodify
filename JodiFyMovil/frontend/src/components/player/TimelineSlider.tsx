@@ -38,6 +38,9 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
     const trackWidth = useRef(0);
     const isDragging = useRef(false);
 
+    const startPosRef = useRef(position);
+    const lastTimeRef = useRef(position);
+
     const seekTo = useCallback(
       (seconds: number) => {
         const clamped = Math.max(0, Math.min(seconds, duration));
@@ -49,33 +52,34 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
 
     useImperativeHandle(ref, () => ({ seekTo }), [seekTo]);
 
-    const updateFromTouch = useCallback(
-      (x: number) => {
-        if (trackWidth.current <= 0) return;
-        const clampedX = Math.max(0, Math.min(x, trackWidth.current));
-        const ratio = clampedX / trackWidth.current;
-        const newTime = ratio * duration;
-        setDragPosition(newTime);
-        onSeek(newTime);
-      },
-      [duration, onSeek]
-    );
-
     useEffect(() => {
       panResponder.current = PanResponder.create({
         onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_event, gestureState) => Math.abs(gestureState.dx) > 2,
-        onPanResponderGrant: (event) => {
+        onMoveShouldSetPanResponder: (_event, gestureState) => Math.abs(gestureState.dx) > 3,
+        onPanResponderGrant: (event, gestureState) => {
           isDragging.current = true;
           onSlidingStart?.();
-          updateFromTouch(event.nativeEvent.locationX);
+          const basePos = position;
+          startPosRef.current = basePos;
+          if (trackWidth.current > 0 && Math.abs(gestureState.dx) < 2) {
+            const locX = Math.max(0, Math.min(event.nativeEvent.locationX, trackWidth.current));
+            const tappedTime = (locX / trackWidth.current) * duration;
+            lastTimeRef.current = tappedTime;
+            setDragPosition(tappedTime);
+          }
         },
-        onPanResponderMove: (event) => {
-          updateFromTouch(event.nativeEvent.locationX);
+        onPanResponderMove: (_event, gestureState) => {
+          if (trackWidth.current <= 0 || duration <= 0) return;
+          const deltaSeconds = (gestureState.dx / trackWidth.current) * duration;
+          const newTime = Math.max(0, Math.min(duration, startPosRef.current + deltaSeconds));
+          lastTimeRef.current = newTime;
+          setDragPosition(newTime);
         },
         onPanResponderRelease: () => {
           isDragging.current = false;
+          const finalTime = lastTimeRef.current;
           setDragPosition(null);
+          onSeek(finalTime);
           onSlidingComplete?.();
         },
         onPanResponderTerminate: () => {
@@ -84,7 +88,7 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
           onSlidingComplete?.();
         },
       });
-    }, [updateFromTouch, onSlidingStart, onSlidingComplete]);
+    }, [duration, position, onSeek, onSlidingStart, onSlidingComplete]);
 
     const currentPos = dragPosition !== null ? dragPosition : position;
     const progressPercent = duration > 0 ? Math.min(Math.max((currentPos / duration) * 100, 0), 100) : 0;

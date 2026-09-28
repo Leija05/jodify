@@ -41,6 +41,9 @@ function normalizeSource(src: string): string {
 
 function createRealAudioPlayer(source: string): AudioPlayer {
   let sound: Audio.Sound | null = null;
+  let loadPromise: Promise<void> | null = null;
+  let desiredPlaying = false;
+
   const status = {
     playing: false,
     currentTime: 0,
@@ -98,9 +101,10 @@ function createRealAudioPlayer(source: string): AudioPlayer {
         } catch {
           // ignore
         }
+        sound = null;
       }
       const initialStatus = {
-        shouldPlay: false,
+        shouldPlay: desiredPlaying,
         volume: status.volume,
         rate: status.rate,
         progressUpdateIntervalMillis: 250,
@@ -109,15 +113,20 @@ function createRealAudioPlayer(source: string): AudioPlayer {
       soundObject.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
       await soundObject.loadAsync({ uri: src }, initialStatus, false);
       sound = soundObject;
+      if (desiredPlaying) {
+        await soundObject.playAsync();
+      }
     } catch (e: any) {
       console.warn('[Audio] Failed to load audio source:', src, e?.message ?? e);
       status.playbackState = 5;
       notify({ ...status, error: e?.message ?? 'Error al cargar canción' });
+    } finally {
+      loadPromise = null;
     }
   };
 
   if (source) {
-    void loadSound(source);
+    loadPromise = loadSound(source);
   }
 
   const player: AudioPlayer = {
@@ -129,16 +138,22 @@ function createRealAudioPlayer(source: string): AudioPlayer {
     },
     release: () => {
       listeners.clear();
+      desiredPlaying = false;
       if (sound) {
         sound.unloadAsync().catch(() => {});
         sound = null;
       }
+      loadPromise = null;
     },
     play: async () => {
+      desiredPlaying = true;
       status.playing = true;
       status.playbackState = 3;
       notify();
-      if (sound) {
+      if (loadPromise) {
+        await loadPromise;
+      }
+      if (sound && desiredPlaying) {
         try {
           await sound.playAsync();
         } catch (e) {
@@ -147,9 +162,13 @@ function createRealAudioPlayer(source: string): AudioPlayer {
       }
     },
     pause: async () => {
+      desiredPlaying = false;
       status.playing = false;
       status.playbackState = 2;
       notify();
+      if (loadPromise) {
+        await loadPromise;
+      }
       if (sound) {
         try {
           await sound.pauseAsync();
@@ -161,6 +180,9 @@ function createRealAudioPlayer(source: string): AudioPlayer {
     seekTo: async (position: number) => {
       status.currentTime = position;
       notify();
+      if (loadPromise) {
+        await loadPromise;
+      }
       if (sound) {
         try {
           await sound.setPositionAsync(Math.max(0, position * 1000));
@@ -172,6 +194,9 @@ function createRealAudioPlayer(source: string): AudioPlayer {
     setVolume: async (volume: number) => {
       status.volume = volume;
       notify();
+      if (loadPromise) {
+        await loadPromise;
+      }
       if (sound) {
         try {
           await sound.setVolumeAsync(Math.max(0, Math.min(1, volume)));
@@ -183,6 +208,9 @@ function createRealAudioPlayer(source: string): AudioPlayer {
     setRate: async (rate: number) => {
       status.rate = rate;
       notify();
+      if (loadPromise) {
+        await loadPromise;
+      }
       if (sound) {
         try {
           await sound.setRateAsync(rate, true);
@@ -194,7 +222,8 @@ function createRealAudioPlayer(source: string): AudioPlayer {
     replace: async (newSource: string) => {
       status.duration = 0;
       status.currentTime = 0;
-      await loadSound(newSource);
+      loadPromise = loadSound(newSource);
+      await loadPromise;
     },
     get duration() {
       return status.duration;
@@ -208,6 +237,7 @@ function createRealAudioPlayer(source: string): AudioPlayer {
 }
 
 function attachListenersToPlayer(cached: CachedPlayer) {
+  detachAllListeners(cached);
   const allListeners = new Set([...cached.listeners, ...globalListeners]);
   if (allListeners.size > 0) {
     cached.player.addListener('playbackStatusUpdate', (status) => {
@@ -264,6 +294,13 @@ export function getPlayer(): AudioPlayer | null {
 
 export function ensurePlayerWithSource(source: string): AudioPlayer {
   const normalized = normalizeSource(source);
+
+  if (currentPlayerKey && currentPlayerKey !== normalized) {
+    const prevCached = cachedPlayers.get(currentPlayerKey);
+    if (prevCached) {
+      void prevCached.player.pause();
+    }
+  }
 
   const cached = cachedPlayers.get(normalized);
   if (cached) {
@@ -338,7 +375,9 @@ export function onPlayerStatus(listener: StatusListener): () => void {
   };
 }
 
+let audioModeConfigured = false;
 export async function configureAudioMode(): Promise<void> {
+  if (audioModeConfigured) return;
   try {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
@@ -349,6 +388,7 @@ export async function configureAudioMode(): Promise<void> {
       interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
       playThroughEarpieceAndroid: false,
     });
+    audioModeConfigured = true;
     console.log('[Audio] Audio session successfully configured for background playback');
   } catch (e) {
     console.warn('[Audio] Failed to configure audio mode:', e);

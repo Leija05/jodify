@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View, Image, ActivityIndicator } from 'react-native';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import { EmptyState } from '@components/ui/EmptyState';
@@ -10,7 +10,6 @@ import { usePlayerStore } from '@stores/player.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
 import { colors, typography, gradients, radius, elevation } from '@theme';
-import { FluidSheet } from '@components/ui/FluidSheet';
 
 interface UserCardProps {
   user: CommunityUser;
@@ -19,21 +18,37 @@ interface UserCardProps {
 
 function UserCard({ user, onPress }: UserCardProps) {
   const nowPlaying = user.now_playing;
+  const presence = user.presence ?? (user.online ? 'online' : 'offline');
+  const isOnline = presence === 'online';
+  const isBackground = presence === 'background';
+
+  const avatarUri = user.avatar_source === 'discord' && user.discord?.avatar_url
+    ? user.discord.avatar_url
+    : user.avatar_url ?? user.discord?.avatar_url;
 
   return (
     <PressableFluid onPress={onPress} haptic="light" style={styles.userCard} scaleTo={0.98}>
       <View style={styles.userCardContent}>
         <View style={styles.avatarWrap}>
-          <View style={[styles.avatar, { backgroundColor: gradients.primary[0] }]}>
-            <Text style={styles.avatarText}>{user.username.slice(0, 1).toUpperCase()}</Text>
-          </View>
-          {user.online && (
-            <View style={styles.onlineDot} />
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: gradients.primary[0] }]}>
+              <Text style={styles.avatarText}>{user.username.slice(0, 1).toUpperCase()}</Text>
+            </View>
           )}
+          <View
+            style={[
+              styles.onlineDot,
+              isOnline && { backgroundColor: '#00E676' },
+              isBackground && { backgroundColor: '#7F00FF' },
+              !isOnline && !isBackground && { backgroundColor: colors.textMuted },
+            ]}
+          />
         </View>
         <View style={styles.userInfo}>
           <View style={styles.userHeader}>
-            <Text style={styles.username}>{user.username}</Text>
+            <Text style={styles.username}>{user.display_name ?? user.username}</Text>
             <View style={[
               styles.roleBadge,
               user.role === 'admin' && styles.roleAdmin,
@@ -49,14 +64,26 @@ function UserCard({ user, onPress }: UserCardProps) {
                 <EqualizerBars playing bars={3} height={12} barWidth={2.5} color={colors.secondary} />
               </View>
               <View style={styles.nowPlayingTexts}>
-                <Text style={styles.nowPlayingLabel}>ESCUCHANDO</Text>
+                <Text style={styles.nowPlayingLabel}>
+                  {isBackground ? 'EN 2DO PLANO · ESCUCHANDO' : 'ESCUCHANDO'}
+                </Text>
                 <Text style={styles.nowPlayingSong} numberOfLines={1}>{nowPlaying.song_name}</Text>
                 {nowPlaying.artist && <Text style={styles.nowPlayingArtist} numberOfLines={1}>{nowPlaying.artist}</Text>}
               </View>
             </View>
           ) : (
-            <Text style={styles.lastSeen}>
-              {user.online ? 'En línea' : user.last_seen ? `Visto hace ${formatRelativeTime(user.last_seen)}` : 'Desconocido'}
+            <Text style={[
+              styles.lastSeen,
+              isOnline && { color: '#00E676' },
+              isBackground && { color: '#B388FF' },
+            ]}>
+              {isOnline
+                ? 'En línea'
+                : isBackground
+                ? 'En 2do plano'
+                : user.last_seen
+                ? `Visto hace ${formatRelativeTime(user.last_seen)}`
+                : 'Desconectado'}
             </Text>
           )}
         </View>
@@ -74,91 +101,7 @@ function formatRelativeTime(dateString: string): string {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-function UserProfileModal({ user, visible, onClose }: { user: CommunityUser; visible: boolean; onClose: () => void }) {
-  if (!visible) return null;
-
-  return (
-    <FluidSheet
-      visible={visible}
-      onClose={onClose}
-      snapPoints={[0.6, 0.85]}
-      title={user.username}
-      titleAction={
-        <PressableFluid onPress={onClose} haptic="light" style={styles.closeBtn} hitSlop={8}>
-          <Ionicons name="close" size={22} color={colors.textMuted} />
-        </PressableFluid>
-      }
-    >
-      <View style={styles.modalContent}>
-        <View style={styles.profileHeader}>
-          <View style={[styles.profileAvatar, { backgroundColor: gradients.primary[0] }]}>
-            <Text style={styles.profileAvatarText}>{user.username.slice(0, 1).toUpperCase()}</Text>
-          </View>
-          <Text style={styles.profileUsername}>{user.username}</Text>
-          <View style={styles.roleRow}>
-            <View style={[
-              styles.roleBadge,
-              user.role === 'admin' && styles.roleAdmin,
-              user.role === 'mod' && styles.roleMod,
-              user.role === 'dev' && styles.roleDev,
-            ]}>
-              <Text style={styles.roleText}>{user.role.toUpperCase()}</Text>
-            </View>
-            {user.online && (
-              <View style={styles.onlineBadge}>
-                <View style={styles.onlineDotSmall} />
-                <Text style={styles.onlineText}>En línea</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {user.now_playing && (
-          <View style={styles.nowPlayingCard}>
-            <View style={styles.nowPlayingCardIcon}>
-              <EqualizerBars playing bars={4} height={16} barWidth={3} color={colors.secondary} />
-            </View>
-            <View style={styles.nowPlayingCardTexts}>
-              <Text style={styles.nowPlayingCardLabel}>ESCUCHANDO AHORA</Text>
-              <Text style={styles.nowPlayingCardSong}>{user.now_playing.song_name}</Text>
-              {user.now_playing.artist && <Text style={styles.nowPlayingCardArtist}>{user.now_playing.artist}</Text>}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Seguidores</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Siguiendo</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{user.last_seen ? 'Activo' : 'Nuevo'}</Text>
-            <Text style={styles.statLabel}>Estado</Text>
-          </View>
-        </View>
-
-        <View style={styles.actionsRow}>
-          <PressableFluid onPress={onClose} haptic="light" style={styles.actionBtn}>
-            <Ionicons name="chatbubble-outline" size={18} color={colors.secondary} />
-            <Text style={styles.actionBtnText}>Mensaje</Text>
-          </PressableFluid>
-          <PressableFluid onPress={onClose} haptic="light" style={styles.actionBtn}>
-            <Ionicons name="person-add-outline" size={18} color={colors.primary} />
-            <Text style={styles.actionBtnText}>Seguir</Text>
-          </PressableFluid>
-          <PressableFluid onPress={onClose} haptic="light" style={styles.actionBtn}>
-            <Ionicons name="share-outline" size={18} color={colors.accent} />
-            <Text style={styles.actionBtnText}>Compartir</Text>
-          </PressableFluid>
-        </View>
-      </View>
-    </FluidSheet>
-  );
-}
+import { UserProfileModal } from '@components/profile/UserProfileModal';
 
 export default function CommunityScreen() {
   const [users, setUsers] = useState<CommunityUser[]>([]);
@@ -203,6 +146,10 @@ export default function CommunityScreen() {
   const listeningUsers = useMemo(() => users.filter(u => u.now_playing).length, [users]);
 
   const currentUserData = useMemo(() => users.find(u => u.username === user?.username), [users, user]);
+  const youAvatarUri = currentUserData?.avatar_source === 'discord' && currentUserData.discord?.avatar_url
+    ? currentUserData.discord.avatar_url
+    : currentUserData?.avatar_url ?? currentUserData?.discord?.avatar_url;
+  const youPresence = currentUserData?.presence ?? (currentUserData?.online ? 'online' : 'offline');
 
   return (
     <View style={styles.container}>
@@ -219,13 +166,29 @@ export default function CommunityScreen() {
       </View>
 
       {currentUserData && (
-        <View style={styles.youCard}>
+        <PressableFluid
+          onPress={() => handleUserPress(currentUserData)}
+          haptic="light"
+          style={styles.youCard}
+          scaleTo={0.98}
+        >
           <View style={styles.youCardContent}>
             <View style={styles.youAvatar}>
-              <View style={[styles.youAvatarInner, { backgroundColor: gradients.play[0] }]}>
-                <Text style={styles.youAvatarText}>{currentUserData.username.slice(0, 1).toUpperCase()}</Text>
-              </View>
-              {currentUserData.online && <View style={styles.onlineDot} />}
+              {youAvatarUri ? (
+                <Image source={{ uri: youAvatarUri }} style={styles.youAvatarImage} />
+              ) : (
+                <View style={[styles.youAvatarInner, { backgroundColor: gradients.play[0] }]}>
+                  <Text style={styles.youAvatarText}>{currentUserData.username.slice(0, 1).toUpperCase()}</Text>
+                </View>
+              )}
+              <View
+                style={[
+                  styles.onlineDot,
+                  youPresence === 'online' && { backgroundColor: '#00E676' },
+                  youPresence === 'background' && { backgroundColor: '#7F00FF' },
+                  youPresence !== 'online' && youPresence !== 'background' && { backgroundColor: colors.textMuted },
+                ]}
+              />
             </View>
             <View style={styles.youInfo}>
               <View style={styles.youHeader}>
@@ -255,7 +218,7 @@ export default function CommunityScreen() {
               </PressableFluid>
             )}
           </View>
-        </View>
+        </PressableFluid>
       )}
 
       <View style={styles.statsBar}>
@@ -321,7 +284,8 @@ export default function CommunityScreen() {
       )}
 
       <UserProfileModal
-        user={selectedUser!}
+        user={selectedUser}
+        isCurrentUser={selectedUser?.username === user?.username}
         visible={showProfile && !!selectedUser}
         onClose={() => {
           setShowProfile(false);
@@ -401,6 +365,11 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 0 },
     elevation: 10,
+  },
+  youAvatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   youAvatarText: {
     color: colors.white,
@@ -570,6 +539,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   avatarText: {
     color: colors.white,

@@ -170,7 +170,9 @@ export default function FullscreenPlayer() {
   useEffect(() => {
     panResponderRef.current = PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.5,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 20 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2.2,
       onPanResponderGrant: () => {
         translateY.extractOffset();
         isAnimatingOutRef.current = false;

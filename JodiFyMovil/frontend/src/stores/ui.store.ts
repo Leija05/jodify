@@ -31,7 +31,7 @@ interface UiState {
   closeQueueSheet: () => void;
 }
 
-export const useUiStore = create<UiState>((set) => ({
+export const useUiStore = create<UiState>((set, get) => ({
   tab: 'home',
   fullscreenOpen: false,
   lyricsModalOpen: false,
@@ -42,7 +42,11 @@ export const useUiStore = create<UiState>((set) => ({
   secretOpen: false,
   queueSheetOpen: false,
 
-  setTab: (tab) => set({ tab }),
+  setTab: (tab) => {
+    if (get().tab !== tab) {
+      set({ tab });
+    }
+  },
   openFullscreen: () => set({ fullscreenOpen: true }),
   closeFullscreen: () => set({ fullscreenOpen: false }),
   openLyricsModal: () => set({ lyricsModalOpen: true }),

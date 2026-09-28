@@ -3,33 +3,28 @@ import { configureAudioMode, onPlayerStatus } from '../stores/audio';
 import { usePlayerStore } from '../stores/player.store';
 
 export function usePlayerEngine() {
-  const setBuffering = usePlayerStore((s) => s.setBuffering);
-  const setPlaying = usePlayerStore((s) => s.setPlaying);
-  const setProgress = usePlayerStore((s) => s.setProgress);
-  const setError = usePlayerStore((s) => s.setError);
-  const next = usePlayerStore((s) => s.next);
-
   useEffect(() => {
-    configureAudioMode();
+    void configureAudioMode();
 
     const handleStatus = (status: any) => {
       if (!status) return;
 
       const { playbackState, currentTime, duration } = status;
+      const store = usePlayerStore.getState();
 
-      setProgress(currentTime, duration);
+      store.setProgress(currentTime, duration);
 
       if (playbackState === 3) {
-        setPlaying(true);
-        setBuffering(false);
+        store.setPlaying(true);
+        store.setBuffering(false);
       } else if (playbackState === 2) {
-        setPlaying(false);
+        store.setPlaying(false);
       } else if (playbackState === 4) {
-        setBuffering(true);
+        store.setBuffering(true);
       } else if (playbackState === 5) {
-        setError(status.error ?? 'Error de reproducción');
+        store.setError(status.error ?? 'Error de reproducción');
       } else if (playbackState === 6) {
-        next();
+        store.next();
       }
     };
 
@@ -38,5 +33,5 @@ export function usePlayerEngine() {
     return () => {
       unsubscribe();
     };
-  }, [setBuffering, setPlaying, setProgress, setError, next]);
+  }, []);
 }

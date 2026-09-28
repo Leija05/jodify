@@ -97,10 +97,27 @@ function buildOrder(queueLength: number, shuffle: boolean, currentIndex: number)
   return mixed;
 }
 
+import { DeviceEventEmitter } from 'react-native';
+
 export const usePlayerStore = create<PlayerState>()((set, get) => {
-  onPlayerStatus((status) => {
-    const { currentSong, isPlaying } = get();
-    syncLockScreen(currentSong, isPlaying, status.playbackState);
+  onPlayerStatus(() => {
+    const { currentSong, isPlaying, position, duration } = get();
+    syncLockScreen(currentSong, isPlaying, position, duration);
+  });
+
+  DeviceEventEmitter.addListener('onMediaAction', (event: { action: string; position?: number }) => {
+    const { play, pause, next, previous, seek } = get();
+    if (event.action === 'play') {
+      play();
+    } else if (event.action === 'pause') {
+      pause();
+    } else if (event.action === 'next') {
+      next();
+    } else if (event.action === 'previous') {
+      previous();
+    } else if (event.action === 'seek' && event.position !== undefined) {
+      seek(event.position);
+    }
   });
 
   async function playWithEngine(song: Song, retryCount = 0): Promise<void> {
@@ -175,12 +192,14 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       if (get().isPlaying) {
         player.pause();
         set({ isPlaying: false }, false);
+        syncLockScreen(get().currentSong, false, get().position, get().duration);
       } else {
         if (player.duration > 0 && player.currentTime >= player.duration - 0.5) {
           player.seekTo(0);
         }
         player.play();
         set({ isPlaying: true }, false);
+        syncLockScreen(get().currentSong, true, get().position, get().duration);
       }
     },
 
@@ -190,6 +209,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       if (!player) return;
       player.play();
       set({ isPlaying: true }, false);
+      syncLockScreen(get().currentSong, true, get().position, get().duration);
     },
 
     pause: () => {
@@ -197,6 +217,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       if (!player) return;
       player.pause();
       set({ isPlaying: false }, false);
+      syncLockScreen(get().currentSong, false, get().position, get().duration);
     },
 
     next: () => {

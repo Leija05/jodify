@@ -31,10 +31,31 @@ export async function setDiscordId(username: string, discordId: string): Promise
   });
 }
 
-export async function sendHeartbeat(username: string, online: boolean): Promise<void> {
+export async function sendHeartbeat(
+  username: string,
+  online: boolean,
+  presence: 'online' | 'background' | 'offline' = 'online'
+): Promise<void> {
   await apiFetch<void>(`/api/users/${encodeURIComponent(username)}/heartbeat`, {
     method: 'POST',
-    body: { online },
+    body: { online, presence },
+    auth: true,
+  });
+}
+
+export async function updateUserProfile(
+  username: string,
+  data: {
+    display_name?: string;
+    new_username?: string;
+    avatar_url?: string;
+    avatar_source?: 'custom' | 'discord';
+    discord_id?: string;
+  }
+): Promise<CommunityUser> {
+  return apiFetch<CommunityUser>(`/api/users/${encodeURIComponent(username)}/profile`, {
+    method: 'PUT',
+    body: data,
     auth: true,
   });
 }

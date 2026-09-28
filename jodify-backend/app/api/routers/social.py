@@ -22,7 +22,8 @@ async def add_like(body: LikeRequest) -> None:
         )
     except Exception as exc:
         if "E11000" in str(exc):
-            raise HTTPException(status_code=409, detail="Ya está en favoritos") from exc
+            # Idempotente: si ya está en favoritos, se considera exitoso y previene rollback
+            return
         raise
 
 

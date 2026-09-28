@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { mmkv, STORAGE_KEYS } from '../lib/mmkv';
-import { applyNative, enableEqualizer } from '../services/equalizer.service';
+import { applyNative, enableEqualizer, applyBassBoost, applyVirtualizer } from '../services/equalizer.service';
 import { apiFetch } from '../services/api';
 
 const DEFAULT_BANDS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -23,6 +23,8 @@ interface EqState {
   enabled: boolean;
   preset: string;
   values: number[];
+  bassBoost: number;
+  virtualizer: number;
   customPresets: Record<string, number[]>;
   frequencies: readonly number[];
 
@@ -30,6 +32,8 @@ interface EqState {
   setPreset: (name: string) => void;
   setBand: (index: number, value: number) => void;
   setValues: (values: number[]) => void;
+  setBassBoost: (val: number) => void;
+  setVirtualizer: (val: number) => void;
   smooth: () => void;
   vibe: () => void;
   saveCustom: (name: string) => boolean;
@@ -44,21 +48,27 @@ function loadPersistedState(): {
   enabled: boolean;
   preset: string;
   values: number[];
+  bassBoost: number;
+  virtualizer: number;
   customPresets: Record<string, number[]>;
 } {
   try {
     const enabled = mmkv.getBoolean(STORAGE_KEYS.eqEnabled) ?? true;
     const preset = mmkv.getString(STORAGE_KEYS.eqPreset) ?? 'flat';
     const values = mmkv.getObject<number[]>(STORAGE_KEYS.eqBands) ?? DEFAULT_BANDS;
+    const bassBoost = mmkv.getNumber('eq.bass_boost') ?? 0;
+    const virtualizer = mmkv.getNumber('eq.virtualizer') ?? 0;
     const customPresets = mmkv.getObject<Record<string, number[]>>(CUSTOM_PRESETS_KEY) ?? {};
     return {
       enabled,
       preset,
       values: values.length === 10 ? values : DEFAULT_BANDS,
+      bassBoost,
+      virtualizer,
       customPresets,
     };
   } catch {
-    return { enabled: true, preset: 'flat', values: DEFAULT_BANDS, customPresets: {} };
+    return { enabled: true, preset: 'flat', values: DEFAULT_BANDS, bassBoost: 0, virtualizer: 0, customPresets: {} };
   }
 }
 
@@ -76,6 +86,8 @@ export const useEqStore = create<EqState>()((set, get) => ({
   enabled: initialPersisted.enabled,
   preset: initialPersisted.preset,
   values: initialPersisted.values,
+  bassBoost: initialPersisted.bassBoost,
+  virtualizer: initialPersisted.virtualizer,
   customPresets: initialPersisted.customPresets,
   frequencies: BAND_FREQUENCIES,
 
@@ -85,17 +97,43 @@ export const useEqStore = create<EqState>()((set, get) => ({
     void enableEqualizer(enabled);
     if (enabled) {
       void applyNative(get().values);
+      void applyBassBoost(get().bassBoost);
+      void applyVirtualizer(get().virtualizer);
     }
   },
 
   setPreset: (name) => {
     const custom = get().customPresets;
     const values = EQ_PRESETS[name] ?? custom[name] ?? DEFAULT_BANDS;
-    set({ preset: name, values });
+    const bassVal = name === 'bass' ? 70 : name === 'electronic' || name === 'rock' ? 45 : 0;
+    const virtVal = name === 'classical' || name === 'electronic' ? 50 : 0;
+    set({ preset: name, values, bassBoost: bassVal, virtualizer: virtVal });
     mmkv.setString(STORAGE_KEYS.eqPreset, name);
     mmkv.setObject(STORAGE_KEYS.eqBands, values);
+    mmkv.setNumber('eq.bass_boost', bassVal);
+    mmkv.setNumber('eq.virtualizer', virtVal);
     if (get().enabled) {
       void applyNative(values);
+      void applyBassBoost(bassVal);
+      void applyVirtualizer(virtVal);
+    }
+  },
+
+  setBassBoost: (val) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(val)));
+    set({ bassBoost: clamped });
+    mmkv.setNumber('eq.bass_boost', clamped);
+    if (get().enabled) {
+      void applyBassBoost(clamped);
+    }
+  },
+
+  setVirtualizer: (val) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(val)));
+    set({ virtualizer: clamped });
+    mmkv.setNumber('eq.virtualizer', clamped);
+    if (get().enabled) {
+      void applyVirtualizer(clamped);
     }
   },
 

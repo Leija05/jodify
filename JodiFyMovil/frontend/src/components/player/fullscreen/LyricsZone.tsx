@@ -25,6 +25,7 @@ export const LyricsZone = React.forwardRef<View, LyricsZoneProps>(
   }, ref) => {
     const containerHeight = useRef(new Animated.Value(0)).current;
     const activeIndex = useRef(-1);
+    const scrollRef = useRef<ScrollView>(null);
 
     if (!showLyrics) return null;
 
@@ -49,6 +50,12 @@ export const LyricsZone = React.forwardRef<View, LyricsZoneProps>(
     useEffect(() => {
       if (activeLineIndex !== activeIndex.current) {
         activeIndex.current = activeLineIndex;
+        if (activeLineIndex >= 0 && scrollRef.current) {
+          scrollRef.current.scrollTo({
+            y: Math.max(0, activeLineIndex * 46 - 80),
+            animated: true,
+          });
+        }
       }
     }, [activeLineIndex]);
 
@@ -99,6 +106,7 @@ export const LyricsZone = React.forwardRef<View, LyricsZoneProps>(
         }}
       >
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
@@ -144,6 +152,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 24,
     paddingBottom: 32,
+    maxHeight: 280,
   },
   list: {
     gap: 12,

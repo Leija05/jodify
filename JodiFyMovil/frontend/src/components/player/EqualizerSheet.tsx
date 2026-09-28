@@ -34,9 +34,13 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
     const enabled = useEqStore((s) => s.enabled);
     const preset = useEqStore((s) => s.preset);
     const values = useEqStore((s) => s.values);
+    const bassBoost = useEqStore((s) => s.bassBoost);
+    const virtualizer = useEqStore((s) => s.virtualizer);
     const setEnabled = useEqStore((s) => s.setEnabled);
     const setPreset = useEqStore((s) => s.setPreset);
     const setBand = useEqStore((s) => s.setBand);
+    const setBassBoost = useEqStore((s) => s.setBassBoost);
+    const setVirtualizer = useEqStore((s) => s.setVirtualizer);
     const smooth = useEqStore((s) => s.smooth);
     const vibe = useEqStore((s) => s.vibe);
     const reset = useEqStore((s) => s.reset);
@@ -84,8 +88,10 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
 
     useEffect(() => {
       panResponderRef.current = PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 3,
+        onStartShouldSetPanResponder: () => false,
+        onStartShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 18 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2.2,
         onPanResponderGrant: () => {
           translateY.extractOffset();
           isAnimatingOutRef.current = false;
@@ -162,6 +168,53 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
                 gap={4}
                 color={colors.secondary}
               />
+            </View>
+
+            {/* Master FX DSP: Bass Boost & Surround 3D */}
+            <View style={styles.fxGrid}>
+              <View style={styles.fxCard}>
+                <View style={styles.fxHeader}>
+                  <View style={styles.fxHeaderLeft}>
+                    <Ionicons name="flame" size={18} color="#FF007A" />
+                    <Text style={styles.fxTitle}>BASS BOOST</Text>
+                  </View>
+                  <Text style={[styles.fxValue, { color: '#FF007A' }]}>{bassBoost}%</Text>
+                </View>
+                <Slider
+                  value={bassBoost}
+                  onValueChange={setBassBoost}
+                  min={0}
+                  max={100}
+                  step={1}
+                  disabled={!enabled}
+                  trackHeight={5}
+                  thumbSize={18}
+                  style={styles.fxSlider}
+                  activeTrackStyle={{ backgroundColor: '#FF007A' }}
+                />
+              </View>
+
+              <View style={styles.fxCard}>
+                <View style={styles.fxHeader}>
+                  <View style={styles.fxHeaderLeft}>
+                    <Ionicons name="headset" size={18} color={colors.secondary} />
+                    <Text style={styles.fxTitle}>SURROUND 3D</Text>
+                  </View>
+                  <Text style={[styles.fxValue, { color: colors.secondary }]}>{virtualizer}%</Text>
+                </View>
+                <Slider
+                  value={virtualizer}
+                  onValueChange={setVirtualizer}
+                  min={0}
+                  max={100}
+                  step={1}
+                  disabled={!enabled}
+                  trackHeight={5}
+                  thumbSize={18}
+                  style={styles.fxSlider}
+                  activeTrackStyle={{ backgroundColor: colors.secondary }}
+                />
+              </View>
             </View>
 
             <View style={styles.bands}>
@@ -249,6 +302,20 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
                 <Ionicons name="refresh" size={16} color={colors.textMuted} />
                 <Text style={styles.actionPillText}>Reset</Text>
               </PressableFluid>
+            </View>
+
+            {/* Informative Frequency Calibration Guide */}
+            <View style={styles.guideCard}>
+              <View style={styles.guideHeader}>
+                <Ionicons name="information-circle-outline" size={18} color={colors.secondary} />
+                <Text style={styles.guideTitle}>Calibración de Frecuencias</Text>
+              </View>
+              <Text style={styles.guideDesc}>
+                • <Text style={styles.guideBold}>32Hz - 64Hz</Text>: Sub-graves profundos y vibración.{'\n'}
+                • <Text style={styles.guideBold}>125Hz - 250Hz</Text>: Pegada de bombos y cuerpo del bajo.{'\n'}
+                • <Text style={styles.guideBold}>500Hz - 2kHz</Text>: Presencia vocal e instrumentos.{'\n'}
+                • <Text style={styles.guideBold}>4kHz - 16kHz</Text>: Nitidez de platillos, brillo y aire.
+              </Text>
             </View>
           </ScrollView>
         </Animated.View>
@@ -398,5 +465,72 @@ const styles = StyleSheet.create({
     fontFamily: typography.labelMedium.fontFamily,
     fontSize: typography.labelMedium.fontSize,
     letterSpacing: typography.labelMedium.letterSpacing,
+  },
+  fxGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  fxCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: radius.lg,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  fxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  fxHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fxTitle: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  fxValue: {
+    fontFamily: typography.monoSmall.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  fxSlider: {
+    marginTop: 4,
+  },
+  guideCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  guideHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  guideTitle: {
+    color: colors.text,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 13,
+  },
+  guideDesc: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  guideBold: {
+    color: colors.white,
+    fontWeight: '600',
   },
 });

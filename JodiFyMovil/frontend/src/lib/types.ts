@@ -109,12 +109,16 @@ export interface Playlist {
 }
 
 export interface UserAccess {
-  id: number;
+  id: number | string;
   username: string;
+  display_name?: string | null;
   password?: string;
   role: Role;
   is_online?: number;
+  presence?: 'online' | 'background' | 'offline';
   last_seen?: string;
+  avatar_url?: string | null;
+  avatar_source?: 'custom' | 'discord';
   discord_id?: string | null;
   current_song_id?: number | null;
   current_song_name?: string | null;

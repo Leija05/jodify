@@ -1,24 +1,41 @@
-import type { AudioMetadata } from '../lib/types';
+import { NativeModules, Platform } from 'react-native';
+import type { Song } from '../lib/types';
+import { pickCoverUrl, resolveArtist } from '../lib/utils';
+import { getSongPalette } from '../lib/palette';
 
-export async function activateLockScreenForSong(song: any): Promise<void> {
+const { JodifyMediaModule } = NativeModules;
+
+export async function activateLockScreenForSong(
+  song: Song | null,
+  isPlaying = true,
+  position = 0
+): Promise<void> {
   if (!song) return;
   try {
-    const coverUrl = song.cover_url ?? song.coverUrl ?? song.cover ?? song.image_url ?? song.thumbnail_url ?? song.artwork_url ?? song.picture;
-    const metadata: AudioMetadata = {
-      title: song.name,
-      artist: song.artist ?? 'Desconocido',
-      albumTitle: song.album,
-      artworkUrl: coverUrl,
-      duration: song.duration ?? 0,
-    };
-    // Sync with system media session if available
+    const coverUrl = pickCoverUrl(song);
+    const artist = resolveArtist(song) ?? 'Desconocido';
+    const palette = getSongPalette(song);
+
+    if (Platform.OS === 'android' && JodifyMediaModule?.updatePlayback) {
+      JodifyMediaModule.updatePlayback(
+        song.name,
+        artist,
+        coverUrl ?? null,
+        isPlaying,
+        position,
+        song.duration ?? 0,
+        palette.primary ?? '#7F00FF'
+      );
+    }
+
     if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: metadata.title,
-        artist: metadata.artist,
-        album: metadata.albumTitle ?? '',
-        artwork: metadata.artworkUrl ? [{ src: metadata.artworkUrl }] : [],
+        title: song.name,
+        artist,
+        album: song.album ?? '',
+        artwork: coverUrl ? [{ src: coverUrl }] : [],
       });
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     }
   } catch (e) {
     console.warn('[LockScreen] Failed to activate:', e);
@@ -26,12 +43,36 @@ export async function activateLockScreenForSong(song: any): Promise<void> {
 }
 
 export async function syncLockScreen(
-  song: any | null,
+  song: Song | null,
   isPlaying: boolean,
-  _playbackState?: any
+  position = 0,
+  duration = 0
 ): Promise<void> {
   try {
-    if (song && typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+    if (!song) {
+      if (Platform.OS === 'android' && JodifyMediaModule?.stopPlayback) {
+        JodifyMediaModule.stopPlayback();
+      }
+      return;
+    }
+
+    const coverUrl = pickCoverUrl(song);
+    const artist = resolveArtist(song) ?? 'Desconocido';
+    const palette = getSongPalette(song);
+
+    if (Platform.OS === 'android' && JodifyMediaModule?.updatePlayback) {
+      JodifyMediaModule.updatePlayback(
+        song.name,
+        artist,
+        coverUrl ?? null,
+        isPlaying,
+        position,
+        duration > 0 ? duration : (song.duration ?? 0),
+        palette.primary ?? '#7F00FF'
+      );
+    }
+
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     }
   } catch (e) {
@@ -41,6 +82,9 @@ export async function syncLockScreen(
 
 export async function clearLockScreen(): Promise<void> {
   try {
+    if (Platform.OS === 'android' && JodifyMediaModule?.stopPlayback) {
+      JodifyMediaModule.stopPlayback();
+    }
     if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.metadata = null;
       navigator.mediaSession.playbackState = 'none';

@@ -101,7 +101,7 @@ export const PressableFluid = React.forwardRef<View, PressableFluidProps>(
       if (flatStyle.gap !== undefined) layoutStyle.gap = flatStyle.gap;
       if (flatStyle.rowGap !== undefined) layoutStyle.rowGap = flatStyle.rowGap;
       if (flatStyle.columnGap !== undefined) layoutStyle.columnGap = flatStyle.columnGap;
-      if (flatStyle.flexWrap) layoutStyle.flexWrap = flatStyle.flexWrap;
+      if (flatStyle.borderRadius !== undefined) layoutStyle.borderRadius = flatStyle.borderRadius;
       if (flatStyle.width !== undefined) layoutStyle.width = '100%';
       if (flatStyle.height !== undefined) layoutStyle.height = '100%';
       layoutStyle.alignSelf = 'stretch';

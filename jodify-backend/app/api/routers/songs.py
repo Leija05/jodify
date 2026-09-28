@@ -171,18 +171,20 @@ async def delete_songs(body: DeleteSongsRequest, _admin: Annotated[dict, Depends
 
 @router.post("/{song_id}/likes")
 async def update_likes(song_id: str, body: LikesDeltaRequest) -> dict:
+    filter_q: dict
     try:
-        oid = ObjectId(song_id)
-    except Exception as exc:
-        raise HTTPException(status_code=404, detail="Canción no encontrada") from exc
+        filter_q = {"_id": ObjectId(song_id)}
+    except Exception:
+        filter_q = {"id": int(song_id) if song_id.isdigit() else song_id}
+
     delta = max(-1, min(1, body.delta))
     updated = await col("songs").find_one_and_update(
-        {"_id": oid},
+        filter_q,
         {"$inc": {"likes": delta}},
         return_document=ReturnDocument.AFTER,
     )
     if updated is None:
-        raise HTTPException(status_code=404, detail="Canción no encontrada")
+        return {"likes": max(0, 1 if delta > 0 else 0)}
     invalidate_songs_cache()
     return {"likes": max(0, updated.get("likes", 0))}
 

@@ -1,6 +1,8 @@
 package com.jodify.mobile.eq
 
+import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
+import android.media.audiofx.Virtualizer
 import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Callback
@@ -16,9 +18,14 @@ class JodifyEqualizerModule(
 ) : ReactContextBaseJavaModule(reactContext) {
 
   private var equalizer: Equalizer? = null
+  private var bassBoost: BassBoost? = null
+  private var virtualizer: Virtualizer? = null
+
   private var available = false
   private var enabled = false
   private var lastGains: DoubleArray? = null
+  private var bassStrength: Short = 0
+  private var virtualizerStrength: Short = 0
 
   private val tag = "JodifyEqualizer"
 
@@ -33,6 +40,29 @@ class JodifyEqualizerModule(
       available = true
       Log.d(tag, "Equalizer creado (${eq.numberOfBands} bandas)")
       lastGains?.let { applyGainsInternal(it) }
+
+      try {
+        val bb = BassBoost(0, 0)
+        bb.enabled = enabled && bassStrength > 0
+        if (bb.strengthSupported && bassStrength > 0) {
+          bb.setStrength(bassStrength)
+        }
+        bassBoost = bb
+      } catch (e: Throwable) {
+        Log.w(tag, "BassBoost no soportado: ${e.message}")
+      }
+
+      try {
+        val virt = Virtualizer(0, 0)
+        virt.enabled = enabled && virtualizerStrength > 0
+        if (virt.strengthSupported && virtualizerStrength > 0) {
+          virt.setStrength(virtualizerStrength)
+        }
+        virtualizer = virt
+      } catch (e: Throwable) {
+        Log.w(tag, "Virtualizer no soportado: ${e.message}")
+      }
+
       true
     } catch (e: Throwable) {
       Log.w(tag, "No se pudo crear el ecualizador: ${e.message}")
@@ -83,20 +113,13 @@ class JodifyEqualizerModule(
   @ReactMethod
   fun setEnabled(flag: Boolean) {
     enabled = flag
-    if (flag) {
-      if (createIfNeeded()) {
-        try {
-          equalizer?.enabled = true
-        } catch (e: Throwable) {
-          Log.w(tag, "No se pudo activar el ecualizador: ${e.message}")
-        }
-      }
-    } else {
-      try {
-        equalizer?.enabled = false
-      } catch (e: Throwable) {
-        Log.w(tag, "No se pudo desactivar el ecualizador: ${e.message}")
-      }
+    createIfNeeded()
+    try {
+      equalizer?.enabled = flag
+      bassBoost?.enabled = flag && bassStrength > 0
+      virtualizer?.enabled = flag && virtualizerStrength > 0
+    } catch (e: Throwable) {
+      Log.w(tag, "No se pudo cambiar estado del ecualizador: ${e.message}")
     }
   }
 
@@ -105,6 +128,40 @@ class JodifyEqualizerModule(
     if (!createIfNeeded()) return
     val values = DoubleArray(gains.size()) { gains.getDouble(it) }
     applyGainsInternal(values)
+  }
+
+  @ReactMethod
+  fun setBassBoost(strength: Double) {
+    val s = (strength * 10).roundToInt().coerceIn(0, 1000).toShort()
+    bassStrength = s
+    try {
+      createIfNeeded()
+      bassBoost?.let {
+        if (it.strengthSupported) {
+          it.setStrength(s)
+          it.enabled = enabled && s > 0
+        }
+      }
+    } catch (e: Throwable) {
+      Log.w(tag, "Error aplicando BassBoost: ${e.message}")
+    }
+  }
+
+  @ReactMethod
+  fun setVirtualizer(strength: Double) {
+    val s = (strength * 10).roundToInt().coerceIn(0, 1000).toShort()
+    virtualizerStrength = s
+    try {
+      createIfNeeded()
+      virtualizer?.let {
+        if (it.strengthSupported) {
+          it.setStrength(s)
+          it.enabled = enabled && s > 0
+        }
+      }
+    } catch (e: Throwable) {
+      Log.w(tag, "Error aplicando Virtualizer: ${e.message}")
+    }
   }
 
   @ReactMethod
@@ -133,10 +190,14 @@ class JodifyEqualizerModule(
   fun release() {
     try {
       equalizer?.release()
+      bassBoost?.release()
+      virtualizer?.release()
     } catch (e: Throwable) {
       // ya liberado
     }
     equalizer = null
+    bassBoost = null
+    virtualizer = null
     available = false
   }
 }

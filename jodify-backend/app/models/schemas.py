@@ -30,6 +30,15 @@ class AuthResponse(BaseModel):
 
 class HeartbeatRequest(BaseModel):
     online: bool = True
+    presence: str = "online"  # "online" | "background" | "offline"
+
+
+class UpdateProfileRequest(BaseModel):
+    display_name: str | None = None
+    new_username: str | None = None
+    avatar_url: str | None = None
+    avatar_source: str | None = None  # "custom" | "discord"
+    discord_id: str | None = None
 
 
 class DiscordRequest(BaseModel):

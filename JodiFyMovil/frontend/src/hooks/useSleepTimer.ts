@@ -44,9 +44,9 @@ export function useSleepTimer() {
   const triggerSleep = () => {
     if (isPlaying) {
       pause();
-      useSettingsStore.setState({
-        sleepTimer: { ...sleepTimer, triggered: true },
-      });
     }
+    useSettingsStore.setState({
+      sleepTimer: { ...sleepTimer, triggered: true },
+    });
   };
 }

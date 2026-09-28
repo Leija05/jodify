@@ -12,6 +12,7 @@ interface SettingsState {
   notificationsEnabled: boolean;
 
   setUser: (user: UserAccess | null) => void;
+  updateUser: (partial: Partial<UserAccess>) => void;
   logout: () => void;
   setVolume: (volume: number) => void;
   setMuted: (muted: boolean) => void;
@@ -45,6 +46,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } else {
       mmkv.delete(STORAGE_KEYS.authUser);
     }
+  },
+
+  updateUser: (partial) => {
+    const current = get().user;
+    if (!current) return;
+    const updated = { ...current, ...partial };
+    set({ user: updated });
+    mmkv.setObject(STORAGE_KEYS.authUser, updated);
   },
 
   logout: () => {

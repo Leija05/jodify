@@ -46,6 +46,26 @@ export async function enableEqualizer(enabled: boolean): Promise<void> {
   }
 }
 
+export async function applyBassBoost(strength: number): Promise<void> {
+  try {
+    if (Platform.OS === 'android' && JodifyEqualizer?.setBassBoost) {
+      JodifyEqualizer.setBassBoost(strength);
+    }
+  } catch (e) {
+    console.warn('[Equalizer] Failed to set bass boost:', e);
+  }
+}
+
+export async function applyVirtualizer(strength: number): Promise<void> {
+  try {
+    if (Platform.OS === 'android' && JodifyEqualizer?.setVirtualizer) {
+      JodifyEqualizer.setVirtualizer(strength);
+    }
+  } catch (e) {
+    console.warn('[Equalizer] Failed to set virtualizer:', e);
+  }
+}
+
 export async function getEqualizerCapabilities(): Promise<{
   supported: boolean;
   bandCount: number;

@@ -13,7 +13,7 @@ import { useLibraryStore } from '@stores/library.store';
 import { usePlayerStore } from '@stores/player.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
-import { colors, typography, gradients, radius, touch } from '@theme';
+import { colors, typography, gradients, radius } from '@theme';
 
 const TABS: Array<{ id: LibraryTab; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
   { id: 'global', label: 'Global', icon: 'globe-outline' },
@@ -186,6 +186,16 @@ export default function LibraryScreen() {
 
   const keyExtractor = useCallback((item: Song) => String(item.id), []);
 
+  const handleShuffleAll = useCallback(() => {
+    if (filtered.length === 0) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+    const firstSong = shuffled[0];
+    if (firstSong) {
+      playSong(firstSong, shuffled);
+    }
+  }, [filtered, playSong]);
+
   const renderItem = useCallback(({ item }: { item: Song }) => {
     const id = String(item.id);
     const isDownloading = downloading[id];
@@ -198,8 +208,8 @@ export default function LibraryScreen() {
           isCurrent={isCurrent}
           isPlaying={isPlaying && isCurrent}
           onPress={() => handlePlay(item)}
-          onLike={user ? () => void handleLike(item) : undefined}
-          onUnlike={user && liked ? () => void handleLike(item) : undefined}
+          onLike={() => (user ? void handleLike(item) : openAuth())}
+          onUnlike={() => (user ? void handleLike(item) : openAuth())}
           liked={liked}
           onDownload={() => void handleDownload(item)}
           downloaded={downloadedIds.some((d) => String(d) === id)}
@@ -233,6 +243,30 @@ export default function LibraryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.fixedHeader}>
+        <View style={styles.topBarRow}>
+          <View>
+            <Text style={styles.screenHeading}>Tu Biblioteca</Text>
+            <Text style={styles.screenSubheading}>
+              {filtered.length} canciones · {tab === 'liked' ? 'Favoritas' : tab === 'downloads' ? 'Offline' : 'Global'}
+            </Text>
+          </View>
+          <PressableFluid
+            onPress={handleShuffleAll}
+            haptic="medium"
+            style={styles.shuffleAllBtn}
+          >
+            <LinearGradient
+              colors={['#7F00FF', '#00E5FF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.shuffleAllGradient}
+            >
+              <Ionicons name="shuffle" size={16} color={colors.white} />
+              <Text style={styles.shuffleAllText}>Aleatorio</Text>
+            </LinearGradient>
+          </PressableFluid>
+        </View>
+
         <Animated.View style={[
           styles.searchWrap,
           {
@@ -271,6 +305,7 @@ export default function LibraryScreen() {
         <View style={styles.tabs}>
           {TABS.map((t) => {
             const active = tab === t.id;
+            const count = t.id === 'liked' ? likedIds.length : t.id === 'downloads' ? downloadedIds.length : songs.length;
             return (
               <PressableFluid
                 key={t.id}
@@ -286,8 +321,8 @@ export default function LibraryScreen() {
                     end={{ x: 1, y: 1 }}
                     style={[styles.tab, styles.tabActive]}
                   >
-                    <Ionicons name={t.icon} size={16} color={colors.white} />
-                    <Text style={[styles.tabText, styles.tabTextActive]}>{t.label}</Text>
+                    <Ionicons name={t.icon} size={15} color={colors.white} />
+                    <Text style={[styles.tabText, styles.tabTextActive]}>{t.label} ({count})</Text>
                     <Animated.View style={[
                       styles.tabUnderline,
                       {
@@ -298,8 +333,8 @@ export default function LibraryScreen() {
                   </LinearGradient>
                 ) : (
                   <View style={styles.tab}>
-                    <Ionicons name={t.icon} size={16} color={colors.textMuted} />
-                    <Text style={styles.tabText}>{t.label}</Text>
+                    <Ionicons name={t.icon} size={15} color={colors.textMuted} />
+                    <Text style={styles.tabText}>{t.label} ({count})</Text>
                   </View>
                 )}
               </PressableFluid>
@@ -308,8 +343,8 @@ export default function LibraryScreen() {
         </View>
 
         <View style={styles.hintRow}>
-          <Ionicons name="arrow-back" size={12} color={colors.textMuted} />
-          <Text style={styles.hintText}>Desliza para favoritas · izq. para cola · mantén para más</Text>
+          <Ionicons name="arrow-forward" size={12} color={colors.secondary} />
+          <Text style={styles.hintText}>Desliza a la derecha para favorita · Mantén pulsado para acciones</Text>
         </View>
       </View>
 
@@ -367,6 +402,46 @@ const styles = StyleSheet.create({
   fixedHeader: {
     backgroundColor: colors.background,
     zIndex: 10,
+    paddingTop: 12,
+  },
+  topBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  screenHeading: {
+    color: colors.text,
+    fontFamily: typography.displayMedium.fontFamily,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  screenSubheading: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  shuffleAllBtn: {
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  shuffleAllGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+  },
+  shuffleAllText: {
+    color: colors.white,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
   },
   searchWrap: {
     flexDirection: 'row',

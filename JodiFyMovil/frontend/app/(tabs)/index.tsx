@@ -17,12 +17,17 @@ import { usePlayerStore } from '@stores/player.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
 import { colors, typography, gradients, radius, touch, elevation } from '@theme';
+import { UserProfileModal } from '@components/profile/UserProfileModal';
+import { AccountDetailsModal } from '@components/profile/AccountDetailsModal';
 
 export default function HomeScreen() {
   const songs = useLibraryStore((s) => s.songs);
   const loading = useLibraryStore((s) => s.loading);
   const error = useLibraryStore((s) => s.error);
   const user = useSettingsStore((s) => s.user);
+  const logout = useSettingsStore((s) => s.logout);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const queue = usePlayerStore((s) => s.queue);
@@ -83,6 +88,14 @@ export default function HomeScreen() {
   const nowPlaying = currentSong;
   const nowPlayingCover = useMemo(() => nowPlaying ? pickCoverUrl(nowPlaying) : null, [nowPlaying]);
 
+  const userAvatarUri = useMemo(() => {
+    if (!user) return null;
+    if (user.avatar_source === 'discord' && user.discord_id) {
+      return `https://cdn.discordapp.com/embed/avatars/${parseInt(user.discord_id.slice(-2) || '0', 10) % 5}.png`;
+    }
+    return user.avatar_url || null;
+  }, [user]);
+
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 6) return 'Buenas noches';
@@ -102,18 +115,28 @@ export default function HomeScreen() {
               Jodi<Text style={styles.logoAccent}>Fy</Text>
             </Text>
             <Text style={styles.greeting} numberOfLines={1}>
-              {greeting}, {user ? user.username : 'invitado'}
+              {greeting}, {user ? (user.display_name || user.username) : 'invitado'}
             </Text>
           </View>
           <PressableFluid
-            onPress={user ? () => useUiStore.getState().setTab('settings') : openAuth}
+            onPress={() => {
+              if (user) {
+                setProfileOpen(true);
+              } else {
+                openAuth();
+              }
+            }}
             haptic="light"
             style={styles.headerRight}
             hitSlop={8}
           >
             {user ? (
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{user.username.slice(0, 1).toUpperCase()}</Text>
+                {userAvatarUri ? (
+                  <Image source={{ uri: userAvatarUri }} style={styles.avatarImg} />
+                ) : (
+                  <Text style={styles.avatarText}>{(user.display_name || user.username).slice(0, 1).toUpperCase()}</Text>
+                )}
               </View>
             ) : (
               <View style={styles.loginChip}>
@@ -300,6 +323,23 @@ export default function HomeScreen() {
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      <UserProfileModal
+        user={user}
+        isCurrentUser
+        visible={profileOpen && !!user}
+        onClose={() => setProfileOpen(false)}
+        onOpenAccountDetails={() => setAccountDetailsOpen(true)}
+        onLogout={() => {
+          setProfileOpen(false);
+          void logout();
+        }}
+      />
+
+      <AccountDetailsModal
+        visible={accountDetailsOpen && !!user}
+        onClose={() => setAccountDetailsOpen(false)}
+      />
     </View>
   );
 }
@@ -355,6 +395,11 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryStrong,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImg: {
+    width: touch.comfortable,
+    height: touch.comfortable,
+    borderRadius: touch.comfortable / 2,
   },
   avatarText: {
     color: colors.white,

@@ -5,19 +5,27 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...core.database import col, sid
-from ...models.schemas import DiscordRequest, HeartbeatRequest, NowPlayingRequest, UserPreferencesRequest
+from ...models.schemas import DiscordRequest, HeartbeatRequest, NowPlayingRequest, UpdateProfileRequest, UserPreferencesRequest
 from ..dependencies import require_admin
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 def user_view(doc: dict) -> dict:
+    presence_status = doc.get("presence_status")
+    is_online = doc.get("is_online", 0)
+    presence = presence_status or ("online" if is_online == 1 else "offline")
+
     return {
         "id": sid(doc.get("_id")),
         "username": doc.get("username", ""),
+        "display_name": doc.get("display_name"),
         "role": doc.get("role", "user"),
-        "is_online": doc.get("is_online", 0),
+        "is_online": is_online,
+        "presence": presence,
         "last_seen": doc.get("last_seen"),
+        "avatar_url": doc.get("avatar_url"),
+        "avatar_source": doc.get("avatar_source", "custom"),
         "discord_id": doc.get("discord_id"),
         "current_song_id": doc.get("current_song_id"),
         "current_song_name": doc.get("current_song_name"),
@@ -87,10 +95,48 @@ async def delete_user(user_id: str, _admin: Annotated[dict, Depends(require_admi
 
 @router.post("/{username}/heartbeat")
 async def heartbeat(username: str, body: HeartbeatRequest) -> None:
+    presence = body.presence if body.online else "offline"
+    is_online = 1 if presence in ("online", "background") else 0
     await col("users").update_one(
         {"username": username},
-        {"$set": {"is_online": 1 if body.online else 0, "last_seen": datetime.now().isoformat()}},
+        {
+            "$set": {
+                "is_online": is_online,
+                "presence_status": presence,
+                "last_seen": datetime.now().isoformat(),
+            }
+        },
     )
+
+
+@router.put("/{username}/profile")
+async def update_profile(username: str, body: UpdateProfileRequest) -> dict:
+    doc = await col("users").find_one({"username": username})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    updates: dict = {}
+    if body.display_name is not None:
+        updates["display_name"] = body.display_name.strip()
+    if body.avatar_url is not None:
+        updates["avatar_url"] = body.avatar_url.strip()
+    if body.avatar_source is not None:
+        updates["avatar_source"] = body.avatar_source.strip()
+    if body.discord_id is not None:
+        updates["discord_id"] = body.discord_id.strip()
+
+    if body.new_username and body.new_username.strip() != username:
+        new_user = body.new_username.strip()
+        existing = await col("users").find_one({"username": new_user})
+        if existing:
+            raise HTTPException(status_code=409, detail="Ese nombre de usuario ya está en uso")
+        updates["username"] = new_user
+
+    if updates:
+        await col("users").update_one({"username": username}, {"$set": updates})
+
+    updated_doc = await col("users").find_one({"_id": doc["_id"]})
+    return user_view(updated_doc or doc)
 
 
 @router.put("/{username}/discord")
