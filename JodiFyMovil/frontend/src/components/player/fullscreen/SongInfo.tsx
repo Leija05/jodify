@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import { colors } from '@theme';
-import { resolveArtist } from '@lib/utils';
+import { resolveArtist, resolveSongTitle } from '@lib/utils';
 import type { Song } from '@lib/types';
 
 interface SongInfoProps {
@@ -18,9 +18,11 @@ interface SongInfoProps {
   onLike?: () => void;
 }
 
-export const SongInfo = React.forwardRef<View, SongInfoProps>(
-  ({ song, titleOpacity, isBuffering, sleepRemaining, cancelSleepTimer, error, liked = false, onLike }, ref) => {
+export const SongInfo = React.memo(
+  React.forwardRef<View, SongInfoProps>(
+    ({ song, titleOpacity, isBuffering, sleepRemaining, cancelSleepTimer, error, liked = false, onLike }, ref) => {
     const artist = useMemo(() => resolveArtist(song), [song]);
+    const title = useMemo(() => resolveSongTitle(song), [song]);
 
     return (
       <Animated.View
@@ -33,10 +35,10 @@ export const SongInfo = React.forwardRef<View, SongInfoProps>(
         <View style={styles.mainRow}>
           <View style={styles.texts}>
             <Text style={styles.title} numberOfLines={1}>
-              {song.name}
+              {title}
             </Text>
             <Text style={styles.artist} numberOfLines={1}>
-              {artist ?? 'Artista desconocido'}
+              {artist}
             </Text>
           </View>
 
@@ -99,7 +101,7 @@ export const SongInfo = React.forwardRef<View, SongInfoProps>(
         )}
       </Animated.View>
     );
-  }
+  })
 );
 
 const styles = StyleSheet.create({

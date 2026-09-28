@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, useImperativeHandle } from 'react';
+import React, { useRef, useCallback, useImperativeHandle } from 'react';
 import { View, Text, PanResponder, StyleProp, ViewStyle, StyleSheet } from 'react-native';
 import { colors, radius } from '@theme';
 
@@ -6,8 +6,8 @@ interface TimelineSliderProps {
   position: number;
   duration: number;
   onSeek: (seconds: number) => void;
-  onSlidingStart?: () => void;
-  onSlidingComplete?: () => void;
+  onSlidingStart?: (() => void) | undefined;
+  onSlidingComplete?: (() => void) | undefined;
   style?: StyleProp<ViewStyle>;
   trackHeight?: number;
   thumbSize?: number;
@@ -34,44 +34,59 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
     ref
   ) => {
     const [dragPosition, setDragPosition] = React.useState<number | null>(null);
-    const panResponder = useRef<ReturnType<typeof PanResponder.create> | null>(null);
     const trackWidth = useRef(0);
     const isDragging = useRef(false);
+
+    const posRef = useRef(position);
+    posRef.current = position;
+    const durRef = useRef(duration);
+    durRef.current = duration;
+    const seekRef = useRef(onSeek);
+    seekRef.current = onSeek;
+    const slidingStartRef = useRef(onSlidingStart);
+    slidingStartRef.current = onSlidingStart;
+    const slidingCompleteRef = useRef(onSlidingComplete);
+    slidingCompleteRef.current = onSlidingComplete;
 
     const startPosRef = useRef(position);
     const lastTimeRef = useRef(position);
 
     const seekTo = useCallback(
       (seconds: number) => {
-        const clamped = Math.max(0, Math.min(seconds, duration));
+        const dur = durRef.current;
+        const clamped = Math.max(0, Math.min(seconds, dur));
         setDragPosition(null);
-        onSeek(clamped);
+        seekRef.current?.(clamped);
       },
-      [duration, onSeek]
+      []
     );
 
     useImperativeHandle(ref, () => ({ seekTo }), [seekTo]);
 
-    useEffect(() => {
-      panResponder.current = PanResponder.create({
+    const panResponder = useRef(
+      PanResponder.create({
         onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => false,
         onMoveShouldSetPanResponder: (_event, gestureState) => Math.abs(gestureState.dx) > 3,
+        onMoveShouldSetPanResponderCapture: () => false,
         onPanResponderGrant: (event, gestureState) => {
           isDragging.current = true;
-          onSlidingStart?.();
-          const basePos = position;
+          slidingStartRef.current?.();
+          const basePos = posRef.current;
           startPosRef.current = basePos;
-          if (trackWidth.current > 0 && Math.abs(gestureState.dx) < 2) {
+          const dur = durRef.current;
+          if (trackWidth.current > 0 && Math.abs(gestureState.dx) < 4) {
             const locX = Math.max(0, Math.min(event.nativeEvent.locationX, trackWidth.current));
-            const tappedTime = (locX / trackWidth.current) * duration;
+            const tappedTime = (locX / trackWidth.current) * dur;
             lastTimeRef.current = tappedTime;
             setDragPosition(tappedTime);
           }
         },
         onPanResponderMove: (_event, gestureState) => {
-          if (trackWidth.current <= 0 || duration <= 0) return;
-          const deltaSeconds = (gestureState.dx / trackWidth.current) * duration;
-          const newTime = Math.max(0, Math.min(duration, startPosRef.current + deltaSeconds));
+          const dur = durRef.current;
+          if (trackWidth.current <= 0 || dur <= 0) return;
+          const deltaSeconds = (gestureState.dx / trackWidth.current) * dur;
+          const newTime = Math.max(0, Math.min(dur, startPosRef.current + deltaSeconds));
           lastTimeRef.current = newTime;
           setDragPosition(newTime);
         },
@@ -79,16 +94,17 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
           isDragging.current = false;
           const finalTime = lastTimeRef.current;
           setDragPosition(null);
-          onSeek(finalTime);
-          onSlidingComplete?.();
+          seekRef.current?.(finalTime);
+          slidingCompleteRef.current?.();
         },
         onPanResponderTerminate: () => {
           isDragging.current = false;
           setDragPosition(null);
-          onSlidingComplete?.();
+          slidingCompleteRef.current?.();
         },
-      });
-    }, [duration, position, onSeek, onSlidingStart, onSlidingComplete]);
+        onPanResponderTerminationRequest: () => true,
+      })
+    ).current;
 
     const currentPos = dragPosition !== null ? dragPosition : position;
     const progressPercent = duration > 0 ? Math.min(Math.max((currentPos / duration) * 100, 0), 100) : 0;
@@ -103,24 +119,25 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
     const TOUCH_AREA_HEIGHT = 32;
 
     return (
-      <View style={[styles.container, style]} {...panResponder.current?.panHandlers}>
+      <View style={[styles.container, style]} {...panResponder.panHandlers}>
         <View
           style={styles.touchArea}
           onLayout={(e) => {
             trackWidth.current = e.nativeEvent.layout.width;
           }}
         >
-          <View style={[styles.track, { height: trackHeight }]} />
-          <View
-            style={[
-              styles.activeTrack,
-              {
-                height: trackHeight,
-                width: `${progressPercent}%`,
-                top: (TOUCH_AREA_HEIGHT - trackHeight) / 2,
-              },
-            ]}
-          />
+          <View style={[styles.trackWrapper, { height: trackHeight }]}>
+            <View style={[styles.track, { height: trackHeight }]} />
+            <View
+              style={[
+                styles.activeTrack,
+                {
+                  height: trackHeight,
+                  width: `${progressPercent}%`,
+                },
+              ]}
+            />
+          </View>
           <View
             style={[
               styles.thumb,
@@ -129,8 +146,8 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
                 height: thumbSize,
                 borderRadius: thumbSize / 2,
                 left: `${progressPercent}%`,
-                top: TOUCH_AREA_HEIGHT / 2,
-                transform: [{ translateX: -thumbSize / 2 }, { translateY: -thumbSize / 2 }],
+                top: (TOUCH_AREA_HEIGHT - thumbSize) / 2,
+                transform: [{ translateX: -thumbSize / 2 }],
               },
             ]}
           />
@@ -162,6 +179,13 @@ const styles = StyleSheet.create({
     height: 32,
     position: 'relative',
     justifyContent: 'center',
+  },
+  trackWrapper: {
+    width: '100%',
+    position: 'relative',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    overflow: 'hidden',
   },
   track: {
     width: '100%',

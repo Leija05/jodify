@@ -14,8 +14,9 @@ interface FullscreenHeaderProps {
   insets: ReturnType<typeof useSafeAreaInsets>;
 }
 
-export const FullscreenHeader = React.forwardRef<View, FullscreenHeaderProps>(
-  ({ opacity, onDismiss, onQueuePress, displayMode, onToggleDisplayMode, insets }, ref) => {
+export const FullscreenHeader = React.memo(
+  React.forwardRef<View, FullscreenHeaderProps>(
+    ({ opacity, onDismiss, onQueuePress, displayMode, onToggleDisplayMode, insets }, ref) => {
     return (
       <Animated.View
         ref={ref}
@@ -52,7 +53,7 @@ export const FullscreenHeader = React.forwardRef<View, FullscreenHeaderProps>(
         </View>
       </Animated.View>
     );
-  }
+  })
 );
 
 const styles = StyleSheet.create({

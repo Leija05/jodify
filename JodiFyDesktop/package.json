@@ -1,6 +1,6 @@
 {
   "name": "jodify-desktop",
-  "version": "1.2.4",
+  "version": "1.2.6",
   "private": true,
   "description": "JodiFy — Free Music For Friends (escritorio)",
   "main": "main.js",

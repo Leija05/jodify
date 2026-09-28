@@ -66,7 +66,7 @@ function createWindow() {
 // El renderer avisa el estado (reproduciendo / hay canción) vía IPC y el main
 // actualiza los botones (icono play/pausa y disabled sin canción).
 const thumbIcons = process.platform === 'win32' ? createTaskbarIcons() : null;
-let playerStatus = { playing: false, hasTrack: false };
+let playerStatus = { playing: false, hasTrack: false, liked: false };
 
 function sendPlayerControl(action) {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -80,6 +80,8 @@ function updateThumbar() {
   if (!win) return;
   const flags = playerStatus.hasTrack ? [] : ['disabled'];
   const playIcon = playerStatus.playing ? thumbIcons.pause : thumbIcons.play;
+  const heartIcon = playerStatus.liked ? thumbIcons.heart : (thumbIcons.heartOutline || thumbIcons.heart);
+  const heartTooltip = playerStatus.liked ? 'Quitar de Me gusta' : 'Añadir a Me gusta';
   win.setThumbarButtons([
     { tooltip: 'Anterior', icon: thumbIcons.prev, flags, click: () => sendPlayerControl('prev') },
     {
@@ -89,13 +91,17 @@ function updateThumbar() {
       click: () => sendPlayerControl('toggle'),
     },
     { tooltip: 'Siguiente', icon: thumbIcons.next, flags, click: () => sendPlayerControl('next') },
-    { tooltip: 'Me gusta', icon: thumbIcons.heart, flags, click: () => sendPlayerControl('like') },
+    { tooltip: heartTooltip, icon: heartIcon, flags, click: () => sendPlayerControl('like') },
   ]);
 }
 
 function registerPlayerIpc() {
   ipcMain.on('player:state', (_event, state) => {
-    playerStatus = { playing: !!state?.playing, hasTrack: !!state?.hasTrack };
+    playerStatus = {
+      playing: !!state?.playing,
+      hasTrack: !!state?.hasTrack,
+      liked: !!state?.liked,
+    };
     updateThumbar();
   });
 }

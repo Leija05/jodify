@@ -56,7 +56,6 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
 
     const translateY = useRef(new Animated.Value(SCREEN.height)).current;
     const opacity = useRef(new Animated.Value(0)).current;
-    const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
     const isAnimatingOutRef = useRef(false);
 
     const animateIn = useCallback(() => {
@@ -70,6 +69,7 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
     const animateOut = useCallback(() => {
       if (isAnimatingOutRef.current) return;
       isAnimatingOutRef.current = true;
+      translateY.flattenOffset();
       Animated.parallel([
         Animated.spring(translateY, { toValue: SCREEN.height, ...motion.springDrawer, useNativeDriver: true }),
         Animated.spring(opacity, { toValue: 0, ...motion.springDrawer, useNativeDriver: true }),
@@ -87,15 +87,22 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
 
     const springBack = useCallback(() => {
       if (isAnimatingOutRef.current) return;
+      translateY.flattenOffset();
       Animated.spring(translateY, { toValue: 0, ...motion.springDrawer, useNativeDriver: true }).start();
     }, [translateY]);
 
     const dismiss = useCallback(() => {
+      translateY.flattenOffset();
       animateOut();
-    }, [animateOut]);
+    }, [animateOut, translateY]);
 
-    useEffect(() => {
-      panResponderRef.current = PanResponder.create({
+    const dismissRef = useRef(dismiss);
+    dismissRef.current = dismiss;
+    const springBackRef = useRef(springBack);
+    springBackRef.current = springBack;
+
+    const panResponder = useRef(
+      PanResponder.create({
         onStartShouldSetPanResponder: () => false,
         onStartShouldSetPanResponderCapture: () => false,
         onMoveShouldSetPanResponderCapture: () => false,
@@ -118,14 +125,17 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
           translateY.flattenOffset();
           const { dy, vy } = gestureState;
           if (dy > DISMISS_THRESHOLD || (dy > 60 && vy > 0.45)) {
-            dismiss();
+            dismissRef.current();
           } else {
-            springBack();
+            springBackRef.current();
           }
         },
-        onPanResponderTerminate: springBack,
-      });
-    }, [dismiss, springBack]);
+        onPanResponderTerminate: () => {
+          translateY.flattenOffset();
+          springBackRef.current();
+        },
+      })
+    ).current;
 
     if (!open) return null;
 
@@ -139,20 +149,21 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
         statusBarTranslucent
         {...props}
       >
-        <Animated.View
-          style={[
-            styles.container,
-            { opacity, transform: [{ translateY }] },
-          ]}
-        >
-          {Platform.OS === 'ios' ? (
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 16, 0.96)' }]} />
-          )}
+        <View style={styles.modalRoot}>
+          <Animated.View
+            style={[
+              styles.container,
+              { opacity, transform: [{ translateY }] },
+            ]}
+          >
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 16, 0.96)' }]} />
+            )}
 
-          {/* Drag Handle Bar and Header with Dismiss Gesture */}
-          <View {...panResponderRef.current?.panHandlers} style={[styles.header, { paddingTop: Math.max(44, insets.top) }]}>
+            {/* Drag Handle Bar and Header with Dismiss Gesture */}
+            <View {...panResponder.panHandlers} style={[styles.header, { paddingTop: Math.max(44, insets.top) }]}>
             <PressableFluid onPress={dismiss} haptic="light" hitSlop={12} style={styles.dismissBtn}>
               <Ionicons name="chevron-down-outline" size={28} color={colors.white} />
             </PressableFluid>
@@ -381,12 +392,17 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
             </View>
           </ScrollView>
         </Animated.View>
-      </Modal>
-    );
-  }
+      </View>
+    </Modal>
+  );
+}
 );
 
 const styles = StyleSheet.create({
+  modalRoot: {
+    flex: 1,
+    backgroundColor: 'rgba(6, 6, 10, 0.7)',
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

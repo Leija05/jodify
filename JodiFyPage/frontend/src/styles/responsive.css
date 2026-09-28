@@ -335,21 +335,50 @@
   }
 
   .jf-fullscreen {
-    grid-template-columns: 1fr;
-    min-height: auto;
-    padding: var(--space-md);
+    height: 100dvh;
   }
 
-  .jf-vinyl {
-    width: 210px;
+  .jf-fullscreen-header {
+    padding: 14px 18px;
   }
 
-  .jf-fullscreen-right {
+  .jf-fs-brand-info {
     display: none;
   }
 
+  .jf-fullscreen-stage {
+    padding: 0 16px;
+  }
+
+  .jf-fs-studio-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 0;
+  }
+
+  .jf-fs-studio-lyrics-wrapper {
+    display: none;
+  }
+
+  .jf-vinyl-deck {
+    width: min(220px, 58vw);
+  }
+
   .jf-fullscreen-title {
-    font-size: 20px;
+    font-size: 22px;
+  }
+
+  .jf-fullscreen-footer {
+    padding: 0 16px 18px;
+  }
+
+  .jf-fs-controls-island {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+
+  .jf-fs-volume-capsule {
+    display: none;
   }
 
   .jf-modal-backdrop {
@@ -366,14 +395,38 @@
     font-size: 1.8rem;
   }
 
-  .jf-eq-sliders {
-    gap: 2px;
-    padding: var(--space-sm);
+  .jf-eq-dsp-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 
-  .jf-eq-save {
-    flex-basis: 100%;
-    justify-content: stretch;
+  .jf-eq-rack {
+    overflow-x: auto;
+    padding: 10px 4px 8px;
+    gap: 2px;
+  }
+
+  .jf-eq-band-col {
+    min-width: 44px;
+    flex-shrink: 0;
+  }
+
+  .jf-eq-fader-track {
+    height: 104px;
+  }
+
+  .jf-eq-fader-track .jf-slider--v {
+    height: 100px;
+  }
+
+  .jf-eq-header-bar,
+  .jf-eq-presets-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jf-eq-quick-tools {
+    justify-content: flex-end;
   }
 
   .jf-host-rec {

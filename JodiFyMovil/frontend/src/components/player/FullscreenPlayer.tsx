@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LyricsLine } from '@lib/types';
-import { fetchLyrics, lyricsFromSong } from '@services/lyrics.service';
+import { fetchLyrics, lyricsFromSong, getPreloadedLyrics } from '@services/lyrics.service';
 import { downloadSong, deleteDownloadedSong } from '@services/downloads.service';
 import { useLibraryStore } from '@stores/library.store';
 import { usePlayerStore } from '@stores/player.store';
@@ -31,8 +31,6 @@ export default function FullscreenPlayer() {
   const closeFullscreen = useUiStore((s) => s.closeFullscreen);
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const position = usePlayerStore((s) => s.position);
-  const duration = usePlayerStore((s) => s.duration);
   const shuffle = usePlayerStore((s) => s.shuffle);
   const repeat = usePlayerStore((s) => s.repeat);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -67,25 +65,33 @@ export default function FullscreenPlayer() {
   const downloaded = !!currentSong && downloadedIds.some((id) => String(id) === String(currentSong.id));
   const openLyricsModal = useUiStore((s) => s.openLyricsModal);
 
+  // Animations
   const translateY = useRef(new Animated.Value(SCREEN.height)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
-  const coverScale = useRef(new Animated.Value(0.85)).current;
-  const vinylScale = useRef(new Animated.Value(0.9)).current;
+  const coverScale = useRef(new Animated.Value(0.92)).current;
+  const vinylScale = useRef(new Animated.Value(0.92)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
   const controlsOpacity = useRef(new Animated.Value(0)).current;
   const topBarOpacity = useRef(new Animated.Value(0)).current;
-  const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
-  const isAnimatingOutRef = useRef(false);
 
+  const [isSeeking, setIsSeeking] = useState(false);
+
+  const isAnimatingOutRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Lyrics loading with cache
   useEffect(() => {
-    setLyrics(null);
     setShowLyrics(false);
-    if (!currentSong) return;
-    const fromSong = lyricsFromSong(currentSong.lyrics);
+    if (!currentSong) {
+      setLyrics(null);
+      return;
+    }
+    const fromSong = lyricsFromSong(currentSong.lyrics) || getPreloadedLyrics(currentSong.name, currentSong.artist);
     if (fromSong) {
       setLyrics(fromSong);
       return;
     }
+    setLyrics(null);
     setLyricsLoading(true);
     fetchLyrics(currentSong.name, currentSong.artist).then((lines) => {
       setLyrics(lines);
@@ -115,6 +121,7 @@ export default function FullscreenPlayer() {
   const animateOut = useCallback(() => {
     if (isAnimatingOutRef.current) return;
     isAnimatingOutRef.current = true;
+    translateY.flattenOffset();
     Animated.parallel([
       Animated.timing(translateY, { toValue: SCREEN.height, duration: 220, easing: CUBIC_EASING, useNativeDriver: true }),
       Animated.timing(coverScale, { toValue: 0.9, duration: 180, useNativeDriver: true }),
@@ -126,14 +133,9 @@ export default function FullscreenPlayer() {
     });
   }, [translateY, coverScale, vinylScale, closeFullscreen]);
 
-  useEffect(() => {
-    if (open) {
-      animateIn();
-    }
-  }, [open, animateIn]);
-
   const springBack = useCallback(() => {
     if (isAnimatingOutRef.current) return;
+    translateY.flattenOffset();
     Animated.parallel([
       Animated.spring(translateY, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
       Animated.spring(coverScale, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
@@ -142,15 +144,34 @@ export default function FullscreenPlayer() {
   }, [translateY, coverScale, vinylScale]);
 
   const dismiss = useCallback(() => {
+    translateY.flattenOffset();
     animateOut();
-  }, [animateOut]);
+  }, [animateOut, translateY]);
 
+  // Animate in when modal opens
   useEffect(() => {
-    panResponderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+    if (open) {
+      animateIn();
+    }
+  }, [open]);
+
+  const dismissRef = useRef(dismiss);
+  dismissRef.current = dismiss;
+  const springBackRef = useRef(springBack);
+  springBackRef.current = springBack;
+
+  // PanResponder - Stable creation on mount with offset flattening on terminate
+  const panResponder = useRef(
+    PanResponder.create({
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponderCapture: () => false,
-      onMoveShouldSetPanResponder: (_event, gestureState) => gestureState.dy > 20 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2.2,
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_event, gestureState) => {
+        // Solo capturar si el gesto empieza en la mitad superior (área de carátula y header)
+        // y es un arrastre descendente claro
+        if (gestureState.y0 > SCREEN.height * 0.48) return false;
+        return gestureState.dy > 18 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2.2;
+      },
       onPanResponderGrant: () => {
         translateY.extractOffset();
         isAnimatingOutRef.current = false;
@@ -168,14 +189,18 @@ export default function FullscreenPlayer() {
 
         if (dy > DISMISS_THRESHOLD || (dy > 60 && vy > 0.45)) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          dismiss();
+          dismissRef.current();
         } else {
-          springBack();
+          springBackRef.current();
         }
       },
-      onPanResponderTerminate: springBack,
-    });
-  }, [translateY, coverScale, vinylScale, dismiss, springBack]);
+      onPanResponderTerminate: () => {
+        translateY.flattenOffset();
+        springBackRef.current();
+      },
+      onPanResponderTerminationRequest: () => true,
+    })
+  ).current;
 
   const handleTogglePlay = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -226,6 +251,12 @@ export default function FullscreenPlayer() {
     closeFullscreen();
   }, [closeFullscreen]);
 
+  const modalOpacity = translateY.interpolate({
+    inputRange: [0, SCREEN.height * 0.7],
+    outputRange: [1, 0.2],
+    extrapolate: 'clamp',
+  });
+
   const sleepRemaining = sleepTimer.endAt ? Math.max(0, sleepTimer.endAt - Date.now()) : 0;
 
   if (!open) return null;
@@ -238,110 +269,122 @@ export default function FullscreenPlayer() {
       presentationStyle="overFullScreen"
       onRequestClose={dismiss}
       statusBarTranslucent
+      supportedOrientations={['portrait', 'landscape']}
     >
-      <Animated.View
-        style={[
-          styles.container,
-          { transform: [{ translateY }] },
-        ]}
-        {...panResponderRef.current?.panHandlers}
-      >
-        <DynamicBackground song={currentSong} />
+      <View style={styles.modalRoot}>
+        <Animated.View
+          style={[
+            styles.container,
+            { transform: [{ translateY }], opacity: modalOpacity },
+          ]}
+        >
+          <DynamicBackground song={currentSong} />
 
-        <FullscreenHeader
-          opacity={topBarOpacity}
-          onDismiss={dismiss}
-          onQueuePress={() => setQueueOpen(true)}
-          displayMode={displayMode}
-          onToggleDisplayMode={() => setDisplayMode((m) => (m === 'cover' ? 'vinyl' : 'cover'))}
-          insets={insets}
-        />
-
-        {currentSong ? (
-          <ScrollView
-            contentContainerStyle={[
-              styles.playerScroll,
-              { paddingTop: insets.top + 56, paddingBottom: insets.bottom + 28 },
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            <ShowcaseHero
-              song={currentSong}
-              coverScale={coverScale}
-              vinylScale={vinylScale}
-              isPlaying={isPlaying}
+          <View {...panResponder.panHandlers}>
+            <FullscreenHeader
+              opacity={topBarOpacity}
+              onDismiss={dismiss}
+              onQueuePress={() => setQueueOpen(true)}
               displayMode={displayMode}
-              onToggleMode={() => setDisplayMode((m) => (m === 'cover' ? 'vinyl' : 'cover'))}
+              onToggleDisplayMode={() => setDisplayMode((m) => (m === 'cover' ? 'vinyl' : 'cover'))}
+              insets={insets}
             />
-
-            <SongInfo
-              song={currentSong}
-              titleOpacity={titleOpacity}
-              isBuffering={isBuffering}
-              sleepRemaining={sleepRemaining}
-              cancelSleepTimer={cancelSleepTimer}
-              error={error}
-              liked={liked}
-              onLike={handleLike}
-            />
-
-            <TimelineZone
-              controlsOpacity={controlsOpacity}
-              position={position}
-              duration={duration}
-              onSeek={seek}
-            />
-
-            <ControlsRow
-              controlsOpacity={controlsOpacity}
-              isPlaying={isPlaying}
-              shuffle={shuffle}
-              repeat={repeat}
-              onToggleShuffle={toggleShuffle}
-              onPrevious={previous}
-              onTogglePlay={handleTogglePlay}
-              onNext={next}
-              onCycleRepeat={cycleRepeat}
-            />
-
-            <UtilityRow
-              downloaded={downloaded}
-              downloading={downloading}
-              onDownload={handleDownload}
-              onEqualizer={openEqualizer}
-              onLyricsToggle={() => setShowLyrics((v) => !v)}
-              showLyrics={showLyrics}
-              onLyricsFullscreen={openLyricsModal}
-              hasLyrics={!!lyrics && lyrics.length > 0}
-              onStartRadio={handleStartRadio}
-              onOpenJam={handleOpenJam}
-              jamActive={jamActive}
-            />
-
-            <LyricsZone
-              showLyrics={showLyrics}
-              lyricsLoading={lyricsLoading}
-              lyrics={lyrics}
-              synced={synced}
-              position={position}
-              onSeek={seek}
-              onLyricsToggle={() => setShowLyrics((v) => !v)}
-            />
-          </ScrollView>
-        ) : (
-          <View style={styles.empty}>
-            <Ionicons name="musical-notes-outline" size={40} color={colors.textMuted} />
-            <Text style={styles.emptyText}>Elige una canción para empezar</Text>
           </View>
-        )}
-      </Animated.View>
 
-      <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} />
+          {currentSong ? (
+            <ScrollView
+              ref={scrollRef}
+              scrollEnabled={!isSeeking}
+              contentContainerStyle={[
+                styles.playerScroll,
+                { paddingTop: insets.top + 56, paddingBottom: insets.bottom + 28 },
+              ]}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View {...panResponder.panHandlers}>
+                <ShowcaseHero
+                  song={currentSong}
+                  coverScale={coverScale}
+                  vinylScale={vinylScale}
+                  isPlaying={isPlaying}
+                  displayMode={displayMode}
+                  onToggleMode={() => setDisplayMode((m) => (m === 'cover' ? 'vinyl' : 'cover'))}
+                />
+              </View>
+
+              <SongInfo
+                song={currentSong}
+                titleOpacity={titleOpacity}
+                isBuffering={isBuffering}
+                sleepRemaining={sleepRemaining}
+                cancelSleepTimer={cancelSleepTimer}
+                error={error}
+                liked={liked}
+                onLike={handleLike}
+              />
+
+              <TimelineZone
+                controlsOpacity={controlsOpacity}
+                onSeek={seek}
+                onSlidingStart={() => setIsSeeking(true)}
+                onSlidingComplete={() => setIsSeeking(false)}
+              />
+
+              <ControlsRow
+                controlsOpacity={controlsOpacity}
+                isPlaying={isPlaying}
+                shuffle={shuffle}
+                repeat={repeat}
+                onToggleShuffle={toggleShuffle}
+                onPrevious={previous}
+                onTogglePlay={handleTogglePlay}
+                onNext={next}
+                onCycleRepeat={cycleRepeat}
+              />
+
+              <UtilityRow
+                downloaded={downloaded}
+                downloading={downloading}
+                onDownload={handleDownload}
+                onEqualizer={openEqualizer}
+                onLyricsToggle={() => setShowLyrics((v) => !v)}
+                showLyrics={showLyrics}
+                onLyricsFullscreen={openLyricsModal}
+                hasLyrics={!!lyrics && lyrics.length > 0}
+                onStartRadio={handleStartRadio}
+                onOpenJam={handleOpenJam}
+                jamActive={jamActive}
+              />
+
+              <LyricsZone
+                showLyrics={showLyrics}
+                lyricsLoading={lyricsLoading}
+                lyrics={lyrics}
+                synced={synced}
+                onSeek={seek}
+                onLyricsToggle={() => setShowLyrics((v) => !v)}
+              />
+            </ScrollView>
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons name="musical-notes-outline" size={40} color={colors.textMuted} />
+              <Text style={styles.emptyText}>Elige una canción para empezar</Text>
+            </View>
+          )}
+
+          <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} />
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalRoot: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

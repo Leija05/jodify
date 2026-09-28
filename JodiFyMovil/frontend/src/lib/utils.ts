@@ -38,29 +38,40 @@ export function pickCoverUrl(song: Song): string | null {
   return `${base}${cleanPath}`;
 }
 
-export function resolveArtist(song: Song): string | null {
+export function resolveSongTitle(song: Song): string {
+  const rawName = (song.name || '').trim();
+  const rawArtist = (song.artist || '').trim();
+
+  const delimiterMatch = rawName.match(/^([^-–—]+)\s*[-–—]\s*(.+)$/);
+  if (delimiterMatch && delimiterMatch[1] && delimiterMatch[2]) {
+    const extractedArtist = delimiterMatch[1].trim().toLowerCase();
+    if (!rawArtist || rawArtist.toLowerCase() === extractedArtist || rawArtist.toLowerCase() === rawName.toLowerCase()) {
+      return delimiterMatch[2].trim();
+    }
+  }
+  return rawName || 'Sin título';
+}
+
+export function resolveArtist(song: Song): string {
   const rawArtist = (song.artist || '').trim();
   const rawName = (song.name || '').trim();
 
-  // 1. If artist is provided and distinct from song name
-  if (rawArtist && rawArtist.toLowerCase() !== rawName.toLowerCase()) {
+  // 1. If artist is provided, valid, and distinct from song name
+  if (
+    rawArtist &&
+    rawArtist.toLowerCase() !== rawName.toLowerCase() &&
+    !/^(desconocido|unknown|none|null|undefined)$/i.test(rawArtist)
+  ) {
     return rawArtist;
   }
 
   // 2. If song name has "Artist - Title" or "Artist – Title"
   const delimiterMatch = rawName.match(/^([^-–—]+)\s*[-–—]\s*(.+)$/);
   if (delimiterMatch && delimiterMatch[1] && delimiterMatch[2]) {
-    return delimiterMatch[1].trim();
-  }
-
-  // 3. Fallback to album only if distinct from name and not generic
-  const rawAlbum = (song.album || '').trim();
-  if (
-    rawAlbum &&
-    rawAlbum.toLowerCase() !== rawName.toLowerCase() &&
-    !/^(single|ep|album|álbum|desconocido|unknown)$/i.test(rawAlbum)
-  ) {
-    return rawAlbum;
+    const candidate = delimiterMatch[1].trim();
+    if (candidate.length > 0 && !/^(track|pista|\d+)$/i.test(candidate)) {
+      return candidate;
+    }
   }
 
   return 'Artista Desconocido';

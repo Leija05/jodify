@@ -4,30 +4,35 @@ import { colors, typography } from '@theme';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import type { LyricsLine } from '@lib/types';
 
+import { usePlayerStore } from '@stores/player.store';
+
 interface LyricsZoneProps {
   showLyrics: boolean;
   lyricsLoading: boolean;
   lyrics: LyricsLine[] | null;
   synced?: boolean;
-  position: number;
+  position?: number;
   onSeek: (seconds: number) => void;
   onLyricsToggle: () => void;
 }
 
-export const LyricsZone = React.forwardRef<View, LyricsZoneProps>(
-  ({
-    showLyrics,
-    lyricsLoading,
-    lyrics,
-    position,
-    onSeek,
-    onLyricsToggle,
-  }, ref) => {
-    const containerHeight = useRef(new Animated.Value(0)).current;
-    const activeIndex = useRef(-1);
-    const scrollRef = useRef<ScrollView>(null);
+export const LyricsZone = React.memo(
+  React.forwardRef<View, LyricsZoneProps>(
+    ({
+      showLyrics,
+      lyricsLoading,
+      lyrics,
+      position: propPosition,
+      onSeek,
+      onLyricsToggle,
+    }, ref) => {
+      const storePosition = usePlayerStore((s) => (showLyrics ? s.position : 0));
+      const position = propPosition ?? storePosition;
+      const containerHeight = useRef(new Animated.Value(0)).current;
+      const activeIndex = useRef(-1);
+      const scrollRef = useRef<ScrollView>(null);
 
-    if (!showLyrics) return null;
+      if (!showLyrics) return null;
 
     const activeLineIndex = useMemo(() => {
       if (!lyrics || !lyrics.length) return -1;
@@ -145,7 +150,7 @@ export const LyricsZone = React.forwardRef<View, LyricsZoneProps>(
         </ScrollView>
       </Animated.View>
     );
-  }
+  })
 );
 
 const styles = StyleSheet.create({

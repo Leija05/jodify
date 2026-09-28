@@ -24,7 +24,7 @@ interface DesktopUpdaterApi {
 export type TaskbarControlAction = 'prev' | 'toggle' | 'next' | 'like';
 
 interface DesktopPlayerApi {
-  setState: (state: { playing: boolean; hasTrack: boolean }) => void;
+  setState: (state: { playing: boolean; hasTrack: boolean; liked?: boolean }) => void;
   onControl: (callback: (payload: { action: TaskbarControlAction }) => void) => () => void;
 }
 

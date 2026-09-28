@@ -20,6 +20,25 @@ import { colors, typography, gradients, radius, touch, elevation } from '@theme'
 import { UserProfileModal } from '@components/profile/UserProfileModal';
 import { AccountDetailsModal } from '@components/profile/AccountDetailsModal';
 
+const HeroProgressBar = React.memo(() => {
+  const position = usePlayerStore((s) => s.position);
+  const duration = usePlayerStore((s) => s.duration);
+  const progress = duration > 0 ? Math.min(1, position / duration) : 0;
+
+  return (
+    <View style={styles.heroProgressWrap}>
+      <View style={styles.heroProgress}>
+        <LinearGradient
+          colors={[gradients.primary[0], gradients.primary[1]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.heroProgressFill, { width: `${progress * 100}%` }]}
+        />
+      </View>
+    </View>
+  );
+});
+
 export default function HomeScreen() {
   const songs = useLibraryStore((s) => s.songs);
   const loading = useLibraryStore((s) => s.loading);
@@ -31,8 +50,6 @@ export default function HomeScreen() {
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const queue = usePlayerStore((s) => s.queue);
-  const position = usePlayerStore((s) => s.position);
-  const duration = usePlayerStore((s) => s.duration);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
   const playSong = usePlayerStore((s) => s.playSong);
   const previous = usePlayerStore((s) => s.previous);
@@ -78,7 +95,6 @@ export default function HomeScreen() {
   }, [topIds, songs]);
 
   const queuePreview = queue.slice(0, 20);
-  const progress = duration > 0 ? Math.min(1, position / duration) : 0;
 
   const handleQueuePlaySong = useCallback((song: Song) => {
     playSong(song, queue);
@@ -193,16 +209,7 @@ export default function HomeScreen() {
                 </View>
               </View>
               <View style={styles.heroControls}>
-                <View style={styles.heroProgressWrap}>
-                  <View style={styles.heroProgress}>
-                    <LinearGradient
-                      colors={[gradients.primary[0], gradients.primary[1]]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={[styles.heroProgressFill, { width: `${progress * 100}%` }]}
-                    />
-                  </View>
-                </View>
+                <HeroProgressBar />
                 <PressableFluid onPress={previous} haptic="light" style={styles.heroControlBtn}>
                   <Ionicons name="play-skip-back" size={24} color={colors.text} />
                 </PressableFluid>

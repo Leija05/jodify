@@ -89,8 +89,14 @@ export function useVolumeBinding(): void {
 
 export function useEqBinding(): void {
   useEffect(() => {
-    const values = useEqStore.getState().values;
-    equalizerApi.setBandGains(values);
+    const eq = useEqStore.getState();
+    equalizerApi.syncAll({
+      enabled: eq.enabled,
+      bandGains: eq.values,
+      preamp: eq.preamp,
+      bassBoost: eq.bassBoost,
+      clarity: eq.clarity,
+    });
   }, []);
 }
 

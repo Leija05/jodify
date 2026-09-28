@@ -1,87 +1,660 @@
-/* ============ 19. Equalizer ============ */
+/* ============ 19. Equalizer (Studio 64-bit) ============ */
+.jf-eq-modal .jf-modal-card {
+  max-width: 840px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: radial-gradient(circle at 50% 0%, rgba(127, 0, 255, 0.08), transparent 70%),
+              radial-gradient(circle at 100% 100%, rgba(0, 240, 255, 0.04), transparent 50%),
+              rgba(10, 10, 14, 0.94);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7),
+              0 0 0 1px rgba(255, 255, 255, 0.08),
+              0 0 40px rgba(127, 0, 255, 0.15);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+}
+
 .jf-eq {
-  padding: var(--space-md) 0;
-}
-
-.jf-eq-presets {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: var(--space-md);
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 2px;
 }
 
-.jf-eq-preset {
-  font-size: 11.5px;
-  padding: 5px 11px;
-  border-radius: 99px;
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  transition: all 0.2s ease;
-}
-
-.jf-eq-preset:hover {
-  color: var(--text);
-}
-
-.jf-eq-preset.is-active {
-  background: var(--gradient-primary);
-  color: #fff;
-  border-color: transparent;
-  box-shadow: var(--shadow-glow);
-}
-
-.jf-eq-sliders {
+/* Header / Status Bar */
+.jf-eq-header-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  background: var(--surface-hover);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--space-sm);
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  gap: 12px;
 }
 
-.jf-eq-band {
+.jf-eq-status-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jf-eq-led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.jf-eq-led.is-active {
+  background: var(--success);
+  box-shadow: 0 0 12px var(--success), 0 0 4px #fff;
+}
+
+.jf-eq-led.is-bypass {
+  background: var(--warning);
+  box-shadow: 0 0 10px var(--warning);
+}
+
+.jf-eq-status-texts {
   display: flex;
   flex-direction: column;
+}
+
+.jf-eq-status-title {
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.jf-eq-status-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.jf-eq-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.jf-eq-bypass-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+}
+
+.jf-eq-bypass-btn.is-active {
+  background: rgba(0, 255, 136, 0.12);
+  color: var(--success);
+  border-color: rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 14px rgba(0, 255, 136, 0.15);
+}
+
+.jf-eq-bypass-btn.is-active:hover {
+  background: rgba(0, 255, 136, 0.2);
+  transform: translateY(-1px);
+}
+
+.jf-eq-bypass-btn.is-bypass {
+  background: rgba(255, 184, 0, 0.12);
+  color: var(--warning);
+  border-color: rgba(255, 184, 0, 0.35);
+  box-shadow: 0 0 14px rgba(255, 184, 0, 0.18);
+}
+
+.jf-eq-bypass-btn.is-bypass:hover {
+  background: rgba(255, 184, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Visualizer Canvas & Curve */
+.jf-eq-viz-section {
+  position: relative;
+  width: 100%;
+  height: 145px;
+  background: linear-gradient(180deg, rgba(8, 8, 12, 0.95), rgba(12, 12, 18, 0.7));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.6);
+}
+
+.jf-eq-visualizer-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.jf-eq-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+.jf-eq-canvas-tooltip {
+  position: absolute;
+  top: 10px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: rgba(14, 14, 20, 0.92);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 240, 255, 0.2);
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+.jf-eq-tt-freq {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.jf-eq-tt-zone {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.jf-eq-tt-gain {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* Potenciadores DSP Maestros: Bass Boost, Claridad y Preamp */
+.jf-eq-dsp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.jf-eq-dsp-card {
+  padding: 10px 14px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.25s ease;
+}
+
+.jf-eq-dsp-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.jf-eq-dsp-top {
+  display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.jf-eq-dsp-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.jf-eq-dsp-bass .jf-eq-dsp-icon {
+  background: rgba(0, 240, 255, 0.12);
+  color: var(--secondary);
+}
+
+.jf-eq-dsp-clarity .jf-eq-dsp-icon {
+  background: rgba(255, 0, 128, 0.12);
+  color: var(--accent);
+}
+
+.jf-eq-dsp-preamp .jf-eq-dsp-icon {
+  background: rgba(127, 0, 255, 0.14);
+  color: #c084fc;
+}
+
+.jf-eq-dsp-info {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
 }
 
-.jf-eq-gain {
-  font-family: var(--font-mono);
+.jf-eq-dsp-label {
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.jf-eq-dsp-desc {
   font-size: 10px;
   color: var(--text-muted);
 }
 
-.jf-eq-freq {
+.jf-eq-dsp-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.jf-eq-dsp-val.is-warning {
+  color: var(--warning);
+}
+
+/* Rack de 10 Bandas con Faders de Estudio */
+.jf-eq-rack {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 6px;
+  padding: 14px 10px 12px;
+  background: linear-gradient(180deg, rgba(20, 20, 26, 0.6), rgba(12, 12, 16, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.25s ease;
+}
+
+.jf-eq-rack.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.jf-eq-band-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease;
+}
+
+.jf-eq-band-col:hover,
+.jf-eq-band-col.is-highlighted {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Badge digital de ganancia */
+.jf-eq-gain-badge {
   font-family: var(--font-mono);
   font-size: 10px;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.jf-eq-gain-badge.is-pos {
+  color: var(--secondary);
+  background: rgba(0, 240, 255, 0.08);
+  border-color: rgba(0, 240, 255, 0.25);
+}
+
+.jf-eq-gain-badge.is-neg {
+  color: var(--accent);
+  background: rgba(255, 0, 128, 0.08);
+  border-color: rgba(255, 0, 128, 0.25);
+}
+
+.jf-eq-gain-badge.is-zero {
   color: var(--text-muted);
+}
+
+.jf-eq-gain-badge:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+/* Fader Vertical Studio */
+.jf-eq-fader-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 124px;
+  padding: 0 4px;
+}
+
+.jf-eq-zero-line {
+  position: absolute;
+  top: 50%;
+  left: -2px;
+  right: -2px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.jf-eq-fader-track .jf-slider--v {
+  height: 120px;
+  width: 5px;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.jf-eq-fader-track .jf-slider--v:hover {
+  width: 7px;
+}
+
+/* Etiquetas de frecuencia y rol acústico */
+.jf-eq-freq-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.jf-eq-freq-num {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.jf-eq-freq-role {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.jf-eq-actions {
+/* Panel de Presets & Sound Profiles */
+.jf-eq-presets-panel {
   display: flex;
-  gap: var(--space-sm);
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
 }
 
-.jf-eq-save {
+.jf-eq-presets-header {
   display: flex;
-  gap: var(--space-sm);
-  flex: 1;
-  justify-content: flex-end;
-  min-width: 220px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.jf-eq-category-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 3px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.jf-eq-cat-tab {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.jf-eq-cat-tab:hover {
+  color: var(--text);
+}
+
+.jf-eq-cat-tab.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.jf-eq-quick-tools {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Chips de Presets */
+.jf-eq-preset-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-height: 84px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.jf-eq-preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  padding: 5px 12px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.jf-eq-preset-chip:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.jf-eq-preset-chip.is-active {
+  background: var(--gradient-primary);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 0 16px rgba(127, 0, 255, 0.45);
+  font-weight: 700;
+}
+
+.jf-eq-preset-chip.is-custom {
+  border-style: dashed;
+}
+
+.jf-eq-chip-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.jf-eq-chip-del:hover {
+  opacity: 1;
+  background: var(--error);
+  color: #fff;
+}
+
+/* Guardar Preset */
+.jf-eq-save-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-top: 4px;
 }
 
 .jf-eq-save-input {
   flex: 1;
   min-width: 0;
+  height: 34px;
+  font-size: 12px;
+}
+
+/* Live Audio Monitor Strip */
+.jf-eq-monitor-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-md);
+  gap: 12px;
+}
+
+.jf-eq-monitor-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.jf-eq-monitor-art {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.jf-eq-monitor-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jf-eq-art-fallback {
+  color: var(--text-muted);
+}
+
+.jf-eq-monitor-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.jf-eq-monitor-title {
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.jf-eq-monitor-artist {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-eq-monitor-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Mini VU Meter en vivo */
+.jf-eq-mini-vu {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 16px;
+  padding: 0 4px;
+}
+
+.jf-eq-vu-bar {
+  width: 2.5px;
+  border-radius: 1px;
+  background: var(--secondary);
+  animation: jf-vu-bounce 0.8s ease-in-out infinite alternate;
+}
+
+.jf-eq-vu-bar.bar-1 { height: 40%; animation-delay: 0.1s; }
+.jf-eq-vu-bar.bar-2 { height: 85%; animation-delay: 0.3s; }
+.jf-eq-vu-bar.bar-3 { height: 60%; animation-delay: 0.15s; }
+.jf-eq-vu-bar.bar-4 { height: 100%; animation-delay: 0.4s; }
+
+@keyframes jf-vu-bounce {
+  0% { transform: scaleY(0.3); opacity: 0.4; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+
+.jf-eq-monitor-play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(127, 0, 255, 0.35);
+}
+
+.jf-eq-monitor-play-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(127, 0, 255, 0.5);
+}
+
+.jf-eq-monitor-play-btn:active {
+  transform: scale(0.96);
 }
 
 /* ============ 20. Settings ============ */

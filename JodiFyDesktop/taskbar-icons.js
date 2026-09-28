@@ -63,9 +63,9 @@ function inTriangle(nx, ny, ax, ay, bx, by, cx, cy) {
   return !(hasNeg && hasPos);
 }
 
-function inHeart(nx, ny) {
-  const x = (nx - 0.5) * 2.7;
-  const y = (0.5 - ny) * 2.6;
+function inHeart(nx, ny, scale = 1.0) {
+  const x = (nx - 0.5) * 2.7 * scale;
+  const y = (0.5 - ny) * 2.6 * scale + (scale - 1.0) * 0.08;
   const a = x * x + y * y - 1;
   return a * a * a - x * x * y * y * y <= 0;
 }
@@ -88,23 +88,28 @@ function glyphNext(nx, ny) {
 }
 
 function glyphHeart(nx, ny) {
-  return inHeart(nx, ny);
+  return inHeart(nx, ny, 1.0);
+}
+
+function glyphHeartOutline(nx, ny) {
+  return inHeart(nx, ny, 1.0) && !inHeart(nx, ny, 1.38);
 }
 
 // ---- render con supersampling 4x y downsample a 32x32 ----
 const SS = 4;
 const SIZE = 32;
 
-function renderGlyph(glyph) {
+function renderGlyph(glyph, color = [255, 255, 255]) {
+  const [cr, cg, cb] = color;
   const ss = SIZE * SS;
   const rgba = Buffer.alloc(ss * ss * 4);
   for (let y = 0; y < ss; y++) {
     for (let x = 0; x < ss; x++) {
       if (glyph((x + 0.5) / ss, (y + 0.5) / ss)) {
         const o = (y * ss + x) * 4;
-        rgba[o] = 255;
-        rgba[o + 1] = 255;
-        rgba[o + 2] = 255;
+        rgba[o] = cr;
+        rgba[o + 1] = cg;
+        rgba[o + 2] = cb;
         rgba[o + 3] = 255;
       }
     }
@@ -113,23 +118,23 @@ function renderGlyph(glyph) {
   const n = SS * SS;
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      let b = 0;
-      let g = 0;
       let r = 0;
+      let g = 0;
+      let b = 0;
       let a = 0;
       for (let dy = 0; dy < SS; dy++) {
         for (let dx = 0; dx < SS; dx++) {
           const o = ((y * SS + dy) * ss + (x * SS + dx)) * 4;
-          b += rgba[o];
+          r += rgba[o];
           g += rgba[o + 1];
-          r += rgba[o + 2];
+          b += rgba[o + 2];
           a += rgba[o + 3];
         }
       }
       const o = (y * SIZE + x) * 4;
-      out[o] = Math.round(b / n);
+      out[o] = Math.round(r / n);
       out[o + 1] = Math.round(g / n);
-      out[o + 2] = Math.round(r / n);
+      out[o + 2] = Math.round(b / n);
       out[o + 3] = Math.round(a / n);
     }
   }
@@ -142,7 +147,8 @@ function createTaskbarIcons() {
     pause: renderGlyph(glyphPause),
     prev: renderGlyph(glyphPrev),
     next: renderGlyph(glyphNext),
-    heart: renderGlyph(glyphHeart),
+    heart: renderGlyph(glyphHeart, [255, 42, 95]), // lleno rojo/rosado brillante (con Me gusta)
+    heartOutline: renderGlyph(glyphHeartOutline, [255, 255, 255]), // contorno blanco nítido (sin Me gusta)
   };
 }
 

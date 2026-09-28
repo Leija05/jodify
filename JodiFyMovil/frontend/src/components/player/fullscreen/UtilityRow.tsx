@@ -19,8 +19,9 @@ interface UtilityRowProps {
   jamActive?: boolean;
 }
 
-export const UtilityRow = React.forwardRef<View, UtilityRowProps>(
-  ({
+export const UtilityRow = React.memo(
+  React.forwardRef<View, UtilityRowProps>(
+    ({
     downloaded,
     downloading,
     onDownload,
@@ -127,7 +128,7 @@ export const UtilityRow = React.forwardRef<View, UtilityRowProps>(
         </View>
       </Animated.View>
     );
-  }
+  })
 );
 
 const styles = StyleSheet.create({

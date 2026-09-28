@@ -6,7 +6,7 @@ import { PressableFluid } from '@components/ui/PressableFluid';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { colors, typography, motion, radius } from '@theme';
-import { pickCoverUrl, resolveArtist } from '@lib/utils';
+import { pickCoverUrl, resolveArtist, resolveSongTitle } from '@lib/utils';
 import { getSongPalette } from '@lib/palette';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '@stores/player.store';
@@ -35,6 +35,7 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
 
   const coverUrl = useMemo(() => (currentSong ? pickCoverUrl(currentSong) : null), [currentSong]);
   const artist = useMemo(() => (currentSong ? resolveArtist(currentSong) : null), [currentSong]);
+  const title = useMemo(() => (currentSong ? resolveSongTitle(currentSong) : ''), [currentSong]);
   const palette = useMemo(() => getSongPalette(currentSong), [currentSong]);
   const progressPercent = duration > 0 ? Math.min(Math.max((position / duration) * 100, 0), 100) : 0;
 
@@ -116,7 +117,7 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
           {/* Song Metadata */}
           <View style={styles.meta}>
             <Text style={styles.title} numberOfLines={1}>
-              {currentSong.name}
+              {title}
             </Text>
             <Text style={styles.artist} numberOfLines={1}>
               {artist ?? 'Artista Desconocido'}

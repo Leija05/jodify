@@ -47,6 +47,7 @@ export default function SettingsScreen() {
   const cancelSleepTimer = useSettingsStore((s) => s.cancelSleepTimer);
 
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
+  const likedIds = useLibraryStore((s) => s.likedIds);
   const updateStatus = useUpdateStore((s) => s.status);
   const updateInfo = useUpdateStore((s) => s.info);
   const runCheck = useUpdateStore((s) => s.runCheck);
@@ -129,127 +130,195 @@ export default function SettingsScreen() {
         <Text style={styles.screenSubtitle}>Configuración del sistema, audio DSP y cuenta</Text>
       </View>
 
-      {/* SECTION 1: CUENTA DE USUARIO */}
+      {/* SECTION 1: CUENTA & IDENTIDAD */}
       <Text style={styles.sectionTitle}>Cuenta & Identidad</Text>
       {user ? (
-        <>
-          {/* Identity Card - Who you are */}
-          <DoubleBezelCard style={styles.card} elevated>
-            <View style={styles.identityHeader}>
-              <View style={styles.identityAvatarWrap}>
-                {userAvatarUri ? (
-                  <Image source={{ uri: userAvatarUri }} style={styles.identityAvatarImg} />
-                ) : (
-                  <LinearGradient colors={gradients.play} style={styles.identityAvatarPlaceholder}>
-                    <Text style={styles.identityAvatarLetter}>
-                      {(user.display_name || user.username).slice(0, 1).toUpperCase()}
-                    </Text>
-                  </LinearGradient>
-                )}
-                <View style={[styles.identityRoleBadge, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
-                  <Ionicons name={roleMeta.icon} size={12} color={roleMeta.color} />
-                </View>
+        <DoubleBezelCard style={styles.card} elevated innerPadding={0}>
+          {/* Top Hero: Avatar, Names, Role, Edit Pill */}
+          <View style={styles.identityHero}>
+            <View style={styles.identityAvatarWrap}>
+              {userAvatarUri ? (
+                <Image source={{ uri: userAvatarUri }} style={styles.identityAvatarImg} />
+              ) : (
+                <LinearGradient colors={gradients.play} style={styles.identityAvatarPlaceholder}>
+                  <Text style={styles.identityAvatarLetter}>
+                    {(user.display_name || user.username).slice(0, 1).toUpperCase()}
+                  </Text>
+                </LinearGradient>
+              )}
+              <View style={[styles.identityRoleBadge, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
+                <Ionicons name={roleMeta.icon} size={12} color={roleMeta.color} />
               </View>
-              <View style={styles.identityInfo}>
+            </View>
+
+            <View style={styles.identityInfo}>
+              <View style={styles.identityNameRow}>
                 <Text style={styles.identityDisplayName} numberOfLines={1}>
                   {user.display_name || user.username}
                 </Text>
-                <Text style={styles.identityUsernameHandle}>@{user.username}</Text>
-                <View style={styles.identityMetaRow}>
-                  <View style={[styles.identityMetaPill, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
-                    <Text style={[styles.identityMetaPillText, { color: roleMeta.color }]}>{roleMeta.label}</Text>
-                  </View>
-                  <Text style={styles.identityMetaText}>
-                    <Ionicons name="calendar-outline" size={10} color={colors.textMuted} style={{marginRight: 3}} />
-                    {formattedCreatedAt}
-                  </Text>
+                <View style={[styles.roleChip, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
+                  <Text style={[styles.roleChipText, { color: roleMeta.color }]}>{roleMeta.label}</Text>
                 </View>
               </View>
-            </View>
-            <PressableFluid
-              onPress={() => setProfileOpen(true)}
-              haptic="light"
-              style={styles.identityChevron}
-            >
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </PressableFluid>
-          </DoubleBezelCard>
 
-          {/* Account Actions Grid */}
-          <View style={styles.accountActionsGrid}>
+              <Text style={styles.identityUsernameHandle}>@{user.username}</Text>
+
+              <View style={styles.identityMetaRow}>
+                <View style={styles.identityMetaItem}>
+                  <Ionicons name="calendar-outline" size={11} color={colors.textMuted} />
+                  <Text style={styles.identityMetaText}>{formattedCreatedAt}</Text>
+                </View>
+                {user.avatar_source === 'discord' && (
+                  <View style={styles.identityMetaItem}>
+                    <Ionicons name="logo-discord" size={11} color="#5865F2" />
+                    <Text style={[styles.identityMetaText, { color: '#8899FF' }]}>Discord</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Quick Edit Button */}
             <PressableFluid
               onPress={() => setAccountDetailsOpen(true)}
               haptic="medium"
-              style={styles.accountActionCard}
+              style={styles.editProfileBtn}
+              hitSlop={8}
             >
-              <View style={[styles.accountActionIcon, { backgroundColor: 'rgba(0, 229, 255, 0.15)' }]}>
-                <Ionicons name="color-palette-outline" size={22} color={colors.secondary} />
+              <Ionicons name="pencil" size={13} color={colors.white} />
+              <Text style={styles.editProfileBtnText}>Editar</Text>
+            </PressableFluid>
+          </View>
+
+          {/* Metrics Shelf: Favoritas, Descargas, Estado */}
+          <View style={styles.metricsShelf}>
+            <View style={styles.metricCell}>
+              <View style={styles.metricIconWrap}>
+                <Ionicons name="heart" size={14} color={colors.accent} />
               </View>
-              <View style={styles.accountActionContent}>
-                <Text style={styles.accountActionCardTitle}>Personalizar Perfil</Text>
-                <Text style={styles.accountActionCardSub}>Foto, nombre en pantalla, conexión Discord</Text>
+              <Text style={styles.metricNumber}>{likedIds.length}</Text>
+              <Text style={styles.metricLabel}>Favoritas</Text>
+            </View>
+
+            <View style={styles.metricDivider} />
+
+            <View style={styles.metricCell}>
+              <View style={styles.metricIconWrap}>
+                <Ionicons name="cloud-done" size={14} color={colors.secondary} />
               </View>
-              <View style={styles.accountActionChevron}>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              <Text style={styles.metricNumber}>{downloadedIds.length}</Text>
+              <Text style={styles.metricLabel}>Descargas</Text>
+            </View>
+
+            <View style={styles.metricDivider} />
+
+            <View style={styles.metricCell}>
+              <View style={styles.metricIconWrap}>
+                <Ionicons name="radio" size={14} color="#00FF88" />
               </View>
+              <Text style={[styles.metricNumber, { color: '#00FF88' }]}>Online</Text>
+              <Text style={styles.metricLabel}>Estado</Text>
+            </View>
+          </View>
+
+          {/* Action List Section */}
+          <View style={styles.accountActionList}>
+            {/* Action 1: Personalizar Perfil & Avatar */}
+            <PressableFluid
+              onPress={() => setAccountDetailsOpen(true)}
+              haptic="light"
+              style={styles.accountListRow}
+            >
+              <View style={[styles.rowIconCircle, { backgroundColor: 'rgba(0, 229, 255, 0.12)' }]}>
+                <Ionicons name="sparkles" size={18} color={colors.secondary} />
+              </View>
+              <View style={styles.rowTexts}>
+                <Text style={styles.rowTitle}>Personalizar Perfil & Avatar</Text>
+                <Text style={styles.rowSubtitle}>Foto de perfil, nombre artístico y Discord ID</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </PressableFluid>
 
+            <View style={styles.rowSeparator} />
+
+            {/* Action 2: Ver Perfil en la Comunidad */}
             <PressableFluid
               onPress={() => setProfileOpen(true)}
               haptic="light"
-              style={styles.accountActionCard}
+              style={styles.accountListRow}
             >
-              <View style={[styles.accountActionIcon, { backgroundColor: 'rgba(127, 0, 255, 0.18)' }]}>
-                <Ionicons name="analytics-outline" size={22} color={colors.primary} />
+              <View style={[styles.rowIconCircle, { backgroundColor: 'rgba(127, 0, 255, 0.16)' }]}>
+                <Ionicons name="person" size={18} color={colors.primary} />
               </View>
-              <View style={styles.accountActionContent}>
-                <Text style={styles.accountActionCardTitle}>Estadísticas de Escucha</Text>
-                <Text style={styles.accountActionCardSub}>Favoritos, reproducciones, actividad</Text>
+              <View style={styles.rowTexts}>
+                <Text style={styles.rowTitle}>Ver Perfil en la Comunidad</Text>
+                <Text style={styles.rowSubtitle}>Vista pública, biografía y favoritos compartidos</Text>
               </View>
-              <View style={styles.accountActionChevron}>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </PressableFluid>
+
+            <View style={styles.rowSeparator} />
+
+            {/* Action 3: Cerrar Sesión */}
+            <PressableFluid
+              onPress={() => {
+                Alert.alert(
+                  'Cerrar sesión',
+                  `¿Estás seguro de que deseas salir de @${user.username}?`,
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Cerrar Sesión',
+                      style: 'destructive',
+                      onPress: () => {
+                        void logout();
+                      },
+                    },
+                  ]
+                );
+              }}
+              haptic="medium"
+              style={styles.accountListRow}
+            >
+              <View style={[styles.rowIconCircle, { backgroundColor: 'rgba(255, 69, 101, 0.12)' }]}>
+                <Ionicons name="log-out" size={18} color={colors.error} />
               </View>
+              <View style={styles.rowTexts}>
+                <Text style={[styles.rowTitle, { color: colors.error }]}>Cerrar Sesión</Text>
+                <Text style={styles.rowSubtitle}>Desconectar de este dispositivo</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={16} color={colors.error} />
             </PressableFluid>
           </View>
-
-          {/* Danger Zone - Separated */}
-          <DoubleBezelCard style={styles.card} elevated>
-            <Text style={styles.dangerZoneTitle}>Zona de Riesgo</Text>
-            <PressableFluid onPress={() => void logout()} haptic="medium" style={styles.dangerAction}>
-              <Ionicons name="log-out-outline" size={18} color={colors.error} />
-              <Text style={styles.dangerActionText}>Cerrar sesión de @{user.username}</Text>
-            </PressableFluid>
-          </DoubleBezelCard>
-        </>
+        </DoubleBezelCard>
       ) : (
-        <DoubleBezelCard style={styles.card} elevated>
-          <View style={styles.guestContainer}>
-            <View style={styles.guestIconWrap}>
-              <Ionicons name="person-outline" size={30} color={colors.textSecondary} />
+        <DoubleBezelCard style={styles.card} elevated innerPadding={0}>
+          <View style={styles.guestHero}>
+            <View style={styles.guestIconCircle}>
+              <Ionicons name="musical-notes" size={26} color={colors.secondary} />
             </View>
-            <View style={styles.guestInfo}>
-              <Text style={styles.guestTitle}>Modo Invitado</Text>
+            <View style={styles.guestTexts}>
+              <Text style={styles.guestTitle}>Conecta tu Cuenta JodiFy</Text>
               <Text style={styles.guestSubtitle}>
-                Inicia sesión para sincronizar tus canciones favoritas, ecualizador en la nube, fotos personalizadas y participar en la comunidad.
+                Sincroniza tus favoritas, guarda presets DSP en la nube, personaliza tu avatar y participa en Jams en vivo.
               </Text>
             </View>
-          </View>
-
-          <PressableFluid
-            onPress={openAuth}
-            haptic="medium"
-            style={styles.loginBtn}
-          >
-            <LinearGradient
-              colors={gradients.play}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.loginBtnFill}
+            <PressableFluid
+              onPress={openAuth}
+              haptic="medium"
+              style={styles.guestLoginBtn}
             >
-              <Ionicons name="log-in-outline" size={18} color={colors.white} />
-              <Text style={styles.loginBtnText}>Iniciar Sesión o Crear Cuenta</Text>
-            </LinearGradient>
-          </PressableFluid>
+              <LinearGradient
+                colors={gradients.play}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.guestLoginBtnFill}
+              >
+                <Ionicons name="sparkles" size={16} color={colors.white} />
+                <Text style={styles.guestLoginBtnText}>Iniciar Sesión o Registrarse</Text>
+                <Ionicons name="arrow-forward" size={16} color={colors.white} />
+              </LinearGradient>
+            </PressableFluid>
+          </View>
         </DoubleBezelCard>
       )}
 
@@ -569,12 +638,14 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     padding: 16,
   },
-  /* --- Identity Card --- */
-  identityHeader: {
+  /* --- Unified Cuenta & Identidad Card --- */
+  identityHero: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    padding: 16,
     gap: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   identityAvatarWrap: {
     position: 'relative',
@@ -584,13 +655,8 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
   },
   identityAvatarPlaceholder: {
     width: 60,
@@ -598,150 +664,223 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7F00FF',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
   },
   identityAvatarLetter: {
     color: colors.white,
     fontFamily: typography.displayMedium.fontFamily,
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
   },
   identityRoleBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2.5,
-    borderColor: colors.background,
+    borderWidth: 2,
+    borderColor: '#0C0C14',
   },
   identityInfo: {
     flex: 1,
     minWidth: 0,
   },
+  identityNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   identityDisplayName: {
     color: colors.white,
     fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.3,
+  },
+  roleChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  roleChipText: {
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   identityUsernameHandle: {
     color: colors.textSecondary,
     fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: 13,
+    fontSize: 12.5,
     marginTop: 2,
   },
   identityMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 8,
+    marginTop: 6,
     flexWrap: 'wrap',
   },
-  identityMetaPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-  },
-  identityMetaPillText: {
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+  identityMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   identityMetaText: {
     color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 11.5,
+    fontSize: 11,
+  },
+  editProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  identityChevron: {
-    padding: 4,
-  },
-  /* --- Account Actions Grid --- */
-  accountActionsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  accountActionCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-    borderRadius: radius.lg,
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
   },
-  accountActionIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  editProfileBtnText: {
+    color: colors.white,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  metricsShelf: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  metricCell: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  metricIconWrap: {
+    marginBottom: 2,
+  },
+  metricNumber: {
+    color: colors.white,
+    fontFamily: typography.monoMedium.fontFamily,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  metricLabel: {
+    color: colors.textMuted,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  metricDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  accountActionList: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  accountListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: radius.md,
+  },
+  rowIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
+    marginRight: 12,
   },
-  accountActionContent: {
+  rowTexts: {
     flex: 1,
     minWidth: 0,
   },
-  accountActionCardTitle: {
+  rowTitle: {
     color: colors.white,
     fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
-    letterSpacing: -0.1,
   },
-  accountActionCardSub: {
+  rowSubtitle: {
     color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
     fontSize: 11,
     marginTop: 1,
-    lineHeight: 14,
   },
-  accountActionChevron: {
-    padding: 2,
-    flexShrink: 0,
+  rowSeparator: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    marginLeft: 56,
   },
-  /* --- Danger Zone --- */
-  dangerZoneTitle: {
-    color: colors.textSecondary,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: 10.5,
-    letterSpacing: 1,
+  /* --- Guest Hero --- */
+  guestHero: {
+    padding: 22,
+    alignItems: 'center',
+    gap: 12,
+  },
+  guestIconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(0, 229, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestTexts: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  guestTitle: {
+    color: colors.white,
+    fontFamily: typography.headlineMedium.fontFamily,
+    fontSize: 17,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: 8,
+    textAlign: 'center',
   },
-  dangerAction: {
+  guestSubtitle: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 8,
+  },
+  guestLoginBtn: {
+    width: '100%',
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  guestLoginBtnFill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 13,
     gap: 8,
-    paddingVertical: 12,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255, 61, 92, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 61, 92, 0.22)',
   },
-  dangerActionText: {
-    color: colors.error,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: 13.5,
-    fontWeight: '600',
+  guestLoginBtnText: {
+    color: colors.white,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   dspHeaderRow: {
     flexDirection: 'row',
@@ -855,53 +994,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontFamily: typography.labelLarge.fontFamily,
     fontSize: 13,
-    fontWeight: '700',
-  },
-  guestContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 16,
-  },
-  guestIconWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  guestInfo: {
-    flex: 1,
-  },
-  guestTitle: {
-    color: colors.white,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  guestSubtitle: {
-    color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 11.5,
-    marginTop: 3,
-    lineHeight: 16,
-  },
-  loginBtn: {
-    borderRadius: radius.pill,
-    overflow: 'hidden',
-  },
-  loginBtnFill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 8,
-  },
-  loginBtnText: {
-    color: colors.white,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 13.5,
     fontWeight: '700',
   },
   cardRow: {

@@ -10,6 +10,7 @@ import { usePlayerStore } from '@stores/player.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
 import { colors, typography, gradients, radius, elevation } from '@theme';
+import { resolveArtist } from '@/lib/utils';
 
 interface UserCardProps {
   user: CommunityUser;
@@ -148,12 +149,46 @@ export default function CommunityScreen() {
   const totalUsers = users.length;
   const listeningUsers = useMemo(() => users.filter(u => !!u.now_playing).length, [users]);
 
-  const currentUserData = useMemo(() => users.find(u => u.username === user?.username), [users, user]);
-  const youAvatarUri = currentUserData?.avatar_source === 'discord' && currentUserData.discord?.avatar_url
-    ? currentUserData.discord.avatar_url
-    : currentUserData?.avatar_url ?? currentUserData?.discord?.avatar_url;
-  const isYouOnline = !!user && (currentUserData?.presence === 'online' || currentUserData?.is_online === 1 || currentUserData?.online || true);
-  const youPresence = currentUserData?.presence ?? (isYouOnline ? 'online' : 'offline');
+  const currentUserData = useMemo(() => users.find(u => u.username.toLowerCase() === user?.username.toLowerCase()), [users, user]);
+
+  const effectiveUserData = useMemo((): CommunityUser | null => {
+    if (!user) return null;
+    const base = currentUserData;
+    const resolvedArtist = currentSong ? resolveArtist(currentSong) : null;
+    const nowPlaying: CommunityUser['now_playing'] = currentSong
+      ? {
+          song_id: typeof currentSong.id === 'number' ? currentSong.id : Number(currentSong.id) || 0,
+          song_name: currentSong.name,
+          ...(resolvedArtist ? { artist: resolvedArtist } : {}),
+          ...(currentSong.album ? { album: currentSong.album } : {}),
+          ...(currentSong.cover_url ? { cover_url: currentSong.cover_url } : {}),
+          ...(currentSong.duration ? { duration: currentSong.duration } : {}),
+        }
+      : base?.now_playing ?? null;
+
+    return {
+      id: user.id ?? 0,
+      username: user.username,
+      display_name: user.display_name ?? user.username,
+      avatar_url: user.avatar_url ?? null,
+      ...(user.avatar_source ? { avatar_source: user.avatar_source } : {}),
+      role: user.role ?? 'user',
+      ...(user.created_at ? { created_at: user.created_at } : {}),
+      ...base,
+      online: true,
+      presence: 'online',
+      now_playing: nowPlaying,
+    };
+  }, [user, currentUserData, currentSong]);
+
+  const youAvatarUri = effectiveUserData?.avatar_source === 'discord' && effectiveUserData.discord?.avatar_url
+    ? effectiveUserData.discord.avatar_url
+    : effectiveUserData?.avatar_url ?? effectiveUserData?.discord?.avatar_url;
+
+  const otherUsers = useMemo(() => {
+    if (!user) return users;
+    return users.filter(u => u.username.toLowerCase() !== user.username.toLowerCase());
+  }, [users, user]);
 
   return (
     <View style={styles.container}>
@@ -169,9 +204,9 @@ export default function CommunityScreen() {
         </PressableFluid>
       </View>
 
-      {currentUserData && (
+      {effectiveUserData && (
         <PressableFluid
-          onPress={() => handleUserPress(currentUserData)}
+          onPress={() => handleUserPress(effectiveUserData)}
           haptic="light"
           style={styles.youCard}
           scaleTo={0.98}
@@ -182,39 +217,41 @@ export default function CommunityScreen() {
                 <Image source={{ uri: youAvatarUri }} style={styles.youAvatarImage} />
               ) : (
                 <View style={[styles.youAvatarInner, { backgroundColor: gradients.play[0] }]}>
-                  <Text style={styles.youAvatarText}>{currentUserData.username.slice(0, 1).toUpperCase()}</Text>
+                  <Text style={styles.youAvatarText}>{effectiveUserData.username.slice(0, 1).toUpperCase()}</Text>
                 </View>
               )}
               <View
                 style={[
                   styles.onlineDot,
-                  youPresence === 'online' && { backgroundColor: '#00E676' },
-                  youPresence === 'background' && { backgroundColor: '#7F00FF' },
-                  youPresence !== 'online' && youPresence !== 'background' && { backgroundColor: colors.textMuted },
+                  { backgroundColor: '#00E676' },
                 ]}
               />
             </View>
             <View style={styles.youInfo}>
               <View style={styles.youHeader}>
-                <Text style={styles.youName}>{currentUserData.display_name ?? currentUserData.username}</Text>
+                <Text style={styles.youName}>{effectiveUserData.display_name ?? effectiveUserData.username}</Text>
                 <Text style={styles.youBadge}>TÚ</Text>
               </View>
-              {currentUserData.now_playing ? (
+              {currentSong || effectiveUserData.now_playing ? (
                 <View style={styles.youNowPlaying}>
                   <View style={styles.youNowPlayingIcon}>
                     <EqualizerBars playing={isPlaying} bars={3} height={12} barWidth={2.5} color={colors.secondary} />
                   </View>
                   <View style={styles.youNowPlayingTexts}>
-                    <Text style={styles.nowPlayingLabel}>ESCUCHANDO</Text>
-                    <Text style={styles.nowPlayingSong} numberOfLines={1}>{currentUserData.now_playing.song_name}</Text>
-                    {currentUserData.now_playing.artist && <Text style={styles.nowPlayingArtist} numberOfLines={1}>{currentUserData.now_playing.artist}</Text>}
+                    <Text style={styles.nowPlayingLabel}>ESCUCHANDO AHORA</Text>
+                    <Text style={styles.nowPlayingSong} numberOfLines={1}>
+                      {currentSong ? currentSong.name : effectiveUserData.now_playing?.song_name}
+                    </Text>
+                    {(currentSong ? resolveArtist(currentSong) : effectiveUserData.now_playing?.artist) && (
+                      <Text style={styles.nowPlayingArtist} numberOfLines={1}>
+                        {currentSong ? resolveArtist(currentSong) : effectiveUserData.now_playing?.artist}
+                      </Text>
+                    )}
                   </View>
                 </View>
               ) : (
                 <Text style={styles.youStatus}>
-                  {isYouOnline
-                    ? (youPresence === 'background' ? 'En 2do plano · En la red JodiFy' : 'En línea · Listo para escuchar')
-                    : 'Desconectado'}
+                  En línea · Listo para escuchar
                 </Text>
               )}
             </View>
@@ -245,7 +282,7 @@ export default function CommunityScreen() {
       </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Usuarios en línea</Text>
+        <Text style={styles.sectionTitle}>Comunidad en línea</Text>
         {onlineUsers > 0 && <Text style={styles.sectionCount}>{onlineUsers}</Text>}
       </View>
 
@@ -253,15 +290,15 @@ export default function CommunityScreen() {
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : users.length === 0 ? (
+      ) : otherUsers.length === 0 ? (
         <EmptyState
           icon="people-outline"
-          title="Nadie por aquí"
-          subtitle="Sé el primero en unirte a la comunidad JodiFy"
+          title="Nadie más por aquí"
+          subtitle="Invita a tus amigos a JodiFy para escuchar juntos en tiempo real"
         />
       ) : (
         <FlatList
-          data={users}
+          data={otherUsers}
           keyExtractor={(item) => item.username}
           refreshControl={
             <RefreshControl
@@ -280,8 +317,8 @@ export default function CommunityScreen() {
           ListEmptyComponent={
             <EmptyState
               icon="people-outline"
-              title="Sin usuarios"
-              subtitle="La comunidad está vacía por ahora"
+              title="Sin otros usuarios"
+              subtitle="Sé el primero en invitar a tus amigos"
             />
           }
           contentContainerStyle={styles.listContent}

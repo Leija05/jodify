@@ -1,12 +1,12 @@
 import React from 'react';
-import { Animated, PanResponder, View, Text, Image, StyleProp, ViewStyle, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleProp, ViewStyle, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { colors, radius, typography } from '@theme';
 import type { Song } from '@lib/types';
-import { pickCoverUrl, resolveArtist } from '@lib/utils';
+import { pickCoverUrl, resolveArtist, resolveSongTitle } from '@lib/utils';
 
 interface SongRowProps {
   song: Song;
@@ -25,8 +25,6 @@ interface SongRowProps {
   style?: StyleProp<ViewStyle>;
   coverSize?: number;
 }
-
-import { LinearGradient } from 'expo-linear-gradient';
 
 export const CoverArt = React.forwardRef<View, { source?: any; size: number; radiusSize: number; style?: StyleProp<ViewStyle> }>(
   ({ source, size, radiusSize, style, ...props }, ref) => {
@@ -78,8 +76,9 @@ export const CoverArt = React.forwardRef<View, { source?: any; size: number; rad
 
 CoverArt.displayName = 'CoverArt';
 
-export const SongRow = React.forwardRef<View, SongRowProps>(
-  (
+export const SongRow = React.memo(
+  React.forwardRef<View, SongRowProps>(
+    (
     {
       song,
       isCurrent = false,
@@ -101,6 +100,7 @@ export const SongRow = React.forwardRef<View, SongRowProps>(
   ) => {
     const coverUrl = pickCoverUrl(song);
     const artist = resolveArtist(song);
+    const title = resolveSongTitle(song);
     const coverRadius = coverSize > 80 ? radius.md : radius.sm;
 
     const content = (
@@ -120,7 +120,7 @@ export const SongRow = React.forwardRef<View, SongRowProps>(
 
         <View style={styles.textContainer}>
           <Text style={[styles.title, isCurrent && styles.titleCurrent]} numberOfLines={1}>
-            {song.name}
+            {title}
           </Text>
           {artist && (
             <Text style={[styles.artist, isCurrent && styles.artistCurrent]} numberOfLines={1}>
@@ -156,100 +156,24 @@ export const SongRow = React.forwardRef<View, SongRowProps>(
       </View>
     );
 
-    const translateX = React.useRef(new Animated.Value(0)).current;
-
-    const panResponder = React.useMemo(
-      () =>
-        PanResponder.create({
-          onStartShouldSetPanResponder: () => false,
-          onStartShouldSetPanResponderCapture: () => false,
-          onMoveShouldSetPanResponderCapture: () => false,
-          onMoveShouldSetPanResponder: (_e, gestureState) => {
-            return (
-              (onLike !== undefined || onUnlike !== undefined) &&
-              gestureState.dx > 14 &&
-              Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
-            );
-          },
-          onPanResponderGrant: () => {},
-          onPanResponderMove: (_e, gestureState) => {
-            if (gestureState.dx > 0) {
-              const clamped = Math.min(gestureState.dx * 0.65, 88);
-              translateX.setValue(clamped);
-            }
-          },
-          onPanResponderRelease: (_e, gestureState) => {
-            if (gestureState.dx > 50) {
-              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              if (liked) {
-                onUnlike?.();
-              } else {
-                onLike?.();
-              }
-            }
-            Animated.spring(translateX, {
-              toValue: 0,
-              friction: 8,
-              tension: 60,
-              useNativeDriver: true,
-            }).start();
-          },
-          onPanResponderTerminate: () => {
-            Animated.spring(translateX, {
-              toValue: 0,
-              friction: 8,
-              tension: 60,
-              useNativeDriver: true,
-            }).start();
-          },
-        }),
-      [liked, onLike, onUnlike, translateX]
-    );
-
-    const backdropOpacity = translateX.interpolate({
-      inputRange: [0, 8, 45],
-      outputRange: [0, 0.4, 1],
-      extrapolate: 'clamp',
-    });
-
     return (
-      <View style={styles.swipeWrapper}>
-        <Animated.View
-          style={[
-            styles.swipeBackdrop,
-            {
-              opacity: backdropOpacity,
-              backgroundColor: liked ? 'rgba(255, 0, 85, 0.22)' : 'rgba(255, 0, 85, 0.35)',
-            },
-          ]}
-        >
-          <Ionicons name={liked ? 'heart-dislike' : 'heart'} size={22} color="#FF0055" />
-          <Text style={styles.swipeText}>{liked ? 'Quitar favorita' : 'Favorita'}</Text>
-        </Animated.View>
-
-        <Animated.View
-          style={{ transform: [{ translateX }] }}
-          {...panResponder.panHandlers}
-        >
-          <PressableFluid
-            ref={ref}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            haptic="light"
-            style={[
-              styles.container,
-              isCurrent && styles.containerCurrent,
-              style,
-            ]}
-            contentStyle={styles.contentWrap}
-            hitSlop={8}
-          >
-            {content}
-          </PressableFluid>
-        </Animated.View>
-      </View>
+      <PressableFluid
+        ref={ref}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        haptic="light"
+        style={[
+          styles.container,
+          isCurrent && styles.containerCurrent,
+          style,
+        ]}
+        contentStyle={styles.contentWrap}
+        hitSlop={6}
+      >
+        {content}
+      </PressableFluid>
     );
-  }
+  })
 );
 
 const styles = StyleSheet.create({
@@ -338,27 +262,6 @@ const styles = StyleSheet.create({
   actionBtn: {
     padding: 6,
     borderRadius: radius.pill,
-  },
-  swipeWrapper: {
-    width: '100%',
-    position: 'relative',
-    overflow: 'hidden',
-    borderRadius: 18,
-    marginBottom: 4,
-  },
-  swipeBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 18,
-    gap: 8,
-    borderRadius: 18,
-  },
-  swipeText: {
-    color: '#FF0055',
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: 13,
-    fontWeight: '700',
   },
 });
 

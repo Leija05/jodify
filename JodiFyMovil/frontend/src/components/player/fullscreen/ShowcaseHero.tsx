@@ -18,8 +18,9 @@ interface ShowcaseHeroProps {
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_SIZE = Math.min(320, Math.max(260, SCREEN_WIDTH * 0.78));
 
-export const ShowcaseHero = React.forwardRef<View, ShowcaseHeroProps>(
-  ({ song, coverScale, vinylScale, isPlaying, displayMode, onToggleMode }, ref) => {
+export const ShowcaseHero = React.memo(
+  React.forwardRef<View, ShowcaseHeroProps>(
+    ({ song, coverScale, vinylScale, isPlaying, displayMode, onToggleMode }, ref) => {
     const coverUrl = useMemo(() => pickCoverUrl(song), [song]);
     const palette = useMemo(() => getSongPalette(song), [song]);
 
@@ -64,7 +65,7 @@ export const ShowcaseHero = React.forwardRef<View, ShowcaseHeroProps>(
         )}
       </View>
     );
-  }
+  })
 );
 
 const styles = StyleSheet.create({
@@ -79,10 +80,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   coverHeroWrap: {
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.55,
-    shadowRadius: 36,
-    elevation: 20,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.45,
+    shadowRadius: 28,
   },
   outerBezel: {
     padding: 6,

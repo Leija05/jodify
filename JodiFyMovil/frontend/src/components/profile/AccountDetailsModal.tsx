@@ -12,6 +12,7 @@ import {
   Alert,
   Keyboard,
   Pressable,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -410,6 +411,8 @@ export function AccountDetailsModal({ visible, onClose }: AccountDetailsModalPro
   );
 }
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
@@ -421,8 +424,7 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
-    height: '88%',
-    maxHeight: '92%',
+    height: Math.round(SCREEN_HEIGHT * 0.88),
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     overflow: 'hidden',

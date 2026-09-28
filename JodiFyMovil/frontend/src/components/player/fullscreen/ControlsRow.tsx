@@ -16,8 +16,9 @@ interface ControlsRowProps {
   onCycleRepeat: () => void;
 }
 
-export const ControlsRow = React.forwardRef<View, ControlsRowProps>(
-  ({
+export const ControlsRow = React.memo(
+  React.forwardRef<View, ControlsRowProps>(
+    ({
     controlsOpacity,
     isPlaying,
     shuffle,
@@ -82,7 +83,7 @@ export const ControlsRow = React.forwardRef<View, ControlsRowProps>(
         </View>
       </Animated.View>
     );
-  }
+  })
 );
 
 const styles = StyleSheet.create({

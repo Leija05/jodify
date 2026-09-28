@@ -18,7 +18,7 @@ import { PressableFluid } from '@components/ui/PressableFluid';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { colors, typography, radius } from '@theme';
-import { pickCoverUrl, resolveArtist } from '@lib/utils';
+import { pickCoverUrl, resolveArtist, resolveSongTitle } from '@lib/utils';
 import { usePlayerStore } from '@stores/player.store';
 import { useLibraryStore } from '@stores/library.store';
 import { useUiStore } from '@stores/ui.store';
@@ -102,7 +102,8 @@ export function SongActionsSheet() {
   if (!song) return null;
 
   const coverUrl = pickCoverUrl(song);
-  const artist = resolveArtist(song) ?? 'Artista Desconocido';
+  const artist = resolveArtist(song);
+  const title = resolveSongTitle(song);
 
   const handlePlayNow = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -220,7 +221,7 @@ export function SongActionsSheet() {
               <View style={styles.badgeRow}>
                 <Text style={styles.badgeText}>HQ AUDIO</Text>
               </View>
-              <Text style={styles.title} numberOfLines={1}>{song.name}</Text>
+              <Text style={styles.title} numberOfLines={1}>{title}</Text>
               <Text style={styles.artist} numberOfLines={1}>{artist}</Text>
             </View>
           </View>

@@ -9,6 +9,8 @@ import {
   Users,
   WarningOctagon,
   X,
+  Lock,
+  Key,
 } from '@phosphor-icons/react';
 import { useUiStore } from '../../store/ui.store';
 import { useSession } from '../../context/SessionContext';
@@ -21,6 +23,7 @@ import { DevConsole } from './DevConsole';
 import { DevControl } from './DevControl';
 import { DevUpdates } from './DevUpdates';
 import type { DevOverview, DevState, DevToken, DevUserRow } from '../../lib/types';
+import { Button } from '../ui/Button';
 
 type Panel = 'general' | 'access' | 'users' | 'console' | 'control' | 'updates';
 
@@ -35,7 +38,7 @@ const PANELS: Array<{ id: Panel; label: string; icon: typeof Gauge }> = [
 
 export function DevView() {
   const ui = useUiStore();
-  const { session } = useSession();
+  const { session, devLogin } = useSession();
   const open = ui.modal === 'devCenter';
 
   const [panel, setPanel] = useState<Panel>('general');
@@ -45,6 +48,10 @@ export function DevView() {
   const [tokens, setTokens] = useState<DevToken[]>([]);
   const [devUsers, setDevUsers] = useState<DevUserRow[]>([]);
   const [live, setLive] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [devKey, setDevKey] = useState('');
+
+  const isDev = session?.role === 'dev';
 
   const reloadTokens = useCallback(() => {
     devService.listTokens().then(setTokens).catch(() => undefined);
@@ -68,15 +75,37 @@ export function DevView() {
       setPlays(pl);
       setTokens(tk);
       setDevUsers(us);
-    } catch {
-      useToastStore.getState().show('No se pudo cargar el panel dev', 'error');
+      setAuthError(null);
+    } catch (err) {
+      const status = err instanceof Error && 'status' in err ? (err as any).status : 0;
+      if (status === 401 || status === 403) {
+        setAuthError('Se requieren permisos de desarrollo. Inicia sesión con clave dev.');
+      } else {
+        useToastStore.getState().show('No se pudo cargar el panel dev', 'error');
+      }
     }
   }, []);
 
+  const handleDevLogin = async () => {
+    if (!devKey.trim()) return;
+    setAuthError(null);
+    const result = await devLogin(devKey.trim());
+    if (result.ok) {
+      setDevKey('');
+      void loadAll();
+    } else {
+      setAuthError(result.error || 'Clave dev incorrecta');
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
+    if (!isDev) {
+      setAuthError('Se requieren permisos de desarrollo para acceder a este panel');
+      return;
+    }
     void loadAll();
-  }, [open, loadAll]);
+  }, [open, loadAll, isDev]);
 
   useEffect(() => {
     if (!open || panel !== 'general') return;
@@ -102,9 +131,71 @@ export function DevView() {
 
   const maintenance = overview?.maintenance?.enabled ?? state?.maintenance?.enabled ?? false;
 
-  return (
-    <AnimatePresence>
-      {open && (
+  if (!isDev || authError) {
+    return (
+      <AnimatePresence>
+        <motion.div
+          className="jf-devview"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          data-testid="dev-view"
+        >
+          <motion.aside
+            className="jf-devview-rail"
+            initial={{ x: -28, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="jf-devview-brand">
+              <span className="jf-devview-brand-mark">
+                <TerminalWindow size={18} weight="fill" />
+              </span>
+              <div className="jf-devview-brand-copy">
+                <strong>JodiFy Dev</strong>
+                <span>panel de control</span>
+              </div>
+            </div>
+
+            <div className="jf-devview-auth">
+              {authError && (
+                <div className="jf-devview-auth-error">
+                  <WarningOctagon size={14} weight="fill" />
+                  <span>{authError}</span>
+                </div>
+              )}
+              <div className="jf-devview-auth-form">
+                <Lock size={18} />
+                <input
+                  type="password"
+                  className="jf-input"
+                  placeholder="Clave de desarrollo (DEV_KEY)"
+                  value={devKey}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDevKey(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleDevLogin()}
+                  autoFocus
+                />
+                <Button variant="primary" onClick={handleDevLogin} disabled={!devKey.trim()}>
+                  <Key size={14} /> Entrar al panel dev
+                </Button>
+              </div>
+            </div>
+
+            <div className="jf-devview-rail-foot">
+              <button className="jf-devview-close" onClick={() => ui.close('devCenter')} aria-label="Cerrar panel dev">
+                <X size={16} />
+                Cerrar
+              </button>
+            </div>
+          </motion.aside>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+return (
+      <AnimatePresence>
         <motion.div
           className="jf-devview"
           initial={{ opacity: 0 }}
@@ -197,7 +288,6 @@ export function DevView() {
             </motion.div>
           </div>
         </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
+      </AnimatePresence>
+    );
+  };

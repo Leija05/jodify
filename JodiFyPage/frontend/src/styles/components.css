@@ -164,14 +164,24 @@
   overflow: hidden;
 }
 
+.jf-modal-backdrop:has(.jf-modal--fullscreen) {
+  padding: 0 !important;
+  background: rgba(3, 3, 7, 0.98);
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
+}
+
 .jf-modal-card.jf-modal--fullscreen {
-  width: min(1240px, calc(100vw - var(--space-xl) * 2));
-  max-height: calc(100dvh - var(--space-xl) * 2);
-  background: #06060c;
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 40px 120px rgba(0, 0, 0, 0.75),
-    0 0 90px rgba(var(--primary-rgb), 0.12);
+  width: 100vw;
+  max-width: 100vw !important;
+  height: 100dvh;
+  max-height: 100dvh !important;
+  background: #040408;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  overflow: hidden;
 }
 
 .jf-confirm-card {
@@ -294,10 +304,8 @@
 }
 
 [data-theme='light'] .jf-modal-card.jf-modal--fullscreen {
-  background: var(--surface-solid);
-  box-shadow:
-    0 40px 120px rgba(30, 35, 55, 0.3),
-    0 0 90px rgba(var(--primary-rgb), 0.1);
+  background: #040408;
+  box-shadow: none;
 }
 
 .jf-modal-header {
