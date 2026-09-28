@@ -10,7 +10,7 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
-  Dimensions,
+  Keyboard,
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,8 +20,6 @@ import { PressableFluid } from '@components/ui/PressableFluid';
 import { useSettingsStore } from '@stores/settings.store';
 import { updateUserProfile } from '@services/users.service';
 import { colors, typography, radius, gradients } from '@theme';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const PRESET_AVATARS = [
   { id: 'neon', name: 'Cyber Wave', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=240&h=240&fit=crop' },
@@ -47,7 +45,6 @@ export function AccountDetailsModal({ visible, onClose }: AccountDetailsModalPro
   const [useDiscordAvatar, setUseDiscordAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Sync initial state when modal opens
   useEffect(() => {
     if (visible && user) {
       setDisplayName(user.display_name ?? user.username);
@@ -76,20 +73,14 @@ export function AccountDetailsModal({ visible, onClose }: AccountDetailsModalPro
     if (!user?.created_at) return 'Miembro fundador';
     try {
       const d = new Date(user.created_at);
-      return d.toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+      return d.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
     } catch {
       return 'Miembro de JodiFy';
     }
   }, [user?.created_at]);
 
-  // Preview Avatar logic
   const activeAvatarPreview = useMemo(() => {
     if (useDiscordAvatar && discordId.trim().length > 10) {
-      // In JodiFy, discord avatar url format or direct cdn
       return `https://cdn.discordapp.com/embed/avatars/${parseInt(discordId.slice(-2) || '0', 10) % 5}.png`;
     }
     if (avatarUrl.trim().length > 0) {
@@ -108,6 +99,7 @@ export function AccountDetailsModal({ visible, onClose }: AccountDetailsModalPro
     if (!user) return;
     setSaving(true);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Keyboard.dismiss();
 
     try {
       const payload: {
@@ -151,7 +143,7 @@ export function AccountDetailsModal({ visible, onClose }: AccountDetailsModalPro
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.backdrop}>
-        <Pressable style={styles.backdropDismissZone} onPress={onClose} />
+        <Pressable style={styles.backdropDismissZone} onPress={() => { Keyboard.dismiss(); onClose(); }} />
 
         <View style={styles.container}>
           <LinearGradient
@@ -166,7 +158,7 @@ export function AccountDetailsModal({ visible, onClose }: AccountDetailsModalPro
               <View style={styles.headerRow}>
                 <View>
                   <Text style={styles.title}>Mi Cuenta</Text>
-                  <Text style={styles.subtitle}>Información y personalización de perfil</Text>
+                  <Text style={styles.subtitle}>Identidad, foto y conexiones</Text>
                 </View>
                 <PressableFluid onPress={onClose} haptic="light" style={styles.closeBtn}>
                   <Ionicons name="close" size={20} color={colors.textSecondary} />
@@ -179,130 +171,211 @@ export function AccountDetailsModal({ visible, onClose }: AccountDetailsModalPro
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
             >
-              {/* Account Status Card */}
-              <View style={styles.accountBadgeCard}>
-                <View style={styles.avatarPreviewWrap}>
-                  {activeAvatarPreview ? (
-                    <Image source={{ uri: activeAvatarPreview }} style={styles.avatarPreviewImg} />
-                  ) : (
-                    <LinearGradient colors={gradients.play} style={styles.avatarPlaceholder}>
-                      <Text style={styles.avatarPlaceholderText}>
-                        {(displayName || user.username).slice(0, 1).toUpperCase()}
-                      </Text>
-                    </LinearGradient>
-                  )}
-                  <View style={[styles.roleBadgeIcon, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
-                    <Ionicons name={roleMeta.icon} size={13} color={roleMeta.color} />
+              {/* ===== SECCIÓN 1: IDENTIDAD ===== */}
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeaderRow}>
+                  <View style={[styles.sectionIcon, { backgroundColor: 'rgba(127, 0, 255, 0.12)' }]}>
+                    <Ionicons name="person-circle-outline" size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.sectionHeaderText}>
+                    <Text style={styles.sectionTitle}>IDENTIDAD</Text>
+                    <Text style={styles.sectionSubtitle}>Cómo te ven en la comunidad</Text>
                   </View>
                 </View>
 
-                <View style={styles.accountMetaInfo}>
-                  <Text style={styles.accountUsername}>@{user.username}</Text>
-                  <View style={[styles.roleTag, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
-                    <Text style={[styles.roleTagText, { color: roleMeta.color }]}>{roleMeta.label}</Text>
-                  </View>
-                  <Text style={styles.createdDateText}>
-                    <Ionicons name="calendar-outline" size={12} color={colors.textMuted} /> Creada el {formattedCreatedAt}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Name Section */}
-              <Text style={styles.sectionHeader}>NOMBRE EN PANTALLA</Text>
-              <View style={styles.inputWrap}>
-                <Ionicons name="person-circle-outline" size={20} color={colors.secondary} style={styles.inputIcon} />
-                <TextInput
-                  value={displayName}
-                  onChangeText={setDisplayName}
-                  placeholder="Tu apodo o nombre artístico"
-                  placeholderTextColor={colors.textMuted}
-                  style={styles.textInput}
-                  maxLength={32}
-                />
-              </View>
-              <Text style={styles.fieldHelp}>Este es el nombre visible en la comunidad, Jams y reproductor.</Text>
-
-              {/* Discord Connection */}
-              <Text style={styles.sectionHeader}>CONEXIÓN CON DISCORD</Text>
-              <View style={styles.inputWrap}>
-                <Ionicons name="logo-discord" size={20} color="#5865F2" style={styles.inputIcon} />
-                <TextInput
-                  value={discordId}
-                  onChangeText={setDiscordId}
-                  placeholder="ID de Discord (ej: 8291039485729102)"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  style={styles.textInput}
-                />
-              </View>
-
-              {discordId.trim().length > 0 && (
-                <View style={styles.toggleRow}>
-                  <View style={styles.toggleTextWrap}>
-                    <Text style={styles.toggleTitle}>Usar avatar de Discord</Text>
-                    <Text style={styles.toggleSubtitle}>Sincroniza tu foto de perfil con tu cuenta de Discord</Text>
-                  </View>
-                  <Switch
-                    value={useDiscordAvatar}
-                    onValueChange={(val) => {
-                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setUseDiscordAvatar(val);
-                    }}
-                    trackColor={{ false: '#26223D', true: colors.primary }}
-                    thumbColor={useDiscordAvatar ? colors.white : '#888'}
-                  />
-                </View>
-              )}
-
-              {/* Avatar Presets Selection */}
-              <Text style={styles.sectionHeader}>FOTOS DE PERFIL DE LA APP</Text>
-              <Text style={styles.fieldHelp}>Elige un avatar oficial de JodiFy para tu cuenta:</Text>
-
-              <View style={styles.presetsGrid}>
-                {PRESET_AVATARS.map((p) => {
-                  const isSelected = !useDiscordAvatar && avatarUrl === p.url;
-                  return (
-                    <PressableFluid
-                      key={p.id}
-                      onPress={() => handleSelectPreset(p.url)}
-                      haptic="light"
-                      style={[styles.presetCard, isSelected && styles.presetCardActive]}
-                    >
-                      <Image source={{ uri: p.url }} style={styles.presetImg} />
-                      {isSelected && (
-                        <View style={styles.presetCheckmark}>
-                          <Ionicons name="checkmark" size={14} color={colors.white} />
+                {/* Avatar + Name grouped together */}
+                <View style={styles.identityGroup}>
+                  {/* Avatar Preview & Selection */}
+                  <View style={styles.avatarSection}>
+                    <View style={styles.avatarPreviewWrap}>
+                      {activeAvatarPreview ? (
+                        <Image source={{ uri: activeAvatarPreview }} style={styles.avatarPreviewImg} />
+                      ) : (
+                        <LinearGradient colors={gradients.play} style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarPlaceholderText}>
+                            {(displayName || user.username).slice(0, 1).toUpperCase()}
+                          </Text>
+                        </LinearGradient>
+                      )}
+                      {useDiscordAvatar && discordId.trim().length > 10 && (
+                        <View style={styles.discordAvatarBadge}>
+                          <Ionicons name="logo-discord" size={12} color="#5865F2" />
                         </View>
                       )}
-                      <Text style={[styles.presetName, isSelected && styles.presetNameActive]} numberOfLines={1}>
-                        {p.name}
-                      </Text>
-                    </PressableFluid>
-                  );
-                })}
+                    </View>
+
+                    <Text style={styles.avatarLabel}>Foto de perfil</Text>
+                    <Text style={styles.avatarHint}>
+                      {useDiscordAvatar ? 'Usando avatar de Discord' : avatarUrl ? 'Imagen personalizada' : 'Avatar por defecto de JodiFy'}
+                    </Text>
+                  </View>
+
+                  {/* Name Input */}
+                  <View style={styles.nameInputWrap}>
+                    <Text style={styles.fieldLabel}>Nombre en pantalla</Text>
+                    <View style={styles.inputWrap}>
+                      <Ionicons name="person-outline" size={20} color={colors.secondary} style={styles.inputIcon} />
+                      <TextInput
+                        value={displayName}
+                        onChangeText={setDisplayName}
+                        placeholder="Tu apodo o nombre artístico"
+                        placeholderTextColor={colors.textMuted}
+                        style={styles.textInput}
+                        maxLength={32}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                      />
+                    </View>
+                    <Text style={styles.fieldHelp}>Visible en Jams, reproductor y comunidad (máx. 32 caracteres)</Text>
+                  </View>
+                </View>
+
+                {/* Avatar Options: Presets + Custom URL */}
+                <View style={styles.avatarOptions}>
+                  <Text style={styles.optionGroupTitle}>FOTOS DE JODIFY</Text>
+                  <Text style={styles.optionGroupSubtitle}>Elige un avatar oficial para tu perfil</Text>
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.presetsScrollContent}
+                    style={styles.presetsScroll}
+                  >
+                    {PRESET_AVATARS.map((p) => {
+                      const isSelected = !useDiscordAvatar && avatarUrl === p.url;
+                      return (
+                        <PressableFluid
+                          key={p.id}
+                          onPress={() => handleSelectPreset(p.url)}
+                          haptic="light"
+                          style={[styles.presetCard, isSelected && styles.presetCardActive]}
+                        >
+                          <Image source={{ uri: p.url }} style={styles.presetImg} />
+                          {isSelected && (
+                            <View style={styles.presetCheckmark}>
+                              <Ionicons name="checkmark" size={16} color={colors.white} />
+                            </View>
+                          )}
+                          <Text style={[styles.presetName, isSelected && styles.presetNameActive]} numberOfLines={1}>
+                            {p.name}
+                          </Text>
+                        </PressableFluid>
+                      );
+                    })}
+                  </ScrollView>
+
+                  <Text style={styles.optionGroupTitle}>O URL PERSONALIZADA</Text>
+                  <View style={styles.inputWrap}>
+                    <Ionicons name="link-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
+                    <TextInput
+                      value={avatarUrl}
+                      onChangeText={(val) => {
+                        setAvatarUrl(val);
+                        if (useDiscordAvatar) setUseDiscordAvatar(false);
+                      }}
+                      placeholder="https://i.imgur.com/tu-foto.jpg"
+                      placeholderTextColor={colors.textMuted}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      style={styles.textInput}
+                      keyboardType="url"
+                    />
+                  </View>
+                  <Text style={styles.fieldHelp}>Enlace directo a imagen (JPG, PNG, WebP · máx. 2 MB)</Text>
+                </View>
               </View>
 
-              {/* Custom Image URL Option */}
-              <Text style={styles.sectionHeader}>O INGRESA URL DE FOTO PERSONALIZADA</Text>
-              <View style={styles.inputWrap}>
-                <Ionicons name="link-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
-                <TextInput
-                  value={avatarUrl}
-                  onChangeText={(val) => {
-                    setAvatarUrl(val);
-                    if (useDiscordAvatar) setUseDiscordAvatar(false);
-                  }}
-                  placeholder="https://i.imgur.com/tu-foto.jpg"
-                  placeholderTextColor={colors.textMuted}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.textInput}
-                />
+              {/* ===== SECCIÓN 2: CONEXIONES ===== */}
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeaderRow}>
+                  <View style={[styles.sectionIcon, { backgroundColor: 'rgba(88, 101, 242, 0.12)' }]}>
+                    <Ionicons name="logo-discord" size={20} color="#5865F2" />
+                  </View>
+                  <View style={styles.sectionHeaderText}>
+                    <Text style={styles.sectionTitle}>CONEXIÓN DISCORD</Text>
+                    <Text style={styles.sectionSubtitle}>Sincroniza avatar y muestra tu ID</Text>
+                  </View>
+                </View>
+
+                <View style={styles.discordInputWrap}>
+                  <Text style={styles.fieldLabel}>ID de Discord</Text>
+                  <View style={styles.inputWrap}>
+                    <Ionicons name="logo-discord" size={20} color="#5865F2" style={styles.inputIcon} />
+                    <TextInput
+                      value={discordId}
+                      onChangeText={setDiscordId}
+                      placeholder="Ej: 8291039485729102"
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="numeric"
+                      style={styles.textInput}
+                    />
+                  </View>
+                  <Text style={styles.fieldHelp}>
+                    Encuentra tu ID: Ajustes de Usuario → Avanzado → ID de Usuario (Modo Desarrollador)
+                  </Text>
+                </View>
+
+                {discordId.trim().length > 0 && (
+                  <View style={styles.discordAvatarToggle}>
+                    <View style={styles.toggleContent}>
+                      <View style={styles.toggleIconWrap}>
+                        <Ionicons name="image-outline" size={20} color={colors.secondary} />
+                      </View>
+                      <View style={styles.toggleTextWrap}>
+                        <Text style={styles.toggleTitle}>Usar avatar de Discord</Text>
+                        <Text style={styles.toggleSubtitle}>Sincroniza automáticamente tu foto de perfil</Text>
+                      </View>
+                    </View>
+                    <Switch
+                      value={useDiscordAvatar}
+                      onValueChange={(val) => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setUseDiscordAvatar(val);
+                        if (val) setAvatarUrl('');
+                      }}
+                      trackColor={{ false: 'rgba(255, 255, 255, 0.1)', true: '#5865F2' }}
+                      thumbColor={useDiscordAvatar ? colors.white : '#888'}
+                    />
+                  </View>
+                )}
               </View>
 
-              {/* Spacer */}
-              <View style={{ height: 28 }} />
+              {/* ===== SECCIÓN 3: INFORMACIÓN DE CUENTA ===== */}
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeaderRow}>
+                  <View style={[styles.sectionIcon, { backgroundColor: 'rgba(0, 229, 255, 0.12)' }]}>
+                    <Ionicons name="information-circle-outline" size={20} color={colors.secondary} />
+                  </View>
+                  <View style={styles.sectionHeaderText}>
+                    <Text style={styles.sectionTitle}>INFORMACIÓN</Text>
+                    <Text style={styles.sectionSubtitle}>Datos de tu cuenta en JodiFy</Text>
+                  </View>
+                </View>
+
+                <View style={styles.infoGrid}>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Usuario</Text>
+                    <Text style={styles.infoValue}>@{user.username}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Rol</Text>
+                    <View style={[styles.infoRoleBadge, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
+                      <Text style={[styles.infoRoleText, { color: roleMeta.color }]}>{roleMeta.label}</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.infoItem, styles.infoItemFull]}>
+                    <Text style={styles.infoLabel}>Cuenta creada</Text>
+                    <View style={styles.infoDateRow}>
+                      <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
+                      <Text style={styles.infoValue}>{formattedCreatedAt}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              <View style={{ height: 32 }} />
             </ScrollView>
 
             {/* Bottom Save Action */}
@@ -344,17 +417,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdropDismissZone: {
-    flex: 1,
-    width: '100%',
+    ...StyleSheet.absoluteFillObject,
   },
   container: {
     width: '100%',
-    maxHeight: '90%',
+    height: '88%',
+    maxHeight: '92%',
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(127, 0, 255, 0.28)',
+    backgroundColor: '#0D0B14',
   },
   sheetGradient: {
     flex: 1,
@@ -384,7 +458,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontFamily: typography.headlineMedium.fontFamily,
     fontSize: typography.headlineMedium.fontSize,
-    letterSpacing: typography.headlineMedium.letterSpacing,
+    fontWeight: '700',
   },
   subtitle: {
     color: colors.textMuted,
@@ -403,94 +477,140 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
   },
-  accountBadgeCard: {
+  /* Section Card */
+  sectionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: radius.xl,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: radius.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.09)',
+    gap: 12,
+    marginBottom: 20,
+  },
+  sectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionHeaderText: {
+    flex: 1,
+  },
+  sectionTitle: {
+    color: colors.white,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  sectionSubtitle: {
+    color: colors.textMuted,
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  /* Identity Group - Avatar + Name side by side on wide, stacked on narrow */
+  identityGroup: {
+    flexDirection: 'row',
     gap: 16,
     marginBottom: 20,
   },
+  avatarSection: {
+    flex: 0,
+    width: 100,
+    alignItems: 'center',
+  },
   avatarPreviewWrap: {
     position: 'relative',
+    width: 100,
+    height: 100,
+    marginBottom: 10,
   },
   avatarPreviewImg: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 2,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
     borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   avatarPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#7F00FF',
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   avatarPlaceholderText: {
     color: colors.white,
-    fontFamily: typography.displayMedium.fontFamily,
-    fontSize: typography.displayMedium.fontSize,
+    fontFamily: typography.displayLarge.fontFamily,
+    fontSize: 40,
+    fontWeight: '700',
   },
-  roleBadgeIcon: {
+  discordAvatarBadge: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    bottom: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#5865F2',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
+    borderColor: '#0D0B14',
   },
-  accountMetaInfo: {
-    flex: 1,
-  },
-  accountUsername: {
+  avatarLabel: {
     color: colors.white,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: typography.headlineMedium.fontSize,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
-  roleTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    marginVertical: 4,
-  },
-  roleTagText: {
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    fontWeight: '700',
-  },
-  createdDateText: {
+  avatarHint: {
     color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 12,
+    fontSize: 10.5,
     marginTop: 2,
+    textAlign: 'center',
+    lineHeight: 14,
   },
-  sectionHeader: {
-    color: colors.secondary,
+  nameInputWrap: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  fieldLabel: {
+    color: colors.textSecondary,
     fontFamily: typography.labelSmall.fontFamily,
-    fontSize: 11,
-    letterSpacing: 1.2,
-    marginTop: 18,
-    marginBottom: 8,
+    fontSize: 10.5,
+    letterSpacing: 0.8,
     fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 6,
   },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 12,
     height: 48,
   },
@@ -506,50 +626,46 @@ const styles = StyleSheet.create({
   fieldHelp: {
     color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 11.5,
+    fontSize: 11,
     marginTop: 6,
-    marginBottom: 10,
+    lineHeight: 15,
   },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(88, 101, 242, 0.12)',
-    borderRadius: radius.md,
-    padding: 12,
-    marginTop: 6,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(88, 101, 242, 0.3)',
+  /* Avatar Options */
+  avatarOptions: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 20,
   },
-  toggleTextWrap: {
-    flex: 1,
-    marginRight: 12,
+  optionGroupTitle: {
+    color: colors.secondary,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10.5,
+    letterSpacing: 1,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
-  toggleTitle: {
-    color: colors.white,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 13,
-  },
-  toggleSubtitle: {
-    color: 'rgba(255, 255, 255, 0.6)',
+  optionGroupSubtitle: {
+    color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
     fontSize: 11,
-    marginTop: 2,
+    marginBottom: 14,
   },
-  presetsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 6,
+  presetsScroll: {
+    marginBottom: 20,
+  },
+  presetsScrollContent: {
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    gap: 12,
   },
   presetCard: {
-    width: (SCREEN_WIDTH - 64) / 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: radius.md,
-    padding: 8,
+    width: 88,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: radius.lg,
+    padding: 10,
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: 'transparent',
     position: 'relative',
   },
@@ -558,33 +674,128 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(127, 0, 255, 0.18)',
   },
   presetImg: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    marginBottom: 6,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    marginBottom: 8,
   },
   presetCheckmark: {
     position: 'absolute',
     top: 6,
     right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0D0B14',
   },
   presetName: {
     color: colors.textMuted,
     fontFamily: typography.labelSmall.fontFamily,
     fontSize: 10.5,
+    textAlign: 'center',
   },
   presetNameActive: {
     color: colors.white,
     fontWeight: '700',
   },
+  /* Discord Input */
+  discordInputWrap: {
+    marginBottom: 14,
+  },
+  discordAvatarToggle: {
+    backgroundColor: 'rgba(88, 101, 242, 0.1)',
+    borderRadius: radius.md,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(88, 101, 242, 0.25)',
+  },
+  toggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  toggleIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(88, 101, 242, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleTextWrap: {
+    flex: 1,
+  },
+  toggleTitle: {
+    color: colors.white,
+    fontFamily: typography.labelLarge.fontFamily,
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  toggleSubtitle: {
+    color: 'rgba(255, 255, 255, 0.55)',
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  /* Info Grid */
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  infoItem: {
+    flex: 1,
+    minWidth: 140,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: radius.md,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  infoItemFull: {
+    flexBasis: '100%',
+  },
+  infoLabel: {
+    color: colors.textMuted,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  infoValue: {
+    color: colors.white,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: 13.5,
+    fontWeight: '500',
+  },
+  infoRoleBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  infoRoleText: {
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  infoDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  /* Footer */
   footer: {
     padding: 16,
+    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.08)',
     backgroundColor: '#0D0B14',
@@ -597,14 +808,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 15,
     gap: 8,
   },
   saveBtnText: {
     color: colors.white,
     fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 });

@@ -68,7 +68,6 @@ export default function FullscreenPlayer() {
   const openLyricsModal = useUiStore((s) => s.openLyricsModal);
 
   const translateY = useRef(new Animated.Value(SCREEN.height)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
   const coverScale = useRef(new Animated.Value(0.85)).current;
   const vinylScale = useRef(new Animated.Value(0.9)).current;
@@ -99,52 +98,33 @@ export default function FullscreenPlayer() {
   const animateIn = useCallback(() => {
     isAnimatingOutRef.current = false;
     translateY.setValue(SCREEN.height);
-    opacity.setValue(0);
-    backgroundOpacity.setValue(0);
-    coverScale.setValue(0.85);
-    vinylScale.setValue(0.9);
-    titleOpacity.setValue(0);
-    controlsOpacity.setValue(0);
-    topBarOpacity.setValue(0);
+    backgroundOpacity.setValue(1);
+    coverScale.setValue(0.92);
+    vinylScale.setValue(0.92);
+    titleOpacity.setValue(1);
+    controlsOpacity.setValue(1);
+    topBarOpacity.setValue(1);
 
     Animated.parallel([
       Animated.spring(translateY, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(opacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(backgroundOpacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
       Animated.spring(coverScale, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
       Animated.spring(vinylScale, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.delay(120),
-      Animated.spring(titleOpacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(controlsOpacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(topBarOpacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
     ]).start();
-  }, [translateY, opacity, backgroundOpacity, coverScale, vinylScale, titleOpacity, controlsOpacity, topBarOpacity]);
+  }, [translateY, coverScale, vinylScale]);
 
   const animateOut = useCallback(() => {
     if (isAnimatingOutRef.current) return;
     isAnimatingOutRef.current = true;
     Animated.parallel([
-      Animated.spring(translateY, { toValue: SCREEN.height, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(opacity, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(backgroundOpacity, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(coverScale, { toValue: 0.85, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(vinylScale, { toValue: 0.9, ...motion.springDefault, useNativeDriver: true }),
-      Animated.timing(titleOpacity, { toValue: 0, duration: 120, useNativeDriver: true, easing: CUBIC_EASING }),
-      Animated.timing(controlsOpacity, { toValue: 0, duration: 120, useNativeDriver: true, easing: CUBIC_EASING }),
-      Animated.timing(topBarOpacity, { toValue: 0, duration: 120, useNativeDriver: true, easing: CUBIC_EASING }),
+      Animated.timing(translateY, { toValue: SCREEN.height, duration: 220, easing: CUBIC_EASING, useNativeDriver: true }),
+      Animated.timing(coverScale, { toValue: 0.9, duration: 180, useNativeDriver: true }),
+      Animated.timing(vinylScale, { toValue: 0.9, duration: 180, useNativeDriver: true }),
     ]).start(() => {
       closeFullscreen();
       translateY.setValue(SCREEN.height);
-      opacity.setValue(0);
-      backgroundOpacity.setValue(0);
-      coverScale.setValue(0.85);
-      vinylScale.setValue(0.9);
-      titleOpacity.setValue(0);
-      controlsOpacity.setValue(0);
-      topBarOpacity.setValue(0);
       isAnimatingOutRef.current = false;
     });
-  }, [translateY, opacity, backgroundOpacity, coverScale, vinylScale, titleOpacity, controlsOpacity, topBarOpacity, closeFullscreen]);
+  }, [translateY, coverScale, vinylScale, closeFullscreen]);
 
   useEffect(() => {
     if (open) {
@@ -156,12 +136,10 @@ export default function FullscreenPlayer() {
     if (isAnimatingOutRef.current) return;
     Animated.parallel([
       Animated.spring(translateY, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(opacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
-      Animated.spring(backgroundOpacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
       Animated.spring(coverScale, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
       Animated.spring(vinylScale, { toValue: 1, ...motion.springDefault, useNativeDriver: true }),
     ]).start();
-  }, [translateY, opacity, backgroundOpacity, coverScale, vinylScale]);
+  }, [translateY, coverScale, vinylScale]);
 
   const dismiss = useCallback(() => {
     animateOut();
@@ -180,17 +158,8 @@ export default function FullscreenPlayer() {
       onPanResponderMove: (_event, gestureState) => {
         const dy = gestureState.dy;
         if (dy > 0) {
-          const clampedDy = Math.min(dy, SCREEN.height * 0.55);
+          const clampedDy = Math.min(dy, SCREEN.height * 0.7);
           translateY.setValue(clampedDy);
-          const progress = Math.min(dy / DISMISS_THRESHOLD, 1);
-          const easedProgress = progress * progress;
-          opacity.setValue(1 - easedProgress * 0.5);
-          backgroundOpacity.setValue(1 - easedProgress * 0.85);
-          coverScale.setValue(1 - easedProgress * 0.18);
-          vinylScale.setValue(1 - easedProgress * 0.15);
-          titleOpacity.setValue(1 - easedProgress * 0.9);
-          controlsOpacity.setValue(1 - easedProgress * 0.9);
-          topBarOpacity.setValue(1 - easedProgress * 0.9);
         }
       },
       onPanResponderRelease: (_event, gestureState) => {
@@ -206,7 +175,7 @@ export default function FullscreenPlayer() {
       },
       onPanResponderTerminate: springBack,
     });
-  }, [translateY, opacity, backgroundOpacity, coverScale, vinylScale, titleOpacity, controlsOpacity, topBarOpacity, dismiss, springBack]);
+  }, [translateY, coverScale, vinylScale, dismiss, springBack]);
 
   const handleTogglePlay = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -262,17 +231,22 @@ export default function FullscreenPlayer() {
   if (!open) return null;
 
   return (
-    <Modal visible={open} animationType="none" presentationStyle="fullScreen" onRequestClose={dismiss} statusBarTranslucent>
+    <Modal
+      visible={open}
+      transparent
+      animationType="none"
+      presentationStyle="overFullScreen"
+      onRequestClose={dismiss}
+      statusBarTranslucent
+    >
       <Animated.View
         style={[
           styles.container,
-          { opacity, transform: [{ translateY }] },
+          { transform: [{ translateY }] },
         ]}
         {...panResponderRef.current?.panHandlers}
       >
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: backgroundOpacity }]}>
-          <DynamicBackground song={currentSong} />
-        </Animated.View>
+        <DynamicBackground song={currentSong} />
 
         <FullscreenHeader
           opacity={topBarOpacity}

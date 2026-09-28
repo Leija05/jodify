@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Animated, StyleSheet, Text, View, Pressable, type LayoutChangeEvent } from 'react-native';
+import { Animated, StyleSheet, Text, View, Pressable, Platform, type LayoutChangeEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { usePlayerStore } from '@stores/player.store';
 import { useUiStore, type TabId } from '@stores/ui.store';
-import { colors, typography, motion } from '@theme';
+import { colors, typography, motion, radius } from '@theme';
 
 const TABS: Array<{ id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = [
   { id: 'home', label: 'Inicio', icon: 'home-outline', iconActive: 'home' },
@@ -82,7 +82,11 @@ export function TabBar() {
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.bar} onLayout={onBarLayout}>
-        <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        {Platform.OS === 'ios' ? (
+          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(14, 14, 20, 0.95)', borderRadius: radius.pill }]} />
+        )}
         {tabWidth > 0 && (
           <Animated.View
             pointerEvents="none"

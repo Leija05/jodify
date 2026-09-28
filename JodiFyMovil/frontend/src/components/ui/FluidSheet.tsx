@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
-import { Animated, View, StyleProp, ViewStyle, PanResponder, Dimensions, StyleSheet, Text } from 'react-native';
+import { Animated, View, StyleProp, ViewStyle, PanResponder, Dimensions, StyleSheet, Text, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { colors, radius, motion, elevation } from '@theme';
 import { useReducedMotion } from '@hooks/useReducedMotion';
@@ -208,7 +208,11 @@ export const FluidSheet = forwardRef<FluidSheetRef, FluidSheetProps>(
             { transform: [{ translateY }] },
           ]}
         >
-          <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={35} tint="dark" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(14, 14, 22, 0.97)' }]} />
+          )}
           <View style={styles.handleContainer}>
             <View style={[styles.handle, handleStyle]} />
           </View>

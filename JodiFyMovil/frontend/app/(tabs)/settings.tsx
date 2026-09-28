@@ -132,83 +132,95 @@ export default function SettingsScreen() {
       {/* SECTION 1: CUENTA DE USUARIO */}
       <Text style={styles.sectionTitle}>Cuenta & Identidad</Text>
       {user ? (
-        <DoubleBezelCard style={styles.card} elevated>
-          {/* Main User Identity Row */}
-          <PressableFluid
-            onPress={() => setProfileOpen(true)}
-            haptic="light"
-            style={styles.userMainRow}
-          >
-            <View style={styles.avatarContainer}>
-              {userAvatarUri ? (
-                <Image source={{ uri: userAvatarUri }} style={styles.userAvatarImg} />
-              ) : (
-                <LinearGradient colors={gradients.play} style={styles.userAvatarPlaceholder}>
-                  <Text style={styles.userAvatarLetter}>
-                    {(user.display_name || user.username).slice(0, 1).toUpperCase()}
-                  </Text>
-                </LinearGradient>
-              )}
-              <View style={[styles.avatarRoleDot, { backgroundColor: roleMeta.color }]} />
-            </View>
-
-            <View style={styles.userInfo}>
-              <View style={styles.userNameRow}>
-                <Text style={styles.displayName} numberOfLines={1}>
-                  {user.display_name || user.username}
-                </Text>
-                <View style={[styles.roleBadge, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
-                  <Text style={[styles.roleBadgeText, { color: roleMeta.color }]}>{roleMeta.label}</Text>
+        <>
+          {/* Identity Card - Who you are */}
+          <DoubleBezelCard style={styles.card} elevated>
+            <View style={styles.identityHeader}>
+              <View style={styles.identityAvatarWrap}>
+                {userAvatarUri ? (
+                  <Image source={{ uri: userAvatarUri }} style={styles.identityAvatarImg} />
+                ) : (
+                  <LinearGradient colors={gradients.play} style={styles.identityAvatarPlaceholder}>
+                    <Text style={styles.identityAvatarLetter}>
+                      {(user.display_name || user.username).slice(0, 1).toUpperCase()}
+                    </Text>
+                  </LinearGradient>
+                )}
+                <View style={[styles.identityRoleBadge, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
+                  <Ionicons name={roleMeta.icon} size={12} color={roleMeta.color} />
                 </View>
               </View>
-              <Text style={styles.usernameHandle}>@{user.username}</Text>
-              <Text style={styles.accountDescription}>
-                Perfil activo en la red JodiFy · Creada el {formattedCreatedAt}
-              </Text>
+              <View style={styles.identityInfo}>
+                <Text style={styles.identityDisplayName} numberOfLines={1}>
+                  {user.display_name || user.username}
+                </Text>
+                <Text style={styles.identityUsernameHandle}>@{user.username}</Text>
+                <View style={styles.identityMetaRow}>
+                  <View style={[styles.identityMetaPill, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
+                    <Text style={[styles.identityMetaPillText, { color: roleMeta.color }]}>{roleMeta.label}</Text>
+                  </View>
+                  <Text style={styles.identityMetaText}>
+                    <Ionicons name="calendar-outline" size={10} color={colors.textMuted} style={{marginRight: 3}} />
+                    {formattedCreatedAt}
+                  </Text>
+                </View>
+              </View>
             </View>
+            <PressableFluid
+              onPress={() => setProfileOpen(true)}
+              haptic="light"
+              style={styles.identityChevron}
+            >
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </PressableFluid>
+          </DoubleBezelCard>
 
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </PressableFluid>
-
-          {/* Quick Account Actions */}
-          <View style={styles.accountActionList}>
+          {/* Account Actions Grid */}
+          <View style={styles.accountActionsGrid}>
             <PressableFluid
               onPress={() => setAccountDetailsOpen(true)}
               haptic="medium"
-              style={styles.accountActionTile}
+              style={styles.accountActionCard}
             >
-              <View style={[styles.accountActionIconWrap, { backgroundColor: 'rgba(0, 229, 255, 0.12)' }]}>
-                <Ionicons name="color-palette" size={18} color={colors.secondary} />
+              <View style={[styles.accountActionIcon, { backgroundColor: 'rgba(0, 229, 255, 0.15)' }]}>
+                <Ionicons name="color-palette-outline" size={22} color={colors.secondary} />
               </View>
-              <View style={styles.accountActionTextWrap}>
-                <Text style={styles.accountActionTitle}>Personalizar Foto y Perfil</Text>
-                <Text style={styles.accountActionSub}>Nombre en pantalla, avatar de Discord o personalizado</Text>
+              <View style={styles.accountActionContent}>
+                <Text style={styles.accountActionCardTitle}>Personalizar Perfil</Text>
+                <Text style={styles.accountActionCardSub}>Foto, nombre en pantalla, conexión Discord</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              <View style={styles.accountActionChevron}>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </View>
             </PressableFluid>
 
             <PressableFluid
               onPress={() => setProfileOpen(true)}
               haptic="light"
-              style={styles.accountActionTile}
+              style={styles.accountActionCard}
             >
-              <View style={[styles.accountActionIconWrap, { backgroundColor: 'rgba(127, 0, 255, 0.15)' }]}>
-                <Ionicons name="stats-chart" size={18} color={colors.primary} />
+              <View style={[styles.accountActionIcon, { backgroundColor: 'rgba(127, 0, 255, 0.18)' }]}>
+                <Ionicons name="analytics-outline" size={22} color={colors.primary} />
               </View>
-              <View style={styles.accountActionTextWrap}>
-                <Text style={styles.accountActionTitle}>Ver Estadísticas de Escucha</Text>
-                <Text style={styles.accountActionSub}>Canciones favoritas, reproducciones y actividad</Text>
+              <View style={styles.accountActionContent}>
+                <Text style={styles.accountActionCardTitle}>Estadísticas de Escucha</Text>
+                <Text style={styles.accountActionCardSub}>Favoritos, reproducciones, actividad</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              <View style={styles.accountActionChevron}>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </View>
             </PressableFluid>
           </View>
 
-          {/* Logout button */}
-          <PressableFluid onPress={() => void logout()} haptic="medium" style={styles.rowBtnDanger}>
-            <Ionicons name="log-out-outline" size={18} color={colors.error} />
-            <Text style={styles.rowBtnTextDanger}>Cerrar sesión de @{user.username}</Text>
-          </PressableFluid>
-        </DoubleBezelCard>
+          {/* Danger Zone - Separated */}
+          <DoubleBezelCard style={styles.card} elevated>
+            <Text style={styles.dangerZoneTitle}>Zona de Riesgo</Text>
+            <PressableFluid onPress={() => void logout()} haptic="medium" style={styles.dangerAction}>
+              <Ionicons name="log-out-outline" size={18} color={colors.error} />
+              <Text style={styles.dangerActionText}>Cerrar sesión de @{user.username}</Text>
+            </PressableFluid>
+          </DoubleBezelCard>
+        </>
       ) : (
         <DoubleBezelCard style={styles.card} elevated>
           <View style={styles.guestContainer}>
@@ -482,8 +494,9 @@ export default function SettingsScreen() {
       />
     </ScrollView>
 
-    {/* Modales a nivel raíz de pantalla para evitar fugas táctiles de ScrollView */}
-    <UserProfileModal
+    <View style={styles.modalContainer}>
+      {/* Modales a nivel raíz de pantalla para evitar fugas táctiles de ScrollView */}
+      <UserProfileModal
       user={user}
       isCurrentUser
       visible={profileOpen && !!user}
@@ -499,11 +512,16 @@ export default function SettingsScreen() {
       visible={accountDetailsOpen && !!user}
       onClose={() => setAccountDetailsOpen(false)}
     />
-  </View>
+    </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -511,6 +529,14 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 220,
+  },
+  modalContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'box-none',
   },
   header: {
     marginBottom: 20,
@@ -543,127 +569,179 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     padding: 16,
   },
-  userMainRow: {
+  /* --- Identity Card --- */
+  identityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 14,
-    marginBottom: 14,
   },
-  avatarContainer: {
+  identityAvatarWrap: {
     position: 'relative',
+    flexShrink: 0,
   },
-  userAvatarImg: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 2,
+  identityAvatarImg: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2.5,
     borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  userAvatarPlaceholder: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+  identityAvatarPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#7F00FF',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  userAvatarLetter: {
+  identityAvatarLetter: {
     color: colors.white,
     fontFamily: typography.displayMedium.fontFamily,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
   },
-  avatarRoleDot: {
+  identityRoleBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
+    bottom: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
     borderColor: colors.background,
   },
-  userInfo: {
+  identityInfo: {
     flex: 1,
     minWidth: 0,
   },
-  userNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  displayName: {
+  identityDisplayName: {
     color: colors.white,
     fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
+    letterSpacing: -0.3,
   },
-  usernameHandle: {
-    color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 12,
-    marginTop: 1,
+  identityUsernameHandle: {
+    color: colors.textSecondary,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: 13,
+    marginTop: 2,
   },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  identityMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  identityMetaPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: radius.pill,
     borderWidth: 1,
   },
-  roleBadgeText: {
+  identityMetaPillText: {
     fontFamily: typography.labelSmall.fontFamily,
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,
   },
-  accountDescription: {
+  identityMetaText: {
     color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 11,
-    marginTop: 4,
-    lineHeight: 15,
+    fontSize: 11.5,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  screenWrapper: {
+  identityChevron: {
+    padding: 4,
+  },
+  /* --- Account Actions Grid --- */
+  accountActionsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  accountActionCard: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  accountActionList: {
-    gap: 8,
-    marginTop: 6,
-    marginBottom: 12,
-  },
-  accountActionTile: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: radius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  accountActionIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  accountActionIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  accountActionTextWrap: {
+  accountActionContent: {
     flex: 1,
+    minWidth: 0,
   },
-  accountActionTitle: {
+  accountActionCardTitle: {
     color: colors.white,
     fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: '600',
+    letterSpacing: -0.1,
   },
-  accountActionSub: {
+  accountActionCardSub: {
     color: colors.textMuted,
     fontFamily: typography.bodySmall.fontFamily,
     fontSize: 11,
     marginTop: 1,
+    lineHeight: 14,
+  },
+  accountActionChevron: {
+    padding: 2,
+    flexShrink: 0,
+  },
+  /* --- Danger Zone --- */
+  dangerZoneTitle: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10.5,
+    letterSpacing: 1,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  dangerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 61, 92, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 61, 92, 0.22)',
+  },
+  dangerActionText: {
+    color: colors.error,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: 13.5,
+    fontWeight: '600',
   },
   dspHeaderRow: {
     flexDirection: 'row',

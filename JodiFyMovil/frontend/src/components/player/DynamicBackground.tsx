@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Image, StyleSheet, View, StyleProp, ViewStyle, Animated, Easing, Dimensions } from 'react-native';
+import { Image, StyleSheet, View, StyleProp, ViewStyle, Animated, Easing, Dimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@theme';
 import type { Song } from '@lib/types';
@@ -134,9 +134,9 @@ export const DynamicBackground = React.forwardRef<View, DynamicBackgroundProps>(
           {coverUrl && (
             <Image
               source={{ uri: coverUrl }}
-              style={StyleSheet.absoluteFill}
+              style={[StyleSheet.absoluteFill, { opacity: 0.28 }]}
               resizeMode="cover"
-              blurRadius={80}
+              blurRadius={Platform.OS === 'ios' ? 40 : 8}
             />
           )}
 
@@ -202,9 +202,11 @@ const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
+    backgroundColor: '#07070D',
   },
   baseBackground: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#07070D',
   },
   orb: {
     position: 'absolute',

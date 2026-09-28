@@ -80,9 +80,10 @@ export const Slider = React.forwardRef<View, SliderProps>(
     useEffect(() => {
       panResponder.current = PanResponder.create({
         onStartShouldSetPanResponder: () => !disabled,
-        onStartShouldSetPanResponderCapture: () => !disabled,
-        onMoveShouldSetPanResponder: (_event, gestureState) => !disabled && Math.abs(gestureState.dx) > 1,
-        onMoveShouldSetPanResponderCapture: (_event, gestureState) => !disabled && Math.abs(gestureState.dx) > 1,
+        onStartShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponder: (_event, gestureState) =>
+          !disabled && Math.abs(gestureState.dx) > 6 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.4,
+        onMoveShouldSetPanResponderCapture: () => false,
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (event) => {
           if (disabled) return;
@@ -141,7 +142,7 @@ export const Slider = React.forwardRef<View, SliderProps>(
           <View
             style={[
               styles.activeTrack,
-              { height: trackHeight, width: `${progressPercent}%` },
+              { height: trackHeight, width: `${progressPercent}%`, top: (48 - trackHeight) / 2 },
               activeTrackStyle,
             ]}
           />
@@ -154,6 +155,7 @@ export const Slider = React.forwardRef<View, SliderProps>(
                   height: thumbSize,
                   borderRadius: thumbSize / 2,
                   left: `${progressPercent}%`,
+                  top: 24,
                   transform: [{ translateX: -thumbSize / 2 }, { translateY: -thumbSize / 2 }],
                 },
                 thumbStyle,

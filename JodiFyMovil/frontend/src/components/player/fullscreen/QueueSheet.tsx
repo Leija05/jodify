@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, Animated } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { PressableFluid } from '@components/ui/PressableFluid';
@@ -64,7 +64,11 @@ export const QueueSheet = React.forwardRef<View, QueueSheetProps>(
         ]}
         pointerEvents={open ? 'auto' : 'none'}
       >
-        <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        {Platform.OS === 'ios' ? (
+          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 16, 0.97)' }]} />
+        )}
         <View style={styles.header}>
           <View style={styles.titleWrap}>
             <Text style={styles.title}>Cola de reproducción</Text>

@@ -35,7 +35,7 @@ export const EqualizerBars = React.forwardRef<View, EqualizerBarsProps>(
     ref
   ) => {
     const animatedValues = useMemo(
-      () => Array.from({ length: bars }, () => new Animated.Value(2)),
+      () => Array.from({ length: bars }, () => new Animated.Value(0.1)),
       [bars]
     );
 
@@ -44,29 +44,28 @@ export const EqualizerBars = React.forwardRef<View, EqualizerBarsProps>(
 
     useEffect(() => {
       if (!playing) {
-        animatedValues.forEach((v) => v.setValue(2));
+        animatedValues.forEach((v) => v.setValue(0.1));
         return;
       }
 
       const animations = animatedValues.map((v, i) => {
         const speedVal = barSpeeds[i % barSpeeds.length] ?? 1.0;
-        const speed = speedVal * 1000;
-        const ampVal = barAmplitudes[i % barAmplitudes.length] ?? 0.75;
-        const amplitude = ampVal * height * 0.9;
+        const speed = speedVal * 800;
+        const ampVal = Math.max(0.2, barAmplitudes[i % barAmplitudes.length] ?? 0.75);
 
         return Animated.loop(
           Animated.sequence([
             Animated.timing(v, {
-              toValue: amplitude,
+              toValue: ampVal,
               duration: speed,
               easing: Easing.inOut(Easing.ease),
-              useNativeDriver: false,
+              useNativeDriver: true,
             }),
             Animated.timing(v, {
-              toValue: 2,
+              toValue: 0.1,
               duration: speed,
               easing: Easing.inOut(Easing.ease),
-              useNativeDriver: false,
+              useNativeDriver: true,
             }),
           ])
         );
@@ -77,7 +76,7 @@ export const EqualizerBars = React.forwardRef<View, EqualizerBarsProps>(
       return () => {
         animations.forEach((a) => a.stop());
       };
-    }, [playing, animatedValues, barSpeeds, barAmplitudes, height]);
+    }, [playing, animatedValues, barSpeeds, barAmplitudes]);
 
     return (
       <View
@@ -95,8 +94,10 @@ export const EqualizerBars = React.forwardRef<View, EqualizerBarsProps>(
               styles.bar,
               {
                 width: barWidth,
+                height,
                 backgroundColor: color,
-                height: animatedValue,
+                transform: [{ scaleY: animatedValue }],
+                transformOrigin: 'bottom',
               },
             ]}
           />
@@ -114,7 +115,6 @@ const styles = StyleSheet.create({
   },
   bar: {
     borderRadius: 2,
-    minHeight: 2,
   },
 });
 

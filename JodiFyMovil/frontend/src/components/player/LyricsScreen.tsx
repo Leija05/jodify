@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
+import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LyricsLine } from '@lib/types';
 import { fetchLyrics, lyricsFromSong } from '@services/lyrics.service';
@@ -28,7 +28,6 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
     const [vocalLevel, setVocalLevel] = useState(1.0); // 1.0: Full voice, 0.2: Sing karaoke
 
     const translateY = useRef(new Animated.Value(SCREEN.height)).current;
-    const opacity = useRef(new Animated.Value(0)).current;
     const panResponderRef = useRef<ReturnType<typeof PanResponder.create> | null>(null);
     const isAnimatingOutRef = useRef(false);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -54,24 +53,23 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
     const animateIn = useCallback(() => {
       isAnimatingOutRef.current = false;
       translateY.setValue(SCREEN.height);
-      opacity.setValue(0);
       Animated.spring(translateY, { toValue: 0, ...motion.springDefault, useNativeDriver: true }).start();
-      Animated.spring(opacity, { toValue: 1, ...motion.springDefault, useNativeDriver: true }).start();
-    }, [translateY, opacity]);
+    }, [translateY]);
 
     const animateOut = useCallback(() => {
       if (isAnimatingOutRef.current) return;
       isAnimatingOutRef.current = true;
-      Animated.parallel([
-        Animated.spring(translateY, { toValue: SCREEN.height, ...motion.springDefault, useNativeDriver: true }),
-        Animated.spring(opacity, { toValue: 0, ...motion.springDefault, useNativeDriver: true }),
-      ]).start(() => {
+      Animated.timing(translateY, {
+        toValue: SCREEN.height,
+        duration: 220,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+        useNativeDriver: true,
+      }).start(() => {
         closeLyricsModal();
         translateY.setValue(SCREEN.height);
-        opacity.setValue(0);
         isAnimatingOutRef.current = false;
       });
-    }, [translateY, opacity, closeLyricsModal]);
+    }, [translateY, closeLyricsModal]);
 
     useEffect(() => {
       if (open) animateIn();
@@ -97,10 +95,8 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
         onPanResponderMove: (_event, gestureState) => {
           const dy = gestureState.dy;
           if (dy > 0) {
-            const clampedDy = Math.min(dy, SCREEN.height * 0.55);
+            const clampedDy = Math.min(dy, SCREEN.height * 0.7);
             translateY.setValue(clampedDy);
-            const progress = Math.min(dy / DISMISS_THRESHOLD, 1);
-            opacity.setValue(1 - progress * 0.5);
           }
         },
         onPanResponderRelease: (_event, gestureState) => {
@@ -115,7 +111,7 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
         },
         onPanResponderTerminate: springBack,
       });
-    }, [translateY, opacity, dismiss, springBack]);
+    }, [translateY, dismiss, springBack]);
 
     // Calculate active line index based on current playback position
     const activeLineIndex = useMemo(() => {
@@ -165,15 +161,16 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
     return (
       <Modal
         visible={open}
+        transparent
         animationType="none"
-        presentationStyle="fullScreen"
+        presentationStyle="overFullScreen"
         onRequestClose={dismiss}
         statusBarTranslucent
       >
         <Animated.View
           style={[
             styles.container,
-            { opacity, transform: [{ translateY }] },
+            { transform: [{ translateY }] },
           ]}
           {...panResponderRef.current?.panHandlers}
         >

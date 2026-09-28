@@ -1,11 +1,11 @@
 import React, { useRef, useMemo } from 'react';
-import { View, Text, Image, StyleProp, ViewStyle, StyleSheet, Animated, PanResponder } from 'react-native';
+import { View, Text, Image, StyleProp, ViewStyle, StyleSheet, Animated, PanResponder, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
-import { colors, typography, motion } from '@theme';
+import { colors, typography, motion, radius } from '@theme';
 import { pickCoverUrl, resolveArtist } from '@lib/utils';
 import { getSongPalette } from '@lib/palette';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,7 +75,11 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
       ]}
     >
       <View style={styles.cardInner}>
-        <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        {Platform.OS === 'ios' ? (
+          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(14, 14, 20, 0.96)', borderRadius: radius.lg }]} />
+        )}
         {/* Progress Bar Hairline */}
         <View style={styles.progressContainer}>
           <LinearGradient

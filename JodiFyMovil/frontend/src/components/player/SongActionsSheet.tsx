@@ -9,6 +9,7 @@ import {
   Dimensions,
   Pressable,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -193,7 +194,11 @@ export function SongActionsSheet() {
             },
           ]}
         >
-          <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(14, 14, 22, 0.98)' }]} />
+          )}
 
           {/* Handle bar */}
           <View style={styles.handleWrap}>

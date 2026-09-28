@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
+import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableFluid } from '@components/ui/PressableFluid';
@@ -132,8 +132,9 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
     return (
       <Modal
         visible={open}
+        transparent
         animationType="none"
-        presentationStyle="fullScreen"
+        presentationStyle="overFullScreen"
         onRequestClose={dismiss}
         statusBarTranslucent
         {...props}
@@ -144,7 +145,11 @@ export const EqualizerSheet = React.forwardRef<{ open: () => void; close: () => 
             { opacity, transform: [{ translateY }] },
           ]}
         >
-          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 16, 0.96)' }]} />
+          )}
 
           {/* Drag Handle Bar and Header with Dismiss Gesture */}
           <View {...panResponderRef.current?.panHandlers} style={[styles.header, { paddingTop: Math.max(44, insets.top) }]}>
@@ -427,9 +432,9 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryStrong,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingTop: 100,
-    paddingBottom: 40,
+    paddingBottom: 60,
     paddingHorizontal: 20,
     gap: 20,
   },

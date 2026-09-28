@@ -100,6 +100,8 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
       return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    const TOUCH_AREA_HEIGHT = 32;
+
     return (
       <View style={[styles.container, style]} {...panResponder.current?.panHandlers}>
         <View
@@ -109,7 +111,16 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
           }}
         >
           <View style={[styles.track, { height: trackHeight }]} />
-          <View style={[styles.activeTrack, { height: trackHeight, width: `${progressPercent}%` }]} />
+          <View
+            style={[
+              styles.activeTrack,
+              {
+                height: trackHeight,
+                width: `${progressPercent}%`,
+                top: (TOUCH_AREA_HEIGHT - trackHeight) / 2,
+              },
+            ]}
+          />
           <View
             style={[
               styles.thumb,
@@ -118,7 +129,7 @@ export const TimelineSlider = React.forwardRef<{ seekTo: (seconds: number) => vo
                 height: thumbSize,
                 borderRadius: thumbSize / 2,
                 left: `${progressPercent}%`,
-                top: trackHeight / 2,
+                top: TOUCH_AREA_HEIGHT / 2,
                 transform: [{ translateX: -thumbSize / 2 }, { translateY: -thumbSize / 2 }],
               },
             ]}
@@ -148,11 +159,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   touchArea: {
+    height: 32,
     position: 'relative',
     justifyContent: 'center',
-    paddingVertical: 10,
   },
   track: {
+    width: '100%',
     backgroundColor: 'rgba(255, 255, 255, 0.16)',
     borderRadius: radius.pill,
     overflow: 'hidden',
