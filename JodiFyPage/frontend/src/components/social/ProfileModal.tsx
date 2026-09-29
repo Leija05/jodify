@@ -23,6 +23,7 @@ import {
   IdentificationCard,
   Gear,
   MusicNotes,
+  Lock,
 } from '@phosphor-icons/react';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
@@ -38,7 +39,15 @@ import { downloadJson, getSongCoverCandidates, calculateMelomanoLevel } from '..
 import { statusView } from '../../lib/status';
 import { usePlayerStore } from '../../store/player.store';
 import { playSong } from '../../services/player.service';
-import { SongCover } from '../ui/SongCover';
+import {
+  AVATAR_FRAME_UNLOCKS,
+  PROFILE_THEME_UNLOCKS,
+  PROFILE_EFFECT_UNLOCKS,
+  ACCENT_COLOR_PRESETS,
+  PROFILE_BADGE_PRESETS,
+  isStyleUnlocked,
+} from '../../lib/unlocks';
+import { AnthemCard } from './AnthemCard';
 import type { DiscordProfile, UserAccess } from '../../lib/types';
 
 export const PROFILE_THEMES = [
@@ -121,6 +130,8 @@ export function ProfileModal() {
   const [displayName, setDisplayName] = useState('');
   const [selectedBadge, setSelectedBadge] = useState('Audiófilo Hi-Fi 🎧');
   const [vibeText, setVibeText] = useState('⚡ A tope de ritmo');
+  const [selectedEffect, setSelectedEffect] = useState('none');
+  const [selectedAccent, setSelectedAccent] = useState('#00f0ff');
   const [anthemSongId, setAnthemSongId] = useState<string | number | ''>('');
   const [bioText, setBioText] = useState('');
 
@@ -148,6 +159,8 @@ export function ProfileModal() {
         setInputUrl(profileData.avatar_url || '');
         setSelectedTheme(profileData.theme || 'aurora');
         setSelectedFrame(profileData.avatar_frame || 'none');
+        setSelectedEffect(profileData.profile_effect || 'none');
+        setSelectedAccent(profileData.accent_color || '#00f0ff');
         setDisplayName(profileData.display_name || '');
         setSelectedBadge(profileData.custom_badge || 'Audiófilo Hi-Fi 🎧');
         setVibeText(profileData.vibe || '⚡ A tope de ritmo');
@@ -281,6 +294,8 @@ export function ProfileModal() {
         avatar_source: avatarSource,
         theme: selectedTheme,
         avatar_frame: selectedFrame,
+        accent_color: selectedAccent,
+        profile_effect: selectedEffect,
         custom_badge: selectedBadge ? selectedBadge.trim() : null,
         vibe: vibeText.trim() ? vibeText.trim() : null,
         bio: bioText.trim(),
@@ -296,6 +311,8 @@ export function ProfileModal() {
       setAvatarSource(updated.avatar_source || 'custom');
       setSelectedTheme(updated.theme || 'aurora');
       setSelectedFrame(updated.avatar_frame || 'none');
+      setSelectedEffect(updated.profile_effect || 'none');
+      setSelectedAccent(updated.accent_color || '#00f0ff');
       setSelectedBadge(updated.custom_badge || 'Audiófilo Hi-Fi 🎧');
       setVibeText(updated.vibe || '⚡ A tope de ritmo');
       setAnthemSongId(updated.anthem_song_id ?? '');
@@ -499,7 +516,7 @@ export function ProfileModal() {
                             {melomano.badgeEmoji} {melomano.title}
                           </span>
                           <span className="jf-melomano-sub">
-                            Rango Nivel {melomano.level}
+                            Rango Nivel {melomano.level} • {melomano.listenedHours > 0 ? `${melomano.listenedHours}h de escucha` : `${melomano.listenedMinutes}m de escucha`}
                           </span>
                         </div>
                         <span
@@ -550,29 +567,19 @@ export function ProfileModal() {
                         </div>
                       )}
 
-                      {/* Himno Personal */}
+                      {/* Himno Personal Dinámico con Gradiente de Portada */}
                       {anthemSong && (
-                        <div className="jf-showcase-card">
-                          <div className="jf-showcase-card-header">
-                            <Sparkle size={13} weight="fill" style={{ color: '#ffd700' }} />
-                            <span>Himno Personal Insignia</span>
-                          </div>
-                          <div className="jf-showcase-anthem-body">
-                            <SongCover song={anthemSong} alt="" className="jf-showcase-anthem-cover" />
-                            <div className="jf-showcase-anthem-meta">
-                              <h4 className="jf-showcase-song-title">{anthemSong.name}</h4>
-                              <p className="jf-showcase-song-artist">{anthemSong.added_by ? `Por ${anthemSong.added_by}` : 'JodiFy'}</p>
-                            </div>
-                            <button
-                              type="button"
-                              className="jf-showcase-play-btn"
-                              onClick={() => void playAnthem()}
-                              title="Reproducir mi himno"
-                            >
-                              <Play size={16} weight="fill" />
-                            </button>
-                          </div>
-                        </div>
+                        <AnthemCard
+                          song={anthemSong}
+                          isPlaying={isPlaying && currentSong?.name === anthemSong.name}
+                          onPlay={() => void playAnthem()}
+                          isOwnProfile={true}
+                          onChangeAnthem={() => setActiveTab('identity')}
+                          onRemoveAnthem={() => {
+                            setAnthemSongId('');
+                            toast.show('Himno removido. Recuerda guardar cambios.', 'info', 2200);
+                          }}
+                        />
                       )}
 
                       {/* Top Canciones más escuchadas */}
@@ -604,8 +611,8 @@ export function ProfileModal() {
 
                     {/* Columna Lateral Derecha */}
                     <div className="jf-profile-bento-side">
-                      {/* Métricas */}
-                      <div className="jf-profile-stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                      {/* Métricas con tiempo de escucha activa */}
+                      <div className="jf-profile-stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                         <div className="jf-stat-card">
                           <span className="jf-stat-chip jf-stat-chip--pink"><Heart size={14} weight="fill" /></span>
                           <strong>{stats?.liked ?? 0}</strong>
@@ -614,7 +621,12 @@ export function ProfileModal() {
                         <div className="jf-stat-card">
                           <span className="jf-stat-chip jf-stat-chip--violet"><MusicNotes size={14} weight="fill" /></span>
                           <strong>{stats?.played ?? 0}</strong>
-                          <span>Escuchas</span>
+                          <span>Canciones</span>
+                        </div>
+                        <div className="jf-stat-card">
+                          <span className="jf-stat-chip jf-stat-chip--cyan"><ClockCounterClockwise size={14} weight="bold" /></span>
+                          <strong>{melomano.listenedHours > 0 ? `${melomano.listenedHours}h` : `${melomano.listenedMinutes}m`}</strong>
+                          <span>Escucha</span>
                         </div>
                         <div className="jf-stat-card">
                           <span className="jf-stat-chip jf-stat-chip--cyan"><Download size={14} weight="fill" /></span>
@@ -834,7 +846,7 @@ export function ProfileModal() {
                 </motion.div>
               )}
 
-              {/* TAB 3: ESTILO Y MARCOS */}
+              {/* TAB 3: ESTILO Y MARCOS DESBLOQUEABLES */}
               {activeTab === 'style' && (
                 <motion.div
                   key="style"
@@ -844,62 +856,267 @@ export function ProfileModal() {
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {/* Selector de Temas */}
-                  <div className="jf-profile-editor-field">
-                    <label className="jf-profile-editor-label">Tema y Fondo de Perfil Steam</label>
-                    <div className="jf-profile-theme-grid">
-                      {PROFILE_THEMES.map((th) => (
-                        <button
-                          key={th.id}
-                          type="button"
-                          className={`jf-profile-theme-card ${selectedTheme === th.id ? 'is-active' : ''}`}
-                          onClick={() => setSelectedTheme(th.id)}
-                        >
-                          <span className="jf-theme-swatch" style={{ background: th.color }} />
-                          <span>{th.label}</span>
-                          {selectedTheme === th.id && <Check size={12} weight="bold" />}
-                        </button>
-                      ))}
+                  {/* Banner de Progresión de Melómano */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.12) 0%, rgba(124, 58, 237, 0.15) 100%)',
+                    border: '1px solid rgba(0, 240, 255, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '14px', color: '#fff' }}>
+                        <span>{melomano.badgeEmoji} Tu Rango Actual: Nivel {melomano.level} — {melomano.title}</span>
+                      </div>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.75)' }}>
+                        ⏱️ <strong>{melomano.listenedHours > 0 ? `${melomano.listenedHours} horas` : `${melomano.listenedMinutes} minutos`}</strong> de música escuchada ({melomano.currentXp} XP). Entre más tiempo escuches música en JodiFy, más marcos, temas y efectos cosméticos desbloquearás.
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 600 }}>
+                        {melomano.progressPercent}% hacia Nvl {melomano.level + 1}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Selector de Marcos de Avatar Animados */}
+                  {/* Selector de Marcos de Avatar Animados con Desbloqueos */}
                   <div className="jf-profile-editor-field">
-                    <label className="jf-profile-editor-label">Marco de Avatar Animado (Efecto Steam)</label>
+                    <label className="jf-profile-editor-label">
+                      <span>Marcos de Avatar Animados</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'none' }}>
+                        Desbloqueados por nivel de escucha activa
+                      </span>
+                    </label>
                     <div className="jf-profile-frame-grid">
-                      {AVATAR_FRAMES.map((fr) => (
-                        <button
-                          key={fr.id}
-                          type="button"
-                          className={`jf-profile-frame-card ${selectedFrame === fr.id ? 'is-active' : ''}`}
-                          onClick={() => setSelectedFrame(fr.id)}
-                        >
-                          <span
-                            className="jf-frame-mini-dot"
-                            style={{
-                              background: fr.color,
-                              border: fr.id === 'none' ? '1px dashed #666' : 'none',
+                      {AVATAR_FRAME_UNLOCKS.map((fr) => {
+                        const unlocked = isStyleUnlocked(fr.requiredLevel, melomano.level);
+                        const progress = Math.min(100, Math.round((melomano.level / fr.requiredLevel) * 100));
+                        return (
+                          <button
+                            key={fr.id}
+                            type="button"
+                            className={`jf-profile-frame-card jf-unlock-card ${selectedFrame === fr.id ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                            onClick={() => {
+                              if (!unlocked) {
+                                toast.show(
+                                  `🔒 Marco bloqueado: Requiere Nivel ${fr.requiredLevel} (${fr.name}). ¡Sigue escuchando música para desbloquearlo!`,
+                                  'warning',
+                                  3200,
+                                );
+                                return;
+                              }
+                              setSelectedFrame(fr.id);
                             }}
-                          />
-                          <span>{fr.label}</span>
-                          {selectedFrame === fr.id && <Check size={12} weight="bold" />}
-                        </button>
-                      ))}
+                            title={unlocked ? fr.description : `Requiere Nivel ${fr.requiredLevel}`}
+                          >
+                            <span
+                              className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}
+                            >
+                              {unlocked ? (
+                                `✓ Nvl ${fr.requiredLevel}`
+                              ) : (
+                                <>
+                                  <Lock size={10} weight="bold" /> Nvl {fr.requiredLevel}
+                                </>
+                              )}
+                            </span>
+                            <span
+                              className="jf-frame-mini-dot"
+                              style={{
+                                background: fr.color || '#64748b',
+                                border: fr.id === 'none' ? '1px dashed #666' : 'none',
+                              }}
+                            />
+                            <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                              <span style={{ display: 'block', fontWeight: 600, fontSize: '12px' }}>{fr.name}</span>
+                              <span style={{ display: 'block', fontSize: '10px', color: 'rgba(255,255,255,0.5)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                {fr.description}
+                              </span>
+                              {!unlocked && (
+                                <div className="jf-unlock-progress-bar">
+                                  <div className="jf-unlock-progress-fill" style={{ width: `${progress}%` }} />
+                                </div>
+                              )}
+                            </div>
+                            {selectedFrame === fr.id && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Selector de Temas con Desbloqueos */}
+                  <div className="jf-profile-editor-field">
+                    <label className="jf-profile-editor-label">
+                      <span>Tema y Fondo del Perfil</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'none' }}>
+                        Transforma la paleta y fondo de tu perfil
+                      </span>
+                    </label>
+                    <div className="jf-profile-theme-grid">
+                      {PROFILE_THEME_UNLOCKS.map((th) => {
+                        const unlocked = isStyleUnlocked(th.requiredLevel, melomano.level);
+                        const progress = Math.min(100, Math.round((melomano.level / th.requiredLevel) * 100));
+                        return (
+                          <button
+                            key={th.id}
+                            type="button"
+                            className={`jf-profile-theme-card jf-unlock-card ${selectedTheme === th.id ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                            onClick={() => {
+                              if (!unlocked) {
+                                toast.show(
+                                  `🔒 Tema bloqueado: Requiere Nivel ${th.requiredLevel} (${th.name}). ¡Sigue acumulando tiempo de escucha!`,
+                                  'warning',
+                                  3200,
+                                );
+                                return;
+                              }
+                              setSelectedTheme(th.id);
+                            }}
+                            title={unlocked ? th.description : `Requiere Nivel ${th.requiredLevel}`}
+                          >
+                            <span
+                              className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}
+                            >
+                              {unlocked ? (
+                                `✓ Nvl ${th.requiredLevel}`
+                              ) : (
+                                <>
+                                  <Lock size={10} weight="bold" /> Nvl {th.requiredLevel}
+                                </>
+                              )}
+                            </span>
+                            <span className="jf-theme-swatch" style={{ background: th.gradient || th.color }} />
+                            <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                              <span style={{ display: 'block', fontWeight: 600, fontSize: '12px' }}>{th.name}</span>
+                              <span style={{ display: 'block', fontSize: '10px', color: 'rgba(255,255,255,0.5)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                {th.description}
+                              </span>
+                              {!unlocked && (
+                                <div className="jf-unlock-progress-bar">
+                                  <div className="jf-unlock-progress-fill" style={{ width: `${progress}%` }} />
+                                </div>
+                              )}
+                            </div>
+                            {selectedTheme === th.id && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Selector de Atmósfera y Efectos de Fondo */}
+                  <div className="jf-profile-editor-field">
+                    <label className="jf-profile-editor-label">
+                      <span>Atmósfera y Efectos de Fondo</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'none' }}>
+                        Efectos dinámicos en la tarjeta de tu perfil
+                      </span>
+                    </label>
+                    <div className="jf-profile-theme-grid">
+                      {PROFILE_EFFECT_UNLOCKS.map((eff) => {
+                        const unlocked = isStyleUnlocked(eff.requiredLevel, melomano.level);
+                        const progress = Math.min(100, Math.round((melomano.level / eff.requiredLevel) * 100));
+                        return (
+                          <button
+                            key={eff.id}
+                            type="button"
+                            className={`jf-profile-theme-card jf-unlock-card ${selectedEffect === eff.id ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                            onClick={() => {
+                              if (!unlocked) {
+                                toast.show(
+                                  `🔒 Efecto bloqueado: Requiere Nivel ${eff.requiredLevel} (${eff.name}).`,
+                                  'warning',
+                                  3000,
+                                );
+                                return;
+                              }
+                              setSelectedEffect(eff.id);
+                            }}
+                          >
+                            <span
+                              className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}
+                            >
+                              {unlocked ? `✓ Nvl ${eff.requiredLevel}` : <><Lock size={10} weight="bold" /> Nvl {eff.requiredLevel}</>}
+                            </span>
+                            <span className="jf-theme-swatch" style={{ background: eff.color }} />
+                            <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                              <span style={{ display: 'block', fontWeight: 600, fontSize: '12px' }}>{eff.name}</span>
+                              <span style={{ display: 'block', fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>
+                                {eff.description}
+                              </span>
+                              {!unlocked && (
+                                <div className="jf-unlock-progress-bar">
+                                  <div className="jf-unlock-progress-fill" style={{ width: `${progress}%` }} />
+                                </div>
+                              )}
+                            </div>
+                            {selectedEffect === eff.id && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Selector de Color de Acento */}
+                  <div className="jf-profile-editor-field">
+                    <label className="jf-profile-editor-label">Color de Resplandor y Acento de Perfil</label>
+                    <div className="jf-accent-swatches">
+                      {ACCENT_COLOR_PRESETS.map((ac) => {
+                        const unlocked = isStyleUnlocked(ac.level, melomano.level);
+                        return (
+                          <button
+                            key={ac.name}
+                            type="button"
+                            className={`jf-accent-chip ${selectedAccent === ac.hex ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                            style={{ background: ac.hex, color: ac.hex }}
+                            onClick={() => {
+                              if (!unlocked) {
+                                toast.show(`🔒 Requiere Nivel ${ac.level} para desbloquear este color`, 'warning');
+                                return;
+                              }
+                              setSelectedAccent(ac.hex);
+                            }}
+                            title={`${ac.name} ${!unlocked ? `(Requiere Nivel ${ac.level})` : ''}`}
+                          >
+                            {selectedAccent === ac.hex && <Check size={16} weight="bold" style={{ color: '#000' }} />}
+                            {!unlocked && <Lock size={13} weight="bold" style={{ color: '#fff' }} />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
                   {/* Selector de Insignia */}
                   <div className="jf-profile-editor-field">
                     <label className="jf-profile-editor-label">Insignia Destacada</label>
-                    <select
-                      className="jf-select"
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <select
+                        className="jf-select"
+                        value={selectedBadge}
+                        onChange={(e) => setSelectedBadge(e.target.value)}
+                        style={{ flex: 1 }}
+                      >
+                        {PROFILE_BADGE_PRESETS.map((b) => (
+                          <option key={b.text} value={b.text}>
+                            {b.text} (Nivel {b.level})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <input
+                      type="text"
+                      className="jf-input"
+                      style={{ marginTop: '6px' }}
+                      placeholder="O escribe tu insignia personalizada..."
+                      maxLength={35}
                       value={selectedBadge}
                       onChange={(e) => setSelectedBadge(e.target.value)}
-                    >
-                      {PROFILE_BADGES.map((b) => (
-                        <option key={b} value={b}>{b}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   {/* Sticky Save Bar */}
@@ -986,7 +1203,12 @@ export function ProfileModal() {
 
                   {/* Himno Personal */}
                   <div className="jf-profile-editor-field">
-                    <label className="jf-profile-editor-label">Himno Personal (Tu rolón insignia)</label>
+                    <label className="jf-profile-editor-label">
+                      <span>Himno Personal (Tu rolón insignia)</span>
+                      <span style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'none' }}>
+                        Genera un gradiente cromático y disco de vinilo dinámico según la carátula
+                      </span>
+                    </label>
                     <select
                       className="jf-select"
                       value={anthemSongId}
@@ -999,6 +1221,20 @@ export function ProfileModal() {
                         </option>
                       ))}
                     </select>
+
+                    {anthemSong && (
+                      <div style={{ marginTop: '12px' }}>
+                        <span style={{ fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.75)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                          ✨ Vista previa del himno con gradiente generado en vivo:
+                        </span>
+                        <AnthemCard
+                          song={anthemSong}
+                          isPlaying={isPlaying && currentSong?.name === anthemSong.name}
+                          onPlay={() => void playAnthem()}
+                          isOwnProfile={true}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Biografía / Cita */}

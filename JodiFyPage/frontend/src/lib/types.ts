@@ -115,6 +115,9 @@ export interface UserAccess {
   anthem_song_name?: string | null;
   custom_badge?: string | null;
   vibe?: string | null;
+  accent_color?: string | null;
+  profile_effect?: string | null;
+  listening_seconds?: number;
   created_at?: string;
 }
 

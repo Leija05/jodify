@@ -2253,4 +2253,409 @@
   box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
 }
 
+/* ========================================================
+   DYNAMIC ANTHEM CARD & VINYL PRESENTATION
+   ======================================================== */
+.jf-showcase-anthem-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 18px 20px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(14px);
+}
+
+.jf-showcase-anthem-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.jf-anthem-ambient-glow {
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  filter: blur(48px);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.jf-anthem-cover-container {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.jf-anthem-cover-wrap {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+}
+
+.jf-anthem-cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.jf-showcase-anthem-card:hover .jf-anthem-cover-wrap img {
+  transform: scale(1.05);
+}
+
+.jf-anthem-play-overlay-btn {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.jf-anthem-cover-container:hover .jf-anthem-play-overlay-btn {
+  opacity: 1;
+}
+
+/* Vinyl disc popping out from behind */
+.jf-anthem-vinyl {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #1e293b 0%, #0f172a 40%, #020617 80%, #000 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  display: grid;
+  place-items: center;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+.jf-anthem-vinyl.is-peeking {
+  transform: translateX(22px);
+}
+
+.jf-anthem-vinyl.is-spinning {
+  transform: translateX(26px);
+  animation: jf-vinyl-spin 3s linear infinite;
+}
+
+@keyframes jf-vinyl-spin {
+  from { transform: translateX(26px) rotate(0deg); }
+  to { transform: translateX(26px) rotate(360deg); }
+}
+
+.jf-anthem-vinyl-center {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #000;
+}
+
+.jf-anthem-eq-indicator {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 14px;
+}
+
+.jf-anthem-eq-indicator span {
+  width: 3px;
+  border-radius: 3px;
+  animation: jf-eq-bounce 0.8s ease-in-out infinite alternate;
+}
+
+.jf-anthem-eq-indicator span:nth-child(1) { height: 60%; animation-delay: 0s; }
+.jf-anthem-eq-indicator span:nth-child(2) { height: 100%; animation-delay: 0.25s; }
+.jf-anthem-eq-indicator span:nth-child(3) { height: 75%; animation-delay: 0.15s; }
+
+@keyframes jf-eq-bounce {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+.jf-anthem-palette-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.jf-anthem-color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 8px currentColor;
+}
+
+.jf-anthem-vibe-pill {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jf-anthem-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.jf-anthem-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.jf-anthem-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.jf-anthem-icon-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* ========================================================
+   PROGRESSION & STYLE UNLOCKS
+   ======================================================== */
+.jf-unlock-card {
+  position: relative;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.jf-unlock-card.is-locked {
+  opacity: 0.65;
+  filter: grayscale(0.2);
+  border-color: rgba(244, 63, 94, 0.25) !important;
+  cursor: pointer;
+}
+
+.jf-unlock-card.is-locked:hover {
+  opacity: 0.9;
+  filter: grayscale(0);
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(244, 63, 94, 0.25);
+}
+
+.jf-lock-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 3;
+}
+
+.jf-lock-badge.is-locked {
+  color: #f43f5e;
+  border-color: rgba(244, 63, 94, 0.4);
+  background: rgba(30, 10, 18, 0.9);
+}
+
+.jf-lock-badge.is-unlocked {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(6, 30, 20, 0.9);
+}
+
+.jf-unlock-progress-bar {
+  margin-top: 6px;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.jf-unlock-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f43f5e, #fb7185);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+/* Additional High-End Avatar Frames */
+.jf-avatar-frame--cosmic::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #38bdf8, #818cf8, #c084fc, #f472b6, #38bdf8);
+  animation: jf-frame-spin 6s linear infinite;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.75);
+}
+
+.jf-avatar-frame--godtier::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #ffd700, #ff4500, #ff007f, #ffd700);
+  animation: jf-frame-spin 2.2s linear infinite;
+  box-shadow: 0 0 26px rgba(255, 215, 0, 0.9), 0 0 45px rgba(255, 69, 0, 0.6);
+}
+
+/* Accent Color Swatches */
+.jf-accent-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.jf-accent-chip {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.jf-accent-chip:hover {
+  transform: scale(1.12);
+  box-shadow: 0 0 16px currentColor;
+}
+
+.jf-accent-chip.is-active {
+  border-color: #fff;
+  transform: scale(1.14);
+  box-shadow: 0 0 18px currentColor;
+}
+
+/* ========================================================
+   INTERACTIVE SOCIAL KUDOS & REACTIONS
+   ======================================================== */
+.jf-kudos-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  margin-top: 10px;
+}
+
+.jf-kudos-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.jf-kudos-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.jf-kudos-btn:active {
+  transform: scale(0.95);
+}
+
+.jf-kudos-particle {
+  position: absolute;
+  pointer-events: none;
+  font-size: 24px;
+  animation: jf-kudos-float 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 999;
+}
+
+@keyframes jf-kudos-float {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.6) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-40px) scale(1.2) rotate(10deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-80px) scale(0.9) rotate(-10deg);
+  }
+}
+
+.jf-tune-in-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #00f0ff 0%, #3b82f6 100%);
+  color: #000;
+  font-weight: 700;
+  font-size: 11.5px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.4);
+  transition: all 0.2s ease;
+}
+
+.jf-tune-in-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.7);
+}
+
+
 

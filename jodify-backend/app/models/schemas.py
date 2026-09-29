@@ -46,6 +46,12 @@ class UpdateProfileRequest(BaseModel):
     anthem_song_name: str | None = None
     custom_badge: str | None = None
     vibe: str | None = None
+    accent_color: str | None = None
+    profile_effect: str | None = None
+
+
+class ListeningTimeRequest(BaseModel):
+    seconds: int = 15
 
 
 class DiscordRequest(BaseModel):

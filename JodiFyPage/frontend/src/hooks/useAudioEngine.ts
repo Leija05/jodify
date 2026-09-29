@@ -20,15 +20,18 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
       const { broadcastPlaybackChange } = useJamStore.getState();
       broadcastPlaybackChange('play');
       syncNowPlaying(usePlayerStore.getState().currentSong, true);
+      lastPlaybackTick = Date.now();
     };
     const onPause = () => {
       usePlayerStore.getState().setIsPlaying(false);
       useJamStore.getState().broadcastPlaybackChange('pause');
       syncNowPlaying(usePlayerStore.getState().currentSong, false);
+      tickListeningTime();
     };
     const onTimeUpdate = () => {
       usePlayerStore.getState().setCurrentTime(audio.currentTime);
       obsService.persist();
+      tickListeningTime();
     };
     const onLoadedMetadata = () => {
       usePlayerStore.getState().setDuration(audio.duration);
@@ -105,6 +108,27 @@ function audioElement(): HTMLAudioElement | null {
 }
 
 let lastNowPlayingSync = 0;
+let lastPlaybackTick = Date.now();
+let listeningBuffer = 0;
+
+function tickListeningTime(): void {
+  const now = Date.now();
+  const delta = Math.floor((now - lastPlaybackTick) / 1000);
+  if (delta >= 1 && delta <= 5) {
+    listeningBuffer += delta;
+  }
+  lastPlaybackTick = now;
+  if (listeningBuffer >= 15) {
+    const toSend = listeningBuffer;
+    listeningBuffer = 0;
+    const username = localStorage.getItem('currentUserName');
+    if (username) {
+      import('../services/users.service').then(({ recordListeningTime }) => {
+        recordListeningTime(username, toSend).catch(() => undefined);
+      });
+    }
+  }
+}
 
 function syncNowPlaying(song: { id: number | string; name: string } | null, playing: boolean): void {
   const username = localStorage.getItem('currentUserName');

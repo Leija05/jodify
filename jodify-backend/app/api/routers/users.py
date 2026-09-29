@@ -5,7 +5,14 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...core.database import col, sid
-from ...models.schemas import DiscordRequest, HeartbeatRequest, NowPlayingRequest, UpdateProfileRequest, UserPreferencesRequest
+from ...models.schemas import (
+    DiscordRequest,
+    HeartbeatRequest,
+    ListeningTimeRequest,
+    NowPlayingRequest,
+    UpdateProfileRequest,
+    UserPreferencesRequest,
+)
 from ..dependencies import require_admin
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -51,10 +58,13 @@ def user_view(doc: dict) -> dict:
         "bio": doc.get("bio", ""),
         "theme": doc.get("theme", "aurora"),
         "avatar_frame": doc.get("avatar_frame", "none"),
+        "accent_color": doc.get("accent_color"),
+        "profile_effect": doc.get("profile_effect", "none"),
         "anthem_song_id": doc.get("anthem_song_id"),
         "anthem_song_name": doc.get("anthem_song_name"),
         "custom_badge": doc.get("custom_badge"),
         "vibe": doc.get("vibe"),
+        "listening_seconds": int(doc.get("listening_seconds", 0) or 0),
         "created_at": doc.get("created_at"),
     }
 
@@ -78,7 +88,24 @@ async def listening_stats(username: str) -> dict:
     liked = await col("likes").count_documents({"username": username})
     played = await col("history").count_documents({"username": username})
     downloaded = await col("downloads").count_documents({"username": username})
-    return {"liked": liked, "played": played, "downloaded": downloaded}
+    doc = await col("users").find_one({"username": username}, {"listening_seconds": 1}) or {}
+    listening_seconds = int(doc.get("listening_seconds", 0) or 0)
+    return {
+        "liked": liked,
+        "played": played,
+        "downloaded": downloaded,
+        "listening_seconds": listening_seconds,
+    }
+
+
+@router.post("/{username}/listening-time")
+async def record_listening_time(username: str, body: ListeningTimeRequest) -> dict:
+    seconds = max(1, min(body.seconds, 120))
+    await col("users").update_one(
+        {"username": username},
+        {"$inc": {"listening_seconds": seconds}},
+    )
+    return {"ok": True, "added": seconds}
 
 
 @router.get("/{username}/top-songs")
@@ -172,6 +199,12 @@ async def update_profile(username: str, body: UpdateProfileRequest) -> dict:
     if "vibe" in fields_set:
         clean = body.vibe.strip()[:60] if body.vibe else None
         updates["vibe"] = clean or None
+    if "accent_color" in fields_set:
+        clean = body.accent_color.strip() if body.accent_color else None
+        updates["accent_color"] = clean or None
+    if "profile_effect" in fields_set:
+        clean = body.profile_effect.strip() if body.profile_effect else "none"
+        updates["profile_effect"] = clean
 
     if body.new_username and body.new_username.strip() != username:
         new_user = body.new_username.strip()

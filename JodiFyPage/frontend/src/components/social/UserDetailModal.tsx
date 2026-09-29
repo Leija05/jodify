@@ -8,12 +8,14 @@ import {
   ClockCounterClockwise,
   Sparkle,
   Fire,
+  ShareNetwork,
 } from '@phosphor-icons/react';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
 import { Spinner } from '../ui/Spinner';
 import { Button } from '../ui/Button';
 import { useUiStore } from '../../store/ui.store';
+import { useToastStore } from '../../store/toast.store';
 import { fetchCommunityUsers, fetchListeningStats, fetchTopSongs } from '../../services/users.service';
 import { fetchLanyardProfile } from '../../services/social.service';
 import { useLibraryStore } from '../../store/library.store';
@@ -22,11 +24,12 @@ import { useSession } from '../../context/SessionContext';
 import { playSong } from '../../services/player.service';
 import { timeAgo, resolveAvatarSrc, calculateMelomanoLevel } from '../../lib/utils';
 import { statusView, jfIsOnline } from '../../lib/status';
-import { SongCover } from '../ui/SongCover';
+import { AnthemCard } from './AnthemCard';
 import type { CommunityUser } from '../../lib/types';
 
 export function UserDetailModal() {
   const ui = useUiStore();
+  const toast = useToastStore();
   const { session } = useSession();
   const librarySongs = useLibraryStore((s) => s.songs);
 
@@ -35,6 +38,7 @@ export function UserDetailModal() {
   const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number } | null>(null);
   const [topSongs, setTopSongs] = useState<Array<{ song_name: string; count: number }>>([]);
   const [now, setNow] = useState(() => Date.now());
+  const [particles, setParticles] = useState<Array<{ id: number; emoji: string; x: number }>>([]);
 
   const myCurrentSong = usePlayerStore((s) => s.currentSong);
   const myIsPlaying = usePlayerStore((s) => s.isPlaying);
@@ -107,6 +111,25 @@ export function UserDetailModal() {
     usePlayerStore.getState().setIsPlaying(true);
   };
 
+  const sendReaction = (emoji: string, label: string) => {
+    const id = Date.now() + Math.random();
+    setParticles((p) => [...p, { id, emoji, x: Math.random() * 70 + 15 }]);
+    setTimeout(() => {
+      setParticles((p) => p.filter((x) => x.id !== id));
+    }, 1200);
+    toast.show(
+      `¡Has enviado ${emoji} ${label} a ${user?.display_name || user?.username}!`,
+      'success',
+      2200,
+    );
+  };
+
+  const copyProfileLink = () => {
+    if (!user) return;
+    navigator.clipboard.writeText(`jodify://user/${user.username}`);
+    toast.show('¡Enlace de perfil copiado al portapapeles!', 'info', 2000);
+  };
+
   const themeClass = user?.theme ? `theme--${user.theme}` : 'theme--aurora';
   const frameClass = user?.avatar_frame && user.avatar_frame !== 'none' ? `jf-avatar-frame--${user.avatar_frame}` : '';
   const avatarSrc = resolveAvatarSrc(user);
@@ -119,6 +142,17 @@ export function UserDetailModal() {
         </div>
       ) : (
         <div className={`jf-profile-shell ${themeClass}`}>
+          {/* Partículas de Reacción Flotantes */}
+          {particles.map((pt) => (
+            <span
+              key={pt.id}
+              className="jf-kudos-particle"
+              style={{ left: `${pt.x}%`, top: '40%' }}
+            >
+              {pt.emoji}
+            </span>
+          ))}
+
           <div className="jf-profile-banner" aria-hidden="true">
             <span className="jf-profile-orb jf-profile-orb--a" />
             <span className="jf-profile-orb jf-profile-orb--b" />
@@ -144,6 +178,15 @@ export function UserDetailModal() {
                     {user.display_name && user.display_name !== user.username && (
                       <span className="jf-profile-hero-handle">@{user.username}</span>
                     )}
+                    <button
+                      type="button"
+                      className="jf-anthem-icon-btn"
+                      style={{ width: '28px', height: '28px', marginLeft: '6px' }}
+                      onClick={copyProfileLink}
+                      title="Compartir perfil"
+                    >
+                      <ShareNetwork size={14} />
+                    </button>
                   </div>
                   <div className="jf-profile-hero-badges">
                     <span className={`jf-role-badge jf-role-badge--${user.role}`}>{user.role}</span>
@@ -181,7 +224,7 @@ export function UserDetailModal() {
                       {melomano.badgeEmoji} {melomano.title}
                     </span>
                     <span className="jf-melomano-sub">
-                      Rango Nivel {melomano.level}
+                      Rango Nivel {melomano.level} • {melomano.listenedHours > 0 ? `${melomano.listenedHours}h de escucha` : `${melomano.listenedMinutes}m de escucha`}
                     </span>
                   </div>
                   <span
@@ -206,6 +249,25 @@ export function UserDetailModal() {
               </div>
             </div>
 
+            {/* Barra Interactiva de Reacciones Sociales / Kudos */}
+            <div className="jf-kudos-bar">
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)', fontWeight: 600 }}>
+                Reaccionar a este perfil:
+              </span>
+              <button type="button" className="jf-kudos-btn" onClick={() => sendReaction('🔥', 'Respeto Sonoro')}>
+                🔥 Fuego
+              </button>
+              <button type="button" className="jf-kudos-btn" onClick={() => sendReaction('💎', 'Buen Gusto')}>
+                💎 Joya Musical
+              </button>
+              <button type="button" className="jf-kudos-btn" onClick={() => sendReaction('🎧', 'Respeto Hi-Fi')}>
+                🎧 Audiófilo
+              </button>
+              <button type="button" className="jf-kudos-btn" onClick={() => sendReaction('❤️', 'Favorito')}>
+                ❤️ Amor
+              </button>
+            </div>
+
             {/* 2-Column Bento Grid */}
             <div className="jf-profile-bento">
               {/* Columna Principal Izquierda */}
@@ -225,43 +287,40 @@ export function UserDetailModal() {
                       </div>
                       <div className="jf-showcase-nowplay-meta">
                         <h4 className="jf-showcase-song-title">{liveSongName}</h4>
-                        <p className="jf-showcase-song-artist">Reproduciendo actualmente</p>
+                        <p className="jf-showcase-song-artist">Reproduciendo actualmente en JodiFy</p>
                       </div>
-                      <button
-                        type="button"
-                        className="jf-showcase-play-btn"
-                        onClick={() => void playTheirSong()}
-                        title="Escuchar junto a este usuario"
-                      >
-                        <Play size={16} weight="fill" />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="jf-tune-in-btn"
+                          onClick={() => void playTheirSong()}
+                          title="Sintonizar y escuchar esta misma canción"
+                        >
+                          <Sparkle size={13} weight="fill" />
+                          <span>Sintonizar</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="jf-showcase-play-btn"
+                          onClick={() => void playTheirSong()}
+                          title="Reproducir canción"
+                        >
+                          <Play size={16} weight="fill" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Himno Personal */}
+                {/* Himno Personal con Gradiente Dinámico de Portada */}
                 {anthemSong && (
-                  <div className="jf-showcase-card">
-                    <div className="jf-showcase-card-header">
-                      <Sparkle size={13} weight="fill" style={{ color: '#ffd700' }} />
-                      <span>Himno Personal Insignia</span>
-                    </div>
-                    <div className="jf-showcase-anthem-body">
-                      <SongCover song={anthemSong} alt="" className="jf-showcase-anthem-cover" />
-                      <div className="jf-showcase-anthem-meta">
-                        <h4 className="jf-showcase-song-title">{anthemSong.name}</h4>
-                        <p className="jf-showcase-song-artist">{anthemSong.added_by ? `Por ${anthemSong.added_by}` : 'JodiFy'}</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="jf-showcase-play-btn"
-                        onClick={() => void playAnthem()}
-                        title={`Reproducir el himno de ${user.username}`}
-                      >
-                        <Play size={16} weight="fill" />
-                      </button>
-                    </div>
-                  </div>
+                  <AnthemCard
+                    song={anthemSong}
+                    isPlaying={myIsPlaying && myCurrentSong?.name === anthemSong.name}
+                    onPlay={() => void playAnthem()}
+                    isOwnProfile={false}
+                    titlePrefix={`Himno de ${user.display_name || user.username}`}
+                  />
                 )}
 
                 {/* Top Canciones más escuchadas */}
@@ -293,8 +352,8 @@ export function UserDetailModal() {
 
               {/* Columna Lateral Derecha */}
               <div className="jf-profile-bento-side">
-                {/* Métricas */}
-                <div className="jf-profile-stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {/* Métricas con tiempo de escucha */}
+                <div className="jf-profile-stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                   <div className="jf-stat-card">
                     <span className="jf-stat-chip jf-stat-chip--pink"><Heart size={14} weight="fill" /></span>
                     <strong>{stats?.liked ?? 0}</strong>
@@ -303,7 +362,12 @@ export function UserDetailModal() {
                   <div className="jf-stat-card">
                     <span className="jf-stat-chip jf-stat-chip--violet"><MusicNotes size={14} weight="fill" /></span>
                     <strong>{stats?.played ?? 0}</strong>
-                    <span>Escuchas</span>
+                    <span>Canciones</span>
+                  </div>
+                  <div className="jf-stat-card">
+                    <span className="jf-stat-chip jf-stat-chip--cyan"><ClockCounterClockwise size={14} weight="bold" /></span>
+                    <strong>{melomano.listenedHours > 0 ? `${melomano.listenedHours}h` : `${melomano.listenedMinutes}m`}</strong>
+                    <span>Escucha</span>
                   </div>
                   <div className="jf-stat-card">
                     <span className="jf-stat-chip jf-stat-chip--cyan"><Download size={14} weight="fill" /></span>

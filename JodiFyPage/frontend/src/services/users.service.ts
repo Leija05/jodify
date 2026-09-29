@@ -85,8 +85,20 @@ export async function fetchCommunityUsers(): Promise<UserAccess[]> {
   return api.get<UserAccess[]>('/users');
 }
 
-export async function fetchListeningStats(username: string): Promise<{ liked: number; played: number; downloaded: number }> {
-  return api.get<{ liked: number; played: number; downloaded: number }>(`/users/${encodeURIComponent(username)}/stats`);
+export async function fetchListeningStats(
+  username: string,
+): Promise<{ liked: number; played: number; downloaded: number; listening_seconds?: number }> {
+  return api.get<{ liked: number; played: number; downloaded: number; listening_seconds?: number }>(
+    `/users/${encodeURIComponent(username)}/stats`,
+  );
+}
+
+export async function recordListeningTime(username: string, seconds = 15): Promise<void> {
+  try {
+    await api.post(`/users/${encodeURIComponent(username)}/listening-time`, { seconds });
+  } catch {
+    // non-blocking
+  }
 }
 
 export async function fetchTopSongs(username: string, limit = 5): Promise<Array<{ song_name: string; count: number }>> {

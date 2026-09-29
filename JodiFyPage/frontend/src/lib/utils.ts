@@ -155,18 +155,30 @@ export interface MelomanoRank {
   currentXp: number;
   nextLevelXp: number;
   progressPercent: number;
+  listenedMinutes: number;
+  listenedHours: number;
 }
 
-export function calculateMelomanoLevel(stats: { liked?: number; played?: number; downloaded?: number } | null | undefined): MelomanoRank {
+export function calculateMelomanoLevel(
+  stats: { liked?: number; played?: number; downloaded?: number; listening_seconds?: number } | null | undefined,
+): MelomanoRank {
   const liked = stats?.liked ?? 0;
   const played = stats?.played ?? 0;
   const downloaded = stats?.downloaded ?? 0;
+  const sec = stats?.listening_seconds ?? 0;
 
-  const currentXp = (liked * 12) + (played * 3) + (downloaded * 18);
-  const level = Math.max(1, Math.floor(Math.sqrt(currentXp / 35)) + 1);
+  // Minutos de escucha reales acumulados + estimación por canciones reproducidas
+  const realMinutes = Math.floor(sec / 60);
+  const estimatedPlayedMinutes = Math.round(played * 3.2);
+  const listenedMinutes = Math.max(realMinutes, estimatedPlayedMinutes);
+  const listenedHours = Math.round((listenedMinutes / 60) * 10) / 10;
 
-  const prevLevelXp = Math.pow(level - 1, 2) * 35;
-  const nextLevelXp = Math.pow(level, 2) * 35;
+  // Fórmula de XP ponderada fuertemente por tiempo de escucha activa
+  const currentXp = (liked * 12) + (played * 4) + (downloaded * 16) + Math.round(listenedMinutes * 2.5);
+  const level = Math.max(1, Math.floor(Math.sqrt(currentXp / 30)) + 1);
+
+  const prevLevelXp = Math.pow(level - 1, 2) * 30;
+  const nextLevelXp = Math.pow(level, 2) * 30;
   const span = Math.max(1, nextLevelXp - prevLevelXp);
   const progressInLevel = Math.max(0, currentXp - prevLevelXp);
   const progressPercent = Math.min(100, Math.round((progressInLevel / span) * 100));
@@ -209,6 +221,8 @@ export function calculateMelomanoLevel(stats: { liked?: number; played?: number;
     currentXp,
     nextLevelXp,
     progressPercent,
+    listenedMinutes,
+    listenedHours,
   };
 }
 
