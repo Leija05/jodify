@@ -70,21 +70,33 @@ export function SongContextMenu() {
   useEffect(() => {
     if (!open) return;
     setReady(false);
-    const close = () => hide();
+
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        hide();
+      }
+    };
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') hide();
     };
-    window.addEventListener('click', close);
-    window.addEventListener('blur', close);
-    window.addEventListener('resize', close);
-    window.addEventListener('scroll', close, true);
+
+    const onResize = () => hide();
+
+    const timer = setTimeout(() => {
+      window.addEventListener('mousedown', onPointerDown);
+      window.addEventListener('touchstart', onPointerDown);
+    }, 40);
+
     window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onResize);
+
     return () => {
-      window.removeEventListener('click', close);
-      window.removeEventListener('blur', close);
-      window.removeEventListener('resize', close);
-      window.removeEventListener('scroll', close, true);
+      clearTimeout(timer);
+      window.removeEventListener('mousedown', onPointerDown);
+      window.removeEventListener('touchstart', onPointerDown);
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onResize);
     };
   }, [open, hide]);
 

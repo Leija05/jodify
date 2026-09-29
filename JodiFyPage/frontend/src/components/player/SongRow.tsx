@@ -88,12 +88,20 @@ export function SongRow({ song, index }: SongRowProps) {
       onClick={handlePlay}
       onContextMenu={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         useContextMenuStore.getState().show(e.clientX, e.clientY, song);
       }}
       data-testid={`song-row-${song.id}`}
     >
       <div className="jf-song-cover-wrap">
         <SongCover song={song} alt="" className="jf-song-cover" />
+        {isCurrent && isPlaying && (
+          <span className="jf-song-playing-bars" aria-hidden="true">
+            <span className="bar-1" />
+            <span className="bar-2" />
+            <span className="bar-3" />
+          </span>
+        )}
         <span className="jf-song-cover-hover">
           {isCurrent && isPlaying ? <Pause size={16} weight="fill" /> : <Play size={16} weight="fill" />}
         </span>

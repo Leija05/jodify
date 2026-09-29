@@ -14,7 +14,7 @@ import { useQueueStore } from '../../store/queue.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useIsAdmin, useIsDev, useSession } from '../../context/SessionContext';
 import type { Tab } from '../../lib/types';
-import { formatTime } from '../../lib/utils';
+import { formatTime, resolveAvatarSrc } from '../../lib/utils';
 import { useSleepTimer } from '../../hooks/useSleepTimer';
 import { usePlayerStore } from '../../store/player.store';
 
@@ -84,12 +84,15 @@ export function PlaylistPanel() {
       >
         <div className="jf-playlist-identity">
           {session && (
-            <Avatar
-              username={session.username}
-              size={30}
-              presence="online"
-              onClick={() => ui.open('profile')}
-            />
+            <div className={`jf-avatar-frame-wrap ${session.avatar_frame && session.avatar_frame !== 'none' ? `jf-avatar-frame--${session.avatar_frame}` : ''}`} style={{ padding: 2 }}>
+              <Avatar
+                username={session.display_name || session.username}
+                src={resolveAvatarSrc(session)}
+                size={30}
+                presence="online"
+                onClick={() => ui.open('profile')}
+              />
+            </div>
           )}
           <span className="jf-playlist-brandmark">
             <img className="jf-brandmark-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="JodiFy" />

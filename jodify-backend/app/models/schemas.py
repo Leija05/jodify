@@ -39,6 +39,13 @@ class UpdateProfileRequest(BaseModel):
     avatar_url: str | None = None
     avatar_source: str | None = None  # "custom" | "discord"
     discord_id: str | None = None
+    bio: str | None = None
+    theme: str | None = None
+    avatar_frame: str | None = None
+    anthem_song_id: str | int | None = None
+    anthem_song_name: str | None = None
+    custom_badge: str | None = None
+    vibe: str | None = None
 
 
 class DiscordRequest(BaseModel):

@@ -348,8 +348,15 @@
 }
 
 /* ============ 26. Profile shell ============ */
+.jf-modal-card.jf-modal--profile {
+  max-width: 880px !important;
+  width: 95vw !important;
+}
+
 .jf-modal-card.jf-modal--profile .jf-modal-body {
-  padding: var(--space-sm) var(--space-sm) var(--space-md);
+  padding: 12px 16px 20px;
+  max-height: 88vh;
+  overflow-y: auto;
 }
 
 .jf-profile-loading {
@@ -916,13 +923,120 @@
   border-color: var(--border);
 }
 
+.jf-history-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.jf-history-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s var(--ease-out);
+}
+
+.jf-history-tab.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.jf-history-art {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jf-history-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.jf-history-art-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
 .jf-history-rank {
-  width: 22px;
+  width: 28px;
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-muted);
   text-align: center;
+}
+
+.jf-history-rank.is-first {
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.45);
+}
+
+.jf-history-rank.is-second {
+  color: #c0c0c0;
+  text-shadow: 0 0 8px rgba(192, 192, 192, 0.45);
+}
+
+.jf-history-rank.is-third {
+  color: #cd7f32;
+  text-shadow: 0 0 8px rgba(205, 127, 50, 0.45);
+}
+
+.jf-history-plays {
+  color: var(--accent, #00f0ff);
+  font-weight: 700;
+}
+
+.jf-history-play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.2s var(--ease-spring);
+}
+
+.jf-history-row:hover .jf-history-play-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.jf-history-play-btn:hover {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  transform: scale(1.1);
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.5);
 }
 
 .jf-history-meta {
@@ -1030,3 +1144,1113 @@
   color: var(--success);
   background: rgba(0, 255, 136, 0.08);
 }
+
+/* ========================================================
+   STEAM-STYLE PROFILE CUSTOMIZATION (Themes, Frames, Anthems)
+   ======================================================== */
+
+/* Profile Themes & Dynamic Ambient Banners */
+.jf-profile-shell {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  transition: all 0.4s var(--ease-out);
+}
+
+.jf-profile-shell.theme--aurora .jf-profile-banner {
+  background: linear-gradient(180deg, rgba(0, 240, 255, 0.22) 0%, rgba(127, 0, 255, 0.12) 60%, transparent 100%);
+}
+.jf-profile-shell.theme--aurora .jf-profile-orb--a {
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.5), transparent 70%);
+}
+.jf-profile-shell.theme--aurora .jf-profile-orb--b {
+  background: radial-gradient(circle, rgba(127, 0, 255, 0.4), transparent 70%);
+}
+
+.jf-profile-shell.theme--cyberpunk .jf-profile-banner {
+  background: linear-gradient(180deg, rgba(255, 238, 0, 0.22) 0%, rgba(255, 0, 119, 0.14) 60%, transparent 100%);
+}
+.jf-profile-shell.theme--cyberpunk .jf-profile-orb--a {
+  background: radial-gradient(circle, rgba(255, 238, 0, 0.45), transparent 70%);
+}
+.jf-profile-shell.theme--cyberpunk .jf-profile-orb--b {
+  background: radial-gradient(circle, rgba(255, 0, 119, 0.45), transparent 70%);
+}
+
+.jf-profile-shell.theme--synthwave .jf-profile-banner {
+  background: linear-gradient(180deg, rgba(255, 42, 133, 0.24) 0%, rgba(0, 240, 255, 0.14) 60%, transparent 100%);
+}
+.jf-profile-shell.theme--synthwave .jf-profile-orb--a {
+  background: radial-gradient(circle, rgba(255, 42, 133, 0.5), transparent 70%);
+}
+.jf-profile-shell.theme--synthwave .jf-profile-orb--b {
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.45), transparent 70%);
+}
+
+.jf-profile-shell.theme--crimson .jf-profile-banner {
+  background: linear-gradient(180deg, rgba(255, 0, 68, 0.25) 0%, rgba(180, 0, 30, 0.12) 60%, transparent 100%);
+}
+.jf-profile-shell.theme--crimson .jf-profile-orb--a {
+  background: radial-gradient(circle, rgba(255, 0, 68, 0.5), transparent 70%);
+}
+.jf-profile-shell.theme--crimson .jf-profile-orb--b {
+  background: radial-gradient(circle, rgba(255, 85, 0, 0.4), transparent 70%);
+}
+
+.jf-profile-shell.theme--gold .jf-profile-banner {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.25) 0%, rgba(200, 140, 0, 0.12) 60%, transparent 100%);
+}
+.jf-profile-shell.theme--gold .jf-profile-orb--a {
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.5), transparent 70%);
+}
+.jf-profile-shell.theme--gold .jf-profile-orb--b {
+  background: radial-gradient(circle, rgba(255, 170, 0, 0.4), transparent 70%);
+}
+
+.jf-profile-shell.theme--matrix .jf-profile-banner {
+  background: linear-gradient(180deg, rgba(0, 255, 102, 0.22) 0%, rgba(0, 150, 60, 0.12) 60%, transparent 100%);
+}
+.jf-profile-shell.theme--matrix .jf-profile-orb--a {
+  background: radial-gradient(circle, rgba(0, 255, 102, 0.5), transparent 70%);
+}
+.jf-profile-shell.theme--matrix .jf-profile-orb--b {
+  background: radial-gradient(circle, rgba(0, 200, 80, 0.35), transparent 70%);
+}
+
+.jf-profile-shell.theme--midnight .jf-profile-banner {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0.6) 60%, transparent 100%);
+}
+.jf-profile-shell.theme--midnight .jf-profile-orb--a {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15), transparent 70%);
+}
+.jf-profile-shell.theme--midnight .jf-profile-orb--b {
+  background: radial-gradient(circle, rgba(100, 120, 255, 0.2), transparent 70%);
+}
+
+/* Steam Animated Avatar Frames (Spinning border, upright avatar) */
+.jf-avatar-frame-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-radius: 50%;
+  isolation: isolate;
+  flex-shrink: 0;
+}
+
+.jf-avatar-frame-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.jf-avatar-frame-wrap > * {
+  position: relative;
+  z-index: 1;
+}
+
+.jf-avatar-frame--neon_cyan::before {
+  opacity: 1;
+  background: conic-gradient(from 0deg, #00f0ff, #7f00ff, #00f0ff);
+  animation: jf-steam-spin 3.5s linear infinite;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.6);
+}
+
+.jf-avatar-frame--fire_aura::before {
+  opacity: 1;
+  background: conic-gradient(from 0deg, #ff0044, #ffaa00, #ff0044);
+  animation: jf-steam-spin 2.8s linear infinite;
+  box-shadow: 0 0 18px rgba(255, 100, 0, 0.7);
+}
+
+.jf-avatar-frame--cyber_glitch::before {
+  opacity: 1;
+  background: linear-gradient(135deg, #ffee00, #ff0077, #00f0ff, #ffee00);
+  animation: jf-steam-spin 3.2s linear infinite;
+  box-shadow: 0 0 16px rgba(255, 0, 119, 0.6);
+}
+
+.jf-avatar-frame--golden_crest::before {
+  opacity: 1;
+  background: conic-gradient(from 0deg, #ffd700, #ffffff, #ffaa00, #ffd700);
+  animation: jf-steam-spin 5s linear infinite;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.65);
+}
+
+.jf-avatar-frame--rainbow_prism::before {
+  opacity: 1;
+  background: conic-gradient(from 0deg, #ff0000, #ff7700, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+  animation: jf-steam-spin 3s linear infinite;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
+}
+
+.jf-avatar-frame--cosmic_void::before {
+  opacity: 1;
+  background: conic-gradient(from 0deg, #a855f7, #3b82f6, #ec4899, #a855f7);
+  animation: jf-steam-spin 4s linear infinite;
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.65);
+}
+
+.jf-avatar-frame--matrix_emerald::before {
+  opacity: 1;
+  background: conic-gradient(from 0deg, #00ff66, #008833, #a3e635, #00ff66);
+  animation: jf-steam-spin 3.8s linear infinite;
+  box-shadow: 0 0 18px rgba(0, 255, 102, 0.6);
+}
+
+.jf-avatar-frame--rgb_soundwave::before {
+  opacity: 1;
+  background: conic-gradient(from 0deg, #00f0ff, #ff0077, #7928ca, #00f0ff);
+  animation: jf-steam-spin 2.6s linear infinite;
+  box-shadow: 0 0 18px rgba(121, 40, 202, 0.6);
+}
+
+@keyframes jf-steam-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes jf-steam-pulse {
+  0% { transform: scale(0.97); filter: brightness(0.9); }
+  100% { transform: scale(1.03); filter: brightness(1.2); }
+}
+
+/* Custom Badges & Bio */
+.jf-profile-custom-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.jf-profile-bio-box {
+  margin: var(--space-xs) 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid var(--secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+  font-style: italic;
+}
+
+/* Personal Anthem Card (Steam-Style Music Showcase) */
+.jf-profile-anthem-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  margin-top: var(--space-xs);
+}
+
+.jf-profile-anthem-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 240, 255, 0.3);
+}
+
+.jf-profile-anthem-cover {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.jf-profile-anthem-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-profile-anthem-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #c084fc;
+}
+
+.jf-profile-anthem-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-profile-anthem-artist {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-profile-anthem-play {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--gradient-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 0 12px rgba(127, 0, 255, 0.4);
+}
+
+.jf-profile-anthem-play:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.6);
+}
+
+/* Steam Profile Editor Mode */
+.jf-profile-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.jf-profile-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jf-profile-editor-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.jf-profile-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.jf-profile-theme-card {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.18s ease;
+}
+
+.jf-profile-theme-card:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.jf-profile-theme-card.is-active {
+  border-color: #00f0ff;
+  background: rgba(0, 240, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+.jf-theme-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.jf-profile-frame-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.jf-profile-frame-card {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.18s ease;
+}
+
+.jf-profile-frame-card:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.jf-profile-frame-card.is-active {
+  border-color: #c084fc;
+  background: rgba(168, 85, 247, 0.14);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.jf-frame-mini-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.jf-profile-bio-textarea {
+  width: 100%;
+  min-height: 60px;
+  max-height: 120px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 12.5px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.jf-profile-bio-textarea:focus {
+  border-color: #00f0ff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+}
+
+.jf-profile-char-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 2px;
+}
+
+/* ========================================================
+   MELÓMANO LEVEL BADGE & PROGRESS BAR
+   ======================================================== */
+.jf-melomano-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-sm);
+}
+
+.jf-melomano-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.jf-melomano-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: #fff;
+  border: 2px solid currentColor;
+  box-shadow: 0 0 14px currentColor;
+  position: relative;
+  background: rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+}
+
+.jf-melomano-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.jf-melomano-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jf-melomano-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.jf-melomano-progress-wrap {
+  flex: 1;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jf-melomano-progress-bar {
+  width: 100%;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.jf-melomano-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #00f0ff, #7f00ff);
+  transition: width 0.4s ease;
+}
+
+.jf-melomano-progress-text {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ========================================================
+   STUDIO NAVIGATION TABS
+   ======================================================== */
+.jf-profile-mode-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-md);
+  overflow: hidden;
+}
+
+.jf-profile-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.jf-profile-mode-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.jf-profile-mode-btn.is-active {
+  background: var(--gradient-primary);
+  color: #fff;
+  box-shadow: 0 2px 14px rgba(0, 240, 255, 0.35);
+}
+
+/* ========================================================
+   STEAM PROFILE HERO HEADER (Spacious & Uncrowded)
+   ======================================================== */
+.jf-profile-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 16px 20px;
+  background: rgba(12, 16, 26, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  margin-bottom: var(--space-md);
+}
+
+.jf-profile-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  flex: 1;
+}
+
+.jf-profile-hero-avatar {
+  flex-shrink: 0;
+}
+
+.jf-profile-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.jf-profile-hero-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.jf-profile-hero-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  line-height: 1.1;
+}
+
+.jf-profile-hero-handle {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.jf-profile-hero-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jf-profile-hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 220px;
+  flex-shrink: 0;
+}
+
+/* ========================================================
+   STEAM 2-COLUMN BENTO GRID SHOWCASE
+   ======================================================== */
+.jf-profile-bento {
+  display: grid;
+  grid-template-columns: 1.3fr 0.95fr;
+  gap: var(--space-md);
+  position: relative;
+  z-index: 1;
+}
+
+.jf-profile-bento-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.jf-profile-bento-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Showcase Cards */
+.jf-showcase-card {
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.jf-showcase-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.jf-showcase-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.jf-showcase-nowplay-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.jf-showcase-cover-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.jf-showcase-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jf-showcase-eq-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding-bottom: 6px;
+}
+
+.jf-showcase-eq-overlay i {
+  width: 3px;
+  height: 16px;
+  background: #00f0ff;
+  border-radius: 2px;
+  animation: jf-eq-bounce 0.8s ease-in-out infinite alternate;
+}
+
+.jf-showcase-eq-overlay i:nth-child(2) { animation-delay: 0.2s; height: 22px; }
+.jf-showcase-eq-overlay i:nth-child(3) { animation-delay: 0.4s; height: 12px; }
+.jf-showcase-eq-overlay i:nth-child(4) { animation-delay: 0.1s; height: 18px; }
+
+@keyframes jf-eq-bounce {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+.jf-showcase-nowplay-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-showcase-song-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-showcase-song-artist {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.jf-showcase-anthem-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.jf-showcase-anthem-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.jf-showcase-anthem-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-showcase-play-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--gradient-primary);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.jf-showcase-play-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.6);
+}
+
+/* Sticky Action Bar for Studio Mode */
+.jf-studio-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: rgba(10, 14, 22, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(14px);
+  margin-top: var(--space-md);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.jf-studio-sticky-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ========================================================
+   LIVE PREVIEW CARD (Sticky / Studio)
+   ======================================================== */
+.jf-studio-live-preview {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 18px;
+  background: rgba(15, 20, 30, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: var(--space-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.jf-studio-live-preview .jf-profile-banner {
+  top: -90px;
+  height: 180px;
+}
+
+.jf-studio-preview-avatar {
+  position: relative;
+  z-index: 1;
+}
+
+.jf-studio-preview-details {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.jf-studio-preview-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jf-studio-preview-display {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  font-family: var(--font-display);
+}
+
+.jf-studio-preview-username {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Musical Vibe Badge */
+.jf-profile-vibe-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: #00f0ff;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
+  animation: jf-vibe-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes jf-vibe-glow {
+  0% { box-shadow: 0 0 6px rgba(0, 240, 255, 0.15); }
+  100% { box-shadow: 0 0 14px rgba(0, 240, 255, 0.35); }
+}
+
+/* ========================================================
+   TOP SONGS SHOWCASE IN PROFILE
+   ======================================================== */
+.jf-profile-top-songs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--space-xs);
+}
+
+.jf-profile-top-song-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 0.16s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.jf-profile-top-song-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 240, 255, 0.25);
+  transform: translateX(3px);
+}
+
+.jf-profile-top-song-rank {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 240, 255, 0.12);
+  color: #00f0ff;
+  flex-shrink: 0;
+}
+
+.jf-profile-top-song-name {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-profile-top-song-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+/* ========================================================
+   AVATAR CUSTOMIZATION STUDIO (Source, Upload, Presets)
+   ======================================================== */
+.jf-avatar-studio-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-sm);
+}
+
+.jf-avatar-source-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.jf-avatar-source-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.jf-avatar-source-card:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.jf-avatar-source-card.is-active {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: #00f0ff;
+  color: #fff;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
+}
+
+.jf-avatar-source-icon {
+  font-size: 22px;
+}
+
+.jf-avatar-source-title {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.jf-avatar-source-desc {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Upload Dropzone & Button */
+.jf-avatar-upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(0, 240, 255, 0.4);
+  border-radius: var(--radius-md);
+  background: rgba(0, 240, 255, 0.03);
+}
+
+.jf-avatar-upload-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Presets Gallery */
+.jf-avatar-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 8px;
+}
+
+.jf-preset-avatar-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  padding: 2px;
+  border: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+  overflow: hidden;
+}
+
+.jf-preset-avatar-btn:hover {
+  transform: scale(1.1);
+  border-color: rgba(0, 240, 255, 0.5);
+}
+
+.jf-preset-avatar-btn.is-active {
+  border-color: #00f0ff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+  transform: scale(1.08);
+}
+
+.jf-preset-avatar-btn img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ========================================================
+   VIBE SELECTOR PILLS
+   ======================================================== */
+.jf-vibe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.jf-vibe-chip {
+  padding: 7px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-vibe-chip:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.jf-vibe-chip.is-active {
+  background: rgba(0, 240, 255, 0.15);
+  border-color: #00f0ff;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+}
+
+

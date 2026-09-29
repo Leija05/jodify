@@ -1,38 +1,59 @@
 /* ============ 8. Player bar ============ */
 .jf-player {
   position: fixed;
-  bottom: var(--space-lg);
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(1100px, calc(100vw - var(--space-xl) * 2));
+  width: min(1160px, calc(100vw - 36px));
   z-index: var(--z-sticky);
-  background: rgba(13, 13, 18, 0.72);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--border);
-  border-top-color: rgba(255, 255, 255, 0.14);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: rgba(12, 12, 16, 0.84);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.8),
+              0 0 0 1px rgba(255, 255, 255, 0.1),
+              inset 0 1px 1px rgba(255, 255, 255, 0.18),
+              0 0 44px rgba(127, 0, 255, 0.18);
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  animation: jf-player-in 0.5s var(--ease-out) both;
+  padding: 10px 18px;
+  animation: jf-player-in 0.55s var(--ease-fluid) both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 [data-theme='light'] .jf-player {
-  background: rgba(255, 255, 255, 0.78);
-  border-top-color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(15, 20, 40, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 20px 48px rgba(30, 40, 80, 0.14),
+              0 0 0 1px rgba(255, 255, 255, 0.9),
+              inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+.jf-player::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 5%, rgba(0, 240, 255, 0.45) 30%, rgba(127, 0, 255, 0.5) 50%, rgba(255, 0, 128, 0.4) 70%, transparent 95%);
+  opacity: 0.9;
+  z-index: 1;
+  pointer-events: none;
 }
 
 @keyframes jf-player-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(24px);
+    transform: translateX(-50%) translateY(28px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 }
 
@@ -40,32 +61,34 @@
 .jf-player-left {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 12px;
   min-width: 0;
   flex: 1;
 }
 
 .jf-player-cover-wrap {
   position: relative;
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.25s var(--ease-spring);
 }
 
 .jf-player-cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  animation: jf-art-spin 18s linear infinite;
+  animation: jf-art-spin 20s linear infinite;
   animation-play-state: paused;
 }
 
 .jf-player-cover-wrap--empty {
   background: var(--gradient-primary);
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 0 18px rgba(127, 0, 255, 0.4);
 }
 
 .jf-player-empty-logo {
@@ -83,14 +106,14 @@
   position: absolute;
   inset: 0;
   border-radius: var(--radius-sm);
-  box-shadow: inset 0 0 0 1.5px var(--secondary), 0 0 14px rgba(var(--secondary-rgb), 0.5);
-  animation: jf-pulse-ring 1.8s ease-out infinite;
+  box-shadow: inset 0 0 0 1.5px var(--secondary), 0 0 18px rgba(var(--secondary-rgb), 0.6);
+  animation: jf-pulse-ring 2s ease-out infinite;
   pointer-events: none;
 }
 
 @keyframes jf-pulse-ring {
   0% { box-shadow: inset 0 0 0 1.5px var(--secondary), 0 0 6px rgba(var(--secondary-rgb), 0.3); }
-  50% { box-shadow: inset 0 0 0 1.5px var(--secondary), 0 0 18px rgba(var(--secondary-rgb), 0.75); }
+  50% { box-shadow: inset 0 0 0 1.5px var(--secondary), 0 0 22px rgba(var(--secondary-rgb), 0.8); }
   100% { box-shadow: inset 0 0 0 1.5px var(--secondary), 0 0 6px rgba(var(--secondary-rgb), 0.3); }
 }
 
@@ -106,15 +129,16 @@
 
 .jf-player-title {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 800;
   font-size: 13.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
 .jf-player-title.is-long {
-  animation: jf-marquee 10s linear infinite alternate;
+  animation: jf-marquee 12s linear infinite alternate;
 }
 
 @keyframes jf-marquee {
@@ -131,30 +155,36 @@
 }
 
 .jf-like-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 99px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  transition: color 0.2s ease, transform 0.18s ease-out;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s var(--ease-spring);
   flex-shrink: 0;
 }
 
 .jf-like-btn:hover {
   color: var(--text);
-  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.12);
 }
 
 .jf-like-btn.is-liked {
   color: var(--accent);
-  animation: jf-heart-pop 0.4s var(--ease-out);
+  background: rgba(255, 0, 128, 0.12);
+  border-color: rgba(255, 0, 128, 0.3);
+  box-shadow: 0 0 14px rgba(255, 0, 128, 0.3);
+  animation: jf-heart-pop 0.45s var(--ease-spring);
 }
 
 @keyframes jf-heart-pop {
-  0% { transform: scale(0.7); }
-  60% { transform: scale(1.25); }
+  0% { transform: scale(0.65); }
+  60% { transform: scale(1.3); }
   100% { transform: scale(1); }
 }
 
@@ -163,9 +193,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   flex: 2;
-  min-width: 260px;
+  min-width: 280px;
 }
 
 .jf-player-timeline {
@@ -178,42 +208,45 @@
 .jf-time {
   font-family: var(--font-mono);
   font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
-  min-width: 42px;
+  min-width: 44px;
   text-align: center;
 }
 
 .jf-progress {
   flex: 1;
-  height: 4px;
+  height: 5px;
 }
 
 .jf-player-controls {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .jf-control {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 99px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  transition: color 0.18s ease, background 0.18s ease, transform 0.16s ease-out;
+  background: transparent;
+  transition: all 0.2s var(--ease-spring);
 }
 
 .jf-control:hover {
   color: var(--text);
-  background: var(--surface-hover);
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.08);
 }
 
 .jf-control:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 
 .jf-control:disabled {
@@ -226,59 +259,110 @@
 
 .jf-control.is-active {
   color: var(--secondary);
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
 }
 
+.jf-control.is-repeat-all {
+  color: #00f0ff;
+  border-color: rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+  position: relative;
+}
+
+.jf-control.is-repeat-all::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #00f0ff;
+  box-shadow: 0 0 6px #00f0ff;
+}
+
+.jf-control.is-repeat-one {
+  color: #c084fc;
+  border-color: rgba(192, 132, 252, 0.4);
+  background: rgba(168, 85, 247, 0.12);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
+  position: relative;
+}
+
+.jf-control.is-repeat-one::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #c084fc;
+  box-shadow: 0 0 6px #c084fc;
+}
+
+/* Centerpiece Play Button (Button-in-Button Architecture) */
 .jf-control--play {
-  width: 44px;
-  height: 44px;
-  margin: 0 4px;
+  width: 48px;
+  height: 48px;
+  margin: 0 6px;
+  border-radius: 50%;
   background: var(--gradient-primary);
   color: #fff;
-  box-shadow: var(--shadow-glow);
-  transition: transform 0.18s var(--ease-out), box-shadow 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 0 24px rgba(127, 0, 255, 0.55), 0 0 40px rgba(0, 240, 255, 0.25);
+  transition: transform 0.22s var(--ease-spring), box-shadow 0.25s ease, filter 0.25s ease;
+  position: relative;
 }
 
 .jf-control--play:hover {
   background: var(--gradient-primary);
   color: #fff;
-  transform: scale(1.08);
-  box-shadow: 0 0 34px rgba(var(--primary-rgb), 0.6);
+  transform: scale(1.1);
+  box-shadow: 0 0 34px rgba(127, 0, 255, 0.75), 0 0 54px rgba(0, 240, 255, 0.4);
 }
 
 .jf-control--play:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 
 .jf-control--play-lg {
-  width: 64px;
-  height: 64px;
+  width: 68px;
+  height: 68px;
 }
 
 /* right: visualizer, volume, theme, fullscreen, queue */
 .jf-player-right {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
   justify-content: flex-end;
 }
 
 .jf-volume {
-  width: 90px;
+  width: 92px;
   margin: 0 var(--space-sm);
 }
 
 .jf-visualizer {
-  opacity: 0.85;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.35));
 }
 
 .jf-hero-visualizer {
-  opacity: 0.9;
+  opacity: 0.95;
   border-radius: var(--radius-md);
 }
 
-/* theme toggle / fullscreen / queue buttons (live in player right cluster) */
-.jf-theme-toggle,
+/* theme toggle / fullscreen / queue buttons */
+.jf-theme-toggle {
+  transition: transform 0.4s var(--ease-spring);
+}
+
+.jf-theme-toggle:hover {
+  transform: rotate(360deg) scale(1.1);
+}
+
 .jf-fullscreen-btn {
   color: var(--text-muted);
 }
@@ -1428,6 +1512,246 @@
 .jf-queue-remove:hover {
   color: var(--error);
   background: rgba(var(--error-rgb), 0.1);
+}
+
+/* Queue Sections Architecture */
+.jf-queue-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: var(--space-md);
+}
+
+.jf-queue-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.jf-queue-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-queue-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-queue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.jf-queue-badge--live {
+  color: #00f0ff;
+}
+
+.jf-queue-badge--priority {
+  color: #c084fc;
+}
+
+.jf-queue-count-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.jf-queue-loop-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(0, 240, 255, 0.12);
+  color: #00f0ff;
+  border: 1px solid rgba(0, 240, 255, 0.25);
+}
+
+/* Now Playing Card inside Queue */
+.jf-queue-now-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.08) 0%, rgba(127, 0, 255, 0.08) 100%);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.jf-queue-now-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.jf-queue-now-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-queue-now-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-queue-now-artist {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jf-queue-now-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #00f0ff;
+  margin-top: 2px;
+}
+
+.jf-queue-eq-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 18px;
+  padding-right: 4px;
+}
+
+.jf-queue-eq-bars span {
+  width: 3px;
+  border-radius: 99px;
+  background: #00f0ff;
+  animation: jf-eq-bounce 0.8s ease-in-out infinite alternate;
+}
+.jf-queue-eq-bars span:nth-child(1) { height: 60%; animation-delay: 0.1s; }
+.jf-queue-eq-bars span:nth-child(2) { height: 100%; animation-delay: 0.3s; }
+.jf-queue-eq-bars span:nth-child(3) { height: 40%; animation-delay: 0.2s; }
+.jf-queue-eq-bars span:nth-child(4) { height: 80%; animation-delay: 0.4s; }
+
+@keyframes jf-eq-bounce {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+/* Empty Priority Banner */
+.jf-queue-empty-priority {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.jf-queue-empty-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.jf-queue-empty-text strong {
+  color: #fff;
+}
+
+/* Priority & Upcoming Items */
+.jf-queue-item--priority {
+  border-left: 2px solid #a855f7;
+  background: rgba(168, 85, 247, 0.04);
+}
+
+.jf-queue-item--priority:hover {
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.jf-queue-item--upcoming:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.jf-queue-index {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.jf-queue-duration {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+
+.jf-queue-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.jf-queue-item:hover .jf-queue-item-actions {
+  opacity: 1;
+}
+
+.jf-queue-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.jf-queue-action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.08);
+}
+
+.jf-queue-action-btn--play {
+  background: var(--gradient-primary);
+  border: none;
+}
+
+.jf-queue-action-btn--play:hover {
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+.jf-queue-footer-summary {
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* ============ 12. Slider ============ */

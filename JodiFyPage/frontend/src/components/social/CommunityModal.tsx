@@ -12,7 +12,7 @@ import { fetchLanyardProfile, fetchLikesForUsers, fetchDownloadsForUsers } from 
 import { playSong } from '../../services/player.service';
 import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
-import { timeAgo } from '../../lib/utils';
+import { timeAgo, resolveAvatarSrc } from '../../lib/utils';
 import { jfIsOnline } from '../../lib/status';
 import type { CommunityUser } from '../../lib/types';
 import { COMMUNITY_REFRESH_MS } from '../../lib/constants';
@@ -25,6 +25,9 @@ export function CommunityModal() {
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [topSongs, setTopSongs] = useState<Array<{ song_name: string; count: number }>>([]);
+
+  const myCurrentSong = usePlayerStore((s) => s.currentSong);
+  const myIsPlaying = usePlayerStore((s) => s.isPlaying);
 
   const load = async () => {
     if (!session) return;
@@ -124,43 +127,62 @@ export function CommunityModal() {
         ) : visible.length === 0 ? (
           <EmptyState icon={UsersThree} title="Nadie por aquí" description="Comparte tu código de Jam para invitar amigos." />
         ) : (
-          visible.map((user, i) => (
-            <motion.button
-              key={user.username}
-              className="jf-community-user"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03, duration: 0.25 }}
-              onClick={() => ui.open('userDetail', { username: user.username })}
-            >
-              <Avatar
-                username={user.username}
-                src={user.discord?.avatar_url}
-                presence={user.discord?.presence ?? (user.is_online ? 'online' : 'offline')}
-                size={44}
-              />
-              <div className="jf-community-user-info">
-                <p className="jf-community-user-name">
-                  {user.username}
-                  {user.role !== 'user' && <span className={`jf-role-badge jf-role-badge--${user.role}`}>{user.role}</span>}
-                </p>
-                {user.current_song_name && jfIsOnline(user) ? (
-                  <p className="jf-community-user-status is-listening">
-                    <span className="jf-pulse-dot" /> Escuchando: {user.current_song_name}
+          visible.map((user, i) => {
+            const isMe = user.username.toLowerCase() === session?.username?.toLowerCase();
+            const isOnline = isMe ? true : jfIsOnline(user);
+            const songListening = isMe && myIsPlaying && myCurrentSong ? myCurrentSong.name : user.current_song_name;
+            const frameClass = user.avatar_frame ? `jf-avatar-frame--${user.avatar_frame}` : '';
+
+            return (
+              <motion.button
+                key={user.username}
+                className="jf-community-user"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03, duration: 0.25 }}
+                onClick={() => ui.open('userDetail', { username: user.username })}
+              >
+                <div className={`jf-avatar-frame-wrap ${frameClass}`}>
+                  <Avatar
+                    username={user.display_name || user.username}
+                    src={resolveAvatarSrc(user)}
+                    presence={user.discord?.presence ?? (isOnline ? 'online' : 'offline')}
+                    size={42}
+                  />
+                </div>
+                <div className="jf-community-user-info">
+                  <p className="jf-community-user-name">
+                    {user.display_name || user.username}
+                    {user.role !== 'user' && <span className={`jf-role-badge jf-role-badge--${user.role}`}>{user.role}</span>}
+                    {user.custom_badge && (
+                      <span className="jf-profile-custom-badge" style={{ fontSize: '9px', padding: '1px 6px' }}>
+                        {user.custom_badge}
+                      </span>
+                    )}
+                    {user.vibe && (
+                      <span className="jf-profile-vibe-badge" style={{ fontSize: '9px', padding: '1px 6px' }}>
+                        {user.vibe}
+                      </span>
+                    )}
                   </p>
-                ) : (
-                  <p className="jf-community-user-status">
-                    {jfIsOnline(user) ? 'En línea' : user.last_seen ? `Visto ${timeAgo(user.last_seen)}` : 'Desconectado'}
-                  </p>
-                )}
-              </div>
-              <div className="jf-community-user-stats">
-                <span>♥ {user.stat_likes ?? 0}</span>
-                <span>⤓ {user.stat_downloads ?? 0}</span>
-              </div>
-              <CaretRight size={13} weight="bold" className="jf-community-user-arrow" />
-            </motion.button>
-          ))
+                  {songListening && isOnline ? (
+                    <p className="jf-community-user-status is-listening">
+                      <span className="jf-pulse-dot" /> Escuchando: {songListening}
+                    </p>
+                  ) : (
+                    <p className="jf-community-user-status">
+                      {isOnline ? 'En línea' : user.last_seen ? `Visto ${timeAgo(user.last_seen)}` : 'Desconectado'}
+                    </p>
+                  )}
+                </div>
+                <div className="jf-community-user-stats">
+                  <span>♥ {user.stat_likes ?? 0}</span>
+                  <span>⤓ {user.stat_downloads ?? 0}</span>
+                </div>
+                <CaretRight size={13} weight="bold" className="jf-community-user-arrow" />
+              </motion.button>
+            );
+          })
         )}
       </div>
     </Modal>

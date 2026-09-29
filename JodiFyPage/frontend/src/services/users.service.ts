@@ -56,6 +56,10 @@ export const usersService = {
     }
   },
 
+  async updateProfile(username: string, updates: Partial<UserAccess> & { new_username?: string }): Promise<UserAccess> {
+    return api.put<UserAccess>(`/users/${encodeURIComponent(username)}/profile`, updates);
+  },
+
   async insertListeningHistory(username: string, songId: number | string, songName?: string): Promise<void> {
     await api.post('/history', { username, song_id: songId, song_name: songName ?? null });
   },

@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const { autoUpdater } = require('electron-updater');
 const { createTaskbarIcons } = require('./taskbar-icons');
 
@@ -95,6 +96,78 @@ function updateThumbar() {
   ]);
 }
 
+let currentObsState = {
+  title: null,
+  artist: null,
+  album: null,
+  addedBy: null,
+  cover: null,
+  currentTime: 0,
+  duration: 0,
+  isPlaying: false,
+};
+
+function startObsServer() {
+  const port = 8765;
+  const server = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const parsedUrl = new URL(req.url, `http://127.0.0.1:${port}`);
+    const pathname = parsedUrl.pathname;
+
+    if (pathname === '/api/current') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(currentObsState));
+      return;
+    }
+
+    if (pathname === '/' || pathname === '/obs-overlay.html') {
+      const htmlPath = path.join(__dirname, 'dist-electron', 'obs-overlay.html');
+      if (fs.existsSync(htmlPath)) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        fs.createReadStream(htmlPath).pipe(res);
+        return;
+      }
+    }
+
+    const filePath = path.join(__dirname, 'dist-electron', pathname.replace(/^\/+/, ''));
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      const ext = path.extname(filePath).toLowerCase();
+      const mimeTypes = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.ico': 'image/x-icon',
+        '.svg': 'image/svg+xml',
+        '.css': 'text/css',
+        '.js': 'text/javascript',
+      };
+      res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    }
+
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
+  });
+
+  server.on('error', (err) => {
+    console.warn('[obs-server] No se pudo iniciar en puerto', port, err.message);
+  });
+
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`[obs-server] Servidor de overlay activo en http://127.0.0.1:${port}/obs-overlay.html`);
+  });
+}
+
 function registerPlayerIpc() {
   ipcMain.on('player:state', (_event, state) => {
     playerStatus = {
@@ -102,6 +175,18 @@ function registerPlayerIpc() {
       hasTrack: !!state?.hasTrack,
       liked: !!state?.liked,
     };
+    if (state) {
+      currentObsState = {
+        title: state.title ?? null,
+        artist: state.artist ?? null,
+        album: state.album ?? null,
+        addedBy: state.addedBy ?? null,
+        cover: state.cover ?? null,
+        currentTime: state.currentTime ?? 0,
+        duration: state.duration ?? 0,
+        isPlaying: !!state.playing,
+      };
+    }
     updateThumbar();
   });
 }
@@ -226,6 +311,7 @@ function registerUpdaterIpc() {
 app.whenReady().then(() => {
   createWindow();
 
+  startObsServer();
   registerUpdaterIpc();
   registerPlayerIpc();
   updateThumbar();

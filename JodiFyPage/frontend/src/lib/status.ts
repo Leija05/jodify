@@ -1,7 +1,7 @@
 import type { DiscordProfile, Presence, UserAccess } from './types';
 import { timeAgo } from './utils';
 
-export const JF_ONLINE_MS = 90_000;
+export const JF_ONLINE_MS = 150_000;
 
 export interface UserStatusView {
   jfOnline: boolean;
@@ -13,9 +13,13 @@ export interface UserStatusView {
 
 export function jfIsOnline(user?: Pick<UserAccess, 'is_online' | 'last_seen'> | null): boolean {
   if (!user || user.is_online !== 1) return false;
-  if (!user.last_seen) return true;
-  const t = Date.parse(user.last_seen);
-  return Number.isNaN(t) ? true : Date.now() - t < JF_ONLINE_MS;
+  if (!user.last_seen) return false;
+  let iso = user.last_seen.trim();
+  if (!iso.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(iso)) {
+    iso += 'Z';
+  }
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? false : Math.abs(Date.now() - t) < JF_ONLINE_MS;
 }
 
 export function presenceLabel(p?: Presence | null): string {

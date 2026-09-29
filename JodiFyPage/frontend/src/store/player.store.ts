@@ -7,6 +7,8 @@ import { useLibraryStore } from './library.store';
 import { getSongOffline } from '../lib/idb';
 import { clamp } from '../lib/utils';
 
+export type RepeatMode = 'off' | 'all' | 'one';
+
 export interface PlayerState {
   currentSong: Song | null;
   isPlaying: boolean;
@@ -16,6 +18,7 @@ export interface PlayerState {
   muted: boolean;
   isShuffle: boolean;
   isLoop: boolean;
+  repeatMode: RepeatMode;
   isFading: boolean;
   sourceUrl: string | null;
   blobUrl: string | null;
@@ -30,6 +33,8 @@ export interface PlayerState {
   setMuted: (muted: boolean) => void;
   toggleShuffle: () => void;
   toggleLoop: () => void;
+  cycleRepeatMode: () => RepeatMode;
+  setRepeatMode: (mode: RepeatMode) => void;
   setIsFading: (fading: boolean) => void;
   setSourceUrl: (url: string | null, blobUrl?: string | null) => void;
   setOfflinePlayback: (v: boolean) => void;
@@ -59,6 +64,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   muted: false,
   isShuffle: false,
   isLoop: false,
+  repeatMode: 'off',
   isFading: false,
   sourceUrl: null,
   blobUrl: null,
@@ -75,7 +81,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
   setMuted: (muted) => set({ muted }),
   toggleShuffle: () => set((s) => ({ isShuffle: !s.isShuffle })),
-  toggleLoop: () => set((s) => ({ isLoop: !s.isLoop })),
+  toggleLoop: () => {
+    const current = get().repeatMode;
+    const nextMode: RepeatMode = current === 'off' ? 'all' : current === 'all' ? 'one' : 'off';
+    set({ repeatMode: nextMode, isLoop: nextMode === 'one' });
+  },
+  cycleRepeatMode: () => {
+    const current = get().repeatMode;
+    const nextMode: RepeatMode = current === 'off' ? 'all' : current === 'all' ? 'one' : 'off';
+    set({ repeatMode: nextMode, isLoop: nextMode === 'one' });
+    return nextMode;
+  },
+  setRepeatMode: (repeatMode: RepeatMode) => {
+    set({ repeatMode, isLoop: repeatMode === 'one' });
+  },
   setIsFading: (isFading) => set({ isFading }),
   setSourceUrl: (sourceUrl, blobUrl = null) => set({ sourceUrl, blobUrl }),
   setOfflinePlayback: (isOfflinePlayback) => set({ isOfflinePlayback }),
@@ -98,7 +117,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   next: async () => {
-    const { currentSong, isLoop, isShuffle } = get();
+    const { currentSong, repeatMode, isShuffle } = get();
     const queue = useQueueStore.getState().items;
     const jam = useJamStore.getState();
     if (jam.active && !jam.isHost && !jam.permissions.allowPlaybackControl) {
@@ -107,6 +126,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
 
+    // 1. Si está activo el loop de una sola canción, reiniciarla
+    if (repeatMode === 'one' && currentSong) {
+      await get().seek(0);
+      const { ensurePlaying } = await import('../services/player.service');
+      ensurePlaying();
+      return;
+    }
+
+    // 2. Si hay canciones prioritarias agregadas a la cola por el usuario
     if (queue.length > 0) {
       const nextSong = queue[0];
       const { playSong } = await import('../services/player.service');
@@ -115,6 +143,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
 
+    // 3. Canciones de la colección actual (biblioteca / favoritos / descargas)
     const library = useLibraryStore.getState();
     const pool = library.currentTab === 'downloads'
       ? library.songs.filter((s) => library.downloadedIds.includes(s.id))
@@ -123,17 +152,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         : library.songs;
     if (pool.length === 0) return;
 
-    if (isLoop && currentSong) {
-      await get().seek(0);
-      const { ensurePlaying } = await import('../services/player.service');
-      ensurePlaying();
-      return;
-    }
-
     let idx = pool.findIndex((s) => s.id === currentSong?.id);
     if (isShuffle) {
       idx = randomIndex(pool.length, idx);
     } else {
+      const isLastSong = idx >= pool.length - 1;
+      // Si la repetición está desactivada y llegamos al final de la colección, detener
+      if (isLastSong && repeatMode === 'off') {
+        const { pausePlayback } = await import('../services/player.service');
+        pausePlayback();
+        await get().seek(0);
+        return;
+      }
       idx = (idx + 1) % pool.length;
     }
     const { playSong } = await import('../services/player.service');

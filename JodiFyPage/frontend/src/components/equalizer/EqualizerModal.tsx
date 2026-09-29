@@ -21,6 +21,8 @@ import { useSettingsStore } from '../../store/settings.store';
 import { useToastStore } from '../../store/toast.store';
 import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
+import { playSong } from '../../services/player.service';
+import { SongCover } from '../ui/SongCover';
 import { EqualizerVisualizer } from './EqualizerVisualizer';
 
 const BAND_METADATA = [
@@ -70,7 +72,6 @@ export function EqualizerModal() {
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
-  const playSong = usePlayerStore((s) => s.playSong);
   const librarySongs = useLibraryStore((s) => s.songs);
 
   const savePreset = () => {
@@ -153,6 +154,7 @@ export function EqualizerModal() {
             bassBoost={eq.bassBoost}
             clarity={eq.clarity}
             onBandSelect={(idx) => setActiveBandIndex(idx)}
+            onBandChange={(idx, gain) => eq.setValue(idx, gain)}
           />
         </div>
 
@@ -375,8 +377,8 @@ export function EqualizerModal() {
         <div className="jf-eq-monitor-bar">
           <div className="jf-eq-monitor-left">
             <div className="jf-eq-monitor-art">
-              {currentSong?.cover_url ? (
-                <img src={currentSong.cover_url} alt={currentSong.name} />
+              {currentSong ? (
+                <SongCover song={currentSong} alt={currentSong.name} />
               ) : (
                 <MusicNotes size={18} className="jf-eq-art-fallback" />
               )}
@@ -410,7 +412,7 @@ export function EqualizerModal() {
                 if (currentSong) {
                   togglePlay();
                 } else if (librarySongs.length > 0 && librarySongs[0]) {
-                  playSong(librarySongs[0], librarySongs);
+                  void playSong(librarySongs[0]);
                 }
               }}
               title={isPlaying ? 'Pausar' : 'Reproducir'}

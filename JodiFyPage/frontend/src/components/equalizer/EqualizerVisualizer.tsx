@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { EQ_BANDS } from '../../lib/constants';
 import { equalizerApi } from '../../services/equalizer.service';
 import { usePlayerStore } from '../../store/player.store';
@@ -10,6 +10,7 @@ interface EqualizerVisualizerProps {
   bassBoost: number;
   clarity: number;
   onBandSelect?: (index: number) => void;
+  onBandChange?: (index: number, gain: number) => void;
 }
 
 const BAND_NAMES = ['Sub', 'Bajo', 'Calidez', 'Cuerpo', 'Medios', 'Presencia', 'Definición', 'Brillo', 'Detalle', 'Aire'];
@@ -21,11 +22,47 @@ export function EqualizerVisualizer({
   bassBoost,
   clarity,
   onBandSelect,
+  onBandChange,
 }: EqualizerVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+
   const [hoveredBand, setHoveredBand] = useState<number | null>(null);
+  const [draggingBand, setDraggingBand] = useState<number | null>(null);
+
+  const isDraggingRef = useRef(false);
+  const activeBandRef = useRef<number | null>(null);
+
+  // Calcula la ganancia a partir de la posición Y relativa al canvas
+  const calculateGainFromY = useCallback((y: number, height: number): number => {
+    const padY = 24;
+    const plotH = height - padY * 2;
+    const centerY = padY + plotH / 2;
+    const normalized = -((y - centerY) / (plotH / 2));
+    const rawGain = normalized * 12;
+    const clamped = Math.max(-12, Math.min(12, rawGain));
+    return Math.round(clamped * 10) / 10;
+  }, []);
+
+  // Encuentra la banda más cercana a una posición X
+  const findClosestBand = useCallback((x: number, width: number): { index: number; dist: number } => {
+    const padX = 36;
+    const plotW = width - padX * 2;
+    const numBands = EQ_BANDS.length;
+    let closest = 0;
+    let minDist = Infinity;
+
+    for (let i = 0; i < numBands; i++) {
+      const bx = padX + (i / (numBands - 1)) * plotW;
+      const dist = Math.abs(x - bx);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = i;
+      }
+    }
+    return { index: closest, dist: minDist };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -82,7 +119,7 @@ export function EqualizerVisualizer({
         const y = centerY - (db / 12) * (plotH / 2);
         ctx.beginPath();
         if (db === 0) {
-          ctx.strokeStyle = 'rgba(0, 240, 255, 0.28)';
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.32)';
           ctx.setLineDash([4, 4]);
         } else {
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
@@ -92,12 +129,12 @@ export function EqualizerVisualizer({
         ctx.lineTo(width - padX, y);
         ctx.stroke();
 
-        ctx.fillStyle = db === 0 ? 'rgba(0, 240, 255, 0.75)' : 'rgba(255, 255, 255, 0.28)';
+        ctx.fillStyle = db === 0 ? 'rgba(0, 240, 255, 0.85)' : 'rgba(255, 255, 255, 0.32)';
         ctx.fillText(label, padX - 8, y);
       }
       ctx.setLineDash([]);
 
-      // 2. Espectro de audio FFT en tiempo real (si está sonando y el ecualizador está activo)
+      // 2. Espectro de audio FFT en tiempo real
       const analyser = equalizerApi.getAnalyser();
       if (analyser && isPlaying) {
         const binCount = analyser.frequencyBinCount;
@@ -117,8 +154,8 @@ export function EqualizerVisualizer({
             const by = height - padY - barH;
 
             const barGrad = ctx.createLinearGradient(0, by, 0, height - padY);
-            barGrad.addColorStop(0, enabled ? 'rgba(0, 240, 255, 0.42)' : 'rgba(255, 255, 255, 0.16)');
-            barGrad.addColorStop(1, enabled ? 'rgba(127, 0, 255, 0.06)' : 'rgba(255, 255, 255, 0.02)');
+            barGrad.addColorStop(0, enabled ? 'rgba(0, 240, 255, 0.38)' : 'rgba(255, 255, 255, 0.14)');
+            barGrad.addColorStop(1, enabled ? 'rgba(127, 0, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)');
 
             ctx.fillStyle = barGrad;
             ctx.fillRect(bx + 1, by, Math.max(1, barWidth - 2), barH);
@@ -134,7 +171,6 @@ export function EqualizerVisualizer({
         const x = padX + (i / (numBands - 1)) * plotW;
         let gain = enabled ? (values[i] ?? 0) : 0;
 
-        // Sumar efecto de Preamp, Bass Boost y Clarity en la curva visual
         if (enabled) {
           gain += preamp * 0.45;
           if (i <= 1) {
@@ -150,7 +186,7 @@ export function EqualizerVisualizer({
         points.push({ x, y, gain: values[i] ?? 0, freq: EQ_BANDS[i] });
       }
 
-      // 4. Dibujar el área rellena de la curva (spline suave)
+      // 4. Relleno suave con gradiente
       if (points.length > 1) {
         ctx.beginPath();
         ctx.moveTo(points[0].x, centerY);
@@ -170,15 +206,15 @@ export function EqualizerVisualizer({
         if (enabled) {
           fillGrad.addColorStop(0, 'rgba(0, 240, 255, 0.28)');
           fillGrad.addColorStop(0.5, 'rgba(127, 0, 255, 0.14)');
-          fillGrad.addColorStop(1, 'rgba(255, 0, 128, 0.08)');
+          fillGrad.addColorStop(1, 'rgba(255, 0, 128, 0.06)');
         } else {
-          fillGrad.addColorStop(0, 'rgba(255, 255, 255, 0.06)');
+          fillGrad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
           fillGrad.addColorStop(1, 'rgba(255, 255, 255, 0.01)');
         }
         ctx.fillStyle = fillGrad;
         ctx.fill();
 
-        // 5. Trazar la línea brillante de la curva
+        // 5. Línea luminosa de la curva
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
         for (let i = 0; i < points.length - 1; i++) {
@@ -196,23 +232,43 @@ export function EqualizerVisualizer({
           lineGrad.addColorStop(1, '#ff0080');
         } else {
           lineGrad.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
-          lineGrad.addColorStop(1, 'rgba(255, 255, 255, 0.25)');
+          lineGrad.addColorStop(1, 'rgba(255, 255, 255, 0.22)');
         }
         ctx.strokeStyle = lineGrad;
         ctx.stroke();
 
-        // 6. Nodos de frecuencia con indicadores luminosos
+        // 6. Nodos de frecuencia interactivos
         points.forEach((pt, idx) => {
-          const isHover = hoveredBand === idx;
-          const nodeRadius = isHover ? 6 : 4;
+          const isSelected = draggingBand === idx || (draggingBand === null && hoveredBand === idx);
+          const nodeRadius = isSelected ? 7 : 4;
 
+          // Línea guía vertical si el nodo está seleccionado o en arrastre
+          if (isSelected) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
+            ctx.setLineDash([2, 2]);
+            ctx.moveTo(pt.x, centerY);
+            ctx.lineTo(pt.x, pt.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+
+          // Halo exterior
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, nodeRadius + (isSelected ? 4 : 0), 0, Math.PI * 2);
+          if (enabled) {
+            ctx.fillStyle = pt.gain > 0 ? 'rgba(0, 240, 255, 0.35)' : pt.gain < 0 ? 'rgba(255, 51, 102, 0.35)' : 'rgba(168, 85, 247, 0.35)';
+            ctx.fill();
+          }
+
+          // Punto central
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, nodeRadius, 0, Math.PI * 2);
 
           if (enabled) {
             ctx.fillStyle = pt.gain > 0 ? '#00f0ff' : pt.gain < 0 ? '#ff3366' : '#a855f7';
             ctx.shadowColor = ctx.fillStyle;
-            ctx.shadowBlur = isHover ? 14 : 7;
+            ctx.shadowBlur = isSelected ? 16 : 6;
           } else {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
             ctx.shadowBlur = 0;
@@ -220,7 +276,7 @@ export function EqualizerVisualizer({
           ctx.fill();
 
           ctx.beginPath();
-          ctx.arc(pt.x, pt.y, isHover ? 3 : 2, 0, Math.PI * 2);
+          ctx.arc(pt.x, pt.y, isSelected ? 3.5 : 2, 0, Math.PI * 2);
           ctx.fillStyle = '#ffffff';
           ctx.fill();
           ctx.shadowBlur = 0;
@@ -247,62 +303,153 @@ export function EqualizerVisualizer({
       isRunning = false;
       cancelAnimationFrame(animId);
     };
-  }, [values, enabled, preamp, bassBoost, clarity, isPlaying, hoveredBand]);
+  }, [values, enabled, preamp, bassBoost, clarity, isPlaying, hoveredBand, draggingBand]);
 
-  // Manejador de mouse para resaltar bandas y click
+  // Manejador global de arrastre para no perder el foco si el cursor sale del canvas
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current || activeBandRef.current === null || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const newGain = calculateGainFromY(y, rect.height);
+      onBandChange?.(activeBandRef.current, newGain);
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        activeBandRef.current = null;
+        setDraggingBand(null);
+      }
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [calculateGainFromY, onBandChange]);
+
+  // Hover y detección de bandas
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isDraggingRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const padX = 36;
-    const plotW = rect.width - padX * 2;
-    const numBands = EQ_BANDS.length;
-
-    let closest = -1;
-    let minDist = 22;
-
-    for (let i = 0; i < numBands; i++) {
-      const bx = padX + (i / (numBands - 1)) * plotW;
-      const dist = Math.abs(x - bx);
-      if (dist < minDist) {
-        minDist = dist;
-        closest = i;
-      }
-    }
-    setHoveredBand(closest !== -1 ? closest : null);
+    const { index, dist } = findClosestBand(x, rect.width);
+    setHoveredBand(dist < 28 ? index : null);
   };
 
   const handleMouseLeave = () => {
-    setHoveredBand(null);
-  };
-
-  const handleClick = () => {
-    if (hoveredBand !== null && onBandSelect) {
-      onBandSelect(hoveredBand);
+    if (!isDraggingRef.current) {
+      setHoveredBand(null);
     }
   };
+
+  // Inicio de arrastre con ratón
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const { index } = findClosestBand(x, rect.width);
+
+    isDraggingRef.current = true;
+    activeBandRef.current = index;
+    setDraggingBand(index);
+    onBandSelect?.(index);
+
+    const newGain = calculateGainFromY(y, rect.height);
+    onBandChange?.(index, newGain);
+  };
+
+  // Doble clic para resetear banda a 0 dB
+  const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const { index, dist } = findClosestBand(x, rect.width);
+    if (dist < 32) {
+      onBandChange?.(index, 0);
+      onBandSelect?.(index);
+    }
+  };
+
+  // Soporte táctil para pantallas táctiles y móviles
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    const touch = e.touches[0];
+    if (!touch || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const { index } = findClosestBand(x, rect.width);
+
+    isDraggingRef.current = true;
+    activeBandRef.current = index;
+    setDraggingBand(index);
+    onBandSelect?.(index);
+
+    const newGain = calculateGainFromY(y, rect.height);
+    onBandChange?.(index, newGain);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDraggingRef.current || activeBandRef.current === null || !canvasRef.current) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const y = touch.clientY - rect.top;
+    const newGain = calculateGainFromY(y, rect.height);
+    onBandChange?.(activeBandRef.current, newGain);
+  };
+
+  const handleTouchEnd = () => {
+    isDraggingRef.current = false;
+    activeBandRef.current = null;
+    setDraggingBand(null);
+  };
+
+  const currentDisplayBand = draggingBand !== null ? draggingBand : hoveredBand;
 
   return (
     <div className="jf-eq-visualizer-wrap" ref={containerRef}>
       <canvas
         ref={canvasRef}
-        className="jf-eq-canvas"
+        className={`jf-eq-canvas ${hoveredBand !== null || draggingBand !== null ? 'is-draggable' : ''}`}
+        style={{ cursor: hoveredBand !== null || draggingBand !== null ? 'ns-resize' : 'crosshair' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-        title={hoveredBand !== null ? `${EQ_BANDS[hoveredBand]} Hz (${BAND_NAMES[hoveredBand]}): ${(values[hoveredBand] ?? 0).toFixed(1)} dB` : undefined}
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        title="Haz clic o arrastra sobre la gráfica para modificar los valores de cada frecuencia (doble clic para resetear a 0 dB)"
       />
-      {hoveredBand !== null && (
+      {currentDisplayBand !== null && (
         <div
           className="jf-eq-canvas-tooltip"
           style={{
-            left: `${36 + (hoveredBand / (EQ_BANDS.length - 1)) * (containerRef.current ? containerRef.current.clientWidth - 72 : 100)}px`,
+            left: `${36 + (currentDisplayBand / (EQ_BANDS.length - 1)) * (containerRef.current ? containerRef.current.clientWidth - 72 : 100)}px`,
           }}
         >
-          <span className="jf-eq-tt-freq">{EQ_BANDS[hoveredBand] >= 1000 ? `${EQ_BANDS[hoveredBand] / 1000}k` : EQ_BANDS[hoveredBand]} Hz</span>
-          <span className="jf-eq-tt-zone">{BAND_NAMES[hoveredBand]}</span>
-          <span className="jf-eq-tt-gain">{values[hoveredBand] > 0 ? `+${values[hoveredBand].toFixed(1)}` : values[hoveredBand].toFixed(1)} dB</span>
+          <span className="jf-eq-tt-freq">
+            {EQ_BANDS[currentDisplayBand] >= 1000
+              ? `${EQ_BANDS[currentDisplayBand] / 1000}k`
+              : EQ_BANDS[currentDisplayBand]}{' '}
+            Hz
+          </span>
+          <span className="jf-eq-tt-zone">{BAND_NAMES[currentDisplayBand]}</span>
+          <span className="jf-eq-tt-gain">
+            {values[currentDisplayBand] > 0
+              ? `+${values[currentDisplayBand].toFixed(1)}`
+              : values[currentDisplayBand].toFixed(1)}{' '}
+            dB
+          </span>
         </div>
       )}
     </div>

@@ -4,26 +4,34 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 9px 16px;
+  gap: 8px;
+  padding: 8px 16px;
   border-radius: var(--radius-full);
+  font-family: var(--font-display);
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text);
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  transition: transform 0.18s var(--ease-out), background 0.2s ease, border-color 0.2s ease,
-    box-shadow 0.2s ease, color 0.2s ease;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s var(--ease-spring),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.25s ease,
+              color 0.2s ease;
   white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
 }
 
 .jf-btn:hover {
-  background: var(--surface-active);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
 }
 
 .jf-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
 .jf-btn:disabled {
@@ -36,13 +44,18 @@
   background: var(--gradient-primary);
   border: none;
   color: #fff;
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 4px 18px rgba(127, 0, 255, 0.42);
 }
 
 .jf-btn--primary:hover {
   background: var(--gradient-primary);
-  box-shadow: 0 0 32px rgba(var(--primary-rgb), 0.55);
-  filter: brightness(1.08);
+  box-shadow: 0 6px 26px rgba(127, 0, 255, 0.65), 0 0 32px rgba(0, 240, 255, 0.35);
+  filter: brightness(1.06);
+  transform: translateY(-1.5px);
+}
+
+.jf-btn--primary:active {
+  transform: scale(0.95);
 }
 
 .jf-btn--danger {
@@ -55,6 +68,7 @@
   background: var(--error);
   color: #fff;
   border-color: var(--error);
+  box-shadow: 0 4px 18px rgba(var(--error-rgb), 0.45);
 }
 
 .jf-btn--ghost {
@@ -63,31 +77,32 @@
 }
 
 .jf-btn--ghost:hover {
-  background: var(--surface-hover);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .jf-btn--outline {
   background: transparent;
-  border-color: var(--border-strong);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .jf-btn--outline:hover {
-  border-color: var(--primary);
+  border-color: var(--secondary);
   color: var(--secondary);
+  background: rgba(0, 240, 255, 0.06);
 }
 
 .jf-btn--sm {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 6px 13px;
+  font-size: 11.5px;
 }
 
 .jf-btn--md {
-  padding: 9px 16px;
+  padding: 9px 18px;
   font-size: 13px;
 }
 
 .jf-btn--lg {
-  padding: 12px 22px;
+  padding: 12px 24px;
   font-size: 14.5px;
 }
 
@@ -101,29 +116,37 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  transition: color 0.18s ease, background 0.18s ease, transform 0.16s ease-out, border-color 0.2s ease;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: color 0.18s ease,
+              background 0.2s ease,
+              transform 0.22s var(--ease-spring),
+              border-color 0.2s ease,
+              box-shadow 0.25s ease;
+  cursor: pointer;
 }
 
 .jf-icon-btn:hover {
-  color: var(--text);
-  background: var(--surface-active);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1.5px) scale(1.05);
 }
 
 .jf-icon-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 
 .jf-icon-btn.is-active {
   color: var(--secondary);
-  background: rgba(var(--secondary-rgb), 0.1);
-  border-color: rgba(var(--secondary-rgb), 0.35);
+  background: rgba(0, 240, 255, 0.12);
+  border-color: rgba(0, 240, 255, 0.35);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.25);
 }
 
 .jf-icon-btn--sm {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
 }
 
 .jf-icon-btn--lg {
@@ -136,9 +159,9 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);
-  background: rgba(3, 3, 6, 0.68);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(4, 4, 8, 0.76);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -153,15 +176,40 @@
 .jf-modal-card {
   width: 100%;
   max-width: 520px;
-  max-height: min(84vh, 680px);
+  max-height: min(86vh, 720px);
   display: flex;
   flex-direction: column;
-  background: var(--surface-solid);
-  border: 1px solid var(--border);
-  border-top-color: rgba(255, 255, 255, 0.12);
+  background: rgba(14, 14, 20, 0.88);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-top-color: rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.7),
+              inset 0 1px 1px rgba(255, 255, 255, 0.16),
+              0 0 40px rgba(127, 0, 255, 0.12);
   overflow: hidden;
+  position: relative;
+}
+
+[data-theme='light'] .jf-modal-card {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(15, 20, 40, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 24px 50px rgba(30, 40, 80, 0.16),
+              inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+.jf-modal-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(127, 0, 255, 0.4), rgba(0, 240, 255, 0.4), transparent);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .jf-modal-backdrop:has(.jf-modal--fullscreen) {

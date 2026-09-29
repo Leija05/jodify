@@ -1,18 +1,28 @@
 import { create } from 'zustand';
 import type { SleepTimerState } from '../lib/types';
+import type { Language } from '../lib/i18n';
 
 export interface SettingsState {
+  language: Language;
   theme: 'dark' | 'light';
   disableVisualizer: boolean;
   disableDynamicBg: boolean;
   focusMode: boolean;
   fadeEnabled: boolean;
   fadeDuration: number;
+  volumeNormalization: boolean;
+  audioQuality: 'auto' | 'high' | 'lossless';
+  ambientIntensity: number;
+  analogNoise: boolean;
+  spatialAudio: boolean;
+  smartAutoRadio: boolean;
+  obsTheme: 'default' | 'neon' | 'glass' | 'minimal';
   sleepTimer: SleepTimerState | null;
   obsOverlayBaseUrl: string;
   eqPreset: string;
   eqCustomValues: number[] | null;
   customEqPresets: Record<string, number[]>;
+  setLanguage: (language: Language) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   toggleTheme: () => void;
   set: (patch: Partial<SettingsState>) => void;
@@ -20,12 +30,20 @@ export interface SettingsState {
 }
 
 const LS = {
+  language: 'language',
   theme: 'theme',
   visualizer: 'disableVisualizer',
   dynamicBg: 'disableDynamicBg',
   focus: 'focusMode',
   fade: 'fadeEnabled',
   fadeDuration: 'fadeDuration',
+  volumeNormalization: 'volumeNormalization',
+  audioQuality: 'audioQuality',
+  ambientIntensity: 'ambientIntensity',
+  analogNoise: 'analogNoise',
+  spatialAudio: 'spatialAudio',
+  smartAutoRadio: 'smartAutoRadio',
+  obsTheme: 'obsTheme',
   sleepTimer: 'sleepTimerData',
   obsUrl: 'obsOverlayPublicBaseUrl',
   eqPreset: 'eqPreset',
@@ -44,17 +62,26 @@ function load<T>(key: string, fallback: T): T {
 }
 
 const initialState: SettingsState = {
+  language: load<Language>(LS.language, 'es'),
   theme: load<'dark' | 'light'>(LS.theme, 'dark'),
   disableVisualizer: load(LS.visualizer, false),
   disableDynamicBg: load(LS.dynamicBg, false),
   focusMode: load(LS.focus, false),
   fadeEnabled: load(LS.fade, true),
   fadeDuration: load(LS.fadeDuration, 4),
+  volumeNormalization: load(LS.volumeNormalization, false),
+  audioQuality: load<'auto' | 'high' | 'lossless'>(LS.audioQuality, 'lossless'),
+  ambientIntensity: load(LS.ambientIntensity, 85),
+  analogNoise: load(LS.analogNoise, true),
+  spatialAudio: load(LS.spatialAudio, false),
+  smartAutoRadio: load(LS.smartAutoRadio, true),
+  obsTheme: load<'default' | 'neon' | 'glass' | 'minimal'>(LS.obsTheme, 'default'),
   sleepTimer: load<SleepTimerState | null>(LS.sleepTimer, null),
   obsOverlayBaseUrl: load(LS.obsUrl, ''),
   eqPreset: load(LS.eqPreset, 'flat'),
   eqCustomValues: load<number[] | null>(LS.eqValues, null),
   customEqPresets: load<Record<string, number[]>>(LS.eqCustom, {}),
+  setLanguage: () => {},
   setTheme: () => {},
   toggleTheme: () => {},
   set: () => {},
@@ -63,6 +90,11 @@ const initialState: SettingsState = {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...initialState,
+
+  setLanguage: (language) => {
+    localStorage.setItem(LS.language, JSON.stringify(language));
+    set({ language });
+  },
 
   setTheme: (theme) => {
     localStorage.setItem(LS.theme, JSON.stringify(theme));
@@ -76,8 +108,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   set: (patch) => {
-    const { theme, ...rest } = patch;
+    const { theme, language, ...rest } = patch;
     if (theme !== undefined) localStorage.setItem(LS.theme, JSON.stringify(theme));
+    if (language !== undefined) localStorage.setItem(LS.language, JSON.stringify(language));
     for (const [key, value] of Object.entries(rest)) {
       const lsKey = (LS as Record<string, string>)[key];
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(value));
@@ -88,12 +121,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (username) {
         import('../services/users.service').then(({ usersService }) => {
           const current = get();
-          usersService.updatePreferences(username, {
-            theme: current.theme,
-            eq_preset: current.eqPreset,
-            custom_curves: current.customEqPresets,
-            fade_duration: current.fadeDuration,
-          }).catch(() => undefined);
+          usersService
+            .updatePreferences(username, {
+              theme: current.theme,
+              language: current.language,
+              eq_preset: current.eqPreset,
+              custom_curves: current.customEqPresets,
+              fade_duration: current.fadeDuration,
+            })
+            .catch(() => undefined);
         });
       }
     } catch {
@@ -101,9 +137,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  setSleepTimer: (timer) => {
-    if (timer) localStorage.setItem(LS.sleepTimer, JSON.stringify(timer));
+  setSleepTimer: (sleepTimer) => {
+    if (sleepTimer) localStorage.setItem(LS.sleepTimer, JSON.stringify(sleepTimer));
     else localStorage.removeItem(LS.sleepTimer);
-    set({ sleepTimer: timer });
+    set({ sleepTimer });
   },
 }));

@@ -9,6 +9,7 @@ import {
   Heart,
   Shuffle,
   Repeat,
+  RepeatOnce,
   ArrowsOut,
   ArrowsIn,
   Disc,
@@ -23,6 +24,7 @@ import { Slider } from '../ui/Slider';
 import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
 import { useUiStore } from '../../store/ui.store';
+import { useToastStore } from '../../store/toast.store';
 import { useLyrics } from '../../hooks/useLyrics';
 import { formatTime, songArtistMeta } from '../../lib/utils';
 import { SongCover } from '../ui/SongCover';
@@ -271,7 +273,7 @@ export function FullscreenPlayer() {
                       <div className="jf-fs-meta-pills">
                         <span className="jf-fs-pill">
                           <span className="jf-pill-pulse" />
-                          En reproducción
+                          Ahora suena
                         </span>
                         {song.album && <span className="jf-fs-pill jf-fs-pill--dim">{song.album}</span>}
                       </div>
@@ -499,12 +501,37 @@ export function FullscreenPlayer() {
 
                 <button
                   type="button"
-                  className={`jf-control jf-fs-btn ${player.isLoop ? 'is-active' : ''}`}
-                  aria-label="Repetir canción"
-                  onClick={player.toggleLoop}
-                  title="Repetir"
+                  className={`jf-control jf-fs-btn ${player.repeatMode !== 'off' ? 'is-active' : ''} ${player.repeatMode === 'all' ? 'is-repeat-all' : ''} ${player.repeatMode === 'one' ? 'is-repeat-one' : ''}`}
+                  aria-label={
+                    player.repeatMode === 'all'
+                      ? 'Repetir toda la colección'
+                      : player.repeatMode === 'one'
+                        ? 'Repetir esta canción'
+                        : 'Repetición desactivada'
+                  }
+                  onClick={() => {
+                    const next = player.cycleRepeatMode();
+                    const msg =
+                      next === 'all'
+                        ? 'Repetir toda la colección'
+                        : next === 'one'
+                          ? 'Repetir esta canción'
+                          : 'Repetición desactivada';
+                    useToastStore.getState().show(msg, 'info', 1200);
+                  }}
+                  title={
+                    player.repeatMode === 'all'
+                      ? 'Repitiendo toda la colección (Clic para una canción)'
+                      : player.repeatMode === 'one'
+                        ? 'Repitiendo esta canción (Clic para desactivar)'
+                        : 'Activar repetición'
+                  }
                 >
-                  <Repeat size={20} weight={player.isLoop ? 'bold' : 'regular'} />
+                  {player.repeatMode === 'one' ? (
+                    <RepeatOnce size={20} weight="bold" />
+                  ) : (
+                    <Repeat size={20} weight={player.repeatMode === 'all' ? 'bold' : 'regular'} />
+                  )}
                 </button>
               </div>
 

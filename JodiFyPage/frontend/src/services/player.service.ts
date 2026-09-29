@@ -128,6 +128,7 @@ function logListeningHistory(song: Song, isOffline: boolean): void {
   void isOffline;
   import('./users.service').then(({ usersService }) => {
     usersService.insertListeningHistory(username, song.id, song.name).catch(() => undefined);
+    usersService.updateNowPlaying(username, song.id, song.name).catch(() => undefined);
   });
 }
 

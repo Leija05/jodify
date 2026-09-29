@@ -95,16 +95,26 @@ export interface Song {
 }
 
 export interface UserAccess {
-  id: number;
+  id: number | string;
   username: string;
   password?: string;
   role: Role;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  avatar_source?: 'custom' | 'discord' | 'initials' | null;
   is_online?: number;
   last_seen?: string;
   discord_id?: string | null;
-  current_song_id?: number | null;
+  current_song_id?: number | string | null;
   current_song_name?: string | null;
   listening_since?: string | null;
+  bio?: string;
+  theme?: string;
+  avatar_frame?: string;
+  anthem_song_id?: number | string | null;
+  anthem_song_name?: string | null;
+  custom_badge?: string | null;
+  vibe?: string | null;
   created_at?: string;
 }
 

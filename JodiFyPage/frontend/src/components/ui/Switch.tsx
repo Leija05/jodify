@@ -1,23 +1,25 @@
 interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
-  label: string;
+  label?: string;
   description?: string;
 }
 
 export function Switch({ checked, onChange, label, description }: SwitchProps) {
   return (
     <label className="jf-switch-row">
-      <span className="jf-switch-text">
-        <span className="jf-switch-label">{label}</span>
-        {description && <span className="jf-switch-desc">{description}</span>}
-      </span>
+      {label && (
+        <span className="jf-switch-text">
+          <span className="jf-switch-label">{label}</span>
+          {description && <span className="jf-switch-desc">{description}</span>}
+        </span>
+      )}
       <input
         type="checkbox"
         className="jf-switch-input"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        aria-label={label}
+        aria-label={label || 'Interruptor'}
       />
       <span className="jf-switch" aria-hidden="true" />
     </label>

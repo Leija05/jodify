@@ -34,10 +34,10 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
       usePlayerStore.getState().setDuration(audio.duration);
     };
     const onEnded = () => {
-      const { isLoop, next } = usePlayerStore.getState();
+      const { repeatMode, isLoop, next } = usePlayerStore.getState();
       const jam = useJamStore.getState();
       if (jam.active && !jam.isHost) return;
-      if (isLoop) {
+      if (repeatMode === 'one' || isLoop) {
         audio.currentTime = 0;
         void audio.play().catch(() => undefined);
         return;

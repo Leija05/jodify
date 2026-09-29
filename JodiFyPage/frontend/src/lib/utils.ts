@@ -139,12 +139,92 @@ export function throttle<A extends unknown[]>(fn: (...args: A) => void, ms: numb
 export function resolveMediaUrl(url: string | null | undefined): string {
   if (!url) return '';
   if (/^(https?:|blob:|data:)/i.test(url)) return url;
-  const base = API_BASE;
-  if (/^https?:/i.test(base)) {
-    const cleanBase = base.replace(/\/+$/, '');
-    const hostBase = cleanBase.replace(/\/api$/, '');
-    const target = url.startsWith('/api') ? hostBase : cleanBase;
-    return `${target}${url.startsWith('/') ? url : `/${url}`}`;
-  }
-  return url;
+  const base = API_BASE || '';
+  const cleanBase = base.replace(/\/+$/, '');
+  const hostBase = cleanBase.replace(/\/api$/, '');
+  const target = url.startsWith('/api') ? hostBase : cleanBase;
+  const relative = url.startsWith('/') ? url : `/${url}`;
+  return target ? `${target}${relative}` : relative;
 }
+
+export interface MelomanoRank {
+  level: number;
+  title: string;
+  badgeEmoji: string;
+  badgeColor: string;
+  currentXp: number;
+  nextLevelXp: number;
+  progressPercent: number;
+}
+
+export function calculateMelomanoLevel(stats: { liked?: number; played?: number; downloaded?: number } | null | undefined): MelomanoRank {
+  const liked = stats?.liked ?? 0;
+  const played = stats?.played ?? 0;
+  const downloaded = stats?.downloaded ?? 0;
+
+  const currentXp = (liked * 12) + (played * 3) + (downloaded * 18);
+  const level = Math.max(1, Math.floor(Math.sqrt(currentXp / 35)) + 1);
+
+  const prevLevelXp = Math.pow(level - 1, 2) * 35;
+  const nextLevelXp = Math.pow(level, 2) * 35;
+  const span = Math.max(1, nextLevelXp - prevLevelXp);
+  const progressInLevel = Math.max(0, currentXp - prevLevelXp);
+  const progressPercent = Math.min(100, Math.round((progressInLevel / span) * 100));
+
+  let title = 'Iniciado del Ritmo';
+  let badgeEmoji = '🎵';
+  let badgeColor = '#94a3b8';
+
+  if (level >= 30) {
+    title = 'Deidad Sonora Omnipresente';
+    badgeEmoji = '👑';
+    badgeColor = '#ffd700';
+  } else if (level >= 20) {
+    title = 'Maestro de la Sinfonía';
+    badgeEmoji = '⚡';
+    badgeColor = '#f43f5e';
+  } else if (level >= 15) {
+    title = 'Leyenda del Vinilo';
+    badgeEmoji = '💎';
+    badgeColor = '#a855f7';
+  } else if (level >= 10) {
+    title = 'Audiófilo Experto';
+    badgeEmoji = '🎧';
+    badgeColor = '#00f0ff';
+  } else if (level >= 5) {
+    title = 'Explorador de Frecuencias';
+    badgeEmoji = '🌊';
+    badgeColor = '#10b981';
+  } else if (level >= 2) {
+    title = 'Melómano Curioso';
+    badgeEmoji = '📻';
+    badgeColor = '#3b82f6';
+  }
+
+  return {
+    level,
+    title,
+    badgeEmoji,
+    badgeColor,
+    currentXp,
+    nextLevelXp,
+    progressPercent,
+  };
+}
+
+export function resolveAvatarSrc(user?: {
+  avatar_source?: string | null;
+  avatar_url?: string | null;
+  discord?: { avatar_url?: string | null } | null;
+} | null): string | null {
+  if (!user) return null;
+  const source = user.avatar_source || 'custom';
+  if (source === 'discord') {
+    return user.discord?.avatar_url || user.avatar_url || null;
+  }
+  if (source === 'initials') {
+    return null;
+  }
+  return user.avatar_url || user.discord?.avatar_url || null;
+}
+

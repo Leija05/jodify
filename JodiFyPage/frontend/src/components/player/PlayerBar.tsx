@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Heart, ArrowsOut, Moon, Sun, List, SpeakerHigh, SpeakerSimpleX, TextT } from '@phosphor-icons/react';
+import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, RepeatOnce, Heart, ArrowsOut, Moon, Sun, List, SpeakerHigh, SpeakerSimpleX, TextT } from '@phosphor-icons/react';
 import { usePlayerStore } from '../../store/player.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useUiStore } from '../../store/ui.store';
+import { useToastStore } from '../../store/toast.store';
 import { useLibraryStore } from '../../store/library.store';
 import { useLyrics } from '../../hooks/useLyrics';
 import { Slider } from '../ui/Slider';
@@ -130,8 +131,38 @@ export function PlayerBar() {
           <button className="jf-control" aria-label="Siguiente" onClick={() => void player.next()}>
             <SkipForward size={19} weight="fill" />
           </button>
-          <button className={`jf-control ${player.isLoop ? 'is-active' : ''}`} aria-label="Repetir" onClick={player.toggleLoop}>
-            <Repeat size={17} />
+          <button
+            className={`jf-control ${player.repeatMode !== 'off' ? 'is-active' : ''} ${player.repeatMode === 'all' ? 'is-repeat-all' : ''} ${player.repeatMode === 'one' ? 'is-repeat-one' : ''}`}
+            aria-label={
+              player.repeatMode === 'all'
+                ? 'Repetir toda la colección'
+                : player.repeatMode === 'one'
+                  ? 'Repetir esta canción'
+                  : 'Repetición desactivada'
+            }
+            title={
+              player.repeatMode === 'all'
+                ? 'Repitiendo toda la colección (Clic para una canción)'
+                : player.repeatMode === 'one'
+                  ? 'Repitiendo esta canción (Clic para desactivar)'
+                  : 'Activar repetición (Clic para repetir colección)'
+            }
+            onClick={() => {
+              const next = player.cycleRepeatMode();
+              const msg =
+                next === 'all'
+                  ? (settings.language === 'en' ? 'Loop entire collection' : 'Repetir toda la colección')
+                  : next === 'one'
+                    ? (settings.language === 'en' ? 'Loop current song' : 'Repetir esta canción')
+                    : (settings.language === 'en' ? 'Repeat off' : 'Repetición desactivada');
+              useToastStore.getState().show(msg, 'info', 1200);
+            }}
+          >
+            {player.repeatMode === 'one' ? (
+              <RepeatOnce size={18} weight="bold" />
+            ) : (
+              <Repeat size={17} weight={player.repeatMode === 'all' ? 'bold' : 'regular'} />
+            )}
           </button>
         </div>
       </div>

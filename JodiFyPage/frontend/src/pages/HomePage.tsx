@@ -26,6 +26,7 @@ import { FullscreenPlayer } from '../components/player/FullscreenPlayer';
 import { OfflineModal } from '../components/offline/OfflineModal';
 import { useLoadLibrary } from '../hooks/useLoadLibrary';
 import { useTaskbarControls } from '../hooks/useTaskbarControls';
+import { useHeartbeat } from '../hooks/useHeartbeat';
 
 export function HomePage() {
   const { session } = useSession();
@@ -33,6 +34,7 @@ export function HomePage() {
 
   useLoadLibrary(session);
   useTaskbarControls();
+  useHeartbeat(Boolean(session));
 
   useEffect(() => {
     if (!session) navigate('/login', { replace: true });

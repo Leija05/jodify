@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
 
 from bson import ObjectId
@@ -11,10 +11,27 @@ from ..dependencies import require_admin
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
+def is_recent(last_seen_iso: str | None, max_seconds: int = 150) -> bool:
+    if not last_seen_iso:
+        return False
+    try:
+        clean = last_seen_iso.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(clean)
+        now = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.utcnow()
+        return abs((now - dt).total_seconds()) <= max_seconds
+    except Exception:
+        return False
+
+
 def user_view(doc: dict) -> dict:
     presence_status = doc.get("presence_status")
-    is_online = doc.get("is_online", 0)
-    presence = presence_status or ("online" if is_online == 1 else "offline")
+    raw_is_online = doc.get("is_online", 0)
+    last_seen = doc.get("last_seen")
+
+    # Si no ha enviado actividad en los últimos 2.5 minutos, marcar offline
+    actually_online = raw_is_online == 1 and is_recent(last_seen)
+    is_online = 1 if actually_online else 0
+    presence = (presence_status or "online") if actually_online else "offline"
 
     return {
         "id": sid(doc.get("_id")),
@@ -24,13 +41,20 @@ def user_view(doc: dict) -> dict:
         "is_online": is_online,
         "online": is_online == 1,
         "presence": presence,
-        "last_seen": doc.get("last_seen"),
+        "last_seen": last_seen,
         "avatar_url": doc.get("avatar_url"),
         "avatar_source": doc.get("avatar_source", "custom"),
         "discord_id": doc.get("discord_id"),
-        "current_song_id": doc.get("current_song_id"),
-        "current_song_name": doc.get("current_song_name"),
-        "listening_since": doc.get("listening_since"),
+        "current_song_id": doc.get("current_song_id") if actually_online else None,
+        "current_song_name": doc.get("current_song_name") if actually_online else None,
+        "listening_since": doc.get("listening_since") if actually_online else None,
+        "bio": doc.get("bio", ""),
+        "theme": doc.get("theme", "aurora"),
+        "avatar_frame": doc.get("avatar_frame", "none"),
+        "anthem_song_id": doc.get("anthem_song_id"),
+        "anthem_song_name": doc.get("anthem_song_name"),
+        "custom_badge": doc.get("custom_badge"),
+        "vibe": doc.get("vibe"),
         "created_at": doc.get("created_at"),
     }
 
@@ -104,7 +128,7 @@ async def heartbeat(username: str, body: HeartbeatRequest) -> None:
             "$set": {
                 "is_online": is_online,
                 "presence_status": presence,
-                "last_seen": datetime.now().isoformat(),
+                "last_seen": datetime.now(timezone.utc).isoformat(),
             }
         },
     )
@@ -117,14 +141,37 @@ async def update_profile(username: str, body: UpdateProfileRequest) -> dict:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     updates: dict = {}
-    if body.display_name is not None:
-        updates["display_name"] = body.display_name.strip()
-    if body.avatar_url is not None:
-        updates["avatar_url"] = body.avatar_url.strip()
-    if body.avatar_source is not None:
-        updates["avatar_source"] = body.avatar_source.strip()
-    if body.discord_id is not None:
-        updates["discord_id"] = body.discord_id.strip()
+    fields_set = getattr(body, "model_fields_set", None) or getattr(body, "__fields_set__", set())
+
+    if "display_name" in fields_set:
+        clean = body.display_name.strip() if body.display_name else None
+        updates["display_name"] = clean or None
+    if "avatar_url" in fields_set:
+        clean = body.avatar_url.strip() if body.avatar_url else None
+        updates["avatar_url"] = clean or None
+    if "avatar_source" in fields_set:
+        clean = body.avatar_source.strip() if body.avatar_source else "custom"
+        updates["avatar_source"] = clean
+    if "discord_id" in fields_set:
+        clean = body.discord_id.strip() if body.discord_id else None
+        updates["discord_id"] = clean or None
+    if "bio" in fields_set:
+        updates["bio"] = (body.bio.strip()[:160]) if body.bio else ""
+    if "theme" in fields_set:
+        updates["theme"] = body.theme.strip() if body.theme else "aurora"
+    if "avatar_frame" in fields_set:
+        updates["avatar_frame"] = body.avatar_frame.strip() if body.avatar_frame else "none"
+    if "anthem_song_id" in fields_set:
+        updates["anthem_song_id"] = body.anthem_song_id if body.anthem_song_id else None
+    if "anthem_song_name" in fields_set:
+        clean = body.anthem_song_name.strip() if body.anthem_song_name else None
+        updates["anthem_song_name"] = clean or None
+    if "custom_badge" in fields_set:
+        clean = body.custom_badge.strip() if body.custom_badge else None
+        updates["custom_badge"] = clean or None
+    if "vibe" in fields_set:
+        clean = body.vibe.strip()[:60] if body.vibe else None
+        updates["vibe"] = clean or None
 
     if body.new_username and body.new_username.strip() != username:
         new_user = body.new_username.strip()
@@ -147,15 +194,20 @@ async def set_discord(username: str, body: DiscordRequest) -> None:
 
 @router.put("/{username}/now-playing")
 async def now_playing(username: str, body: NowPlayingRequest) -> None:
+    now_iso = datetime.now(timezone.utc).isoformat()
+    now_updates: dict = {
+        "current_song_id": body.song_id,
+        "current_song_name": body.song_name,
+        "listening_since": now_iso if body.song_id is not None else None,
+    }
+    if body.song_id is not None:
+        now_updates["last_seen"] = now_iso
+        now_updates["is_online"] = 1
+        now_updates["presence_status"] = "online"
+
     await col("users").update_one(
         {"username": username},
-        {
-            "$set": {
-                "current_song_id": body.song_id,
-                "current_song_name": body.song_name,
-                "listening_since": datetime.now().isoformat() if body.song_id is not None else None,
-            }
-        },
+        {"$set": now_updates},
     )
 
 

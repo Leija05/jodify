@@ -10,7 +10,10 @@ interface JodifyDB extends DBSchema {
 
 let dbPromise: Promise<IDBPDatabase<JodifyDB>> | null = null;
 
-export function getDB(): Promise<IDBPDatabase<JodifyDB>> {
+export async function getDB(): Promise<IDBPDatabase<JodifyDB> | null> {
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return null;
+  }
   if (!dbPromise) {
     dbPromise = openDB<JodifyDB>('MusicOfflineDB', 1, {
       upgrade(db) {
@@ -18,32 +21,71 @@ export function getDB(): Promise<IDBPDatabase<JodifyDB>> {
           db.createObjectStore('songs', { keyPath: 'id' });
         }
       },
+    }).catch((err) => {
+      console.warn('[idb] IndexedDB no disponible o bloqueada:', err);
+      dbPromise = null;
+      return null as any;
     });
   }
-  return dbPromise;
+  try {
+    const db = await dbPromise;
+    return db || null;
+  } catch (err) {
+    console.warn('[idb] Error accediendo a IndexedDB:', err);
+    dbPromise = null;
+    return null;
+  }
 }
 
 export async function saveSongOffline(song: OfflineSong): Promise<void> {
-  const db = await getDB();
-  await db.put('songs', song);
+  try {
+    const db = await getDB();
+    if (!db) return;
+    await db.put('songs', song);
+  } catch (err) {
+    console.warn('[idb] Error guardando canción offline:', err);
+  }
 }
 
 export async function getSongOffline(id: number | string): Promise<OfflineSong | undefined> {
-  const db = await getDB();
-  return db.get('songs', id);
+  try {
+    const db = await getDB();
+    if (!db) return undefined;
+    return await db.get('songs', id);
+  } catch (err) {
+    console.warn('[idb] Error obteniendo canción offline:', err);
+    return undefined;
+  }
 }
 
 export async function getAllSongsOffline(): Promise<OfflineSong[]> {
-  const db = await getDB();
-  return db.getAll('songs');
+  try {
+    const db = await getDB();
+    if (!db) return [];
+    return await db.getAll('songs');
+  } catch (err) {
+    console.warn('[idb] Error obteniendo canciones offline:', err);
+    return [];
+  }
 }
 
 export async function getAllOfflineIds(): Promise<Array<number | string>> {
-  const db = await getDB();
-  return db.getAllKeys('songs');
+  try {
+    const db = await getDB();
+    if (!db) return [];
+    return await db.getAllKeys('songs');
+  } catch (err) {
+    console.warn('[idb] Error obteniendo IDs offline:', err);
+    return [];
+  }
 }
 
 export async function deleteSongOffline(id: number | string): Promise<void> {
-  const db = await getDB();
-  await db.delete('songs', id);
+  try {
+    const db = await getDB();
+    if (!db) return;
+    await db.delete('songs', id);
+  } catch (err) {
+    console.warn('[idb] Error eliminando canción offline:', err);
+  }
 }

@@ -62,6 +62,124 @@
   border-top-color: rgba(255, 255, 255, 0.8);
 }
 
+/* ============ Vista de Éxito de Inicio de Sesión ============ */
+.jf-login-card.is-success {
+  border-color: rgba(0, 240, 255, 0.4);
+  box-shadow: 
+    0 0 50px rgba(0, 240, 255, 0.25),
+    0 30px 90px rgba(0, 0, 0, 0.7);
+}
+
+.jf-login-success-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-lg) 0;
+  gap: var(--space-md);
+}
+
+.jf-login-success-icon-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-xs);
+}
+
+.jf-success-pulse-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 240, 255, 0.45);
+  animation: jf-ring-expand 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.jf-success-pulse-ring.delay-1 {
+  animation-delay: 0.4s;
+  border-color: rgba(168, 85, 247, 0.35);
+}
+
+@keyframes jf-ring-expand {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.jf-success-icon-core {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(168, 85, 247, 0.25));
+  border: 1px solid rgba(0, 240, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00f0ff;
+  box-shadow: 0 0 28px rgba(0, 240, 255, 0.5);
+}
+
+.jf-login-success-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: rgba(0, 240, 255, 0.12);
+  color: #00f0ff;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  margin-bottom: 6px;
+}
+
+.jf-login-success-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.jf-login-success-user {
+  font-size: 14px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.jf-login-success-bars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  margin: 6px 0;
+}
+
+.jf-login-success-bars span {
+  width: 3.5px;
+  background: #00f0ff;
+  border-radius: 2px;
+  animation: jf-login-bar 0.9s ease-in-out infinite alternate;
+}
+
+.jf-login-success-bars .bar-1 { height: 8px; animation-delay: 0s; }
+.jf-login-success-bars .bar-2 { height: 18px; animation-delay: 0.15s; background: #a855f7; }
+.jf-login-success-bars .bar-3 { height: 12px; animation-delay: 0.3s; }
+.jf-login-success-bars .bar-4 { height: 20px; animation-delay: 0.45s; background: #ff0080; }
+.jf-login-success-bars .bar-5 { height: 10px; animation-delay: 0.6s; }
+
+@keyframes jf-login-bar {
+  0% { transform: scaleY(0.4); }
+  100% { transform: scaleY(1.2); }
+}
+
+.jf-login-success-sub {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
 .jf-login-logo {
   display: flex;
   flex-direction: column;

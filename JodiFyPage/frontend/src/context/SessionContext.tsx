@@ -8,6 +8,10 @@ import { useToastStore } from '../store/toast.store';
 export interface Session {
   username: string;
   role: Role;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  avatar_source?: 'custom' | 'discord' | 'initials' | null;
+  avatar_frame?: string | null;
 }
 
 interface SessionContextValue {
@@ -17,6 +21,8 @@ interface SessionContextValue {
   devLogin: (devKey: string) => Promise<{ ok: boolean; error?: string }>;
   tokenLogin: (token: string, save: boolean) => Promise<{ ok: boolean; error?: string; role?: Role }>;
   savedTokenLogin: () => Promise<{ ok: boolean; error?: string }>;
+  applyUserSession: (result: { username: string; role: Role }, keepSession: boolean) => void;
+  updateSessionProfile: (updates: Partial<Session>) => void;
   applyDevAccess: (result: { token: string; username: string; role: string }, save: boolean) => void;
   redeem: (token: string, username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -49,6 +55,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
 
+  const fetchAndApplyProfile = useCallback(async (username: string) => {
+    try {
+      const prof = await usersService.fetchProfile(username);
+      if (prof) {
+        setSession((prev) => (prev && prev.username.toLowerCase() === username.toLowerCase() ? {
+          ...prev,
+          display_name: prof.display_name,
+          avatar_url: prof.avatar_url,
+          avatar_source: prof.avatar_source,
+          avatar_frame: prof.avatar_frame,
+        } : prev));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const updateSessionProfile = useCallback((updates: Partial<Session>) => {
+    setSession((prev) => (prev ? { ...prev, ...updates } : prev));
+  }, []);
+
   useEffect(() => {
     try {
       const active = localStorage.getItem(SESSION_KEY) === 'true';
@@ -57,12 +84,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (active && username) {
         setSession({ username, role: role ?? 'user' });
         syncUserPreferences(username).catch(() => undefined);
+        fetchAndApplyProfile(username).catch(() => undefined);
       }
     } catch {
       /* ignore */
     }
     setReady(true);
-  }, []);
+  }, [fetchAndApplyProfile]);
+
+  const applyUserSession = useCallback((result: { username: string; role: Role }, keepSession: boolean) => {
+    setSession({ username: result.username, role: result.role });
+    localStorage.setItem(USER_KEY, result.username);
+    localStorage.setItem(ROLE_KEY, result.role);
+    localStorage.setItem(SESSION_KEY, keepSession ? 'true' : 'true');
+
+    usersService.heartbeat(result.username, true).catch(() => undefined);
+    syncUserPreferences(result.username).catch(() => undefined);
+    fetchAndApplyProfile(result.username).catch(() => undefined);
+  }, [fetchAndApplyProfile]);
 
   const login = useCallback(async (username: string, password: string, keepSession: boolean): Promise<boolean> => {
     try {
@@ -71,13 +110,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         useToastStore.getState().show('Usuario o contraseña incorrectos', 'error');
         return false;
       }
-      setSession({ username: result.username, role: result.role });
-      localStorage.setItem(USER_KEY, result.username);
-      localStorage.setItem(ROLE_KEY, result.role);
-      localStorage.setItem(SESSION_KEY, keepSession ? 'true' : 'true');
-
-      usersService.heartbeat(result.username, true).catch(() => undefined);
-      syncUserPreferences(result.username).catch(() => undefined);
+      applyUserSession(result, keepSession);
       return true;
     } catch (error) {
       useToastStore.getState().show('No se pudo iniciar sesión', 'error');
@@ -173,8 +206,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ session, ready, login, devLogin, tokenLogin, savedTokenLogin, applyDevAccess, redeem, logout }),
-    [session, ready, login, devLogin, tokenLogin, savedTokenLogin, applyDevAccess, redeem, logout],
+    () => ({ session, ready, login, devLogin, tokenLogin, savedTokenLogin, applyUserSession, updateSessionProfile, applyDevAccess, redeem, logout }),
+    [session, ready, login, devLogin, tokenLogin, savedTokenLogin, applyUserSession, updateSessionProfile, applyDevAccess, redeem, logout],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

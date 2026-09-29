@@ -1,23 +1,78 @@
-import { DotsSixVertical, X, ListBullets, TrashSimple, Clock } from '@phosphor-icons/react';
+import { useState, useMemo } from 'react';
+import {
+  DotsSixVertical,
+  X,
+  ListBullets,
+  TrashSimple,
+  Clock,
+  Play,
+  Plus,
+  Sparkle,
+  MusicNotes,
+} from '@phosphor-icons/react';
 import { Drawer } from '../ui/Drawer';
 import { EmptyState } from '../ui/EmptyState';
 import { useQueueStore } from '../../store/queue.store';
 import { usePlayerStore } from '../../store/player.store';
+import { useLibraryStore } from '../../store/library.store';
 import { playSong } from '../../services/player.service';
 import { useToastStore } from '../../store/toast.store';
 import { songArtistMeta, formatDuration } from '../../lib/utils';
 import { SongCover } from '../ui/SongCover';
-import { useState } from 'react';
+import type { Song } from '../../lib/types';
 
 export function QueueDrawer() {
   const items = useQueueStore((s) => s.items);
+  const addToQueue = useQueueStore((s) => s.add);
   const remove = useQueueStore((s) => s.remove);
   const clear = useQueueStore((s) => s.clear);
   const move = useQueueStore((s) => s.move);
+
   const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const repeatMode = usePlayerStore((s) => s.repeatMode);
+
+  const librarySongs = useLibraryStore((s) => s.songs);
+  const currentTab = useLibraryStore((s) => s.currentTab);
+  const downloadedIds = useLibraryStore((s) => s.downloadedIds);
+  const likedIds = useLibraryStore((s) => s.likedIds);
+
   const [dragOver, setDragOver] = useState<number | null>(null);
 
-  const totalSeconds = items.reduce((acc, s) => acc + (typeof s.duration === 'number' ? s.duration : 0), 0);
+  // Pool de la colección actual según la pestaña activa
+  const pool = useMemo(() => {
+    if (currentTab === 'downloads') {
+      return librarySongs.filter((s) => downloadedIds.includes(s.id));
+    }
+    if (currentTab === 'personal') {
+      return librarySongs.filter((s) => likedIds.includes(s.id));
+    }
+    return librarySongs;
+  }, [librarySongs, currentTab, downloadedIds, likedIds]);
+
+  // Canciones siguientes de la colección (excluyendo las que ya están en la cola manual prioritaria)
+  const upcomingFromCollection = useMemo(() => {
+    if (pool.length === 0) return [];
+    const manualIds = new Set(items.map((x) => String(x.id)));
+    const currentIdx = pool.findIndex((s) => String(s.id) === String(currentSong?.id));
+
+    if (currentIdx === -1) {
+      return pool.filter((s) => !manualIds.has(String(s.id)));
+    }
+
+    if (repeatMode === 'all') {
+      const after = pool.slice(currentIdx + 1);
+      const before = pool.slice(0, currentIdx);
+      return [...after, ...before].filter((s) => !manualIds.has(String(s.id)));
+    }
+
+    return pool.slice(currentIdx + 1).filter((s) => !manualIds.has(String(s.id)));
+  }, [pool, currentSong?.id, items, repeatMode]);
+
+  const totalPrioritySeconds = items.reduce(
+    (acc, s) => acc + (typeof s.duration === 'number' ? s.duration : 0),
+    0,
+  );
 
   const playFromQueue = async (index: number) => {
     const song = items[index];
@@ -27,85 +82,214 @@ export function QueueDrawer() {
     remove(song.id);
   };
 
+  const playDirectly = async (song: Song) => {
+    await playSong(song);
+    usePlayerStore.getState().setIsPlaying(true);
+  };
+
+  const prioritizeSong = (song: Song) => {
+    const added = addToQueue(song);
+    if (added) {
+      useToastStore.getState().show(`"${song.name}" agregada con prioridad`, 'success', 1500);
+    } else {
+      useToastStore.getState().show('Ya está en la cola', 'info', 1200);
+    }
+  };
+
+  const totalUpcomingCount = items.length + upcomingFromCollection.length;
+
   return (
     <Drawer name="queue" title="Cola de reproducción">
-      {items.length === 0 ? (
-        <EmptyState
-          icon={ListBullets}
-          title="Cola vacía"
-          description="Agrega canciones desde la biblioteca para encolarlas aquí."
-        />
-      ) : (
-        <>
-          <div className="jf-queue-tools">
-            <span className="jf-insight">
-              <ListBullets size={13} /> {items.length} {items.length === 1 ? 'canción' : 'canciones'}
+      {/* 1. SECCIÓN: REPRODUCIENDO AHORA */}
+      {currentSong ? (
+        <div className="jf-queue-section jf-queue-now-playing">
+          <div className="jf-queue-section-header">
+            <span className="jf-queue-badge jf-queue-badge--live">
+              <span className="jf-pulse-dot" /> Reproduciendo ahora
             </span>
-            {totalSeconds > 0 && (
-              <span className="jf-insight">
-                <Clock size={12} /> {formatDuration(totalSeconds)}
-              </span>
-            )}
-            <button
-              className="jf-queue-clear"
-              onClick={() => {
-                clear();
-                useToastStore.getState().show('Cola limpiada', 'info', 1500);
-              }}
-            >
-              <TrashSimple size={14} /> Limpiar
-            </button>
           </div>
-          <ul className="jf-queue-list">
-          {items.map((song, index) => {
-            const isCurrent = String(currentSong?.id) === String(song.id);
-            return (
-              <li
-                key={song.id}
-                className={`jf-queue-item ${isCurrent ? 'is-current' : ''}`}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('text/plain', String(index));
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(index);
-                }}
-                onDragLeave={() => setDragOver((cur) => (cur === index ? null : cur))}
-                onDrop={(e) => {
-                  const from = Number(e.dataTransfer.getData('text/plain'));
-                  setDragOver(null);
-                  if (!Number.isNaN(from) && from !== index) move(from, index);
-                }}
-                onDragEnd={() => setDragOver(null)}
-                onClick={() => void playFromQueue(index)}
-                data-testid={`queue-item-${song.id}`}
-              >
-                {dragOver === index && <span className="jf-queue-drop-line" aria-hidden="true" />}
-                <span className="jf-queue-grip" aria-hidden="true">
-                  <DotsSixVertical size={14} />
+          <div className="jf-queue-now-card">
+            <SongCover song={currentSong} alt="" className="jf-queue-now-cover" />
+            <div className="jf-queue-now-meta">
+              <p className="jf-queue-now-title">{currentSong.name}</p>
+              <p className="jf-queue-now-artist">{songArtistMeta(currentSong) || currentSong.added_by || 'JodiFy'}</p>
+              {typeof currentSong.duration === 'number' && currentSong.duration > 0 && (
+                <span className="jf-queue-now-time">
+                  <Clock size={11} /> {formatDuration(currentSong.duration)}
                 </span>
+              )}
+            </div>
+            {isPlaying && (
+              <div className="jf-queue-eq-bars" aria-hidden="true">
+                <span /><span /><span /><span />
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 2. SECCIÓN: COLA PRIORITARIA (Añadidas manualmente por el usuario) */}
+      <div className="jf-queue-section">
+        <div className="jf-queue-section-header">
+          <div className="jf-queue-header-left">
+            <span className="jf-queue-badge jf-queue-badge--priority">
+              <Sparkle size={12} weight="fill" /> A continuación (Prioridad)
+            </span>
+            <span className="jf-queue-count-pill">{items.length}</span>
+          </div>
+          {items.length > 0 && (
+            <div className="jf-queue-header-actions">
+              {totalPrioritySeconds > 0 && (
+                <span className="jf-insight">
+                  <Clock size={12} /> {formatDuration(totalPrioritySeconds)}
+                </span>
+              )}
+              <button
+                className="jf-queue-clear"
+                onClick={() => {
+                  clear();
+                  useToastStore.getState().show('Cola prioritaria vaciada', 'info', 1500);
+                }}
+                title="Limpiar canciones prioritarias"
+              >
+                <TrashSimple size={13} /> Limpiar
+              </button>
+            </div>
+          )}
+        </div>
+
+        {items.length === 0 ? (
+          <div className="jf-queue-empty-priority">
+            <p className="jf-queue-empty-text">
+              No tienes canciones en prioridad. Haz clic derecho en cualquier canción y selecciona{' '}
+              <strong>"Añadir a la cola"</strong> para que suene de inmediato.
+            </p>
+          </div>
+        ) : (
+          <ul className="jf-queue-list">
+            {items.map((song, index) => {
+              return (
+                <li
+                  key={`priority-${song.id}`}
+                  className="jf-queue-item jf-queue-item--priority"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', String(index));
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(index);
+                  }}
+                  onDragLeave={() => setDragOver((cur) => (cur === index ? null : cur))}
+                  onDrop={(e) => {
+                    const from = Number(e.dataTransfer.getData('text/plain'));
+                    setDragOver(null);
+                    if (!Number.isNaN(from) && from !== index) move(from, index);
+                  }}
+                  onDragEnd={() => setDragOver(null)}
+                  onClick={() => void playFromQueue(index)}
+                  data-testid={`queue-item-${song.id}`}
+                >
+                  {dragOver === index && <span className="jf-queue-drop-line" aria-hidden="true" />}
+                  <span className="jf-queue-grip" aria-hidden="true" title="Arrastrar para reordenar">
+                    <DotsSixVertical size={14} />
+                  </span>
+                  <SongCover song={song} alt="" className="jf-queue-cover" />
+                  <div className="jf-queue-info">
+                    <p className="jf-queue-name">{song.name}</p>
+                    <p className="jf-queue-meta">{songArtistMeta(song) || song.added_by || 'JodiFy'}</p>
+                  </div>
+                  {typeof song.duration === 'number' && song.duration > 0 && (
+                    <span className="jf-queue-duration">{formatDuration(song.duration)}</span>
+                  )}
+                  <button
+                    className="jf-queue-remove"
+                    aria-label={`Quitar ${song.name} de la cola`}
+                    title="Quitar de prioridad"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      remove(song.id);
+                      useToastStore.getState().show('Quitado de la cola', 'info', 1500);
+                    }}
+                  >
+                    <X size={15} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* 3. SECCIÓN: SIGUIENTE EN TU LISTA / COLECCIÓN */}
+      <div className="jf-queue-section">
+        <div className="jf-queue-section-header">
+          <div className="jf-queue-header-left">
+            <span className="jf-queue-badge">
+              <ListBullets size={13} /> Siguiente de tu lista
+            </span>
+            <span className="jf-queue-count-pill">{upcomingFromCollection.length}</span>
+          </div>
+          {repeatMode === 'all' && (
+            <span className="jf-queue-loop-tag">En bucle</span>
+          )}
+        </div>
+
+        {upcomingFromCollection.length === 0 ? (
+          <EmptyState
+            icon={MusicNotes}
+            title="Final de la lista"
+            description="No hay más canciones siguientes en esta lista. Activa Repetir colección o agrega más temas."
+          />
+        ) : (
+          <ul className="jf-queue-list">
+            {upcomingFromCollection.map((song, i) => (
+              <li
+                key={`upcoming-${song.id}-${i}`}
+                className="jf-queue-item jf-queue-item--upcoming"
+                onClick={() => void playDirectly(song)}
+              >
+                <span className="jf-queue-index">{i + 1}</span>
                 <SongCover song={song} alt="" className="jf-queue-cover" />
                 <div className="jf-queue-info">
                   <p className="jf-queue-name">{song.name}</p>
                   <p className="jf-queue-meta">{songArtistMeta(song) || song.added_by || 'JodiFy'}</p>
                 </div>
-                <button
-                  className="jf-queue-remove"
-                  aria-label={`Quitar ${song.name} de la cola`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    remove(song.id);
-                    useToastStore.getState().show('Quitado de la cola', 'info', 1500);
-                  }}
-                >
-                  <X size={15} />
-                </button>
+                {typeof song.duration === 'number' && song.duration > 0 && (
+                  <span className="jf-queue-duration">{formatDuration(song.duration)}</span>
+                )}
+                <div className="jf-queue-item-actions">
+                  <button
+                    className="jf-queue-action-btn"
+                    title="Añadir a prioridad arriba"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      prioritizeSong(song);
+                    }}
+                  >
+                    <Plus size={14} />
+                  </button>
+                  <button
+                    className="jf-queue-action-btn jf-queue-action-btn--play"
+                    title="Reproducir ahora"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void playDirectly(song);
+                    }}
+                  >
+                    <Play size={13} weight="fill" />
+                  </button>
+                </div>
               </li>
-            );
-          })}
-        </ul>
-        </>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {totalUpcomingCount > 0 && (
+        <div className="jf-queue-footer-summary">
+          <span>Total en cola: <strong>{totalUpcomingCount}</strong> canciones</span>
+        </div>
       )}
     </Drawer>
   );

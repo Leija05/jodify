@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
-import { ArrowLeft, Eye, EyeSlash, ShieldCheck } from '@phosphor-icons/react';
+import { ArrowLeft, CheckCircle, Eye, EyeSlash, ShieldCheck, Sparkle } from '@phosphor-icons/react';
 import { useSession } from '../context/SessionContext';
 import { GUEST_HINT } from '../lib/constants';
 import { hasSavedToken } from '../lib/token';
 import { useToastStore } from '../store/toast.store';
 import { TokenValidation } from '../components/auth/TokenValidation';
+import { usersService } from '../services/users.service';
 import type { DevAccessResult } from '../services/dev.service';
 
 const stagger: Variants = {
@@ -19,7 +20,7 @@ const item: Variants = {
 };
 
 export function LoginPage() {
-  const { login, savedTokenLogin, applyDevAccess } = useSession();
+  const { applyUserSession, savedTokenLogin, applyDevAccess } = useSession();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,6 +33,9 @@ export function LoginPage() {
   const [saveTokenPermanent, setSaveTokenPermanent] = useState(false);
   const [validating, setValidating] = useState(false);
   const [savedBusy, setSavedBusy] = useState(false);
+
+  // Estado de éxito para la animación de login
+  const [loginSuccess, setLoginSuccess] = useState<{ username: string; role?: string } | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -49,23 +53,40 @@ export function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const ok = await login(username, password, keepSession);
-    if (!ok) setError('Usuario o contraseña incorrectos');
-    setBusy(false);
+    try {
+      const result = await usersService.login(username, password);
+      if (!result) {
+        setError('Usuario o contraseña incorrectos');
+        setBusy(false);
+        return;
+      }
+      setLoginSuccess({ username: result.username, role: result.role });
+      setTimeout(() => {
+        applyUserSession(result, keepSession);
+      }, 1050);
+    } catch {
+      setError('No se pudo conectar con el servidor');
+      setBusy(false);
+    }
   };
 
   const handleTokenSuccess = (result: DevAccessResult, save: boolean) => {
-    applyDevAccess(result, save);
-    useToastStore
-      .getState()
-      .show(result.role === 'admin' ? 'Token de admin validado' : 'Token dev validado', 'success');
+    setLoginSuccess({ username: result.username, role: result.role });
+    setTimeout(() => {
+      applyDevAccess(result, save);
+      useToastStore
+        .getState()
+        .show(result.role === 'admin' ? 'Token de admin validado' : 'Token dev validado', 'success');
+    }, 1050);
   };
 
   const handleSavedLogin = async () => {
     setSavedBusy(true);
     const result = await savedTokenLogin();
     setSavedBusy(false);
-    if (!result.ok) useToastStore.getState().show(result.error ?? 'El token guardado no es válido', 'error');
+    if (!result.ok) {
+      useToastStore.getState().show(result.error ?? 'El token guardado no es válido', 'error');
+    }
   };
 
   return (
@@ -79,14 +100,49 @@ export function LoginPage() {
 
       <div className="jf-login-shell">
         <motion.div
-          className="jf-login-card"
+          className={`jf-login-card ${loginSuccess ? 'is-success' : ''}`}
           initial={{ opacity: 0, y: 26, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
-          <motion.div variants={stagger} initial="hidden" animate="show">
-            {!tokenPanel ? (
-              <>
+          <AnimatePresence mode="wait">
+            {loginSuccess ? (
+              <motion.div
+                key="login-success-card"
+                className="jf-login-success-view"
+                initial={{ opacity: 0, scale: 0.85, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 1.08, filter: 'blur(12px)' }}
+                transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
+              >
+                <div className="jf-login-success-icon-wrap">
+                  <span className="jf-success-pulse-ring" />
+                  <span className="jf-success-pulse-ring delay-1" />
+                  <div className="jf-success-icon-core">
+                    <CheckCircle size={44} weight="fill" className="jf-success-check" />
+                  </div>
+                </div>
+
+                <div className="jf-login-success-texts">
+                  <div className="jf-login-success-badge">
+                    <Sparkle size={12} weight="fill" />
+                    <span>Acceso concedido</span>
+                  </div>
+                  <h2 className="jf-login-success-title">¡Bienvenido a JodiFy!</h2>
+                  <p className="jf-login-success-user">@{loginSuccess.username}</p>
+                </div>
+
+                <div className="jf-login-success-bars">
+                  <span className="bar-1" />
+                  <span className="bar-2" />
+                  <span className="bar-3" />
+                  <span className="bar-4" />
+                  <span className="bar-5" />
+                </div>
+                <p className="jf-login-success-sub">Preparando tu experiencia auditiva…</p>
+              </motion.div>
+            ) : !tokenPanel ? (
+              <motion.div key="standard-login" variants={stagger} initial="hidden" animate="show">
                 <motion.div className="jf-login-logo" variants={item}>
                   <motion.div
                     className="jf-login-logo-icon"
@@ -122,9 +178,10 @@ export function LoginPage() {
                       placeholder="Usuario"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      autoFocus
+                      required
                       autoComplete="username"
-                      aria-label="Usuario"
+                      autoFocus
+                      aria-label="Nombre de usuario"
                       data-testid="login-username"
                     />
                   </motion.div>
@@ -136,6 +193,7 @@ export function LoginPage() {
                       placeholder="Contraseña"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      required
                       autoComplete="current-password"
                       aria-label="Contraseña"
                       data-testid="login-password"
@@ -143,60 +201,55 @@ export function LoginPage() {
                     <button
                       type="button"
                       className="jf-password-toggle"
-                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                       onClick={() => setShowPassword((v) => !v)}
                     >
-                      {showPassword ? <EyeSlash size={17} /> : <Eye size={17} />}
+                      {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
                     </button>
                   </motion.div>
 
                   <motion.label
                     className="jf-remember"
-                    variants={item}
                     role="switch"
                     aria-checked={keepSession}
                     onClick={() => setKeepSession((v) => !v)}
+                    variants={item}
                   >
                     <span className={`jf-toggle ${keepSession ? 'is-on' : ''}`}>
                       <span className="jf-toggle-knob" />
                     </span>
-                    Mantener sesión
+                    Mantener sesión iniciada
                   </motion.label>
 
-                  <AnimatePresence>
-                    {error && (
-                      <motion.p
-                        className="jf-login-error"
-                        variants={item}
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                      >
-                        {error}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
+                  {error && (
+                    <motion.p
+                      className="jf-login-error"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      data-testid="login-error"
+                    >
+                      {error}
+                    </motion.p>
+                  )}
 
                   <motion.button
                     type="submit"
                     className="jf-btn jf-btn--primary jf-btn--lg jf-login-submit"
-                    disabled={busy}
+                    disabled={busy || !username.trim() || !password}
                     variants={item}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
                     data-testid="login-submit"
                   >
                     <span className="jf-btn-shine" aria-hidden="true" />
-                    {busy ? 'Entrando…' : 'Entrar'}
+                    {busy ? 'Iniciando sesión…' : 'Entrar'}
                   </motion.button>
                 </form>
 
                 <motion.p className="jf-login-hint" variants={item}>
-                  Invitado: <strong>{GUEST_HINT}</strong>
+                  ¿Invitado? Probá <strong>{GUEST_HINT}</strong>
                 </motion.p>
-              </>
+              </motion.div>
             ) : validating ? (
-              <motion.div key="token-validation" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+              <motion.div key="token-validating" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
                 <TokenValidation token={token} save={saveTokenPermanent} onCancel={() => setValidating(false)} onSuccess={handleTokenSuccess} />
               </motion.div>
             ) : (
@@ -253,7 +306,7 @@ export function LoginPage() {
                 </div>
               </motion.div>
             )}
-          </motion.div>
+          </AnimatePresence>
         </motion.div>
       </div>
     </div>

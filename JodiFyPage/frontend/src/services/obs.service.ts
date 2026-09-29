@@ -1,9 +1,11 @@
 import { usePlayerStore } from '../store/player.store';
 import { useSettingsStore } from '../store/settings.store';
-import { resolveMediaUrl, throttle } from '../lib/utils';
+import { resolveMediaUrl, songArtistMeta, throttle } from '../lib/utils';
 
-interface ObsState {
+export interface ObsState {
   title: string | null;
+  artist: string | null;
+  album: string | null;
   addedBy: string | null;
   cover: string | null;
   currentTime: number;
@@ -13,7 +15,15 @@ interface ObsState {
 }
 
 const KEY = 'jodify_obs_overlay_state';
-const DEFAULT_BASE = 'http://127.0.0.1:8000/obs-overlay.html';
+
+let channel: BroadcastChannel | null = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    channel = new BroadcastChannel('jodify_obs_channel');
+  }
+} catch {
+  channel = null;
+}
 
 function currentState(): ObsState | null {
   try {
@@ -26,27 +36,48 @@ function currentState(): ObsState | null {
 
 const persist = throttle(() => {
   const player = usePlayerStore.getState();
+  const song = player.currentSong;
   const state: ObsState = {
-    title: player.currentSong?.name ?? null,
-    addedBy: player.currentSong?.added_by ?? null,
-    cover: resolveMediaUrl(player.currentSong?.cover_url ?? player.currentSong?.coverUrl ?? null),
+    title: song?.name ?? null,
+    artist: songArtistMeta(song),
+    album: song?.album ?? null,
+    addedBy: song?.added_by ?? null,
+    cover: resolveMediaUrl(song?.cover_url ?? null),
     currentTime: player.currentTime,
     duration: player.duration,
     isPlaying: player.isPlaying,
     updatedAt: Date.now(),
   };
-  localStorage.setItem(KEY, JSON.stringify(state));
-}, 1000);
+
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    channel?.postMessage(state);
+  } catch {
+    /* non-blocking */
+  }
+}, 500);
 
 export const obsService = {
   persist,
   currentState,
 
   baseUrl(): string {
-    return useSettingsStore.getState().obsOverlayBaseUrl || DEFAULT_BASE;
+    const custom = useSettingsStore.getState().obsOverlayBaseUrl;
+    if (custom) return custom;
+    if (typeof window !== 'undefined' && window.jodifyUpdater?.isDesktop) {
+      return 'http://127.0.0.1:8765/obs-overlay.html';
+    }
+    if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.startsWith('file:')) {
+      return `${window.location.origin}/obs-overlay.html`;
+    }
+    return 'http://127.0.0.1:8765/obs-overlay.html';
   },
 
-  fullUrl(): string {
-    return `${this.baseUrl()}?t=${encodeURIComponent(currentState()?.title ?? '')}`;
+  fullUrl(theme?: string): string {
+    const base = this.baseUrl();
+    const query = new URLSearchParams();
+    if (theme && theme !== 'default') query.set('theme', theme);
+    const queryString = query.toString();
+    return queryString ? `${base}?${queryString}` : base;
   },
 };
