@@ -24,6 +24,10 @@ import {
   Gear,
   MusicNotes,
   Lock,
+  Desktop,
+  DeviceMobile,
+  Globe,
+  GameController,
 } from '@phosphor-icons/react';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
@@ -36,7 +40,7 @@ import { useToastStore } from '../../store/toast.store';
 import { fetchListeningStats, fetchTopSongs, usersService } from '../../services/users.service';
 import { fetchLanyardProfile } from '../../services/social.service';
 import { downloadJson, getSongCoverCandidates, calculateMelomanoLevel } from '../../lib/utils';
-import { statusView } from '../../lib/status';
+import { statusView, presenceLabel } from '../../lib/status';
 import { usePlayerStore } from '../../store/player.store';
 import { playSong } from '../../services/player.service';
 import {
@@ -45,8 +49,10 @@ import {
   PROFILE_EFFECT_UNLOCKS,
   ACCENT_COLOR_PRESETS,
   PROFILE_BADGE_PRESETS,
+  DISCORD_GRADIENT_PRESETS,
   isStyleUnlocked,
 } from '../../lib/unlocks';
+import { useSongCoverGradient } from '../../lib/colorExtractor';
 import { AnthemCard } from './AnthemCard';
 import type { DiscordProfile, UserAccess } from '../../lib/types';
 
@@ -134,6 +140,10 @@ export function ProfileModal() {
   const [selectedAccent, setSelectedAccent] = useState('#00f0ff');
   const [anthemSongId, setAnthemSongId] = useState<string | number | ''>('');
   const [bioText, setBioText] = useState('');
+  const [profileBgMode, setProfileBgMode] = useState<'preset' | 'gradient' | 'anthem_cover'>('preset');
+  const [customGradientStart, setCustomGradientStart] = useState('#6366f1');
+  const [customGradientEnd, setCustomGradientEnd] = useState('#ec4899');
+  const [showDiscordActivity, setShowDiscordActivity] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -166,6 +176,10 @@ export function ProfileModal() {
         setVibeText(profileData.vibe || '⚡ A tope de ritmo');
         setAnthemSongId(profileData.anthem_song_id ?? '');
         setBioText(profileData.bio || '');
+        setProfileBgMode(profileData.profile_bg_mode || 'preset');
+        setCustomGradientStart(profileData.custom_gradient_start || '#6366f1');
+        setCustomGradientEnd(profileData.custom_gradient_end || '#ec4899');
+        setShowDiscordActivity(profileData.show_discord_activity !== undefined ? Boolean(profileData.show_discord_activity) : true);
       }
 
       if (profileData?.discord_id) {
@@ -296,6 +310,10 @@ export function ProfileModal() {
         avatar_frame: selectedFrame,
         accent_color: selectedAccent,
         profile_effect: selectedEffect,
+        profile_bg_mode: profileBgMode,
+        custom_gradient_start: customGradientStart,
+        custom_gradient_end: customGradientEnd,
+        show_discord_activity: showDiscordActivity,
         custom_badge: selectedBadge ? selectedBadge.trim() : null,
         vibe: vibeText.trim() ? vibeText.trim() : null,
         bio: bioText.trim(),
@@ -317,6 +335,10 @@ export function ProfileModal() {
       setVibeText(updated.vibe || '⚡ A tope de ritmo');
       setAnthemSongId(updated.anthem_song_id ?? '');
       setBioText(updated.bio || '');
+      setProfileBgMode(updated.profile_bg_mode || 'preset');
+      setCustomGradientStart(updated.custom_gradient_start || '#6366f1');
+      setCustomGradientEnd(updated.custom_gradient_end || '#ec4899');
+      setShowDiscordActivity(updated.show_discord_activity !== undefined ? Boolean(updated.show_discord_activity) : true);
 
       updateSessionProfile({
         display_name: updated.display_name,
@@ -338,6 +360,30 @@ export function ProfileModal() {
     const id = profile?.anthem_song_id ?? anthemSongId;
     return librarySongs.find((s) => String(s.id) === String(id)) ?? null;
   }, [profile?.anthem_song_id, anthemSongId, librarySongs]);
+
+  const anthemCoverGradient = useSongCoverGradient(anthemSong);
+
+  const profileShellStyle = useMemo(() => {
+    if (profileBgMode === 'anthem_cover' && anthemSong) {
+      return {
+        background: anthemCoverGradient.cardStyle.background,
+        borderColor: anthemCoverGradient.cardStyle.borderColor,
+        boxShadow: `0 16px 44px -8px ${anthemCoverGradient.glowColor}`,
+        '--jf-grad-start': anthemCoverGradient.primary,
+        '--jf-grad-end': anthemCoverGradient.secondary,
+      } as React.CSSProperties;
+    }
+    if (profileBgMode === 'gradient') {
+      return {
+        background: `linear-gradient(135deg, ${customGradientStart} 0%, ${customGradientEnd} 100%)`,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
+        boxShadow: `0 16px 44px -8px ${customGradientStart}66`,
+        '--jf-grad-start': customGradientStart,
+        '--jf-grad-end': customGradientEnd,
+      } as React.CSSProperties;
+    }
+    return undefined;
+  }, [profileBgMode, anthemSong, anthemCoverGradient, customGradientStart, customGradientEnd]);
 
   const playAnthem = async () => {
     if (!anthemSong) return;
@@ -366,8 +412,20 @@ export function ProfileModal() {
           <Spinner size={24} />
         </div>
       ) : (
-        <div className={`jf-profile-shell theme--${selectedTheme}`}>
+        <div
+          className={`jf-profile-shell ${
+            profileBgMode === 'gradient'
+              ? 'jf-profile-shell--gradient'
+              : profileBgMode === 'anthem_cover'
+              ? 'jf-profile-shell--anthem'
+              : `theme--${selectedTheme}`
+          }`}
+          style={profileShellStyle}
+        >
           <div className="jf-profile-banner" aria-hidden="true">
+            {selectedEffect !== 'none' && (
+              <div className={`jf-profile-effect-layer jf-profile-effect--${selectedEffect}`} />
+            )}
             <span className="jf-profile-orb jf-profile-orb--a" />
             <span className="jf-profile-orb jf-profile-orb--b" />
           </div>
@@ -414,8 +472,20 @@ export function ProfileModal() {
 
             {/* LIVE PREVIEW BANNER (Visible en pestañas de personalización) */}
             {activeTab !== 'showcase' && activeTab !== 'account' && (
-              <div className="jf-studio-live-preview">
+              <div
+                className={`jf-studio-live-preview ${
+                  profileBgMode === 'gradient'
+                    ? 'jf-profile-shell--gradient'
+                    : profileBgMode === 'anthem_cover'
+                    ? 'jf-profile-shell--anthem'
+                    : `theme--${selectedTheme}`
+                }`}
+                style={profileShellStyle}
+              >
                 <div className="jf-profile-banner" aria-hidden="true">
+                  {selectedEffect !== 'none' && (
+                    <div className={`jf-profile-effect-layer jf-profile-effect--${selectedEffect}`} />
+                  )}
                   <span className="jf-profile-orb jf-profile-orb--a" />
                   <span className="jf-profile-orb jf-profile-orb--b" />
                 </div>
@@ -541,6 +611,54 @@ export function ProfileModal() {
                     </div>
                   </div>
 
+                  {/* PROMINENTE TIEMPO TOTAL ESCUCHADO HERO CARD */}
+                  <div className="jf-listening-hero-card" style={{ marginBottom: '16px' }}>
+                    <div className="jf-listening-hero-top">
+                      <div className="jf-listening-hero-badge-group">
+                        <div className="jf-listening-gold-icon">
+                          <ClockCounterClockwise size={26} weight="fill" />
+                        </div>
+                        <div className="jf-listening-hero-headings">
+                          <span className="jf-listening-hero-label">
+                            <Sparkle size={12} weight="fill" /> Tiempo Total Escuchado
+                          </span>
+                          <span className="jf-listening-hero-hours">
+                            {melomano.listenedHours > 0 ? (
+                              <>
+                                {melomano.listenedHours} <span style={{ fontSize: '15px', fontWeight: 600 }}>Horas</span> {melomano.listenedMinutes % 60} <span style={{ fontSize: '15px', fontWeight: 600 }}>Min</span>
+                              </>
+                            ) : (
+                              <>
+                                {melomano.listenedMinutes} <span style={{ fontSize: '15px', fontWeight: 600 }}>Minutos</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className="jf-melomano-title" style={{ justifyContent: 'flex-end', fontSize: '13px' }}>
+                          {melomano.badgeEmoji} Rango Nivel {melomano.level}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)', display: 'block', marginTop: '2px' }}>
+                          {melomano.title} • {stats?.played ?? 0} reproducciones
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="jf-listening-hero-progress-section">
+                      <div className="jf-listening-hero-bar">
+                        <div
+                          className="jf-listening-hero-fill"
+                          style={{ width: `${melomano.progressPercent}%` }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
+                        <span>{melomano.currentXp} XP Acumulados</span>
+                        <span>{melomano.nextLevelXp - melomano.currentXp} XP para Nivel {melomano.level + 1}</span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* 2-Column Bento Grid */}
                   <div className="jf-profile-bento">
                     {/* Columna Principal Izquierda */}
@@ -635,34 +753,87 @@ export function ProfileModal() {
                         </div>
                       </div>
 
-                      {/* Discord Card */}
-                      <div className="jf-discord-panel" style={{ marginTop: 0 }}>
-                        <span className="jf-discord-chip"><DiscordLogo size={20} weight="fill" /></span>
-                        <div className="jf-discord-info">
-                          {discord ? (
-                            <>
-                              <p className="jf-discord-name">{discord.display_name}</p>
-                              <p className="jf-discord-tag">@{discord.user_name} · Conectado</p>
-                            </>
-                          ) : (
-                            <>
-                              <p className="jf-discord-name">Discord</p>
-                              <p className="jf-discord-tag">Sin vincular</p>
-                            </>
+                      {/* Discord Rich Presence Card */}
+                      {discord ? (
+                        <div className="jf-discord-rich-card" style={{ marginTop: 0 }}>
+                          <div className="jf-discord-rich-header">
+                            <div className="jf-discord-rich-user">
+                              <DiscordLogo size={20} weight="fill" style={{ color: '#5865f2' }} />
+                              <div>
+                                <p className="jf-discord-name" style={{ fontSize: '13px', margin: 0, fontWeight: 700 }}>{discord.display_name}</p>
+                                <p className="jf-discord-tag" style={{ margin: 0, fontSize: '11px' }}>@{discord.user_name} · {presenceLabel(discord.presence ?? 'online')}</p>
+                              </div>
+                            </div>
+                            {showDiscordActivity && discord.devices && (
+                              <div className="jf-discord-rich-devices">
+                                {discord.devices.desktop && <span className="jf-device-badge" title="Activo en Discord PC"><Desktop size={13} /></span>}
+                                {discord.devices.mobile && <span className="jf-device-badge" title="Activo en Discord Móvil"><DeviceMobile size={13} /></span>}
+                                {discord.devices.web && <span className="jf-device-badge" title="Activo en Discord Web"><Globe size={13} /></span>}
+                              </div>
+                            )}
+                          </div>
+
+                          {showDiscordActivity && discord.custom_status?.text && (
+                            <div className="jf-discord-custom-status-row">
+                              {discord.custom_status.emoji?.name && <span>{discord.custom_status.emoji.name}</span>}
+                              <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                "{discord.custom_status.text}"
+                              </span>
+                            </div>
                           )}
-                        </div>
-                        <div className="jf-discord-actions">
-                          {discord ? (
+
+                          {showDiscordActivity && discord.activity && (
+                            <div className="jf-discord-activity-section">
+                              <GameController size={18} weight="fill" style={{ color: '#a5b4fc', flexShrink: 0 }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span className="jf-discord-act-badge">Actividad / Juego</span>
+                                <p style={{ margin: '1px 0 0', fontSize: '12px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {discord.activity.name}
+                                </p>
+                                {discord.activity.details && (
+                                  <p style={{ margin: 0, fontSize: '10.5px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {discord.activity.details}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {showDiscordActivity && discord.spotify && (
+                            <div className="jf-discord-activity-section is-spotify" style={{ marginTop: '6px' }}>
+                              <MusicNotes size={18} weight="fill" style={{ color: '#1ed760', flexShrink: 0 }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span className="jf-discord-act-badge is-spotify">Escuchando en Spotify</span>
+                                <p style={{ margin: '1px 0 0', fontSize: '12px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {discord.spotify.song}
+                                </p>
+                                <p style={{ margin: 0, fontSize: '10.5px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {discord.spotify.artist}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="jf-discord-actions" style={{ marginTop: '10px', justifyContent: 'flex-end' }}>
                             <Button variant="outline" size="sm" onClick={handleLink}>
-                              <LinkSimple size={13} /> Cambiar
+                              <LinkSimple size={13} /> Gestionar
                             </Button>
-                          ) : (
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="jf-discord-panel" style={{ marginTop: 0 }}>
+                          <span className="jf-discord-chip"><DiscordLogo size={20} weight="fill" /></span>
+                          <div className="jf-discord-info">
+                            <p className="jf-discord-name">Discord</p>
+                            <p className="jf-discord-tag">Sin vincular</p>
+                          </div>
+                          <div className="jf-discord-actions">
                             <Button variant="primary" size="sm" onClick={handleLink}>
                               <DiscordLogo size={13} weight="fill" /> Vincular
                             </Button>
-                          )}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Acciones Rápidas */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -949,64 +1120,186 @@ export function ProfileModal() {
                     </div>
                   </div>
 
-                  {/* Selector de Temas con Desbloqueos */}
+                  {/* Selector de Modo de Fondo de Perfil (Estilo Discord) */}
                   <div className="jf-profile-editor-field">
                     <label className="jf-profile-editor-label">
-                      <span>Tema y Fondo del Perfil</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'none' }}>
-                        Transforma la paleta y fondo de tu perfil
+                      <span>Personalización de Fondo (Estilo Discord Nitro)</span>
+                      <span style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'none' }}>
+                        Elige cómo se colorea la tarjeta y banner de tu perfil
                       </span>
                     </label>
-                    <div className="jf-profile-theme-grid">
-                      {PROFILE_THEME_UNLOCKS.map((th) => {
-                        const unlocked = isStyleUnlocked(th.requiredLevel, melomano.level);
-                        const progress = Math.min(100, Math.round((melomano.level / th.requiredLevel) * 100));
-                        return (
-                          <button
-                            key={th.id}
-                            type="button"
-                            className={`jf-profile-theme-card jf-unlock-card ${selectedTheme === th.id ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
-                            onClick={() => {
-                              if (!unlocked) {
-                                toast.show(
-                                  `🔒 Tema bloqueado: Requiere Nivel ${th.requiredLevel} (${th.name}). ¡Sigue acumulando tiempo de escucha!`,
-                                  'warning',
-                                  3200,
-                                );
-                                return;
-                              }
-                              setSelectedTheme(th.id);
-                            }}
-                            title={unlocked ? th.description : `Requiere Nivel ${th.requiredLevel}`}
-                          >
-                            <span
-                              className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}
-                            >
-                              {unlocked ? (
-                                `✓ Nvl ${th.requiredLevel}`
-                              ) : (
-                                <>
-                                  <Lock size={10} weight="bold" /> Nvl {th.requiredLevel}
-                                </>
-                              )}
-                            </span>
-                            <span className="jf-theme-swatch" style={{ background: th.gradient || th.color }} />
-                            <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
-                              <span style={{ display: 'block', fontWeight: 600, fontSize: '12px' }}>{th.name}</span>
-                              <span style={{ display: 'block', fontSize: '10px', color: 'rgba(255,255,255,0.5)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                                {th.description}
-                              </span>
-                              {!unlocked && (
-                                <div className="jf-unlock-progress-bar">
-                                  <div className="jf-unlock-progress-fill" style={{ width: `${progress}%` }} />
-                                </div>
-                              )}
-                            </div>
-                            {selectedTheme === th.id && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
-                          </button>
-                        );
-                      })}
+
+                    <div className="jf-mode-selector-tabs">
+                      <button
+                        type="button"
+                        className={`jf-mode-selector-tab ${profileBgMode === 'gradient' ? 'is-active' : ''}`}
+                        onClick={() => setProfileBgMode('gradient')}
+                      >
+                        <Sparkle size={14} weight="fill" /> Gradiente Duotono
+                      </button>
+                      <button
+                        type="button"
+                        className={`jf-mode-selector-tab ${profileBgMode === 'anthem_cover' ? 'is-active' : ''}`}
+                        onClick={() => {
+                          setProfileBgMode('anthem_cover');
+                          if (!anthemSong) {
+                            toast.show('💡 Sugerencia: Elige un himno personal en la pestaña "Identidad" para que extraiga los colores.', 'info', 3000);
+                          }
+                        }}
+                      >
+                        <MusicNotes size={14} weight="fill" /> Sincronizar con Himno
+                      </button>
+                      <button
+                        type="button"
+                        className={`jf-mode-selector-tab ${profileBgMode === 'preset' ? 'is-active' : ''}`}
+                        onClick={() => setProfileBgMode('preset')}
+                      >
+                        <PaintBrush size={14} /> Temas Predefinidos
+                      </button>
                     </div>
+
+                    {/* MODO 1: GRADIENTE DUOTONO DISCORD */}
+                    {profileBgMode === 'gradient' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div className="jf-discord-gradient-grid">
+                          {DISCORD_GRADIENT_PRESETS.map((gp) => {
+                            const unlocked = isStyleUnlocked(gp.level, melomano.level);
+                            const isActive = customGradientStart === gp.start && customGradientEnd === gp.end;
+                            return (
+                              <button
+                                key={gp.id}
+                                type="button"
+                                className={`jf-discord-gradient-card jf-unlock-card ${isActive ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                                onClick={() => {
+                                  if (!unlocked) {
+                                    toast.show(`🔒 Gradiente bloqueado: Requiere Nivel ${gp.level}. ¡Sigue escuchando música!`, 'warning');
+                                    return;
+                                  }
+                                  setCustomGradientStart(gp.start);
+                                  setCustomGradientEnd(gp.end);
+                                }}
+                              >
+                                <span className="jf-gradient-swatch-bar" style={{ background: `linear-gradient(135deg, ${gp.start} 0%, ${gp.end} 100%)` }} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>{gp.name}</span>
+                                  {isActive && <Check size={13} weight="bold" style={{ color: '#00f0ff' }} />}
+                                  {!unlocked && <Lock size={11} style={{ color: 'rgba(255,255,255,0.5)' }} />}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Selector manual de colores duotono */}
+                        <div className="jf-gradient-duo-inputs">
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>Colores Personalizados:</span>
+                          <div className="jf-gradient-duo-picker">
+                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)' }}>Inicio:</span>
+                            <input
+                              type="color"
+                              className="jf-color-input-bubble"
+                              value={customGradientStart}
+                              onChange={(e) => setCustomGradientStart(e.target.value)}
+                              title="Color primario del gradiente"
+                            />
+                            <span style={{ fontSize: '11px', fontFamily: 'monospace' }}>{customGradientStart}</span>
+                          </div>
+                          <div className="jf-gradient-duo-picker">
+                            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)' }}>Fin:</span>
+                            <input
+                              type="color"
+                              className="jf-color-input-bubble"
+                              value={customGradientEnd}
+                              onChange={(e) => setCustomGradientEnd(e.target.value)}
+                              title="Color secundario del gradiente"
+                            />
+                            <span style={{ fontSize: '11px', fontFamily: 'monospace' }}>{customGradientEnd}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MODO 2: SINCRONIZAR CON PORTADA DEL HIMNO */}
+                    {profileBgMode === 'anthem_cover' && (
+                      <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        {anthemSong ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div style={{ width: '48px', height: '48px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
+                              <img
+                                src={getSongCoverCandidates(anthemSong as unknown as Record<string, unknown>)[0] || '/assets/default-cover.png'}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ margin: 0, fontSize: '12.5px', fontWeight: 700, color: '#fff' }}>
+                                Generando paleta dinámica desde: "{anthemSong.name}"
+                              </p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                                <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: anthemCoverGradient.primary, border: '1px solid rgba(255,255,255,0.3)' }} title={`Primario: ${anthemCoverGradient.primary}`} />
+                                <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: anthemCoverGradient.secondary, border: '1px solid rgba(255,255,255,0.3)' }} title={`Secundario: ${anthemCoverGradient.secondary}`} />
+                                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)' }}>Armonía cromática extraída en vivo</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', padding: '12px' }}>
+                            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                              No tienes un himno seleccionado actualmente. Ve a la pestaña <strong>Identidad y Vibe</strong> para elegir uno y activar la paleta automática.
+                            </p>
+                            <Button variant="outline" size="sm" onClick={() => setActiveTab('identity')} style={{ marginTop: '8px' }}>
+                              Elegir Himno Personal
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* MODO 3: TEMAS PREDEFINIDOS */}
+                    {profileBgMode === 'preset' && (
+                      <div className="jf-profile-theme-grid">
+                        {PROFILE_THEME_UNLOCKS.map((th) => {
+                          const unlocked = isStyleUnlocked(th.requiredLevel, melomano.level);
+                          const progress = Math.min(100, Math.round((melomano.level / th.requiredLevel) * 100));
+                          return (
+                            <button
+                              key={th.id}
+                              type="button"
+                              className={`jf-profile-theme-card jf-unlock-card ${selectedTheme === th.id ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                              onClick={() => {
+                                if (!unlocked) {
+                                  toast.show(
+                                    `🔒 Tema bloqueado: Requiere Nivel ${th.requiredLevel} (${th.name}). ¡Sigue acumulando tiempo de escucha!`,
+                                    'warning',
+                                    3200,
+                                  );
+                                  return;
+                                }
+                                setSelectedTheme(th.id);
+                              }}
+                              title={unlocked ? th.description : `Requiere Nivel ${th.requiredLevel}`}
+                            >
+                              <span className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}>
+                                {unlocked ? `✓ Nvl ${th.requiredLevel}` : <><Lock size={10} weight="bold" /> Nvl {th.requiredLevel}</>}
+                              </span>
+                              <span className="jf-theme-swatch" style={{ background: th.gradient || th.color }} />
+                              <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                                <span style={{ display: 'block', fontWeight: 600, fontSize: '12px' }}>{th.name}</span>
+                                <span style={{ display: 'block', fontSize: '10px', color: 'rgba(255,255,255,0.5)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                  {th.description}
+                                </span>
+                                {!unlocked && (
+                                  <div className="jf-unlock-progress-bar">
+                                    <div className="jf-unlock-progress-fill" style={{ width: `${progress}%` }} />
+                                  </div>
+                                )}
+                              </div>
+                              {selectedTheme === th.id && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Selector de Atmósfera y Efectos de Fondo */}
@@ -1318,6 +1611,29 @@ export function ProfileModal() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                    {discord && (
+                      <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(88,101,242,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                        <div>
+                          <p style={{ fontSize: '13.5px', fontWeight: 700, color: '#fff', margin: 0 }}>Mostrar Actividad y Presencia de Discord</p>
+                          <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', margin: '3px 0 0' }}>Muestra tu estado personalizado con emoji, juego activo, Spotify y dispositivos en tu perfil público</p>
+                        </div>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '6px' }}>
+                          <input
+                            type="checkbox"
+                            style={{ width: '18px', height: '18px', accentColor: '#5865f2', cursor: 'pointer' }}
+                            checked={showDiscordActivity}
+                            onChange={(e) => {
+                              setShowDiscordActivity(e.target.checked);
+                              if (session) {
+                                void usersService.updateProfile(session.username, { show_discord_activity: e.target.checked });
+                                toast.show(e.target.checked ? 'Actividad de Discord visible' : 'Actividad de Discord oculta', 'info', 2000);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    )}
+
                     <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div>
                         <p style={{ fontSize: '13.5px', fontWeight: 700, color: '#fff' }}>Exportar mis Estadísticas</p>

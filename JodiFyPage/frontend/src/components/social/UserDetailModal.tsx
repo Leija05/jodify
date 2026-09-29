@@ -9,6 +9,10 @@ import {
   Sparkle,
   Fire,
   ShareNetwork,
+  Desktop,
+  DeviceMobile,
+  Globe,
+  GameController,
 } from '@phosphor-icons/react';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
@@ -23,7 +27,8 @@ import { usePlayerStore } from '../../store/player.store';
 import { useSession } from '../../context/SessionContext';
 import { playSong } from '../../services/player.service';
 import { timeAgo, resolveAvatarSrc, calculateMelomanoLevel } from '../../lib/utils';
-import { statusView, jfIsOnline } from '../../lib/status';
+import { statusView, jfIsOnline, presenceLabel } from '../../lib/status';
+import { useSongCoverGradient } from '../../lib/colorExtractor';
 import { AnthemCard } from './AnthemCard';
 import type { CommunityUser } from '../../lib/types';
 
@@ -130,18 +135,49 @@ export function UserDetailModal() {
     toast.show('¡Enlace de perfil copiado al portapapeles!', 'info', 2000);
   };
 
-  const themeClass = user?.theme ? `theme--${user.theme}` : 'theme--aurora';
+  const anthemCoverGradient = useSongCoverGradient(anthemSong);
+
+  const profileShellStyle = useMemo(() => {
+    if (!user) return undefined;
+    if (user.profile_bg_mode === 'anthem_cover' && anthemSong) {
+      return {
+        background: anthemCoverGradient.cardStyle.background,
+        borderColor: anthemCoverGradient.cardStyle.borderColor,
+        boxShadow: `0 16px 44px -8px ${anthemCoverGradient.glowColor}`,
+        '--jf-grad-start': anthemCoverGradient.primary,
+        '--jf-grad-end': anthemCoverGradient.secondary,
+      } as React.CSSProperties;
+    }
+    if (user.profile_bg_mode === 'gradient' && user.custom_gradient_start && user.custom_gradient_end) {
+      return {
+        background: `linear-gradient(135deg, ${user.custom_gradient_start} 0%, ${user.custom_gradient_end} 100%)`,
+        borderColor: 'rgba(255, 255, 255, 0.25)',
+        boxShadow: `0 16px 44px -8px ${user.custom_gradient_start}66`,
+        '--jf-grad-start': user.custom_gradient_start,
+        '--jf-grad-end': user.custom_gradient_end,
+      } as React.CSSProperties;
+    }
+    return undefined;
+  }, [user, anthemSong, anthemCoverGradient]);
+
+  const shellClass = useMemo(() => {
+    if (!user) return '';
+    if (user.profile_bg_mode === 'gradient') return 'jf-profile-shell--gradient';
+    if (user.profile_bg_mode === 'anthem_cover') return 'jf-profile-shell--anthem';
+    return user.theme ? `theme--${user.theme}` : 'theme--aurora';
+  }, [user]);
+
   const frameClass = user?.avatar_frame && user.avatar_frame !== 'none' ? `jf-avatar-frame--${user.avatar_frame}` : '';
   const avatarSrc = resolveAvatarSrc(user);
 
   return (
-    <Modal name="userDetail" title="Inspeccionar Perfil Steam" width={880} className="jf-modal--profile">
+    <Modal name="userDetail" title="Inspeccionar Perfil" width={880} className="jf-modal--profile">
       {loading || !user ? (
         <div className="jf-profile-loading">
           <Spinner size={24} />
         </div>
       ) : (
-        <div className={`jf-profile-shell ${themeClass}`}>
+        <div className={`jf-profile-shell ${shellClass}`} style={profileShellStyle}>
           {/* Partículas de Reacción Flotantes */}
           {particles.map((pt) => (
             <span
@@ -154,6 +190,9 @@ export function UserDetailModal() {
           ))}
 
           <div className="jf-profile-banner" aria-hidden="true">
+            {user.profile_effect && user.profile_effect !== 'none' && (
+              <div className={`jf-profile-effect-layer jf-profile-effect--${user.profile_effect}`} />
+            )}
             <span className="jf-profile-orb jf-profile-orb--a" />
             <span className="jf-profile-orb jf-profile-orb--b" />
           </div>
@@ -245,6 +284,54 @@ export function UserDetailModal() {
                   <span className="jf-melomano-progress-text">
                     {melomano.currentXp} / {melomano.nextLevelXp} XP ({melomano.progressPercent}%)
                   </span>
+                </div>
+              </div>
+            </div>
+
+            {/* PROMINENTE TIEMPO TOTAL ESCUCHADO HERO CARD */}
+            <div className="jf-listening-hero-card" style={{ margin: '14px 0 6px 0' }}>
+              <div className="jf-listening-hero-top">
+                <div className="jf-listening-hero-badge-group">
+                  <div className="jf-listening-gold-icon">
+                    <ClockCounterClockwise size={26} weight="fill" />
+                  </div>
+                  <div className="jf-listening-hero-headings">
+                    <span className="jf-listening-hero-label">
+                      <Sparkle size={12} weight="fill" /> Horas Totales Escuchadas
+                    </span>
+                    <span className="jf-listening-hero-hours">
+                      {melomano.listenedHours > 0 ? (
+                        <>
+                          {melomano.listenedHours} <span style={{ fontSize: '15px', fontWeight: 600 }}>Horas</span> {melomano.listenedMinutes % 60} <span style={{ fontSize: '15px', fontWeight: 600 }}>Min</span>
+                        </>
+                      ) : (
+                        <>
+                          {melomano.listenedMinutes} <span style={{ fontSize: '15px', fontWeight: 600 }}>Minutos</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span className="jf-melomano-title" style={{ justifyContent: 'flex-end', fontSize: '13px' }}>
+                    {melomano.badgeEmoji} Rango Nivel {melomano.level}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)', display: 'block', marginTop: '2px' }}>
+                    {melomano.title} • {stats?.played ?? 0} reproducciones
+                  </span>
+                </div>
+              </div>
+
+              <div className="jf-listening-hero-progress-section">
+                <div className="jf-listening-hero-bar">
+                  <div
+                    className="jf-listening-hero-fill"
+                    style={{ width: `${melomano.progressPercent}%` }}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
+                  <span>{melomano.currentXp} XP Acumulados</span>
+                  <span>{melomano.nextLevelXp - melomano.currentXp} XP para Nivel {melomano.level + 1}</span>
                 </div>
               </div>
             </div>
@@ -376,14 +463,66 @@ export function UserDetailModal() {
                   </div>
                 </div>
 
-                {/* Discord Card */}
+                {/* Discord Rich Presence Card */}
                 {user.discord && (
-                  <div className="jf-discord-panel" style={{ marginTop: 0 }}>
-                    <span className="jf-discord-chip"><DiscordLogo size={20} weight="fill" /></span>
-                    <div className="jf-discord-info">
-                      <p className="jf-discord-name">{user.discord.display_name}</p>
-                      <p className="jf-discord-tag">@{user.discord.user_name} · Discord</p>
+                  <div className="jf-discord-rich-card" style={{ marginTop: 0 }}>
+                    <div className="jf-discord-rich-header">
+                      <div className="jf-discord-rich-user">
+                        <DiscordLogo size={20} weight="fill" style={{ color: '#5865f2' }} />
+                        <div>
+                          <p className="jf-discord-name" style={{ fontSize: '13px', margin: 0, fontWeight: 700 }}>{user.discord.display_name}</p>
+                          <p className="jf-discord-tag" style={{ margin: 0, fontSize: '11px' }}>@{user.discord.user_name} · {presenceLabel(user.discord.presence ?? 'online')}</p>
+                        </div>
+                      </div>
+                      {user.show_discord_activity !== false && user.discord.devices && (
+                        <div className="jf-discord-rich-devices">
+                          {user.discord.devices.desktop && <span className="jf-device-badge" title="Activo en Discord PC"><Desktop size={13} /></span>}
+                          {user.discord.devices.mobile && <span className="jf-device-badge" title="Activo en Discord Móvil"><DeviceMobile size={13} /></span>}
+                          {user.discord.devices.web && <span className="jf-device-badge" title="Activo en Discord Web"><Globe size={13} /></span>}
+                        </div>
+                      )}
                     </div>
+
+                    {user.show_discord_activity !== false && user.discord.custom_status?.text && (
+                      <div className="jf-discord-custom-status-row">
+                        {user.discord.custom_status.emoji?.name && <span>{user.discord.custom_status.emoji.name}</span>}
+                        <span style={{ fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          "{user.discord.custom_status.text}"
+                        </span>
+                      </div>
+                    )}
+
+                    {user.show_discord_activity !== false && user.discord.activity && (
+                      <div className="jf-discord-activity-section">
+                        <GameController size={18} weight="fill" style={{ color: '#a5b4fc', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span className="jf-discord-act-badge">Actividad / Juego</span>
+                          <p style={{ margin: '1px 0 0', fontSize: '12px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {user.discord.activity.name}
+                          </p>
+                          {user.discord.activity.details && (
+                            <p style={{ margin: 0, fontSize: '10.5px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {user.discord.activity.details}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {user.show_discord_activity !== false && user.discord.spotify && (
+                      <div className="jf-discord-activity-section is-spotify" style={{ marginTop: '6px' }}>
+                        <MusicNotes size={18} weight="fill" style={{ color: '#1ed760', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span className="jf-discord-act-badge is-spotify">Escuchando en Spotify</span>
+                          <p style={{ margin: '1px 0 0', fontSize: '12px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {user.discord.spotify.song}
+                          </p>
+                          <p style={{ margin: 0, fontSize: '10.5px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {user.discord.spotify.artist}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

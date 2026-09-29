@@ -2657,5 +2657,541 @@
   box-shadow: 0 0 24px rgba(0, 240, 255, 0.7);
 }
 
+/* ========================================================
+   DISCORD LINKING CELEBRATION MODAL
+   ======================================================== */
+.jf-discord-celebration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 8px 8px;
+  position: relative;
+  overflow: hidden;
+}
 
+.jf-discord-celebration-badge-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+}
 
+.jf-discord-celebration-pulse {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(88, 101, 242, 0.5) 0%, rgba(88, 101, 242, 0) 70%);
+  animation: jf-celebration-pulse 1.8s ease-out infinite;
+}
+
+.jf-discord-celebration-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5865f2 0%, #4752c4 100%);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(88, 101, 242, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+  position: relative;
+  z-index: 2;
+  animation: jf-pop-scale 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.jf-discord-celebration-check {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  border: 3px solid #0f172a;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+  z-index: 3;
+}
+
+@keyframes jf-celebration-pulse {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes jf-pop-scale {
+  0% { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.jf-discord-celebration-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.jf-discord-celebration-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 20px;
+  max-width: 340px;
+  line-height: 1.45;
+}
+
+.jf-discord-celebration-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(88, 101, 242, 0.16) 0%, rgba(15, 23, 42, 0.75) 100%);
+  border: 1px solid rgba(88, 101, 242, 0.35);
+  box-shadow: 0 12px 32px -8px rgba(88, 101, 242, 0.35);
+  margin-bottom: 22px;
+  text-align: left;
+}
+
+.jf-discord-celebration-card-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-discord-celebration-card-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.jf-discord-celebration-card-tag {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 2px 0 0;
+}
+
+/* ========================================================
+   DISCORD RICH PRESENCE IN PROFILES
+   ======================================================== */
+.jf-discord-rich-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(88, 101, 242, 0.14) 0%, rgba(15, 23, 42, 0.7) 100%);
+  border: 1px solid rgba(88, 101, 242, 0.28);
+  padding: 12px 14px;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.45);
+  transition: all 0.25s ease;
+}
+
+.jf-discord-rich-card:hover {
+  border-color: rgba(88, 101, 242, 0.5);
+  background: linear-gradient(135deg, rgba(88, 101, 242, 0.2) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+.jf-discord-rich-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.jf-discord-rich-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-discord-rich-devices {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jf-device-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 11px;
+}
+
+.jf-discord-custom-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+}
+
+.jf-discord-activity-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: rgba(88, 101, 242, 0.08);
+  border: 1px solid rgba(88, 101, 242, 0.18);
+}
+
+.jf-discord-activity-section.is-spotify {
+  background: rgba(29, 185, 84, 0.1);
+  border-color: rgba(29, 185, 84, 0.3);
+}
+
+.jf-discord-act-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #a5b4fc;
+}
+
+.jf-discord-act-badge.is-spotify {
+  color: #1ed760;
+}
+
+/* ========================================================
+   DISCORD-STYLE PROFILE BACKGROUND MODES & EFFECTS
+   ======================================================== */
+.jf-profile-shell--gradient {
+  background: linear-gradient(135deg, var(--jf-grad-start, #6366f1) 0%, var(--jf-grad-end, #ec4899) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 16px 44px -8px var(--jf-grad-start, rgba(99, 102, 241, 0.45)) !important;
+}
+
+.jf-profile-shell--gradient .jf-profile-banner {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+}
+
+.jf-profile-shell--gradient .jf-profile-orb--a {
+  background: radial-gradient(circle, var(--jf-grad-start, #6366f1), transparent 70%);
+}
+
+.jf-profile-shell--gradient .jf-profile-orb--b {
+  background: radial-gradient(circle, var(--jf-grad-end, #ec4899), transparent 70%);
+}
+
+/* Dynamic Anthem Cover Background */
+.jf-profile-shell--anthem {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Profile Visual Effects in Banner */
+.jf-profile-effect-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Stars / Cosmic Dust */
+.jf-profile-effect--stars::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 40px 70px, #38bdf8, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 90px 40px, #fff, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 160px 120px, #f472b6, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 230px 20px, #38bdf8, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 300px 90px, #fff, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 380px 40px, #a855f7, rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 450px 80px, #ffffff, rgba(0,0,0,0));
+  background-repeat: repeat;
+  background-size: 400px 200px;
+  animation: jf-stars-drift 24s linear infinite;
+  opacity: 0.85;
+}
+
+@keyframes jf-stars-drift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-200px); }
+}
+
+/* Cyber 3D Grid */
+.jf-profile-effect--grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(168, 85, 247, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 240, 255, 0.2) 1px, transparent 1px);
+  background-size: 28px 28px;
+  transform: perspective(250px) rotateX(45deg);
+  transform-origin: center top;
+  animation: jf-grid-scroll 10s linear infinite;
+  opacity: 0.65;
+}
+
+@keyframes jf-grid-scroll {
+  from { background-position: 0 0; }
+  to { background-position: 0 28px; }
+}
+
+/* Aurora Waves */
+.jf-profile-effect--aurora_waves::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -20%;
+  width: 140%;
+  height: 200%;
+  background: radial-gradient(ellipse at 30% 20%, rgba(16, 185, 129, 0.45) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 40%, rgba(0, 240, 255, 0.4) 0%, transparent 60%),
+              radial-gradient(ellipse at 50% 80%, rgba(168, 85, 247, 0.4) 0%, transparent 60%);
+  filter: blur(28px);
+  animation: jf-aurora-wave 12s ease-in-out infinite alternate;
+  opacity: 0.75;
+}
+
+@keyframes jf-aurora-wave {
+  0% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.15) rotate(4deg); }
+  100% { transform: scale(1) rotate(-4deg); }
+}
+
+/* Supernova Energy Pulse */
+.jf-profile-effect--supernova::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 280px;
+  height: 280px;
+  margin: -140px 0 0 -140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.5) 0%, rgba(244, 63, 94, 0.35) 45%, transparent 70%);
+  filter: blur(24px);
+  animation: jf-supernova-pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes jf-supernova-pulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.5; }
+  50% { transform: scale(1.3); opacity: 0.95; }
+}
+
+/* ========================================================
+   PROMINENT LISTENING HOURS HERO CARD
+   ======================================================== */
+.jf-listening-hero-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  padding: 18px 20px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(249, 115, 22, 0.08) 50%, rgba(15, 23, 42, 0.85) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  box-shadow: 0 14px 36px -10px rgba(255, 215, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.jf-listening-hero-card:hover {
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 16px 42px -8px rgba(255, 215, 0, 0.38);
+}
+
+.jf-listening-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.jf-listening-hero-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jf-listening-gold-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffd700 0%, #ff8800 100%);
+  display: grid;
+  place-items: center;
+  color: #000;
+  box-shadow: 0 6px 18px rgba(255, 215, 0, 0.45);
+  flex-shrink: 0;
+}
+
+.jf-listening-hero-headings {
+  display: flex;
+  flex-direction: column;
+}
+
+.jf-listening-hero-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #ffd700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.jf-listening-hero-hours {
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #ffffff 30%, #ffd700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.jf-listening-hero-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.jf-listening-hero-progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jf-listening-hero-bar {
+  width: 100%;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jf-listening-hero-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd700 0%, #ff8800 50%, #00f0ff 100%);
+  border-radius: 6px;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+  transition: width 0.5s ease;
+}
+
+/* Discord Nitro Gradient Picker UI */
+.jf-mode-selector-tabs {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 12px;
+}
+
+.jf-mode-selector-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.jf-mode-selector-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.jf-mode-selector-tab.is-active {
+  color: #fff;
+  background: var(--gradient-primary);
+  box-shadow: 0 4px 14px rgba(0, 240, 255, 0.3);
+}
+
+.jf-discord-gradient-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.jf-discord-gradient-card {
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.jf-discord-gradient-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.jf-discord-gradient-card.is-active {
+  border-color: #00f0ff;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
+}
+
+.jf-gradient-swatch-bar {
+  width: 100%;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.jf-gradient-duo-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 10px;
+}
+
+.jf-gradient-duo-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-color-input-bubble {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}

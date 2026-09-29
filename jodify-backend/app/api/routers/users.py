@@ -60,6 +60,10 @@ def user_view(doc: dict) -> dict:
         "avatar_frame": doc.get("avatar_frame", "none"),
         "accent_color": doc.get("accent_color"),
         "profile_effect": doc.get("profile_effect", "none"),
+        "profile_bg_mode": doc.get("profile_bg_mode", "preset"),
+        "custom_gradient_start": doc.get("custom_gradient_start", "#6366f1"),
+        "custom_gradient_end": doc.get("custom_gradient_end", "#ec4899"),
+        "show_discord_activity": doc.get("show_discord_activity", True),
         "anthem_song_id": doc.get("anthem_song_id"),
         "anthem_song_name": doc.get("anthem_song_name"),
         "custom_badge": doc.get("custom_badge"),
@@ -205,6 +209,18 @@ async def update_profile(username: str, body: UpdateProfileRequest) -> dict:
     if "profile_effect" in fields_set:
         clean = body.profile_effect.strip() if body.profile_effect else "none"
         updates["profile_effect"] = clean
+    if "profile_bg_mode" in fields_set:
+        clean = body.profile_bg_mode.strip() if body.profile_bg_mode else "preset"
+        updates["profile_bg_mode"] = clean
+    if "custom_gradient_start" in fields_set:
+        clean = body.custom_gradient_start.strip() if body.custom_gradient_start else "#6366f1"
+        updates["custom_gradient_start"] = clean
+    if "custom_gradient_end" in fields_set:
+        clean = body.custom_gradient_end.strip() if body.custom_gradient_end else "#ec4899"
+        updates["custom_gradient_end"] = clean
+    if "show_discord_activity" in fields_set:
+        updates["show_discord_activity"] = bool(body.show_discord_activity) if body.show_discord_activity is not None else True
+
 
     if body.new_username and body.new_username.strip() != username:
         new_user = body.new_username.strip()

@@ -193,6 +193,18 @@ export const PROFILE_BADGE_PRESETS = [
   { text: 'Deidad del Ritmo 👑', level: 12 },
 ];
 
+export const DISCORD_GRADIENT_PRESETS = [
+  { id: 'cyberpunk', name: 'Cyberpunk Neon', start: '#00f0ff', end: '#ff007f', level: 1 },
+  { id: 'synth_sunset', name: 'Atardecer Synth', start: '#ff5e62', end: '#ff9966', level: 1 },
+  { id: 'midnight_violet', name: 'Violeta Medianoche', start: '#6366f1', end: '#a855f7', level: 1 },
+  { id: 'emerald_wave', name: 'Onda Esmeralda', start: '#0575e6', end: '#00f260', level: 2 },
+  { id: 'royal_gold', name: 'Oro Real', start: '#f7971e', end: '#ffd200', level: 3 },
+  { id: 'crimson_dark', name: 'Rubí Carmesí', start: '#ed213a', end: '#93291e', level: 4 },
+  { id: 'electric_lime', name: 'Lima Eléctrica', start: '#11998e', end: '#38ef7d', level: 5 },
+  { id: 'deep_space', name: 'Espacio Profundo', start: '#0f0c29', end: '#302b63', level: 6 },
+  { id: 'supernova_fire', name: 'Fuego Supernova', start: '#ff0844', end: '#ffb199', level: 8 },
+] as const;
+
 export function isStyleUnlocked(requiredLevel: number, userLevel: number): boolean {
   return userLevel >= requiredLevel;
 }

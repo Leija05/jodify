@@ -117,6 +117,10 @@ export interface UserAccess {
   vibe?: string | null;
   accent_color?: string | null;
   profile_effect?: string | null;
+  profile_bg_mode?: 'preset' | 'gradient' | 'anthem_cover';
+  custom_gradient_start?: string;
+  custom_gradient_end?: string;
+  show_discord_activity?: boolean | number;
   listening_seconds?: number;
   created_at?: string;
 }
@@ -203,6 +207,27 @@ export interface DiscordProfile {
   user_name?: string;
   global_name?: string;
   presence?: Presence;
+  custom_status?: {
+    text?: string;
+    emoji?: { name?: string; id?: string; animated?: boolean };
+  } | null;
+  activity?: {
+    name?: string;
+    details?: string;
+    state?: string;
+    type?: number;
+  } | null;
+  spotify?: {
+    song?: string;
+    artist?: string;
+    album?: string;
+    album_art_url?: string;
+  } | null;
+  devices?: {
+    desktop?: boolean;
+    mobile?: boolean;
+    web?: boolean;
+  } | null;
 }
 
 export interface CommunityUser extends UserAccess {
@@ -262,10 +287,20 @@ export interface LanyardProfile {
       avatar_decoration?: string | null;
     };
     discord_status: Presence;
-    activities: Array<{ type: number; name: string; state?: string }>;
+    active_on_discord_web?: boolean;
+    active_on_discord_desktop?: boolean;
+    active_on_discord_mobile?: boolean;
+    activities: Array<{
+      type: number;
+      name: string;
+      state?: string;
+      details?: string;
+      emoji?: { name?: string; id?: string; animated?: boolean };
+    }>;
     listening_to_spotify?: boolean;
     spotify?: {
       album?: string;
+      album_art_url?: string;
       artist?: string;
       timestamps?: { start?: number; end?: number };
       track_id?: string;

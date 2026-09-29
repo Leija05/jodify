@@ -48,6 +48,10 @@ class UpdateProfileRequest(BaseModel):
     vibe: str | None = None
     accent_color: str | None = None
     profile_effect: str | None = None
+    profile_bg_mode: str | None = None  # "preset" | "gradient" | "anthem_cover"
+    custom_gradient_start: str | None = None
+    custom_gradient_end: str | None = None
+    show_discord_activity: bool | None = None
 
 
 class ListeningTimeRequest(BaseModel):

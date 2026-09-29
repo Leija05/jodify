@@ -75,12 +75,53 @@ export async function fetchLanyardProfile(discordId: string): Promise<DiscordPro
     const avatarUrl = user.avatar
       ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`
       : null;
+
+    // Find custom status (type 4)
+    const customStatusAct = json.data.activities?.find((a) => a.type === 4);
+    const customStatus = customStatusAct
+      ? {
+          text: customStatusAct.state || undefined,
+          emoji: customStatusAct.emoji,
+        }
+      : null;
+
+    // Find main activity (game / listening / streaming / watching, etc. - non custom status)
+    const mainAct = json.data.activities?.find((a) => a.type !== 4 && a.type !== 2) || json.data.activities?.find((a) => a.type !== 4);
+    const activity = mainAct
+      ? {
+          name: mainAct.name,
+          details: mainAct.details,
+          state: mainAct.state,
+          type: mainAct.type,
+        }
+      : null;
+
+    // Spotify activity if available
+    const spotify = json.data.listening_to_spotify && json.data.spotify
+      ? {
+          song: json.data.spotify.song,
+          artist: json.data.spotify.artist,
+          album: json.data.spotify.album,
+          album_art_url: json.data.spotify.album_art_url,
+        }
+      : null;
+
+    const devices = {
+      desktop: Boolean(json.data.active_on_discord_desktop),
+      mobile: Boolean(json.data.active_on_discord_mobile),
+      web: Boolean(json.data.active_on_discord_web),
+    };
+
     return {
       discord_id: user.id,
       display_name: user.display_name ?? user.global_name ?? user.username,
       user_name: user.username,
       avatar_url: avatarUrl,
       presence: json.data.discord_status,
+      custom_status: customStatus,
+      activity: activity,
+      spotify: spotify,
+      devices: devices,
     };
   } catch {
     return null;
