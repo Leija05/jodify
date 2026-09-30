@@ -9,7 +9,7 @@ from pymongo import ReturnDocument
 from starlette.requests import Request
 
 from ...core.database import col, sid
-from ...models.schemas import CheckNameRequest, DeleteSongsRequest, LikesDeltaRequest, UpdateSongRequest
+from ...models.schemas import CheckNameRequest, DeleteSongsRequest, LikesDeltaRequest, RegisterSongRequest, UpdateSongRequest
 from ...services.audio_streaming import delete_audio, serve_audio, serve_cover, store_audio
 from ..dependencies import require_admin
 
@@ -43,7 +43,7 @@ def song_view(doc: dict) -> dict:
     return {
         "id": song_id,
         "name": clean_name or raw_name,
-        "url": f"/songs/{song_id}/audio",
+        "url": f"/songs/{song_id}/audio" if doc.get("audio_file_id") else (doc.get("url") or doc.get("stream_url") or ""),
         "likes": doc.get("likes", 0),
         "added_by": doc.get("added_by"),
         "created_at": doc.get("created_at"),
@@ -55,6 +55,8 @@ def song_view(doc: dict) -> dict:
         "lyrics": doc.get("lyrics"),
         "cover_url": f"/songs/{song_id}/cover" if doc.get("cover_file_id") else (doc.get("cover_url") or None),
         "play_count": doc.get("play_count", 0),
+        "youtube_id": doc.get("youtube_id"),
+        "source": doc.get("source") or ("youtube" if doc.get("youtube_id") else "local"),
     }
 
 
@@ -94,6 +96,61 @@ async def check_name(name: str) -> dict:
 @router.post("/check")
 async def check_name_body(body: CheckNameRequest) -> dict:
     return await check_name(body.name)
+
+
+@router.post("/register", response_model=None)
+async def register_song(body: RegisterSongRequest) -> dict:
+    name_clean = (body.name or "").strip()
+    if not name_clean:
+        raise HTTPException(status_code=400, detail="El nombre de la canción es obligatorio")
+
+    query: dict = {}
+    if body.youtube_id:
+        query = {"youtube_id": body.youtube_id}
+    else:
+        query = {"name": name_clean}
+        if body.artist:
+            query["artist"] = body.artist.strip()
+
+    existing = await col("songs").find_one(query)
+    if existing:
+        song_doc = existing
+        song_id = sid(existing["_id"])
+        # Incrementar likes si corresponde
+        await col("songs").update_one({"_id": existing["_id"]}, {"$inc": {"likes": 1}})
+        song_doc["likes"] = song_doc.get("likes", 0) + 1
+    else:
+        song_doc = {
+            "name": name_clean,
+            "artist": (body.artist or "").strip(),
+            "album": (body.album or "Enlace Web").strip(),
+            "url": body.url or "",
+            "youtube_id": body.youtube_id,
+            "cover_url": body.cover_url,
+            "duration": body.duration,
+            "added_by": body.added_by or "Enlace Web",
+            "created_at": datetime.now().isoformat(),
+            "likes": 1,
+            "play_count": 0,
+            "source": "youtube" if body.youtube_id else "web",
+        }
+        res = await col("songs").insert_one(song_doc)
+        song_doc["_id"] = res.inserted_id
+        song_id = sid(res.inserted_id)
+
+    invalidate_songs_cache()
+
+    if body.liked_by:
+        try:
+            await col("likes").insert_one({
+                "username": body.liked_by,
+                "song_id": song_id,
+                "created_at": datetime.now().isoformat(),
+            })
+        except Exception:
+            pass
+
+    return song_view(song_doc)
 
 
 @router.post("/upload", response_model=None)

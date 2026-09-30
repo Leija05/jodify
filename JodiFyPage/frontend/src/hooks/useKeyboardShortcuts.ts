@@ -5,11 +5,25 @@ import { useUiStore } from '../store/ui.store';
 export function useKeyboardShortcuts(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Atajo global para buscador: Ctrl+K o Cmd+K
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('jodify:focus-search'));
+        return;
+      }
+
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
 
       const player = usePlayerStore.getState();
       const ui = useUiStore.getState();
+
+      // Atajo rápido con '/' para enfocar buscador
+      if (e.key === '/') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('jodify:focus-search'));
+        return;
+      }
 
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
         e.preventDefault();
@@ -69,7 +83,6 @@ export function useKeyboardShortcuts(): void {
           if (player.currentSong) ui.open('fullscreen');
           break;
         case '?':
-        case '/':
           ui.toggle('shortcuts');
           break;
         case 'escape':

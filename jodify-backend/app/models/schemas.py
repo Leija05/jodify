@@ -165,3 +165,15 @@ class UserPreferencesRequest(BaseModel):
     fade_duration: float | None = None
     sleep_timer_default: int | None = None
     theme: str | None = None
+
+
+class RegisterSongRequest(BaseModel):
+    name: str
+    artist: str | None = None
+    album: str | None = None
+    url: str | None = None
+    youtube_id: str | None = None
+    cover_url: str | None = None
+    duration: float | None = None
+    added_by: str | None = None
+    liked_by: str | None = None

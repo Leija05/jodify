@@ -4,6 +4,7 @@ import { useSession } from '../context/SessionContext';
 import { songsService } from '../services/songs.service';
 import { likesService, downloadsService } from '../services/social.service';
 import { getAllOfflineIds } from '../lib/idb';
+import type { Song } from '../lib/types';
 import { useToastStore } from '../store/toast.store';
 import { useUiStore } from '../store/ui.store';
 
@@ -42,11 +43,31 @@ export async function loadLibrary(username: string | null): Promise<void> {
   library.setRefreshing(true);
   try {
     if (username) {
-      const [songs, likedIds, downloadedIds] = await Promise.all([
-        songsService.fetchAll().catch(() => [] as never[]),
-        likesService.fetchLikedIds(username).catch(() => []),
-        downloadsService.fetchDownloadedIds(username).catch(() => []),
+      const [fetchedSongs, fetchedLikedIds, downloadedIds] = await Promise.all([
+        songsService.fetchAll().catch((): Song[] => []),
+        likesService.fetchLikedIds(username).catch((): Array<number | string> => []),
+        downloadsService.fetchDownloadedIds(username).catch((): Array<number | string> => []),
       ]);
+      const songs: Song[] = [...fetchedSongs];
+      const likedIds: Array<number | string> = [...fetchedLikedIds];
+
+      // Integrar canciones externas guardadas en Me Gusta
+      try {
+        const rawCached = localStorage.getItem('jf_external_liked_songs');
+        if (rawCached) {
+          const cachedSongs: Song[] = JSON.parse(rawCached);
+          const existingIds = new Set(songs.map((s) => String(s.id)));
+          for (const cs of cachedSongs) {
+            if (!existingIds.has(String(cs.id))) {
+              songs.push(cs);
+              if (!likedIds.includes(cs.id)) {
+                likedIds.push(cs.id);
+              }
+            }
+          }
+        }
+      } catch {}
+
       library.setSongs(songs);
       library.setLikedIds(likedIds);
       library.setDownloadedIds(downloadedIds);

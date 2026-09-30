@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Play,
@@ -23,6 +23,7 @@ import {
   Trash,
   User,
   Disc,
+  Keyboard,
 } from '@phosphor-icons/react';
 import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
@@ -58,6 +59,18 @@ export function HomeShowcaseView() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'liked' | 'recent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [homeTab, setHomeTab] = useState<'all' | 'songs' | 'playlists'>('all');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+      }
+    };
+    window.addEventListener('jodify:focus-search', handleFocusSearch);
+    return () => window.removeEventListener('jodify:focus-search', handleFocusSearch);
+  }, []);
 
   // Modo de vista para canciones: 'grid' (cuadros grandes) o 'list' (lista compacta)
   const [songViewMode, setSongViewMode] = useState<'grid' | 'list'>(() => {
@@ -394,6 +407,16 @@ export function HomeShowcaseView() {
             <button
               type="button"
               className="jf-btn-header-action"
+              onClick={() => ui.open('shortcuts')}
+              title="Atajos de teclado (?)"
+            >
+              <Keyboard size={16} weight="bold" />
+              <span>Atajos</span>
+            </button>
+
+            <button
+              type="button"
+              className="jf-btn-header-action"
               onClick={() => ui.open('settings')}
               title="Configuración de la app"
             >
@@ -497,22 +520,34 @@ export function HomeShowcaseView() {
               </button>
             </div>
 
-            {/* Buscador reactivo rápido */}
+            {/* Buscador reactivo rápido con atajo Ctrl+K o / */}
             <div className="jf-home-search-wrap jf-home-search-wrap--compact">
               <MagnifyingGlass size={15} />
               <input
+                ref={searchInputRef}
                 type="text"
                 className="jf-home-search-input"
                 placeholder="Buscar música…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('');
+                    searchInputRef.current?.blur();
+                  }
+                }}
               />
+              {!searchQuery && (
+                <span className="jf-search-kbd-hint" title="Presiona Ctrl + K o / para buscar">
+                  <kbd>Ctrl</kbd><kbd>K</kbd>
+                </span>
+              )}
               {searchQuery && (
                 <button
                   type="button"
                   className="jf-search-clear-btn"
                   onClick={() => setSearchQuery('')}
-                  title="Limpiar búsqueda"
+                  title="Limpiar búsqueda (Esc)"
                 >
                   ×
                 </button>

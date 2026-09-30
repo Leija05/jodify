@@ -170,6 +170,38 @@ function startAppServer() {
         return;
       }
 
+      // 1.5 Registro y sincronización instantánea de canciones externas en MongoDB
+      if ((req.url === '/api/songs/register' || req.url?.startsWith('/api/songs/register?')) && req.method === 'POST') {
+        let bodyData = '';
+        req.on('data', (chunk) => { bodyData += chunk; });
+        req.on('end', () => {
+          const scriptPath = path.join(__dirname, 'scripts', 'register_song.py');
+          const py = execFile('python', [scriptPath], { timeout: 8000 }, (error, stdout, stderr) => {
+            if (error || !stdout) {
+              console.warn('[app-server] Error en register_song.py:', error || stderr);
+              if (!res.headersSent) {
+                res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Error registrando canción' }));
+              }
+              return;
+            }
+            if (!res.headersSent) {
+              res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': '*',
+              });
+              res.end(stdout.trim());
+            }
+          });
+          if (py.stdin) {
+            py.stdin.write(bodyData);
+            py.stdin.end();
+          }
+        });
+        return;
+      }
+
       // 2. Proxy transparente hacia el backend real (Render / MongoDB) para datos de usuario, perfil, canciones, etc.
       if (req.url.startsWith('/api/') || req.url === '/api' || req.url.startsWith('/songs/')) {
         if (req.method === 'OPTIONS') {

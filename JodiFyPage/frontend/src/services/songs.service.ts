@@ -21,6 +21,20 @@ export const songsService = {
     return result.likes;
   },
 
+  async registerSong(data: {
+    name: string;
+    artist?: string;
+    album?: string;
+    url?: string;
+    youtube_id?: string;
+    cover_url?: string;
+    duration?: number;
+    added_by?: string;
+    liked_by?: string;
+  }): Promise<Song> {
+    return api.post<Song>('/songs/register', data);
+  },
+
   async uploadAudio(file: File, options: UploadOptions = {}): Promise<Song> {
     const formData = new FormData();
     formData.append('file', file, sanitizeFileName(file.name) || file.name);

@@ -38,6 +38,8 @@ import type { Song } from '../../lib/types';
 import { useLibraryStore } from '../../store/library.store';
 import { downloadSong } from '../../services/offline.service';
 import { likesService } from '../../services/social.service';
+import { songsService } from '../../services/songs.service';
+import { cacheExternalLikedSong, removeExternalLikedSong } from '../../services/player-shortcuts';
 import { playSong } from '../../services/player.service';
 
 function toVirtualSong(track: {
@@ -103,6 +105,8 @@ export function LinkMusicModal() {
   const [suggestions, setSuggestions] = useState<SongSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [sugStatusFilter, setSugStatusFilter] = useState<'all' | 'pending' | 'approved'>('all');
+  const [sugSearch, setSugSearch] = useState('');
 
   const likedIds = useLibraryStore((s) => s.likedIds);
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
@@ -111,6 +115,12 @@ export function LinkMusicModal() {
     likedIds.some((id) => String(id) === String(songId));
   const isTrackDownloaded = (songId: string | number) =>
     downloadedIds.some((id) => String(id) === String(songId));
+
+  useEffect(() => {
+    if (!isAdmin && !isDev && activeTab === 'suggestions') {
+      setActiveTab('search');
+    }
+  }, [isAdmin, isDev, activeTab]);
 
   useEffect(() => {
     if (ui.modal === 'linkMusic' && activeTab === 'suggestions') {
@@ -192,12 +202,26 @@ export function LinkMusicModal() {
     if (session?.username) {
       try {
         if (nextLiked) {
-          await likesService.addLike(session.username, virtualSong.id);
+          const registered = await songsService.registerSong({
+            name: virtualSong.name,
+            artist: virtualSong.artist,
+            album: virtualSong.album,
+            url: virtualSong.url,
+            youtube_id: virtualSong.youtube_id,
+            cover_url: virtualSong.cover_url,
+            duration: virtualSong.duration,
+            added_by: session.username,
+            liked_by: session.username,
+          });
+          useLibraryStore.getState().upsertSong(registered);
+          useLibraryStore.getState().toggleLikeLocal(registered.id, true);
+          cacheExternalLikedSong(registered);
         } else {
           await likesService.removeLike(session.username, virtualSong.id);
+          removeExternalLikedSong(virtualSong.id);
         }
-      } catch {
-        // Enlaces virtuales persisten en memoria local e IDB
+      } catch (err) {
+        console.warn('[LinkMusicModal] Error guardando like externo en BD:', err);
       }
     }
 
@@ -352,28 +376,30 @@ export function LinkMusicModal() {
           </button>
         </div>
 
-        {/* Pestañas: Buscar por Link / Sugerencias comunitarias */}
-        <div className="jf-link-tabs">
-          <button
-            type="button"
-            className={`jf-link-tab ${activeTab === 'search' ? 'is-active' : ''}`}
-            onClick={() => setActiveTab('search')}
-          >
-            <Globe size={16} weight="bold" /> Buscar por Enlace
-          </button>
-          <button
-            type="button"
-            className={`jf-link-tab ${activeTab === 'suggestions' ? 'is-active' : ''}`}
-            onClick={() => setActiveTab('suggestions')}
-          >
-            <ThumbsUp size={16} weight="bold" /> Sugerencias de la Comunidad
-            {suggestions.filter((s) => s.status === 'pending').length > 0 && (
-              <span className="jf-link-tab-badge">
-                {suggestions.filter((s) => s.status === 'pending').length}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Pestañas: Buscar por Link / Sugerencias comunitarias (Solo dev o admin) */}
+        {(isAdmin || isDev) && (
+          <div className="jf-link-tabs">
+            <button
+              type="button"
+              className={`jf-link-tab ${activeTab === 'search' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('search')}
+            >
+              <Globe size={16} weight="bold" /> Buscar por Enlace
+            </button>
+            <button
+              type="button"
+              className={`jf-link-tab ${activeTab === 'suggestions' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('suggestions')}
+            >
+              <ThumbsUp size={16} weight="bold" /> Panel de Sugerencias
+              {suggestions.filter((s) => s.status === 'pending').length > 0 && (
+                <span className="jf-link-tab-badge">
+                  {suggestions.filter((s) => s.status === 'pending').length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         {activeTab === 'search' ? (
           <div className="jf-link-content">
@@ -730,19 +756,36 @@ export function LinkMusicModal() {
                             <Queue size={14} />
                           </button>
 
-                          {/* Botón Like directo en playlist */}
+                          {/* Botón Like directo en playlist con registro en MongoDB */}
                           <button
                             type="button"
                             className={`jf-btn-icon ${liked ? 'is-liked' : ''}`}
-                            title={liked ? 'En tus Me Gusta' : 'Dar Like'}
+                            title={liked ? 'En tus Me Gusta' : 'Dar Like y guardar'}
                             onClick={async () => {
                               const next = !liked;
                               useLibraryStore.getState().upsertSong(vSong);
                               useLibraryStore.getState().toggleLikeLocal(vSong.id, next);
                               if (session?.username) {
                                 try {
-                                  if (next) await likesService.addLike(session.username, vSong.id);
-                                  else await likesService.removeLike(session.username, vSong.id);
+                                  if (next) {
+                                    const reg = await songsService.registerSong({
+                                      name: vSong.name,
+                                      artist: vSong.artist,
+                                      album: vSong.album,
+                                      url: vSong.url,
+                                      youtube_id: vSong.youtube_id,
+                                      cover_url: vSong.cover_url,
+                                      duration: vSong.duration,
+                                      added_by: session.username,
+                                      liked_by: session.username,
+                                    });
+                                    useLibraryStore.getState().upsertSong(reg);
+                                    useLibraryStore.getState().toggleLikeLocal(reg.id, true);
+                                    cacheExternalLikedSong(reg);
+                                  } else {
+                                    await likesService.removeLike(session.username, vSong.id);
+                                    removeExternalLikedSong(vSong.id);
+                                  }
                                 } catch {
                                   // local
                                 }
@@ -765,109 +808,190 @@ export function LinkMusicModal() {
             )}
           </div>
         ) : (
-          /* Pestaña: Sugerencias de la comunidad */
+          /* Pestaña: Panel de Sugerencias (Solo dev o admin) */
           <div className="jf-suggestions-list-view">
-            <div className="jf-suggestions-header">
-              <span className="jf-suggestions-count">
-                {suggestions.length} {suggestions.length === 1 ? 'sugerencia' : 'sugerencias'} registradas
-              </span>
+            {/* Cabecera del panel de sugerencias */}
+            <div className="jf-sug-panel-top">
+              <div className="jf-sug-filter-pills">
+                <button
+                  type="button"
+                  className={`jf-sug-pill ${sugStatusFilter === 'all' ? 'is-active' : ''}`}
+                  onClick={() => setSugStatusFilter('all')}
+                >
+                  Todas ({suggestions.length})
+                </button>
+                <button
+                  type="button"
+                  className={`jf-sug-pill ${sugStatusFilter === 'pending' ? 'is-active' : ''}`}
+                  onClick={() => setSugStatusFilter('pending')}
+                >
+                  Pendientes ({suggestions.filter((s) => s.status === 'pending').length})
+                </button>
+                <button
+                  type="button"
+                  className={`jf-sug-pill ${sugStatusFilter === 'approved' ? 'is-active' : ''}`}
+                  onClick={() => setSugStatusFilter('approved')}
+                >
+                  Aprobadas ({suggestions.filter((s) => s.status === 'approved').length})
+                </button>
+              </div>
+
               <button
                 type="button"
                 className="jf-btn-ghost jf-suggestions-refresh"
                 onClick={loadSuggestions}
                 disabled={loadingSuggestions}
+                title="Recargar sugerencias"
               >
                 Actualizar
               </button>
             </div>
 
+            {/* Buscador de sugerencias */}
+            <div className="jf-sug-search-wrap">
+              <input
+                type="text"
+                className="jf-input jf-sug-search-input"
+                placeholder="Filtrar por canción, artista o usuario…"
+                value={sugSearch}
+                onChange={(e) => setSugSearch(e.target.value)}
+              />
+            </div>
+
             {loadingSuggestions ? (
               <div className="jf-suggestions-loading">
-                <SpinnerGap size={24} className="jf-spin" />
-                <p>Cargando sugerencias…</p>
+                <SpinnerGap size={26} className="jf-spin" />
+                <p>Cargando sugerencias de la base de datos…</p>
               </div>
-            ) : suggestions.length === 0 ? (
-              <div className="jf-suggestions-empty">
-                <MusicNotes size={40} weight="thin" />
-                <p>Aún no hay sugerencias comunitarias registradas.</p>
-                <span>¡Sé el primero en pegar un enlace y sugerir una canción!</span>
-              </div>
-            ) : (
-              <div className="jf-suggestions-list">
-                {suggestions.map((sug) => (
-                  <div key={sug.id} className="jf-suggestion-card">
-                    {sug.thumbnail ? (
-                      <img className="jf-suggestion-thumb" src={sug.thumbnail} alt="" />
-                    ) : (
-                      <div className="jf-suggestion-thumb jf-suggestion-thumb--empty">
-                        <MusicNotes size={20} />
-                      </div>
-                    )}
+            ) : (() => {
+              const q = sugSearch.trim().toLowerCase();
+              const filtered = suggestions.filter((s) => {
+                if (sugStatusFilter !== 'all' && s.status !== sugStatusFilter) return false;
+                if (!q) return true;
+                return (
+                  s.title.toLowerCase().includes(q) ||
+                  (s.artist && s.artist.toLowerCase().includes(q)) ||
+                  (s.suggested_by && s.suggested_by.toLowerCase().includes(q)) ||
+                  (s.notes && s.notes.toLowerCase().includes(q))
+                );
+              });
 
-                    <div className="jf-suggestion-meta">
-                      <div className="jf-suggestion-title-row">
-                        <span className="jf-suggestion-title">{sug.title}</span>
-                        <span className={`jf-suggestion-status is-${sug.status}`}>
-                          {sug.status === 'approved'
-                            ? 'Aprobada'
-                            : sug.status === 'rejected'
-                            ? 'Rechazada'
-                            : 'Pendiente'}
-                        </span>
-                      </div>
-                      <span className="jf-suggestion-artist">{sug.artist || 'Desconocido'}</span>
-                      <span className="jf-suggestion-by">
-                        Sugerida por {sug.suggested_by} · {sug.created_at ? new Date(sug.created_at).toLocaleDateString() : ''}
-                      </span>
-                      {sug.notes && (
-                        <p className="jf-suggestion-notes">«{sug.notes}»</p>
-                      )}
-                    </div>
+              if (filtered.length === 0) {
+                return (
+                  <div className="jf-suggestions-empty">
+                    <MusicNotes size={42} weight="duotone" />
+                    <p>No hay sugerencias en esta vista</p>
+                    <span>
+                      {sugSearch
+                        ? 'Prueba con otro término de búsqueda'
+                        : 'Las canciones sugeridas por la comunidad aparecerán aquí para revisión.'}
+                    </span>
+                  </div>
+                );
+              }
 
-                    <div className="jf-suggestion-actions">
-                      <button
-                        type="button"
-                        className="jf-btn-icon"
-                        title="Probar y reproducir enlace"
-                        onClick={() => {
-                          const vSong = toVirtualSong({
-                            id: sug.id,
-                            title: sug.title,
-                            artist: sug.artist,
-                            album: sug.album,
-                            thumbnail: sug.thumbnail,
-                            stream_url: sug.stream_url || sug.url,
-                            duration: sug.duration,
-                          });
-                          useLibraryStore.getState().upsertSong(vSong);
-                          const p = usePlayerStore.getState();
-                          p.setCurrentSong(vSong);
-                          p.setIsPlaying(true);
-                          p.setSourceUrl(vSong.url);
-                          useToastStore.getState().show(`Reproduciendo «${sug.title}»`, 'success', 2000);
-                        }}
-                      >
-                        <Play size={15} weight="fill" />
-                      </button>
-
-                      {(isAdmin || isDev) && sug.status === 'pending' && (
+              return (
+                <div className="jf-suggestions-list">
+                  {filtered.map((sug) => (
+                    <div
+                      key={sug.id}
+                      className={`jf-suggestion-card ${sug.status === 'pending' ? 'is-pending' : 'is-approved'}`}
+                    >
+                      <div className="jf-sug-card-media">
+                        {sug.thumbnail ? (
+                          <img className="jf-suggestion-thumb" src={sug.thumbnail} alt="" />
+                        ) : (
+                          <div className="jf-suggestion-thumb jf-suggestion-thumb--empty">
+                            <MusicNotes size={22} weight="duotone" />
+                          </div>
+                        )}
                         <button
                           type="button"
-                          className="jf-btn jf-btn--primary jf-btn-approve"
-                          title="Descargar audio y agregarlo a MongoDB"
-                          disabled={approvingId === sug.id}
-                          onClick={() => handleApprove(sug.id)}
+                          className="jf-sug-play-overlay-btn"
+                          title="Probar y reproducir enlace"
+                          onClick={() => {
+                            const vSong = toVirtualSong({
+                              id: sug.id,
+                              title: sug.title,
+                              artist: sug.artist,
+                              album: sug.album,
+                              thumbnail: sug.thumbnail,
+                              stream_url: sug.stream_url || sug.url,
+                              duration: sug.duration,
+                            });
+                            useLibraryStore.getState().upsertSong(vSong);
+                            const p = usePlayerStore.getState();
+                            p.setCurrentSong(vSong);
+                            p.setIsPlaying(true);
+                            p.setSourceUrl(vSong.url);
+                            useToastStore.getState().show(`Reproduciendo «${sug.title}»`, 'success', 2000);
+                          }}
                         >
-                          {approvingId === sug.id ? (
-                            <SpinnerGap size={14} className="jf-spin" />
-                          ) : (
-                            <Lightning size={14} weight="bold" />
-                          )}
-                          Aprobar
+                          <Play size={14} weight="fill" />
                         </button>
-                      )}
+                      </div>
 
-                      {(isAdmin || isDev) && (
+                      <div className="jf-suggestion-meta">
+                        <div className="jf-suggestion-title-row">
+                          <span className="jf-suggestion-title" title={sug.title}>{sug.title}</span>
+                          <span className={`jf-suggestion-status is-${sug.status}`}>
+                            {sug.status === 'approved' ? (
+                              <>
+                                <CheckCircle size={12} weight="fill" /> Aprobada
+                              </>
+                            ) : sug.status === 'rejected' ? (
+                              'Rechazada'
+                            ) : (
+                              <>
+                                <Sparkle size={12} weight="fill" /> Pendiente
+                              </>
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="jf-sug-artist-row">
+                          <span className="jf-suggestion-artist">{sug.artist || 'Artista desconocido'}</span>
+                          {sug.duration ? (
+                            <span className="jf-sug-duration-pill">{formatTime(sug.duration)}</span>
+                          ) : null}
+                        </div>
+
+                        <span className="jf-suggestion-by">
+                          Sugerida por <strong>@{sug.suggested_by}</strong>
+                          {sug.created_at ? ` · ${new Date(sug.created_at).toLocaleDateString()}` : ''}
+                        </span>
+
+                        {sug.notes && (
+                          <div className="jf-sug-note-quote">
+                            <span>«{sug.notes}»</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="jf-suggestion-actions">
+                        {sug.status === 'pending' && (
+                          <button
+                            type="button"
+                            className="jf-btn jf-btn--primary jf-btn-approve"
+                            title="Descargar audio y agregarlo permanentemente a MongoDB"
+                            disabled={approvingId === sug.id}
+                            onClick={() => handleApprove(sug.id)}
+                          >
+                            {approvingId === sug.id ? (
+                              <SpinnerGap size={14} className="jf-spin" />
+                            ) : (
+                              <Lightning size={14} weight="bold" />
+                            )}
+                            <span>Aprobar</span>
+                          </button>
+                        )}
+
+                        {sug.status === 'approved' && (
+                          <span className="jf-sug-approved-tag" title="Ya está en la base de datos">
+                            <CheckCircle size={14} weight="fill" /> En BD
+                          </span>
+                        )}
+
                         <button
                           type="button"
                           className="jf-btn-icon jf-btn-danger"
@@ -876,12 +1000,12 @@ export function LinkMusicModal() {
                         >
                           <Trash size={15} />
                         </button>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </motion.div>

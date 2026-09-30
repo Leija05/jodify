@@ -2972,92 +2972,467 @@
   font-weight: 600;
 }
 
-/* Sugerencias de la comunidad */
+/* Atajo de teclado en buscador */
+.jf-search-kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+
+.jf-search-kbd-hint kbd {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text-muted, #aaa);
+}
+
+.jf-home-search-wrap:hover .jf-search-kbd-hint {
+  opacity: 0.9;
+}
+
+/* Panel de Sugerencias Dev/Admin */
 .jf-suggestions-list-view {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  max-height: 440px;
+  gap: 16px;
+  max-height: 480px;
   overflow-y: auto;
 }
 
-.jf-suggestions-header {
+.jf-sug-panel-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.jf-sug-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.jf-sug-pill {
+  border: none;
+  background: transparent;
   color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.jf-sug-pill:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.jf-sug-pill.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(168, 85, 247, 0.25));
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+}
+
+.jf-sug-search-wrap {
+  width: 100%;
+}
+
+.jf-sug-search-input {
+  width: 100%;
+  font-size: 12.5px;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jf-sug-search-input:focus {
+  border-color: rgba(0, 229, 255, 0.4);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.15);
 }
 
 .jf-suggestions-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
-.jf-suggestion-item {
+.jf-suggestion-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.jf-suggestion-card:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.jf-suggestion-card.is-pending {
+  border-left: 3px solid #ffb800;
+}
+
+.jf-suggestion-card.is-approved {
+  border-left: 3px solid #00ff88;
+}
+
+.jf-sug-card-media {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .jf-suggestion-thumb {
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  display: block;
 }
 
-.jf-suggestion-info {
+.jf-suggestion-thumb--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+}
+
+.jf-sug-play-overlay-btn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  color: #fff;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.18s ease;
+}
+
+.jf-sug-card-media:hover .jf-sug-play-overlay-btn {
+  opacity: 1;
+}
+
+.jf-suggestion-meta {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+}
+
+.jf-suggestion-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .jf-suggestion-title {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 700;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.jf-suggestion-status {
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-family: var(--font-mono, monospace);
+  flex-shrink: 0;
+}
+
+.jf-suggestion-status.is-approved {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.25);
+}
+
+.jf-suggestion-status.is-pending {
+  background: rgba(255, 184, 0, 0.15);
+  color: #ffb800;
+  border: 1px solid rgba(255, 184, 0, 0.25);
+}
+
+.jf-sug-artist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .jf-suggestion-artist {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
-.jf-suggestion-notes {
-  font-size: 11px;
-  color: var(--secondary);
-  font-style: italic;
+.jf-sug-duration-pill {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
 }
 
-.jf-sug-badge {
+.jf-suggestion-by {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.jf-suggestion-by strong {
+  color: var(--primary, #00e5ff);
+}
+
+.jf-sug-note-quote {
+  font-size: 11.5px;
+  color: #c4b5fd;
+  background: rgba(168, 85, 247, 0.08);
+  border-left: 2px solid #a855f7;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.jf-suggestion-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.jf-sug-approved-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #00ff88;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(0, 255, 136, 0.1);
+}
+
+/* Modal de Atajos de Teclado */
+.jf-shortcuts-modal-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 520px;
+}
+
+.jf-shortcuts-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.jf-shortcuts-search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.jf-shortcuts-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 13px;
+}
+
+.jf-shortcuts-clear-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.jf-shortcuts-clear-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.jf-shortcuts-scroll-area {
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-height: 400px;
+}
+
+.jf-shortcuts-category-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.jf-shortcuts-category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-shortcuts-category-icon-wrap {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid;
+}
+
+.jf-shortcuts-category-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.jf-shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.jf-shortcuts-row-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.18s ease;
+}
+
+.jf-shortcuts-row-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.jf-shortcuts-action-desc {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.88);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jf-shortcuts-pill-badge {
   font-size: 10px;
   font-weight: 700;
-  font-family: var(--font-mono);
-  padding: 3px 8px;
-  border-radius: 99px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 229, 255, 0.15);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.25);
+}
+
+.jf-shortcuts-keys-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jf-shortcuts-key-wrap {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
-.jf-sug-badge--approved { background: rgba(0, 255, 136, 0.2); color: var(--success); }
-.jf-sug-badge--pending { background: rgba(255, 184, 0, 0.2); color: var(--warning); }
+.jf-shortcuts-kbd {
+  font-family: var(--font-mono, monospace);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #fff;
+  min-width: 22px;
+  text-align: center;
+}
 
-.jf-suggestion-admin-actions {
+.jf-shortcuts-plus {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.jf-shortcuts-footer-hint {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.jf-shortcuts-kbd-sm {
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
 }
 
 /* Playlist preview modal */
