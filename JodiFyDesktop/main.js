@@ -34,6 +34,72 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
+let appServer = null;
+
+function startAppServer() {
+  if (appServer && appServer.listening) {
+    return Promise.resolve(`http://127.0.0.1:${appServer.address().port}`);
+  }
+
+  const distDir = path.join(__dirname, 'dist-electron');
+  const mimeTypes = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.mjs': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.ico': 'image/x-icon',
+    '.svg': 'image/svg+xml',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.webmanifest': 'application/manifest+json',
+  };
+
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      let reqPath = decodeURI((req.url || '/').split('?')[0]);
+      if (reqPath === '/' || !reqPath) reqPath = '/index.html';
+      let filePath = path.join(distDir, reqPath);
+
+      if (!filePath.startsWith(distDir)) {
+        res.writeHead(403);
+        return res.end();
+      }
+
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(filePath, 'index.html');
+      }
+
+      if (!fs.existsSync(filePath)) {
+        filePath = path.join(distDir, 'index.html');
+      }
+
+      const ext = path.extname(filePath).toLowerCase();
+      res.writeHead(200, {
+        'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+        'Access-Control-Allow-Origin': '*',
+      });
+      fs.createReadStream(filePath).pipe(res);
+    });
+
+    server.on('error', (err) => {
+      console.warn('[app-server] Error iniciando servidor local:', err);
+      reject(err);
+    });
+
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      appServer = server;
+      console.log(`[app-server] Servidor local de JodiFy activo en http://127.0.0.1:${port}`);
+      resolve(`http://127.0.0.1:${port}`);
+    });
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -48,7 +114,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
       spellcheck: false,
       backgroundThrottling: false, // CRÍTICO: Mantiene la reproducción fluida en segundo plano y minimizada
       additionalArguments: [`--jodify-api-url=${API_URL}`],
@@ -58,7 +124,11 @@ function createWindow() {
   if (DEV_URL) {
     win.loadURL(DEV_URL);
   } else {
-    win.loadFile(path.join(__dirname, 'dist-electron', 'index.html'));
+    startAppServer().then((localUrl) => {
+      win.loadURL(`${localUrl}/index.html`);
+    }).catch(() => {
+      win.loadFile(path.join(__dirname, 'dist-electron', 'index.html'));
+    });
   }
 
   if (process.env.JODIFY_DEBUG === '1') {
@@ -337,4 +407,10 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('will-quit', () => {
+  if (appServer) {
+    try { appServer.close(); } catch {}
+  }
 });

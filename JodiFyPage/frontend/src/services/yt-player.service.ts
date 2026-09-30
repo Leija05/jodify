@@ -39,8 +39,17 @@ class YouTubePlayerService {
         document.head.appendChild(tag);
       }
 
+      // Polling de seguridad por si window.YT se inicializa sin disparar el callback
+      const pollTimer = window.setInterval(() => {
+        if (window.YT && window.YT.Player) {
+          window.clearInterval(pollTimer);
+          this.createPlayer(resolve);
+        }
+      }, 100);
+
       const prevCallback = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = () => {
+        window.clearInterval(pollTimer);
         if (prevCallback) prevCallback();
         this.createPlayer(resolve);
       };
@@ -50,6 +59,11 @@ class YouTubePlayerService {
   }
 
   private createPlayer(onReadyCallback?: () => void) {
+    if (this.player && this.isReady) {
+      if (onReadyCallback) onReadyCallback();
+      return;
+    }
+
     let container = document.getElementById('jodify-yt-player-container');
     if (!container) {
       container = document.createElement('div');
@@ -73,6 +87,10 @@ class YouTubePlayerService {
     }
 
     try {
+      const origin = typeof window !== 'undefined' && window.location.protocol.startsWith('http')
+        ? window.location.origin
+        : undefined;
+
       this.player = new window.YT.Player('jodify-yt-player', {
         height: '200',
         width: '200',
@@ -83,19 +101,18 @@ class YouTubePlayerService {
           fs: 0,
           playsinline: 1,
           rel: 0,
-          ...(typeof window !== 'undefined' && window.location.protocol.startsWith('http')
-            ? { origin: window.location.origin }
-            : {}),
+          ...(origin ? { origin } : {}),
         },
         events: {
           onReady: () => {
+            console.log('[YT Player Service] onReady recibido con éxito');
             this.isReady = true;
+            if (onReadyCallback) onReadyCallback();
             if (this.pendingVideoId) {
               const pending = this.pendingVideoId;
               this.pendingVideoId = null;
-              void this.playVideo(pending);
+              this.executePlayVideo(pending);
             }
-            if (onReadyCallback) onReadyCallback();
           },
           onStateChange: (event: { data: number }) => {
             this.handleStateChange(event.data);
@@ -163,14 +180,11 @@ class YouTubePlayerService {
     }
   }
 
-  public async playVideo(videoId: string): Promise<boolean> {
+  private executePlayVideo(videoId: string): boolean {
+    if (!this.player || !this.isReady) return false;
     this.currentVideoId = videoId;
-    if (!this.isReady || !this.player) {
-      this.pendingVideoId = videoId;
-      await this.init();
-    }
-    if (this.player && this.isReady) {
-      const vol = usePlayerStore.getState().volume;
+    const vol = usePlayerStore.getState().volume;
+    try {
       if (typeof this.player.setVolume === 'function') {
         this.player.setVolume(Math.round(vol * 100));
       }
@@ -181,8 +195,23 @@ class YouTubePlayerService {
         this.player.playVideo();
       }
       return true;
+    } catch (e) {
+      console.warn('[YT Player] Error en executePlayVideo:', e);
+      return false;
     }
-    return false;
+  }
+
+  public async playVideo(videoId: string): Promise<boolean> {
+    this.currentVideoId = videoId;
+    if (!this.isReady || !this.player) {
+      this.pendingVideoId = videoId;
+      await this.init();
+      if (this.isReady) {
+        return this.executePlayVideo(videoId);
+      }
+      return false;
+    }
+    return this.executePlayVideo(videoId);
   }
 
   public play(): void {
