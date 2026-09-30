@@ -2,6 +2,7 @@ import { api, API_BASE } from '../lib/api';
 import type { Song } from '../lib/types';
 
 export interface ResolvedTrack {
+  id?: string;
   type: 'track';
   source: string;
   title: string;
@@ -10,6 +11,7 @@ export interface ResolvedTrack {
   duration?: number;
   thumbnail?: string;
   stream_url: string;
+  download_url?: string;
   original_url: string;
   webpage_url?: string;
 }

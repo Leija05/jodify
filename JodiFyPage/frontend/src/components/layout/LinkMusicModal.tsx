@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Link as LinkIcon,
   Play,
@@ -10,20 +10,23 @@ import {
   X,
   MusicNotes,
   Queue,
-  Database,
   Trash,
   Clock,
   YoutubeLogo,
+  SpotifyLogo,
   Globe,
   Sparkle,
   ThumbsUp,
-  ArrowsClockwise,
+  Heart,
+  CloudArrowDown,
+  ClipboardText,
+  Lightning,
 } from '@phosphor-icons/react';
 import { useUiStore } from '../../store/ui.store';
 import { usePlayerStore } from '../../store/player.store';
 import { useQueueStore } from '../../store/queue.store';
 import { useToastStore } from '../../store/toast.store';
-import { useIsAdmin, useIsDev } from '../../context/SessionContext';
+import { useIsAdmin, useIsDev, useSession } from '../../context/SessionContext';
 import {
   linksService,
   ResolvedMedia,
@@ -33,9 +36,42 @@ import {
 import { formatTime } from '../../lib/utils';
 import type { Song } from '../../lib/types';
 import { useLibraryStore } from '../../store/library.store';
+import { downloadSong } from '../../services/offline.service';
+import { likesService } from '../../services/social.service';
+
+function toVirtualSong(track: {
+  title: string;
+  artist?: string;
+  album?: string;
+  stream_url?: string;
+  url?: string;
+  thumbnail?: string;
+  duration?: number;
+  id?: string;
+}): Song {
+  const hashVal = Math.abs(
+    Array.from(track.title + (track.artist || '')).reduce(
+      (acc, char) => (acc << 5) - acc + char.charCodeAt(0),
+      0
+    )
+  );
+  const cleanId = track.id ? String(track.id) : `link-${hashVal}`;
+  return {
+    id: cleanId,
+    name: track.title,
+    artist: track.artist || 'Enlace Externo',
+    album: track.album || 'Streaming Web',
+    url: track.stream_url || track.url || '',
+    cover_url: track.thumbnail || undefined,
+    duration: track.duration,
+    likes: 0,
+    added_by: 'Enlace Web',
+  };
+}
 
 export function LinkMusicModal() {
   const ui = useUiStore();
+  const { session } = useSession();
   const isAdmin = useIsAdmin();
   const isDev = useIsDev();
 
@@ -47,11 +83,20 @@ export function LinkMusicModal() {
   const [notes, setNotes] = useState('');
   const [suggesting, setSuggesting] = useState(false);
   const [suggestedOk, setSuggestedOk] = useState(false);
+  const [savingOffline, setSavingOffline] = useState(false);
 
   // Sugerencias comunitarias
   const [suggestions, setSuggestions] = useState<SongSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  const likedIds = useLibraryStore((s) => s.likedIds);
+  const downloadedIds = useLibraryStore((s) => s.downloadedIds);
+
+  const isTrackLiked = (songId: string | number) =>
+    likedIds.some((id) => String(id) === String(songId));
+  const isTrackDownloaded = (songId: string | number) =>
+    downloadedIds.some((id) => String(id) === String(songId));
 
   useEffect(() => {
     if (ui.modal === 'linkMusic' && activeTab === 'suggestions') {
@@ -73,6 +118,20 @@ export function LinkMusicModal() {
     }
   };
 
+  const handlePasteClipboard = async () => {
+    try {
+      if (navigator?.clipboard?.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim().startsWith('http')) {
+          setUrl(text.trim());
+          useToastStore.getState().show('Enlace pegado desde el portapapeles', 'info', 1600);
+        }
+      }
+    } catch {
+      // ignore clipboard error
+    }
+  };
+
   const handleResolve = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
@@ -85,6 +144,7 @@ export function LinkMusicModal() {
     try {
       const res = await linksService.resolveLink(url.trim());
       setResolved(res);
+      useToastStore.getState().show('¡Música encontrada con éxito!', 'success', 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo resolver el enlace');
     } finally {
@@ -93,48 +153,109 @@ export function LinkMusicModal() {
   };
 
   const handlePlayResolvedTrack = (track: ResolvedTrack) => {
-    const virtualSong: Song = {
-      id: `link-${Date.now()}`,
-      name: track.title,
-      artist: track.artist || 'Enlace externo',
-      album: track.album || 'Streaming Web',
-      url: track.stream_url,
-      cover_url: track.thumbnail || undefined,
-      duration: track.duration,
-      likes: 0,
-    };
+    const virtualSong = toVirtualSong(track);
+    useLibraryStore.getState().upsertSong(virtualSong);
 
     const player = usePlayerStore.getState();
     player.setCurrentSong(virtualSong);
     player.setIsPlaying(true);
-    player.setSourceUrl(track.stream_url);
+    player.setSourceUrl(virtualSong.url);
     useToastStore.getState().show(`Reproduciendo «${track.title}»`, 'success', 2200);
   };
 
   const handleQueueTrack = (track: ResolvedTrack) => {
-    const virtualSong: Song = {
-      id: `link-${Date.now()}`,
-      name: track.title,
-      artist: track.artist || 'Enlace externo',
-      album: track.album || 'Streaming Web',
-      url: track.stream_url,
-      cover_url: track.thumbnail || undefined,
-      duration: track.duration,
-      likes: 0,
-    };
+    const virtualSong = toVirtualSong(track);
+    useLibraryStore.getState().upsertSong(virtualSong);
     useQueueStore.getState().add(virtualSong);
     useToastStore.getState().show(`«${track.title}» agregada a la cola`, 'info', 1800);
   };
 
-  const handleDownloadTrack = (track: ResolvedTrack) => {
-    const downloadUrl = linksService.getDownloadUrl(track.original_url || track.stream_url, `${track.title}.mp3`);
+  const handleToggleLike = async (track: ResolvedTrack) => {
+    const virtualSong = toVirtualSong(track);
+    const currentlyLiked = isTrackLiked(virtualSong.id);
+    const nextLiked = !currentlyLiked;
+
+    // Actualiza en la tienda de la biblioteca inmediatamente
+    useLibraryStore.getState().upsertSong(virtualSong);
+    useLibraryStore.getState().toggleLikeLocal(virtualSong.id, nextLiked);
+
+    if (session?.username) {
+      try {
+        if (nextLiked) {
+          await likesService.addLike(session.username, virtualSong.id);
+        } else {
+          await likesService.removeLike(session.username, virtualSong.id);
+        }
+      } catch {
+        // Enlaces virtuales persisten en memoria local e IDB
+      }
+    }
+
+    useToastStore.getState().show(
+      nextLiked
+        ? `«${track.title}» agregada a tus Me Gusta ❤️`
+        : `«${track.title}» eliminada de tus Me Gusta`,
+      nextLiked ? 'success' : 'info',
+      2000
+    );
+  };
+
+  const handleSaveOffline = async (track: ResolvedTrack) => {
+    const virtualSong = toVirtualSong(track);
+    setSavingOffline(true);
+    try {
+      useLibraryStore.getState().upsertSong(virtualSong);
+      await downloadSong(virtualSong, session?.username || 'usuario');
+      useToastStore.getState().show(
+        `«${track.title}» guardada localmente para escuchar sin conexión`,
+        'success',
+        2500
+      );
+    } catch (err) {
+      useToastStore.getState().show(
+        'No se pudo guardar localmente: ' + (err instanceof Error ? err.message : ''),
+        'error'
+      );
+    } finally {
+      setSavingOffline(false);
+    }
+  };
+
+  const handleDownloadFile = (track: ResolvedTrack) => {
+    const targetUrl = track.download_url || track.original_url || track.stream_url;
+    const downloadUrl = linksService.getDownloadUrl(targetUrl, `${track.title}.mp3`);
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = `${track.title}.mp3`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    useToastStore.getState().show(`Descargando «${track.title}»…`, 'info', 2200);
+    useToastStore.getState().show(`Iniciando descarga de «${track.title}.mp3»…`, 'info', 2200);
+  };
+
+  const handlePlayAllPlaylist = (playlist: ResolvedMedia & { type: 'playlist' }) => {
+    if (!playlist.items.length) return;
+    const songs = playlist.items.map((item) => toVirtualSong(item));
+    songs.forEach((s) => useLibraryStore.getState().upsertSong(s));
+
+    const queue = useQueueStore.getState();
+    songs.slice(1).forEach((s) => queue.add(s));
+
+    const player = usePlayerStore.getState();
+    player.setCurrentSong(songs[0]);
+    player.setIsPlaying(true);
+    player.setSourceUrl(songs[0].url);
+    useToastStore.getState().show(`Reproduciendo playlist (${songs.length} pistas)`, 'success', 2500);
+  };
+
+  const handleQueueAllPlaylist = (playlist: ResolvedMedia & { type: 'playlist' }) => {
+    if (!playlist.items.length) return;
+    const songs = playlist.items.map((item) => toVirtualSong(item));
+    songs.forEach((s) => {
+      useLibraryStore.getState().upsertSong(s);
+      useQueueStore.getState().add(s);
+    });
+    useToastStore.getState().show(`Se agregaron ${songs.length} canciones a la cola`, 'info', 2200);
   };
 
   const handleSuggest = async (track: ResolvedTrack) => {
@@ -153,7 +274,10 @@ export function LinkMusicModal() {
       setSuggestedOk(true);
       useToastStore.getState().show('Sugerencia enviada a los administradores', 'success', 2500);
     } catch (err) {
-      useToastStore.getState().show(err instanceof Error ? err.message : 'Error al enviar sugerencia', 'error');
+      useToastStore.getState().show(
+        err instanceof Error ? err.message : 'Error al enviar sugerencia',
+        'error'
+      );
     } finally {
       setSuggesting(false);
     }
@@ -166,10 +290,15 @@ export function LinkMusicModal() {
       if (createdSong) {
         useLibraryStore.getState().upsertSong(createdSong);
       }
-      setSuggestions((prev) => prev.map((s) => (s.id === sugId ? { ...s, status: 'approved' } : s)));
+      setSuggestions((prev) =>
+        prev.map((s) => (s.id === sugId ? { ...s, status: 'approved' } : s))
+      );
       useToastStore.getState().show('Canción aprobada y guardada en la base de datos', 'success', 2800);
     } catch (err) {
-      useToastStore.getState().show(err instanceof Error ? err.message : 'Error al aprobar sugerencia', 'error');
+      useToastStore.getState().show(
+        err instanceof Error ? err.message : 'Error al aprobar sugerencia',
+        'error'
+      );
     } finally {
       setApprovingId(null);
     }
@@ -194,16 +323,16 @@ export function LinkMusicModal() {
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 'min(640px, 94vw)' }}
+        style={{ width: 'min(720px, 94vw)' }}
       >
         <div className="jf-modal-header">
           <div className="jf-modal-header-icon jf-modal-header-icon--link">
             <LinkIcon size={20} weight="bold" />
           </div>
           <div>
-            <h2 className="jf-modal-title">Música desde Enlace</h2>
+            <h2 className="jf-modal-title">Buscador y Explorador de Enlaces</h2>
             <p className="jf-modal-subtitle">
-              Reproduce, descarga o sugiere canciones y playlists desde YouTube, SoundCloud o enlaces directos
+              Pega cualquier link para reproducir, guardar en tus me gusta, descargar localmente o agregar a tu colección
             </p>
           </div>
           <button
@@ -223,7 +352,7 @@ export function LinkMusicModal() {
             className={`jf-link-tab ${activeTab === 'search' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('search')}
           >
-            <Globe size={16} weight="bold" /> Explorar Enlace
+            <Globe size={16} weight="bold" /> Buscar por Enlace
           </button>
           <button
             type="button"
@@ -241,6 +370,7 @@ export function LinkMusicModal() {
 
         {activeTab === 'search' ? (
           <div className="jf-link-content">
+            {/* Formulario de búsqueda con botón de pegar */}
             <form onSubmit={handleResolve} className="jf-link-form">
               <div className="jf-link-input-wrapper">
                 <input
@@ -248,10 +378,18 @@ export function LinkMusicModal() {
                   className="jf-input jf-link-input"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="Pega un enlace de YouTube, SoundCloud, MP3 directo o playlist…"
+                  placeholder="Pega un enlace de YouTube, Spotify, SoundCloud, MP3 o playlist…"
                   autoFocus
                   required
                 />
+                <button
+                  type="button"
+                  className="jf-btn-ghost jf-link-paste-btn"
+                  onClick={handlePasteClipboard}
+                  title="Pegar desde el portapapeles"
+                >
+                  <ClipboardText size={17} weight="bold" /> Pegar
+                </button>
                 <button
                   type="submit"
                   className="jf-btn jf-btn--primary jf-link-submit-btn"
@@ -259,7 +397,7 @@ export function LinkMusicModal() {
                 >
                   {isResolving ? (
                     <>
-                      <SpinnerGap size={17} weight="bold" className="jf-spin" /> Resolviendo…
+                      <SpinnerGap size={17} weight="bold" className="jf-spin" /> Buscando…
                     </>
                   ) : (
                     <>
@@ -268,7 +406,43 @@ export function LinkMusicModal() {
                   )}
                 </button>
               </div>
+
+              {/* Badges de compatibilidad rápida */}
+              <div className="jf-link-compatibility-badges">
+                <span className="jf-link-compat-pill jf-compat-yt">
+                  <YoutubeLogo size={13} weight="fill" /> YouTube
+                </span>
+                <span className="jf-link-compat-pill jf-compat-sp">
+                  <SpotifyLogo size={13} weight="fill" /> Spotify
+                </span>
+                <span className="jf-link-compat-pill jf-compat-sc">
+                  <Globe size={13} weight="bold" /> SoundCloud
+                </span>
+                <span className="jf-link-compat-pill jf-compat-direct">
+                  <MusicNotes size={13} weight="bold" /> Audio MP3 / WAV
+                </span>
+              </div>
             </form>
+
+            {/* Animación de escaneo activo */}
+            <AnimatePresence>
+              {isResolving && (
+                <motion.div
+                  className="jf-link-scanning-state"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                >
+                  <div className="jf-link-scanning-radar">
+                    <span className="jf-radar-pulse" />
+                    <SpinnerGap size={36} weight="bold" className="jf-spin jf-radar-icon" />
+                  </div>
+                  <p className="jf-link-scanning-text">
+                    Decodificando metadatos y extrayendo flujo de audio en alta definición…
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {error && (
               <motion.div
@@ -281,49 +455,75 @@ export function LinkMusicModal() {
             )}
 
             {/* Resultado de pista única */}
-            {resolved?.type === 'track' && (
+            {resolved?.type === 'track' && !isResolving && (
               <motion.div
                 className="jf-link-card"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
+                initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               >
                 <div className="jf-link-card-media">
                   {resolved.thumbnail ? (
                     <img className="jf-link-cover" src={resolved.thumbnail} alt="" />
                   ) : (
                     <div className="jf-link-cover jf-link-cover--placeholder">
-                      <MusicNotes size={32} weight="duotone" />
+                      <MusicNotes size={36} weight="duotone" />
                     </div>
                   )}
-                  <span className="jf-link-source-badge">
+
+                  <span
+                    className={`jf-link-source-badge ${
+                      resolved.source.includes('youtube')
+                        ? 'is-youtube'
+                        : resolved.source.includes('spotify')
+                        ? 'is-spotify'
+                        : 'is-web'
+                    }`}
+                  >
                     {resolved.source.includes('youtube') ? (
                       <YoutubeLogo size={14} weight="fill" />
+                    ) : resolved.source.includes('spotify') ? (
+                      <SpotifyLogo size={14} weight="fill" />
                     ) : (
                       <Globe size={14} weight="fill" />
                     )}
                     {resolved.source.toUpperCase()}
                   </span>
+
+                  <span className="jf-link-quality-badge">320 KBPS HD</span>
                 </div>
 
                 <div className="jf-link-card-details">
-                  <h3 className="jf-link-title">{resolved.title}</h3>
-                  <p className="jf-link-artist">{resolved.artist}</p>
-                  {resolved.duration && (
-                    <p className="jf-link-duration">
-                      <Clock size={13} /> {formatTime(resolved.duration)}
-                    </p>
-                  )}
+                  <div className="jf-link-meta-head">
+                    <h3 className="jf-link-title">{resolved.title}</h3>
+                    <p className="jf-link-artist">{resolved.artist}</p>
+                    <div className="jf-link-meta-tags">
+                      {resolved.album && (
+                        <span className="jf-link-album-tag">Álbum: {resolved.album}</span>
+                      )}
+                      {resolved.duration && (
+                        <span className="jf-link-duration">
+                          <Clock size={13} /> {formatTime(resolved.duration)}
+                        </span>
+                      )}
+                      {isTrackDownloaded(toVirtualSong(resolved).id) && (
+                        <span className="jf-link-offline-badge">
+                          <CheckCircle size={13} weight="fill" /> Guardada Offline
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-                  {/* Acciones principales */}
-                  <div className="jf-link-actions-row">
+                  {/* Acciones principales: Play, Cola, Like, Guardar Offline, Descargar MP3 */}
+                  <div className="jf-link-actions-grid">
                     <button
                       type="button"
-                      className="jf-btn jf-btn--primary"
+                      className="jf-btn jf-btn--primary jf-link-action-play"
                       onClick={() => handlePlayResolvedTrack(resolved)}
                     >
                       <Play size={16} weight="fill" /> Reproducir ahora
                     </button>
+
                     <button
                       type="button"
                       className="jf-btn jf-btn--secondary"
@@ -332,25 +532,75 @@ export function LinkMusicModal() {
                     >
                       <Queue size={16} /> A la cola
                     </button>
+
+                    {/* Botón de Like / Favoritos */}
+                    <button
+                      type="button"
+                      className={`jf-btn jf-btn--secondary jf-link-like-btn ${
+                        isTrackLiked(toVirtualSong(resolved).id) ? 'is-liked' : ''
+                      }`}
+                      onClick={() => handleToggleLike(resolved)}
+                      title={
+                        isTrackLiked(toVirtualSong(resolved).id)
+                          ? 'En tus Me Gusta'
+                          : 'Agregar a Me Gusta para escuchar siempre'
+                      }
+                    >
+                      <Heart
+                        size={17}
+                        weight={
+                          isTrackLiked(toVirtualSong(resolved).id) ? 'fill' : 'regular'
+                        }
+                      />
+                      {isTrackLiked(toVirtualSong(resolved).id) ? 'Me Gusta' : 'Dar Like'}
+                    </button>
+
+                    {/* Botón de Guardar Offline (IndexedDB local) */}
+                    <button
+                      type="button"
+                      className={`jf-btn jf-btn--secondary jf-link-offline-btn ${
+                        isTrackDownloaded(toVirtualSong(resolved).id) ? 'is-downloaded' : ''
+                      }`}
+                      onClick={() => handleSaveOffline(resolved)}
+                      disabled={savingOffline}
+                      title="Guardar localmente para escuchar sin conexión en cualquier momento"
+                    >
+                      {savingOffline ? (
+                        <SpinnerGap size={16} weight="bold" className="jf-spin" />
+                      ) : (
+                        <CloudArrowDown size={17} weight="bold" />
+                      )}
+                      {isTrackDownloaded(toVirtualSong(resolved).id)
+                        ? 'En Offline'
+                        : 'Guardar Offline'}
+                    </button>
+
+                    {/* Botón de Descargar MP3 directo al disco */}
                     <button
                       type="button"
                       className="jf-btn jf-btn--secondary"
-                      onClick={() => handleDownloadTrack(resolved)}
-                      title="Descargar audio libremente a tu dispositivo"
+                      onClick={() => handleDownloadFile(resolved)}
+                      title="Descargar archivo .mp3 a tu dispositivo"
                     >
-                      <Download size={16} /> Descargar
+                      <Download size={16} /> Descargar .mp3
                     </button>
                   </div>
 
-                  {/* Sección de Sugerencia para Admin / Dev */}
+                  {/* Sección de Sugerencia / Añadir a la base de datos */}
                   <div className="jf-link-suggest-box">
                     <div className="jf-link-suggest-head">
-                      <span>¿Quieres que esta canción esté para siempre en la app?</span>
+                      <Sparkle size={15} weight="fill" />
+                      <span>
+                        {isAdmin || isDev
+                          ? 'Panel de Control: Agregar a la nube de JodiFy'
+                          : '¿Quieres que esta canción esté disponible para toda la comunidad?'}
+                      </span>
                     </div>
+
                     {suggestedOk ? (
                       <div className="jf-link-suggest-success">
                         <CheckCircle size={18} weight="fill" />
-                        <span>¡Sugerencia enviada! Un administrador la revisará para agregarla.</span>
+                        <span>¡Sugerencia enviada! Un administrador la revisará para incorporarla.</span>
                       </div>
                     ) : (
                       <div className="jf-link-suggest-form">
@@ -359,7 +609,7 @@ export function LinkMusicModal() {
                           className="jf-input jf-link-notes-input"
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Nota para el dev o admin (opcional: por qué debería agregarse)"
+                          placeholder="Nota opcional (género, comentarios, etc.)"
                         />
                         <button
                           type="button"
@@ -382,64 +632,130 @@ export function LinkMusicModal() {
             )}
 
             {/* Resultado de Playlist */}
-            {resolved?.type === 'playlist' && (
+            {resolved?.type === 'playlist' && !isResolving && (
               <motion.div
                 className="jf-link-playlist-view"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.35 }}
               >
                 <div className="jf-link-playlist-head">
                   {resolved.thumbnail && (
                     <img className="jf-link-playlist-cover" src={resolved.thumbnail} alt="" />
                   )}
-                  <div>
-                    <span className="jf-link-playlist-badge">Playlist Encontrada</span>
+                  <div className="jf-link-playlist-meta">
+                    <div className="jf-link-playlist-badges-row">
+                      <span className="jf-link-playlist-badge">Playlist Completa</span>
+                      <span className="jf-link-playlist-count">{resolved.count} canciones</span>
+                    </div>
                     <h3 className="jf-link-playlist-title">{resolved.title}</h3>
                     <p className="jf-link-playlist-sub">
-                      {resolved.count} canciones · Canal: {resolved.artist || 'Varios'}
+                      Canal / Creador: {resolved.artist || 'Varios Artistas'}
                     </p>
+
+                    <div className="jf-link-playlist-actions">
+                      <button
+                        type="button"
+                        className="jf-btn jf-btn--primary"
+                        onClick={() => handlePlayAllPlaylist(resolved)}
+                      >
+                        <Play size={16} weight="fill" /> Reproducir Todo
+                      </button>
+                      <button
+                        type="button"
+                        className="jf-btn jf-btn--secondary"
+                        onClick={() => handleQueueAllPlaylist(resolved)}
+                      >
+                        <Queue size={16} /> Añadir Todo a la Cola
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="jf-link-playlist-items">
-                  {resolved.items.slice(0, 30).map((item, idx) => (
-                    <div key={item.id || idx} className="jf-link-playlist-item">
-                      <span className="jf-link-item-num">{idx + 1}</span>
-                      {item.thumbnail ? (
-                        <img className="jf-link-item-thumb" src={item.thumbnail} alt="" />
-                      ) : (
-                        <div className="jf-link-item-thumb jf-link-item-thumb--placeholder">
-                          <MusicNotes size={16} />
+                  {resolved.items.slice(0, 50).map((item, idx) => {
+                    const vSong = toVirtualSong(item);
+                    const liked = isTrackLiked(vSong.id);
+                    return (
+                      <div key={item.id || idx} className="jf-link-playlist-item">
+                        <span className="jf-link-item-num">{idx + 1}</span>
+                        {item.thumbnail ? (
+                          <img className="jf-link-item-thumb" src={item.thumbnail} alt="" />
+                        ) : (
+                          <div className="jf-link-item-thumb jf-link-item-thumb--placeholder">
+                            <MusicNotes size={16} />
+                          </div>
+                        )}
+                        <div className="jf-link-item-meta">
+                          <span className="jf-link-item-title">{item.title}</span>
+                          <span className="jf-link-item-artist">{item.artist}</span>
                         </div>
-                      )}
-                      <div className="jf-link-item-meta">
-                        <span className="jf-link-item-title">{item.title}</span>
-                        <span className="jf-link-item-artist">{item.artist}</span>
+                        {item.duration && (
+                          <span className="jf-link-item-dur">{formatTime(item.duration)}</span>
+                        )}
+
+                        <div className="jf-link-item-actions">
+                          {/* Botón Play directo */}
+                          <button
+                            type="button"
+                            className="jf-btn-icon"
+                            title="Reproducir ahora"
+                            onClick={() => {
+                              useLibraryStore.getState().upsertSong(vSong);
+                              const p = usePlayerStore.getState();
+                              p.setCurrentSong(vSong);
+                              p.setIsPlaying(true);
+                              p.setSourceUrl(vSong.url);
+                              useToastStore.getState().show(`Reproduciendo «${item.title}»`, 'success', 2000);
+                            }}
+                          >
+                            <Play size={14} weight="fill" />
+                          </button>
+
+                          {/* Botón Añadir a la cola */}
+                          <button
+                            type="button"
+                            className="jf-btn-icon"
+                            title="Añadir a la cola"
+                            onClick={() => {
+                              useLibraryStore.getState().upsertSong(vSong);
+                              useQueueStore.getState().add(vSong);
+                              useToastStore.getState().show(`«${item.title}» a la cola`, 'info', 1600);
+                            }}
+                          >
+                            <Queue size={14} />
+                          </button>
+
+                          {/* Botón Like directo en playlist */}
+                          <button
+                            type="button"
+                            className={`jf-btn-icon ${liked ? 'is-liked' : ''}`}
+                            title={liked ? 'En tus Me Gusta' : 'Dar Like'}
+                            onClick={async () => {
+                              const next = !liked;
+                              useLibraryStore.getState().upsertSong(vSong);
+                              useLibraryStore.getState().toggleLikeLocal(vSong.id, next);
+                              if (session?.username) {
+                                try {
+                                  if (next) await likesService.addLike(session.username, vSong.id);
+                                  else await likesService.removeLike(session.username, vSong.id);
+                                } catch {
+                                  // local
+                                }
+                              }
+                              useToastStore.getState().show(
+                                next ? 'Añadida a tus Me Gusta ❤️' : 'Eliminada de tus Me Gusta',
+                                next ? 'success' : 'info',
+                                1800
+                              );
+                            }}
+                          >
+                            <Heart size={14} weight={liked ? 'fill' : 'regular'} color={liked ? '#ff3366' : 'currentColor'} />
+                          </button>
+                        </div>
                       </div>
-                      {item.duration && (
-                        <span className="jf-link-item-dur">{formatTime(item.duration)}</span>
-                      )}
-                      <button
-                        type="button"
-                        className="jf-btn-icon"
-                        title="Explorar y reproducir esta canción"
-                        onClick={async () => {
-                          setUrl(item.url);
-                          setIsResolving(true);
-                          try {
-                            const res = await linksService.resolveLink(item.url);
-                            setResolved(res);
-                          } catch {
-                            // ignore
-                          } finally {
-                            setIsResolving(false);
-                          }
-                        }}
-                      >
-                        <Play size={14} weight="fill" />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
@@ -448,88 +764,119 @@ export function LinkMusicModal() {
           /* Pestaña: Sugerencias de la comunidad */
           <div className="jf-suggestions-list-view">
             <div className="jf-suggestions-header">
-              <p>Canciones propuestas por usuarios para añadir a la base de datos oficial:</p>
+              <span className="jf-suggestions-count">
+                {suggestions.length} {suggestions.length === 1 ? 'sugerencia' : 'sugerencias'} registradas
+              </span>
               <button
                 type="button"
-                className="jf-btn jf-btn--secondary jf-btn--sm"
+                className="jf-btn-ghost jf-suggestions-refresh"
                 onClick={loadSuggestions}
                 disabled={loadingSuggestions}
               >
-                <ArrowsClockwise size={14} className={loadingSuggestions ? 'jf-spin' : ''} /> Actualizar
+                Actualizar
               </button>
             </div>
 
             {loadingSuggestions ? (
               <div className="jf-suggestions-loading">
-                <SpinnerGap size={28} className="jf-spin" />
+                <SpinnerGap size={24} className="jf-spin" />
                 <p>Cargando sugerencias…</p>
               </div>
             ) : suggestions.length === 0 ? (
               <div className="jf-suggestions-empty">
-                <ThumbsUp size={36} weight="duotone" />
-                <p>No hay canciones sugeridas todavía. ¡Sé el primero en proponer una!</p>
+                <MusicNotes size={40} weight="thin" />
+                <p>Aún no hay sugerencias comunitarias registradas.</p>
+                <span>¡Sé el primero en pegar un enlace y sugerir una canción!</span>
               </div>
             ) : (
-              <ul className="jf-suggestions-list">
+              <div className="jf-suggestions-list">
                 {suggestions.map((sug) => (
-                  <li key={sug.id} className={`jf-suggestion-item is-${sug.status}`}>
+                  <div key={sug.id} className="jf-suggestion-card">
                     {sug.thumbnail ? (
                       <img className="jf-suggestion-thumb" src={sug.thumbnail} alt="" />
                     ) : (
-                      <div className="jf-suggestion-thumb jf-suggestion-thumb--placeholder">
+                      <div className="jf-suggestion-thumb jf-suggestion-thumb--empty">
                         <MusicNotes size={20} />
                       </div>
                     )}
-                    <div className="jf-suggestion-info">
-                      <span className="jf-suggestion-title">{sug.title}</span>
-                      <span className="jf-suggestion-artist">
-                        {sug.artist} · Propuesto por <strong>{sug.suggested_by}</strong>
-                      </span>
-                      {sug.notes && <p className="jf-suggestion-notes">«{sug.notes}»</p>}
-                    </div>
 
-                    <div className="jf-suggestion-status-box">
-                      {sug.status === 'approved' ? (
-                        <span className="jf-sug-badge jf-sug-badge--approved">
-                          <CheckCircle size={14} weight="fill" /> En la DB
+                    <div className="jf-suggestion-meta">
+                      <div className="jf-suggestion-title-row">
+                        <span className="jf-suggestion-title">{sug.title}</span>
+                        <span className={`jf-suggestion-status is-${sug.status}`}>
+                          {sug.status === 'approved'
+                            ? 'Aprobada'
+                            : sug.status === 'rejected'
+                            ? 'Rechazada'
+                            : 'Pendiente'}
                         </span>
-                      ) : (
-                        <span className="jf-sug-badge jf-sug-badge--pending">Pendiente</span>
+                      </div>
+                      <span className="jf-suggestion-artist">{sug.artist || 'Desconocido'}</span>
+                      <span className="jf-suggestion-by">
+                        Sugerida por {sug.suggested_by} · {sug.created_at ? new Date(sug.created_at).toLocaleDateString() : ''}
+                      </span>
+                      {sug.notes && (
+                        <p className="jf-suggestion-notes">«{sug.notes}»</p>
                       )}
                     </div>
 
-                    {(isAdmin || isDev) && sug.status === 'pending' && (
-                      <div className="jf-suggestion-admin-actions">
+                    <div className="jf-suggestion-actions">
+                      <button
+                        type="button"
+                        className="jf-btn-icon"
+                        title="Probar y reproducir enlace"
+                        onClick={() => {
+                          const vSong = toVirtualSong({
+                            id: sug.id,
+                            title: sug.title,
+                            artist: sug.artist,
+                            album: sug.album,
+                            thumbnail: sug.thumbnail,
+                            stream_url: sug.stream_url || sug.url,
+                            duration: sug.duration,
+                          });
+                          useLibraryStore.getState().upsertSong(vSong);
+                          const p = usePlayerStore.getState();
+                          p.setCurrentSong(vSong);
+                          p.setIsPlaying(true);
+                          p.setSourceUrl(vSong.url);
+                          useToastStore.getState().show(`Reproduciendo «${sug.title}»`, 'success', 2000);
+                        }}
+                      >
+                        <Play size={15} weight="fill" />
+                      </button>
+
+                      {(isAdmin || isDev) && sug.status === 'pending' && (
                         <button
                           type="button"
-                          className="jf-btn jf-btn--primary jf-btn--sm"
+                          className="jf-btn jf-btn--primary jf-btn-approve"
+                          title="Descargar audio y agregarlo a MongoDB"
                           disabled={approvingId === sug.id}
                           onClick={() => handleApprove(sug.id)}
-                          title="Descargar audio y agregarlo automáticamente a la Base de Datos"
                         >
                           {approvingId === sug.id ? (
-                            <>
-                              <SpinnerGap size={13} className="jf-spin" /> Guardando en DB…
-                            </>
+                            <SpinnerGap size={14} className="jf-spin" />
                           ) : (
-                            <>
-                              <Database size={13} weight="fill" /> Aprobar y Guardar en DB
-                            </>
+                            <Lightning size={14} weight="bold" />
                           )}
+                          Aprobar
                         </button>
+                      )}
+
+                      {(isAdmin || isDev) && (
                         <button
                           type="button"
-                          className="jf-btn-icon jf-btn-icon--danger"
+                          className="jf-btn-icon jf-btn-danger"
+                          title="Eliminar sugerencia"
                           onClick={() => handleDeleteSuggestion(sug.id)}
-                          title="Descartar sugerencia"
                         >
                           <Trash size={15} />
                         </button>
-                      </div>
-                    )}
-                  </li>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         )}

@@ -123,7 +123,20 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         "writethumbnail": True,
         "quiet": True,
         "no_warnings": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "mweb"],
+            }
+        },
+        "http_headers": {
+            "User-Agent": "com.google.android.youtube/19.29.35 (Linux; U; Android 14; en_US; Pixel 7 Pro Build/UQ1A.240105.004) gzip",
+            "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+        },
     }
+    cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
+    if cookie_path and os.path.exists(cookie_path):
+        ydl_opts["cookiefile"] = cookie_path
+
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
@@ -161,7 +174,7 @@ async def approve_and_add_to_database(
     base_target = os.path.join(temp_dir, "audio")
 
     try:
-        # Descarga el audio usando yt-dlp
+        # Descarga el audio usando yt-dlp con clientes android/ios
         downloaded_file, thumb_file = await loop.run_in_executor(
             None, _download_song_sync, target_url, base_target
         )
@@ -220,7 +233,6 @@ async def approve_and_add_to_database(
         logger.error(f"Error aprobando sugerencia: {e}")
         raise HTTPException(status_code=500, detail=f"Error al descargar y guardar en la base de datos: {str(e)}")
     finally:
-        # Limpiar archivos temporales
         try:
             import shutil
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -250,23 +262,42 @@ async def download_proxy(
             }
             return StreamingResponse(stream_audio_url(), headers=headers)
 
-        # Para YouTube u otras fuentes, resolver con yt-dlp
-        resolved = await resolve_link(url)
-        stream_url = resolved.get("stream_url")
-        if not stream_url:
-            raise HTTPException(status_code=400, detail="No se pudo obtener el stream de audio")
+        # Para YouTube u otras fuentes, descargar con yt-dlp y streamear
+        loop = asyncio.get_running_loop()
+        temp_dir = tempfile.mkdtemp()
+        base_target = os.path.join(temp_dir, "audio")
 
-        async def stream_ytdl():
-            async with httpx.AsyncClient(follow_redirects=True, timeout=60) as client:
-                async with client.stream("GET", stream_url) as resp:
-                    async for chunk in resp.aiter_bytes():
-                        yield chunk
+        try:
+            downloaded_file, _ = await loop.run_in_executor(
+                None, _download_song_sync, url, base_target
+            )
 
-        safe_filename = f"{resolved.get('title', 'cancion')}.mp3".replace('"', "").replace("'", "")
-        headers = {
-            "Content-Disposition": f'attachment; filename="{safe_filename}"',
-            "Content-Type": "audio/mpeg",
-        }
-        return StreamingResponse(stream_ytdl(), headers=headers)
+            def file_iterator():
+                try:
+                    with open(downloaded_file, "rb") as f:
+                        while True:
+                            chunk = f.read(64 * 1024)
+                            if not chunk:
+                                break
+                            yield chunk
+                finally:
+                    import shutil
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+
+            safe_filename = filename.replace('"', "").replace("'", "")
+            if not safe_filename.endswith(".mp3"):
+                safe_filename += ".mp3"
+            headers = {
+                "Content-Disposition": f'attachment; filename="{safe_filename}"',
+                "Content-Type": "audio/mpeg",
+            }
+            return StreamingResponse(file_iterator(), headers=headers)
+
+        except Exception as e:
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise e
+
     except Exception as e:
+        logger.error(f"Error en descarga de {url}: {e}")
         raise HTTPException(status_code=500, detail=f"Error en descarga: {str(e)}")

@@ -21,6 +21,7 @@ COLLECTIONS = {
     "dev_keys": "dev_keys",
     "system_state": "system_state",
     "app_updates": "app_updates",
+    "song_suggestions": "song_suggestions",
 }
 
 APK_BUCKET = "apk_releases"
@@ -127,6 +128,10 @@ async def create_indexes() -> None:
     await col("app_updates").create_indexes([
         IndexModel([("platform", ASCENDING), ("is_active", DESCENDING), ("created_at", DESCENDING)]),
         IndexModel([("version", ASCENDING)]),
+    ])
+    await col("song_suggestions").create_indexes([
+        IndexModel([("created_at", DESCENDING)]),
+        IndexModel([("status", ASCENDING)]),
     ])
     await apk_files().create_indexes([
         IndexModel([("uploadDate", DESCENDING)]),

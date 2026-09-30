@@ -1,56 +1,64 @@
-/* ============ Updater — modal de actualización (Neon Obsidian) ============ */
+/* ============ Updater — Modal de Actualización Premium (Neon Obsidian) ============ */
 .jf-update-backdrop {
   position: fixed;
   inset: 0;
   z-index: calc(var(--z-modal) + 1);
-  background: rgba(3, 3, 6, 0.74);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(3, 3, 6, 0.82);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-lg);
+  padding: var(--space-md);
 }
 
 [data-theme='light'] .jf-update-backdrop {
-  background: rgba(28, 32, 52, 0.4);
+  background: rgba(28, 32, 52, 0.55);
 }
 
 .jf-update-card {
   position: relative;
-  width: min(440px, 100%);
+  width: min(510px, 94vw);
   background:
-    linear-gradient(180deg, rgba(var(--primary-rgb), 0.05), transparent 34%),
+    linear-gradient(180deg, rgba(var(--primary-rgb), 0.08), transparent 36%),
     var(--surface-solid);
-  border: 1px solid var(--border);
-  border-top-color: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(255, 255, 255, 0.22);
   border-radius: var(--radius-xl);
   box-shadow:
     var(--shadow-lg),
-    0 0 90px rgba(var(--primary-rgb), 0.16);
+    0 0 110px rgba(var(--primary-rgb), 0.22),
+    0 25px 60px rgba(0, 0, 0, 0.7);
   overflow: hidden;
 }
 
 [data-theme='light'] .jf-update-card {
   background:
-    linear-gradient(180deg, rgba(var(--primary-rgb), 0.05), transparent 34%),
+    linear-gradient(180deg, rgba(var(--primary-rgb), 0.06), transparent 36%),
     var(--surface-solid);
-  border-top-color: rgba(255, 255, 255, 0.65);
+  border-top-color: rgba(255, 255, 255, 0.8);
 }
 
 .jf-update-aura {
   position: absolute;
-  inset: -120px -80px auto -80px;
-  height: 280px;
+  inset: -140px -80px auto -80px;
+  height: 320px;
   background:
-    radial-gradient(420px 190px at 24% 20%, rgba(var(--primary-rgb), 0.2), transparent 62%),
-    radial-gradient(420px 190px at 76% 12%, rgba(var(--secondary-rgb), 0.13), transparent 62%),
-    radial-gradient(300px 150px at 52% 30%, rgba(var(--accent-rgb), 0.1), transparent 65%);
+    radial-gradient(460px 220px at 20% 20%, rgba(var(--primary-rgb), 0.25), transparent 65%),
+    radial-gradient(460px 220px at 80% 15%, rgba(var(--secondary-rgb), 0.18), transparent 65%),
+    radial-gradient(360px 180px at 50% 35%, rgba(0, 255, 204, 0.12), transparent 70%);
   pointer-events: none;
 }
 
-[data-theme='light'] .jf-update-aura {
-  opacity: 0.8;
+.jf-update-neon-ring {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(var(--primary-rgb), 0.8), rgba(var(--secondary-rgb), 0.8), transparent);
+  filter: blur(1px);
+  pointer-events: none;
 }
 
 .jf-update-close {
@@ -58,8 +66,8 @@
   top: 14px;
   right: 14px;
   z-index: 2;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -68,16 +76,17 @@
   background: var(--surface-hover);
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+  transition: all 0.2s ease;
 }
 
 .jf-update-close:hover {
   color: var(--text);
   background: var(--surface-active);
+  transform: rotate(90deg);
 }
 
 .jf-update-close:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 
 .jf-update-hero {
@@ -86,25 +95,25 @@
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  padding: 38px 28px 8px;
+  padding: 34px 28px 12px;
+}
+
+.jf-update-mark-wrapper {
+  position: relative;
 }
 
 .jf-update-mark {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   background: var(--gradient-primary);
-  box-shadow: 0 12px 30px rgba(var(--primary-rgb), 0.38);
+  box-shadow: 0 14px 34px rgba(var(--primary-rgb), 0.45);
   z-index: 1;
-}
-
-[data-theme='light'] .jf-update-mark {
-  box-shadow: 0 12px 26px rgba(var(--primary-rgb), 0.3);
 }
 
 .jf-update-mark::after {
@@ -112,36 +121,48 @@
   position: absolute;
   inset: 0;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  border-top-color: rgba(255, 255, 255, 0.72);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.8);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
   pointer-events: none;
 }
 
 .jf-update-mark-glow {
   position: absolute;
-  inset: -14px;
+  inset: -18px;
   border-radius: var(--radius-full);
-  background: radial-gradient(50% 50% at 50% 50%, rgba(var(--primary-rgb), 0.32), transparent 70%);
+  background: radial-gradient(50% 50% at 50% 50%, rgba(var(--primary-rgb), 0.45), transparent 70%);
+  animation: jf-mark-pulse 2.2s infinite ease-in-out;
   pointer-events: none;
+}
+
+@keyframes jf-mark-pulse {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
 }
 
 .jf-update-eq {
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  height: 22px;
-  margin-top: 2px;
+  height: 20px;
+  margin-top: -2px;
 }
 
 .jf-update-eq-bar {
-  width: 5px;
+  width: 4px;
   height: 100%;
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--gradient-primary);
-  transform: scaleY(0.22);
+  transform: scaleY(0.2);
   transform-origin: bottom;
-  transition: transform 0.5s var(--ease-out);
+  transition: transform 0.4s var(--ease-out);
 }
 
 .jf-update-eq-bar--live {
@@ -149,63 +170,132 @@
 }
 
 @keyframes jf-update-eq {
-  0%,
-  100% {
-    transform: scaleY(0.2);
+  0%, 100% {
+    transform: scaleY(0.25);
   }
   38% {
     transform: scaleY(1);
   }
   62% {
-    transform: scaleY(0.55);
+    transform: scaleY(0.6);
   }
 }
 
-.jf-update-eyebrow {
-  margin-top: 6px;
+.jf-update-header-text {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.jf-update-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.jf-update-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 10px var(--primary);
+}
+
+.jf-update-status-dot.is-ready {
+  background: #00ffcc;
+  box-shadow: 0 0 12px #00ffcc;
+}
+
+.jf-update-status-dot.is-active {
+  animation: jf-status-blink 1.2s infinite ease-in-out;
+}
+
+@keyframes jf-status-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.jf-update-status-label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--text-muted);
 }
 
+.jf-update-title {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+}
+
+/* Selector y comparador de versiones */
 .jf-update-versions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 12px;
+  margin-top: 2px;
 }
 
-.jf-update-chip {
-  font-family: var(--font-mono);
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 1;
-  padding: 8px 14px;
+.jf-version-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
-  letter-spacing: -0.02em;
 }
 
-.jf-update-chip--old {
-  color: var(--text-muted);
-  background: var(--surface);
+.jf-version-box--old {
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
-  text-decoration: line-through;
-  text-decoration-color: rgba(var(--accent-rgb), 0.55);
-  text-decoration-thickness: 1.5px;
 }
 
-.jf-update-chip--new {
-  color: var(--text);
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.22), rgba(var(--secondary-rgb), 0.14));
-  border: 1px solid rgba(var(--secondary-rgb), 0.38);
-  box-shadow: 0 0 22px rgba(var(--primary-rgb), 0.22);
-}
-
-.jf-update-arrow {
+.jf-version-box--old .jf-version-number {
+  font-family: var(--font-mono);
+  font-size: 16px;
   color: var(--text-muted);
-  font-size: 15px;
+  text-decoration: line-through;
+  text-decoration-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.jf-version-box--new {
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.22), rgba(var(--secondary-rgb), 0.16));
+  border: 1px solid rgba(var(--secondary-rgb), 0.45);
+  box-shadow: 0 0 24px rgba(var(--primary-rgb), 0.25);
+}
+
+.jf-version-box--new .jf-version-number {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.jf-version-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.jf-update-version-arrow {
+  color: var(--secondary);
+  animation: jf-arrow-glow 1.5s infinite alternate ease-in-out;
+}
+
+@keyframes jf-arrow-glow {
+  from { transform: scale(1); filter: drop-shadow(0 0 2px var(--secondary)); }
+  to { transform: scale(1.2); filter: drop-shadow(0 0 8px var(--secondary)); }
 }
 
 .jf-update-body {
@@ -213,104 +303,177 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 12px 28px 28px;
+  padding: 10px 26px 26px;
 }
 
+/* Tarjetas de aspectos destacados */
+.jf-update-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.jf-highlight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.jf-highlight-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.jf-hi-cyan {
+  background: rgba(0, 210, 255, 0.12);
+  color: #00d2ff;
+  border: 1px solid rgba(0, 210, 255, 0.28);
+}
+
+.jf-hi-purple {
+  background: rgba(180, 80, 255, 0.12);
+  color: #c780ff;
+  border: 1px solid rgba(180, 80, 255, 0.28);
+}
+
+.jf-hi-green {
+  background: rgba(0, 255, 170, 0.12);
+  color: #00ffaa;
+  border: 1px solid rgba(0, 255, 170, 0.28);
+}
+
+.jf-highlight-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 2px;
+}
+
+.jf-highlight-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Notas de versión */
 .jf-update-notes {
   border-top: 1px solid var(--border);
-  padding-top: 14px;
+  padding-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.jf-update-notes-title {
+.jf-update-notes-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .jf-update-notes-text {
-  font-size: 12.5px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.55;
   color: var(--text-muted);
-  max-height: 96px;
+  max-height: 90px;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.jf-update-notes-text--center {
-  text-align: center;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.25);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .jf-update-error {
   font-size: 12.5px;
-  line-height: 1.55;
+  line-height: 1.5;
   color: var(--error);
   background: rgba(var(--error-rgb), 0.08);
   border: 1px solid rgba(var(--error-rgb), 0.28);
   border-radius: var(--radius-md);
   padding: 10px 12px;
-  word-break: break-word;
 }
 
-.jf-update-progress {
+/* Barra de progreso de descarga */
+.jf-update-progress-block {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jf-update-progress-labels {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
+}
+
+.jf-progress-status-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.jf-update-percent {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: #00ffcc;
 }
 
 .jf-update-progress-track {
   position: relative;
-  flex: 1;
-  height: 7px;
+  width: 100%;
+  height: 8px;
   border-radius: var(--radius-full);
-  background: var(--surface-active);
+  background: rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .jf-update-progress-fill {
   position: relative;
   height: 100%;
   border-radius: var(--radius-full);
-  background: var(--gradient-primary);
-  transition: width 0.35s var(--ease-out);
+  background: linear-gradient(90deg, #7f00ff, #00d2ff, #00ffaa);
+  transition: width 0.35s ease;
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.5);
 }
 
 .jf-update-progress-fill::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35) 50%, transparent 80%);
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.5) 50%, transparent 80%);
   background-size: 200% 100%;
-  animation: jf-update-shimmer 1.4s linear infinite;
+  animation: jf-update-shimmer 1.3s linear infinite;
 }
 
 @keyframes jf-update-shimmer {
-  from {
-    background-position: 180% 0;
-  }
-  to {
-    background-position: -80% 0;
-  }
+  from { background-position: 180% 0; }
+  to { background-position: -80% 0; }
 }
 
-.jf-update-percent {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text);
-  min-width: 38px;
-  text-align: right;
-}
-
+/* Botones de acción */
 .jf-update-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .jf-update-btn {
@@ -319,14 +482,14 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
+  height: 46px;
   border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-size: 13.5px;
   font-weight: 700;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: transform 0.16s var(--ease-out), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+  transition: all 0.2s ease;
 }
 
 .jf-update-btn:active {
@@ -334,7 +497,7 @@
 }
 
 .jf-update-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.6;
   cursor: default;
   transform: none;
 }
@@ -343,30 +506,57 @@
   color: #fff;
   background: var(--gradient-primary);
   border: none;
-  box-shadow: 0 8px 22px rgba(var(--primary-rgb), 0.35);
+  box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.38);
 }
 
 .jf-update-btn--primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(var(--primary-rgb), 0.45);
+  transform: translateY(-1.5px);
+  box-shadow: 0 12px 30px rgba(var(--primary-rgb), 0.55);
+}
+
+.jf-update-btn--primary.is-ready-pulse {
+  background: linear-gradient(135deg, #00b09b, #96c93d);
+  box-shadow: 0 8px 26px rgba(0, 255, 170, 0.45);
+  animation: jf-install-pulse 2s infinite ease-in-out;
+}
+
+@keyframes jf-install-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 26px rgba(0, 255, 170, 0.45);
+  }
+  50% {
+    box-shadow: 0 12px 34px rgba(0, 255, 170, 0.75);
+  }
 }
 
 .jf-update-btn--ghost {
-  color: var(--text);
+  color: var(--text-muted);
   background: var(--surface-hover);
   border: 1px solid var(--border-strong);
 }
 
 .jf-update-btn--ghost:hover {
+  color: var(--text);
   background: var(--surface-active);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .jf-update-eq-bar--live {
-    animation: none;
-    transform: scaleY(0.55);
+.jf-bounce {
+  animation: jf-bounce 1s infinite alternate ease-in-out;
+}
+
+@keyframes jf-bounce {
+  from { transform: translateY(-3px); }
+  to { transform: translateY(3px); }
+}
+
+@media (max-width: 480px) {
+  .jf-update-versions {
+    gap: 8px;
   }
-  .jf-update-progress-fill::after {
-    animation: none;
+  .jf-version-box {
+    padding: 4px 10px;
+  }
+  .jf-update-actions {
+    flex-direction: column;
   }
 }
