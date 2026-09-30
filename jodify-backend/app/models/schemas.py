@@ -144,6 +144,8 @@ class CreateDevTokenRequest(BaseModel):
     label: str = ""
     expires_in_days: int | None = 7
     max_uses: int = 1
+    assigned_username: str | None = None
+    assigned_password: str | None = None
 
 
 class SetRoleRequest(BaseModel):

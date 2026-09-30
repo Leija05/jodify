@@ -146,7 +146,7 @@ export function CommunityModal() {
                   <Avatar
                     username={user.display_name || user.username}
                     src={resolveAvatarSrc(user)}
-                    presence={user.discord?.presence ?? (isOnline ? 'online' : 'offline')}
+                    presence={isOnline ? 'online' : (user.discord?.presence ?? 'offline')}
                     size={42}
                   />
                 </div>

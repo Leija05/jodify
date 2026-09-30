@@ -227,14 +227,26 @@ export function calculateMelomanoLevel(
 }
 
 export function resolveAvatarSrc(user?: {
+  username?: string | null;
   avatar_source?: string | null;
   avatar_url?: string | null;
   discord?: { avatar_url?: string | null } | null;
+  discord_id?: string | null;
 } | null): string | null {
   if (!user) return null;
   const source = user.avatar_source || 'custom';
   if (source === 'discord') {
-    return user.discord?.avatar_url || user.avatar_url || null;
+    if (user.discord?.avatar_url) return user.discord.avatar_url;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const cached =
+          (user.discord_id ? localStorage.getItem(`jf_discord_avatar_${user.discord_id}`) : null) ||
+          (user.username ? localStorage.getItem(`jf_discord_avatar_${user.username}`) : null) ||
+          localStorage.getItem('jf_discord_avatar_current');
+        if (cached) return cached;
+      }
+    } catch {}
+    return user.avatar_url || null;
   }
   if (source === 'initials') {
     return null;

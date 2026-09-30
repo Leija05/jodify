@@ -6,7 +6,6 @@ import {
   Download,
   Export,
   SignOut,
-  DiscordLogo,
   LinkSimple,
   LinkBreak,
   ClockCounterClockwise,
@@ -29,6 +28,7 @@ import {
   Globe,
   GameController,
 } from '@phosphor-icons/react';
+import { DiscordOfficialLogo } from '../ui/DiscordOfficialLogo';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
@@ -183,7 +183,15 @@ export function ProfileModal() {
       }
 
       if (profileData?.discord_id) {
-        setDiscord(await fetchLanyardProfile(profileData.discord_id));
+        const disc = await fetchLanyardProfile(profileData.discord_id);
+        setDiscord(disc);
+        if (disc?.avatar_url) {
+          try {
+            localStorage.setItem(`jf_discord_avatar_${profileData.discord_id}`, disc.avatar_url);
+            localStorage.setItem(`jf_discord_avatar_${session.username}`, disc.avatar_url);
+            localStorage.setItem('jf_discord_avatar_current', disc.avatar_url);
+          } catch {}
+        }
       } else {
         setDiscord(null);
       }
@@ -372,6 +380,13 @@ export function ProfileModal() {
         avatar_url: updated.avatar_url,
         avatar_source: updated.avatar_source,
         avatar_frame: updated.avatar_frame,
+        custom_badge: updated.custom_badge,
+        theme: updated.theme,
+        accent_color: updated.accent_color,
+        bio: updated.bio,
+        vibe: updated.vibe,
+        discord_id: updated.discord_id,
+        discord: discord,
       });
 
       toast.show('¡Perfil actualizado y guardado correctamente!', 'success', 2500);
@@ -522,7 +537,7 @@ export function ProfileModal() {
                       username={displayName || profile.username}
                       src={previewAvatarSrc}
                       size={68}
-                      presence={discord?.presence ?? (status.jfOnline ? 'online' : 'offline')}
+                      presence={status.jfOnline ? 'online' : (discord?.presence ?? 'offline')}
                     />
                   </div>
                 </div>
@@ -566,7 +581,7 @@ export function ProfileModal() {
                             username={displayName || profile.username}
                             src={previewAvatarSrc}
                             size={84}
-                            presence={discord?.presence ?? (status.jfOnline ? 'online' : 'offline')}
+                            presence={status.jfOnline ? 'online' : (discord?.presence ?? 'offline')}
                           />
                         </div>
                       </div>
@@ -594,7 +609,7 @@ export function ProfileModal() {
                             {status.jfLabel}
                           </span>
                           <span className={`jf-status-pill jf-status-pill--discord jf-status-pill--${discord ? (status.discordTone ?? 'offline') : 'offline'}`}>
-                            <DiscordLogo size={12} weight="fill" />
+                            <DiscordOfficialLogo size={13} color="currentColor" />
                             {discord ? `Discord: ${status.discordLabel}` : 'Discord sin vincular'}
                           </span>
                         </div>
@@ -785,7 +800,7 @@ export function ProfileModal() {
                         <div className="jf-discord-rich-card" style={{ marginTop: 0 }}>
                           <div className="jf-discord-rich-header">
                             <div className="jf-discord-rich-user">
-                              <DiscordLogo size={20} weight="fill" style={{ color: '#5865f2' }} />
+                              <DiscordOfficialLogo size={22} color="#5865F2" />
                               <div>
                                 <p className="jf-discord-name" style={{ fontSize: '13px', margin: 0, fontWeight: 700 }}>{discord.display_name}</p>
                                 <p className="jf-discord-tag" style={{ margin: 0, fontSize: '11px' }}>@{discord.user_name} · {presenceLabel(discord.presence ?? 'online')}</p>
@@ -849,14 +864,14 @@ export function ProfileModal() {
                         </div>
                       ) : (
                         <div className="jf-discord-panel" style={{ marginTop: 0 }}>
-                          <span className="jf-discord-chip"><DiscordLogo size={20} weight="fill" /></span>
+                          <span className="jf-discord-chip"><DiscordOfficialLogo size={20} color="#5865F2" /></span>
                           <div className="jf-discord-info">
                             <p className="jf-discord-name">Discord</p>
                             <p className="jf-discord-tag">Sin vincular</p>
                           </div>
                           <div className="jf-discord-actions">
                             <Button variant="primary" size="sm" onClick={handleLink}>
-                              <DiscordLogo size={13} weight="fill" /> Vincular
+                              <DiscordOfficialLogo size={14} color="currentColor" /> Vincular
                             </Button>
                           </div>
                         </div>
@@ -920,7 +935,7 @@ export function ProfileModal() {
                           }
                         }}
                       >
-                        <DiscordLogo size={24} weight="fill" style={{ color: '#5865F2' }} />
+                        <DiscordOfficialLogo size={24} color="#5865F2" />
                         <span className="jf-avatar-source-title">Foto de Discord</span>
                         <span className="jf-avatar-source-desc">Sincronizada con tu cuenta</span>
                         {avatarSource === 'discord' && <Check size={14} weight="bold" />}
@@ -944,7 +959,7 @@ export function ProfileModal() {
                           Para usar tu foto de Discord, primero debes vincular tu cuenta de Discord.
                         </span>
                         <Button variant="primary" size="sm" onClick={handleLink}>
-                          <DiscordLogo size={14} weight="fill" /> Vincular Ahora
+                          <DiscordOfficialLogo size={14} color="currentColor" /> Vincular Ahora
                         </Button>
                       </div>
                     )}
@@ -1605,7 +1620,7 @@ export function ProfileModal() {
                   transition={{ duration: 0.2 }}
                 >
                   <div className="jf-discord-panel">
-                    <span className="jf-discord-chip"><DiscordLogo size={20} weight="fill" /></span>
+                    <span className="jf-discord-chip"><DiscordOfficialLogo size={20} color="#5865F2" /></span>
                     <div className="jf-discord-info">
                       {discord || profile?.discord_id ? (
                         <>
@@ -1633,7 +1648,7 @@ export function ProfileModal() {
                         </>
                       ) : (
                         <Button variant="primary" size="sm" onClick={handleLink}>
-                          <DiscordLogo size={14} weight="fill" /> Vincular ID
+                          <DiscordOfficialLogo size={14} color="currentColor" /> Vincular ID
                         </Button>
                       )}
                     </div>

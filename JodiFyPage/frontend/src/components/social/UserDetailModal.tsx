@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Play,
-  DiscordLogo,
   Heart,
   MusicNotes,
   Download,
@@ -14,6 +13,7 @@ import {
   Globe,
   GameController,
 } from '@phosphor-icons/react';
+import { DiscordOfficialLogo } from '../ui/DiscordOfficialLogo';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
 import { Spinner } from '../ui/Spinner';
@@ -207,7 +207,7 @@ export function UserDetailModal() {
                       username={user.display_name || user.username}
                       src={avatarSrc}
                       size={84}
-                      presence={user.discord?.presence ?? (isOnline ? 'online' : 'offline')}
+                      presence={isOnline ? 'online' : (user.discord?.presence ?? 'offline')}
                     />
                   </div>
                 </div>
@@ -244,7 +244,7 @@ export function UserDetailModal() {
                       {isOnline ? 'En línea en JodiFy' : user.last_seen ? `Visto ${timeAgo(user.last_seen)}` : 'Desconectado'}
                     </span>
                     <span className={`jf-status-pill jf-status-pill--discord jf-status-pill--${user.discord ? (status.discordTone ?? 'offline') : 'offline'}`}>
-                      <DiscordLogo size={12} weight="fill" />
+                      <DiscordOfficialLogo size={13} color="currentColor" />
                       {user.discord ? `Discord: ${status.discordLabel}` : 'Sin Discord'}
                     </span>
                   </div>
@@ -468,7 +468,7 @@ export function UserDetailModal() {
                   <div className="jf-discord-rich-card" style={{ marginTop: 0 }}>
                     <div className="jf-discord-rich-header">
                       <div className="jf-discord-rich-user">
-                        <DiscordLogo size={20} weight="fill" style={{ color: '#5865f2' }} />
+                        <DiscordOfficialLogo size={22} color="#5865F2" />
                         <div>
                           <p className="jf-discord-name" style={{ fontSize: '13px', margin: 0, fontWeight: 700 }}>{user.discord.display_name}</p>
                           <p className="jf-discord-tag" style={{ margin: 0, fontSize: '11px' }}>@{user.discord.user_name} · {presenceLabel(user.discord.presence ?? 'online')}</p>

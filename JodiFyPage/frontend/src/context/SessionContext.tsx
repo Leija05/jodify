@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Role } from '../lib/types';
+import type { Role, DiscordProfile } from '../lib/types';
 import { getAuthToken, setAuthToken } from '../lib/api';
 import { saveToken } from '../lib/token';
 import { usersService } from '../services/users.service';
+import { fetchLanyardProfile } from '../services/social.service';
 import { useToastStore } from '../store/toast.store';
 
 export interface Session {
@@ -17,6 +18,8 @@ export interface Session {
   theme?: string | null;
   bio?: string | null;
   vibe?: string | null;
+  discord_id?: string | null;
+  discord?: DiscordProfile | null;
 }
 
 interface SessionContextValue {
@@ -66,6 +69,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const prof = await usersService.fetchProfile(username);
       if (prof) {
+        let discordProfile: DiscordProfile | null = null;
+        if (prof.discord_id) {
+          try {
+            discordProfile = await fetchLanyardProfile(prof.discord_id);
+            if (discordProfile?.avatar_url) {
+              try {
+                localStorage.setItem(`jf_discord_avatar_${prof.discord_id}`, discordProfile.avatar_url);
+                localStorage.setItem(`jf_discord_avatar_${username}`, discordProfile.avatar_url);
+                localStorage.setItem('jf_discord_avatar_current', discordProfile.avatar_url);
+              } catch {}
+            }
+          } catch {}
+        }
+
         setSession((prev) => {
           if (!prev || prev.username.toLowerCase() !== username.toLowerCase()) return prev;
           const updated: Session = {
@@ -79,6 +96,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             theme: prof.theme,
             bio: prof.bio,
             vibe: prof.vibe,
+            discord_id: prof.discord_id,
+            discord: discordProfile || prev.discord || null,
           };
           try {
             localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(updated));
@@ -102,6 +121,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSession((prev) => {
       if (!prev) return null;
       const next = { ...prev, ...updates };
+      if (next.discord?.avatar_url) {
+        try {
+          if (next.discord_id) localStorage.setItem(`jf_discord_avatar_${next.discord_id}`, next.discord.avatar_url);
+          localStorage.setItem(`jf_discord_avatar_${next.username}`, next.discord.avatar_url);
+          localStorage.setItem('jf_discord_avatar_current', next.discord.avatar_url);
+        } catch {}
+      }
       try {
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(next));
       } catch {}
@@ -161,6 +187,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             theme: cachedProfile.theme ?? null,
             bio: cachedProfile.bio ?? null,
             vibe: cachedProfile.vibe ?? null,
+            discord_id: cachedProfile.discord_id ?? null,
+            discord: cachedProfile.discord ?? null,
           });
           syncUserPreferences(validUser).catch(() => undefined);
           fetchAndApplyProfile(validUser).catch(() => undefined);

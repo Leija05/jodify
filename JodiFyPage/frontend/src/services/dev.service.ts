@@ -38,6 +38,8 @@ export const devService = {
     label?: string;
     expires_in_days?: number | null;
     max_uses?: number;
+    assigned_username?: string;
+    assigned_password?: string;
   }): Promise<DevToken> {
     return api.post<DevToken>('/dev/tokens', params);
   },

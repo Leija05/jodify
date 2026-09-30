@@ -91,7 +91,16 @@ async def revoke_dev_key(token_id: str) -> bool:
     return result.modified_count > 0
 
 
-async def create_access_token(*, role: str, label: str = "", expires_in_days: int | None = 7, max_uses: int = 1, created_by: str = "") -> dict:
+async def create_access_token(
+    *,
+    role: str,
+    label: str = "",
+    expires_in_days: int | None = 7,
+    max_uses: int = 1,
+    assigned_username: str | None = None,
+    assigned_password: str | None = None,
+    created_by: str = "",
+) -> dict:
     role = role.strip().lower()
     if role not in _ROLES_OK:
         raise ValueError(f"Rol inválido: {role}. Usá 'admin' o 'mod'.")
@@ -103,6 +112,8 @@ async def create_access_token(*, role: str, label: str = "", expires_in_days: in
         "token_hash": hash_token(plain),
         "role": role,
         "label": label.strip()[:60],
+        "assigned_username": (assigned_username or "").strip()[:40] or None,
+        "assigned_password": (assigned_password or "").strip()[:80] or None,
         "max_uses": max_uses,
         "uses": 0,
         "created_by": created_by,
@@ -129,6 +140,8 @@ def token_view(doc: dict) -> dict:
         "id": sid(doc.get("_id")),
         "role": doc.get("role", "admin"),
         "label": doc.get("label", ""),
+        "assigned_username": doc.get("assigned_username"),
+        "assigned_password": doc.get("assigned_password"),
         "max_uses": doc.get("max_uses", 1),
         "uses": doc.get("uses", 0),
         "created_by": doc.get("created_by", ""),

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { DiscordLogo, LinkSimple, LinkBreak, ShieldCheck, Check, Sparkle } from '@phosphor-icons/react';
+import { LinkSimple, LinkBreak, ShieldCheck, Check, Sparkle } from '@phosphor-icons/react';
+import { DiscordOfficialLogo } from '../ui/DiscordOfficialLogo';
 import { motion } from 'motion/react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -120,7 +121,7 @@ export function DiscordModal() {
           <div className="jf-discord-celebration-badge-wrap">
             <div className="jf-discord-celebration-pulse" />
             <div className="jf-discord-celebration-icon">
-              <DiscordLogo size={42} weight="fill" />
+              <DiscordOfficialLogo size={42} color="#fff" />
               <div className="jf-discord-celebration-check">
                 <Check size={16} weight="bold" />
               </div>
@@ -176,7 +177,7 @@ export function DiscordModal() {
           ) : null}
 
           <div className="jf-discord-input">
-            <DiscordLogo size={18} weight="fill" />
+            <DiscordOfficialLogo size={20} color="#5865F2" />
             <input
               className="jf-input-reset"
               placeholder="Pega tu ID de Discord (17+ dígitos)"

@@ -330,7 +330,7 @@ export function HomeShowcaseView() {
             title="Ver y personalizar mi perfil"
           >
             <div
-              className="jf-home-avatar-wrap"
+              className={`jf-home-avatar-wrap ${session?.avatar_frame && session.avatar_frame !== 'none' ? `jf-avatar-frame--${session.avatar_frame}` : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 ui.open('profile');

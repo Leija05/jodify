@@ -36,6 +36,61 @@ function TokenCard({ token, onRevoke }: { token: DevToken; onRevoke: (t: DevToke
             </button>
           )}
         </div>
+        {(token.assigned_username || token.assigned_password) && (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '6px',
+              padding: '5px 10px',
+              background: 'rgba(255,255,255,0.04)',
+              borderRadius: '6px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              fontSize: '11px',
+            }}
+          >
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Asignado a:</span>
+            {token.assigned_username && (
+              <span style={{ color: '#00f0ff', fontWeight: 600 }}>
+                👤 @{token.assigned_username}
+              </span>
+            )}
+            {token.assigned_password && (
+              <span style={{ color: '#ffd700', fontFamily: 'monospace' }}>
+                🔑 {token.assigned_password}
+              </span>
+            )}
+            <button
+              type="button"
+              className="jf-link-btn"
+              style={{
+                marginLeft: 'auto',
+                fontSize: '11px',
+                color: '#38bdf8',
+                background: 'rgba(56,189,248,0.1)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                border: '1px solid rgba(56,189,248,0.2)',
+                cursor: 'pointer',
+              }}
+              onClick={() => {
+                const parts = [
+                  `🎵 JodiFy Acceso (${ROLE_LABEL[token.role]}):`,
+                  token.assigned_username ? `Usuario: ${token.assigned_username}` : '',
+                  token.assigned_password ? `Contraseña: ${token.assigned_password}` : '',
+                  token.token ? `Token de activación: ${token.token}` : '',
+                ].filter(Boolean);
+                navigator.clipboard.writeText(parts.join('\n'));
+                useToastStore.getState().show('Pack de credenciales copiado al portapapeles', 'success');
+              }}
+              title="Copiar credenciales para tu amigo"
+            >
+              Copiar pack
+            </button>
+          </div>
+        )}
         <div className="jf-dev-token-meta">
           <span>usos {token.uses}/{token.max_uses}</span>
           <span>vence {token.expires_at ? timeAgo(token.expires_at) : 'nunca'}</span>
@@ -67,6 +122,8 @@ export function DevAccess({
 }) {
   const [role, setRole] = useState<'admin' | 'mod'>('admin');
   const [label, setLabel] = useState('');
+  const [assignedUsername, setAssignedUsername] = useState('');
+  const [assignedPassword, setAssignedPassword] = useState('');
   const [expiresDays, setExpiresDays] = useState('7');
   const [maxUses, setMaxUses] = useState('1');
   const [creating, setCreating] = useState(false);
@@ -75,6 +132,15 @@ export function DevAccess({
   const [keyLabel, setKeyLabel] = useState('');
   const [creatingKey, setCreatingKey] = useState(false);
   const [newKey, setNewKey] = useState<(DevKeyRow & { token: string }) | null>(null);
+
+  const generateRandomPassword = () => {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+    let res = '';
+    for (let i = 0; i < 8; i++) {
+      res += chars[Math.floor(Math.random() * chars.length)];
+    }
+    setAssignedPassword(res);
+  };
 
   const loadKeys = async () => {
     try {
@@ -129,9 +195,18 @@ export function DevAccess({
     }
     setCreating(true);
     try {
-      await devService.createToken({ role, label, expires_in_days: days, max_uses: uses });
+      await devService.createToken({
+        role,
+        label,
+        expires_in_days: days,
+        max_uses: uses,
+        assigned_username: assignedUsername.trim() || undefined,
+        assigned_password: assignedPassword.trim() || undefined,
+      });
       useToastStore.getState().show(`${ROLE_LABEL[role]} con código creado. Copialo antes de cerrar.`, 'success');
       setLabel('');
+      setAssignedUsername('');
+      setAssignedPassword('');
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el token');
@@ -197,6 +272,40 @@ export function DevAccess({
                 maxLength={60}
               />
             </label>
+
+            <div className="jf-dev-form-row">
+              <label className="jf-dev-field">
+                <span className="jf-dev-field-label">Usuario asignado (opcional)</span>
+                <input
+                  className="jf-input"
+                  placeholder="Ej: carlos_amigo"
+                  value={assignedUsername}
+                  onChange={(e) => setAssignedUsername(e.target.value)}
+                  maxLength={40}
+                />
+              </label>
+
+              <label className="jf-dev-field">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="jf-dev-field-label">Contraseña asignada (opcional)</span>
+                  <button
+                    type="button"
+                    className="jf-link-btn"
+                    style={{ fontSize: '11px', color: '#00f0ff', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+                    onClick={generateRandomPassword}
+                  >
+                    🎲 Generar
+                  </button>
+                </div>
+                <input
+                  className="jf-input jf-input--mono"
+                  placeholder="Ej: Clave123*"
+                  value={assignedPassword}
+                  onChange={(e) => setAssignedPassword(e.target.value)}
+                  maxLength={60}
+                />
+              </label>
+            </div>
 
             <div className="jf-dev-form-row">
               <label className="jf-dev-field">

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { MagnifyingGlass, Power, UserPlus, Users } from '@phosphor-icons/react';
+import { MagnifyingGlass, PaintBrush, Power, UserPlus, Users } from '@phosphor-icons/react';
 import { Button } from '../ui/Button';
 import { timeAgo } from './devBits';
 import { devService } from '../../services/dev.service';
 import { useToastStore } from '../../store/toast.store';
+import { DevUserStylesModal } from './DevUserStylesModal';
 import type { DevUserRow } from '../../lib/types';
 
 const ROLES: Array<{ value: 'user' | 'mod' | 'admin'; label: string }> = [
@@ -29,6 +30,7 @@ export function DevUsers({
   const [newPass, setNewPass] = useState('');
   const [newRole, setNewRole] = useState<'user' | 'mod' | 'admin'>('user');
   const [createError, setCreateError] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<DevUserRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -171,8 +173,20 @@ export function DevUsers({
                 <td>
                   <span className="jf-dev-user">
                     <span className={`jf-dev-user-dot ${user.is_online ? 'is-online' : ''}`} />
-                    {user.username}
+                    {user.display_name && user.display_name !== user.username ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '5px' }}>
+                        <span>{user.display_name}</span>
+                        <span style={{ fontSize: '11px', opacity: 0.6 }}>@{user.username}</span>
+                      </span>
+                    ) : (
+                      user.username
+                    )}
                     {user.role === 'dev' && <span className="jf-dev-user-dev">DEV</span>}
+                    {user.custom_badge && (
+                      <span className="jf-profile-custom-badge" style={{ fontSize: '9px', padding: '1px 5px' }}>
+                        {user.custom_badge}
+                      </span>
+                    )}
                   </span>
                 </td>
                 <td>
@@ -202,6 +216,15 @@ export function DevUsers({
                 <td className="jf-dev-table-muted">{timeAgo(user.last_seen)}</td>
                 <td>
                   <div className="jf-dev-row-actions">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingUser(user)}
+                      title={`Personalizar estilos VIP, temas, marcos y badges para @${user.username}`}
+                    >
+                      <PaintBrush size={13} />
+                      Estilos
+                    </Button>
                     {user.role !== 'dev' && user.is_online === 1 && (
                       <Button variant="ghost" size="sm" onClick={() => void offline(user)} disabled={busy === user.id}>
                         <Power size={13} />
@@ -222,6 +245,17 @@ export function DevUsers({
           </div>
         )}
         </div>
+      )}
+
+      {editingUser && (
+        <DevUserStylesModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSaved={() => {
+            setEditingUser(null);
+            onChanged();
+          }}
+        />
       )}
     </div>
   );

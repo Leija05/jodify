@@ -15,6 +15,8 @@ export interface DevToken {
   revoked: boolean;
   status: 'active' | 'expired' | 'used' | 'revoked';
   token?: string;
+  assigned_username?: string;
+  assigned_password?: string;
   redeemed_by?: Array<{ username: string; at: string }>;
 }
 
@@ -60,6 +62,20 @@ export interface DevUserRow {
   is_online: number;
   last_seen?: string | null;
   created_at?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  avatar_source?: 'custom' | 'discord' | 'initials' | null;
+  avatar_frame?: string | null;
+  theme?: string | null;
+  accent_color?: string | null;
+  profile_effect?: string | null;
+  custom_badge?: string | null;
+  vibe?: string | null;
+  profile_bg_mode?: 'preset' | 'gradient' | 'anthem_cover';
+  custom_gradient_start?: string;
+  custom_gradient_end?: string;
+  anthem_song_name?: string | null;
+  discord_id?: string | null;
 }
 
 export interface DevKeyRow {

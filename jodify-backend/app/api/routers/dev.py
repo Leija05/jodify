@@ -226,6 +226,8 @@ async def create_dev_access_token(body: CreateDevTokenRequest, dev: Annotated[di
             label=body.label,
             expires_in_days=body.expires_in_days,
             max_uses=body.max_uses,
+            assigned_username=body.assigned_username,
+            assigned_password=body.assigned_password,
             created_by=dev.get("username", ""),
         )
     except ValueError as exc:
@@ -255,10 +257,24 @@ async def dev_users(_dev: Annotated[dict, Depends(require_dev)]) -> list[dict]:
         {
             "id": sid(doc.get("_id")),
             "username": doc.get("username", ""),
+            "display_name": doc.get("display_name"),
             "role": doc.get("role", "user"),
             "is_online": doc.get("is_online", 0),
             "last_seen": doc.get("last_seen"),
             "created_at": doc.get("created_at"),
+            "avatar_url": doc.get("avatar_url"),
+            "avatar_source": doc.get("avatar_source", "custom"),
+            "avatar_frame": doc.get("avatar_frame", "none"),
+            "theme": doc.get("theme", "aurora"),
+            "accent_color": doc.get("accent_color"),
+            "profile_effect": doc.get("profile_effect", "none"),
+            "custom_badge": doc.get("custom_badge"),
+            "vibe": doc.get("vibe"),
+            "profile_bg_mode": doc.get("profile_bg_mode", "preset"),
+            "custom_gradient_start": doc.get("custom_gradient_start", "#6366f1"),
+            "custom_gradient_end": doc.get("custom_gradient_end", "#ec4899"),
+            "anthem_song_name": doc.get("anthem_song_name"),
+            "discord_id": doc.get("discord_id"),
         }
         async for doc in cursor
     ]
