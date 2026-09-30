@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { usePlayerStore } from '../store/player.store';
-import { useSettingsStore } from '../store/settings.store';
 import { useUiStore } from '../store/ui.store';
 
 export function useKeyboardShortcuts(): void {
@@ -11,7 +10,6 @@ export function useKeyboardShortcuts(): void {
 
       const player = usePlayerStore.getState();
       const ui = useUiStore.getState();
-      const settings = useSettingsStore.getState();
 
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
         e.preventDefault();
@@ -56,7 +54,7 @@ export function useKeyboardShortcuts(): void {
           player.toggleLoop();
           break;
         case 't':
-          settings.toggleTheme();
+          ui.toggleMainView();
           break;
         case 'q':
           ui.toggle('queue');

@@ -10,6 +10,7 @@ import { SongListSkeleton } from '../ui/Skeleton';
 import { EmptyState } from '../ui/EmptyState';
 import { useUiStore } from '../../store/ui.store';
 import { useLibraryStore, selectFilteredSongs } from '../../store/library.store';
+import { useUploadStore } from '../../store/upload.store';
 import { useQueueStore } from '../../store/queue.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useIsAdmin, useIsDev, useSession } from '../../context/SessionContext';
@@ -42,12 +43,7 @@ export function PlaylistPanel() {
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const items = Array.from(files).map((file) => ({
-      id: `${file.name}-${file.lastModified}`,
-      name: file.name,
-      file,
-    }));
-    ui.open('upload', { items });
+    useUploadStore.getState().enqueueFiles(Array.from(files), session?.username ?? '');
   };
 
   const sleepProgress = remainingMs != null && totalMs ? 1 - remainingMs / totalMs : null;

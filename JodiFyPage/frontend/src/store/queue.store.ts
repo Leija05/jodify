@@ -6,6 +6,7 @@ import { useJamStore } from './jam.store';
 interface QueueState {
   items: Song[];
   add: (song: Song) => boolean;
+  addPriority: (song: Song) => boolean;
   addMany: (songs: Song[]) => void;
   remove: (songId: number | string) => void;
   clear: () => void;
@@ -23,6 +24,20 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       return false;
     }
     set((s) => ({ items: [...s.items, song] }));
+    jam.broadcastQueueAdd(String(song.id));
+    return true;
+  },
+
+  addPriority: (song) => {
+    const jam = useJamStore.getState();
+    if (jam.active && !jam.isHost && !jam.permissions.allowQueueAdd) {
+      useToastStore.getState().show('El host bloqueó agregar a la cola', 'warning');
+      return false;
+    }
+    set((s) => {
+      const filtered = s.items.filter((item) => String(item.id) !== String(song.id));
+      return { items: [song, ...filtered] };
+    });
     jam.broadcastQueueAdd(String(song.id));
     return true;
   },

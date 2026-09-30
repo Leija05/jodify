@@ -28,6 +28,12 @@ loadEnvFile(path.join(__dirname, '.env'));
 const DEV_URL = process.env.JODIFY_DEV_URL;
 const API_URL = process.env.JODIFY_API_URL || '';
 
+// Evitar throttling de audio y timers cuando la ventana está minimizada o en segundo plano
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -44,6 +50,7 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       spellcheck: false,
+      backgroundThrottling: false, // CRÍTICO: Mantiene la reproducción fluida en segundo plano y minimizada
       additionalArguments: [`--jodify-api-url=${API_URL}`],
     },
   });

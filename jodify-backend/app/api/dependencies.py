@@ -22,10 +22,23 @@ async def get_user_doc(request: Request) -> dict:
     doc = await col("users").find_one({"username": username})
     if doc is None:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
-    return doc
+async def get_user_doc_optional(request: Request) -> dict | None:
+    authorization = request.headers.get("Authorization", "")
+    if not authorization.startswith("Bearer "):
+        return None
+    token = authorization.removeprefix("Bearer ").strip()
+    try:
+        payload = decode_token(token)
+    except jwt.PyJWTError:
+        return None
+    username = payload.get("sub")
+    if not username:
+        return None
+    return await col("users").find_one({"username": username})
 
 
 CurrentUser = Annotated[dict, Depends(get_user_doc)]
+OptionalUser = Annotated[dict | None, Depends(get_user_doc_optional)]
 
 
 async def require_admin(user: CurrentUser) -> dict:

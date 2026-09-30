@@ -105,7 +105,7 @@ describe('smoke render de la app completa', () => {
     localStorage.setItem('jodify_user_role', 'dev');
     render(<App />);
     await screen.findByTestId('song-row-1');
-    expect(screen.getByText('Viento')).toBeInTheDocument();
+    expect(screen.getAllByText('Viento').length).toBeGreaterThan(0);
     expect(screen.getByText('Otro Atardecer')).toBeInTheDocument();
   });
 

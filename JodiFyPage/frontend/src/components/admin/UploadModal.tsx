@@ -1,132 +1,282 @@
-import { useEffect, useState } from 'react';
-import { Check, Warning, XCircle, MusicNotes } from '@phosphor-icons/react';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
+import { useEffect } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  Check,
+  Warning,
+  XCircle,
+  MusicNotes,
+  ArrowClockwise,
+  Minus,
+  Sparkle,
+  Trash,
+  Database,
+  CloudArrowUp,
+  X,
+} from '@phosphor-icons/react';
+import { useUploadStore } from '../../store/upload.store';
 import { useUiStore } from '../../store/ui.store';
-import { useLibraryStore } from '../../store/library.store';
-import { useToastStore } from '../../store/toast.store';
-import { songsService, checkSongNameExists, extractMetadataFromFile } from '../../services/songs.service';
-import { logsService } from '../../services/social.service';
 import { useSession } from '../../context/SessionContext';
-import type { UploadItem } from '../../lib/types';
-
-interface UploadPayload {
-  items: Array<{ id: string; name: string; file: File }>;
-}
 
 export function UploadModal() {
   const ui = useUiStore();
   const { session } = useSession();
-  const [items, setItems] = useState<UploadItem[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const { tasks, isUploading, isModalOpen, openModal, closeModal, clearCompleted, retryTask, enqueueFiles } =
+    useUploadStore();
 
-  const payload = ui.modalPayload as Partial<UploadPayload> | undefined;
+  const payload = ui.modalPayload as { items?: Array<{ file: File }> } | undefined;
 
+  // Si ui.open('upload', { items }) fue invocado desde PlaylistPanel u otro sitio
   useEffect(() => {
-    if (ui.modal === 'upload' && payload?.items) {
-      setItems(
-        payload.items.map((item) => ({
-          id: item.id,
-          name: item.name || item.file?.name || 'canción',
-          status: 'uploading' as const,
-          progress: 0,
-        })),
-      );
-      setUploading(true);
-      void runUploads(payload.items);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ui.modal, payload]);
-
-  const updateItem = (id: string, patch: Partial<UploadItem>) => {
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
-  };
-
-  const runUploads = async (payloadItems: Array<{ id: string; name: string; file: File }>) => {
-    const username = session?.username ?? '';
-    for (const item of payloadItems) {
-      try {
-        const name = (item.name || item.file.name || 'canción').replace(/\.[^.]+$/, '');
-        const meta = await extractMetadataFromFile(item.file);
-        const finalName = meta.title || name;
-
-        if (await checkSongNameExists(finalName)) {
-          updateItem(item.id, { name: finalName, status: 'duplicate', error: 'Ya existe una canción con este nombre' });
-          continue;
-        }
-
-        const coverBlob =
-          meta.pictureData && meta.pictureFormat
-            ? new Blob([meta.pictureData], { type: meta.pictureFormat })
-            : undefined;
-        const song = await songsService.uploadAudio(item.file, {
-          name: finalName,
-          cover: coverBlob,
-          album: meta.album,
-          lyrics: meta.lyrics,
-          artist: meta.artist,
-        });
-        updateItem(item.id, { name: finalName, status: 'success', progress: 100, coverUrl: meta.picture });
-        void logsService.add('upload', `Canción subida: ${finalName}`, username);
-
-        if (song) useLibraryStore.getState().upsertSong(song);
-      } catch (error) {
-        updateItem(item.id, { name: item.name, status: 'error', error: error instanceof Error ? error.message : 'Error al subir' });
+    if (ui.modal === 'upload') {
+      if (payload?.items && payload.items.length > 0) {
+        const files = payload.items.map((i) => i.file).filter(Boolean);
+        enqueueFiles(files, session?.username ?? '');
+      } else {
+        openModal();
       }
+      ui.close('upload');
     }
-    setUploading(false);
-    useToastStore.getState().show('Subida finalizada', 'info');
-  };
+  }, [ui.modal, payload, enqueueFiles, openModal, ui, session]);
 
-  const close = () => {
-    if (uploading) return;
-    ui.close('upload');
-  };
+  if (!isModalOpen) return null;
 
-  const counts = {
-    total: items.length,
-    success: items.filter((i) => i.status === 'success').length,
-    error: items.filter((i) => i.status === 'error' || i.status === 'duplicate').length,
-  };
+  const total = tasks.length;
+  const successCount = tasks.filter((t) => t.status === 'success').length;
+  const errorCount = tasks.filter((t) => t.status === 'error' || t.status === 'duplicate').length;
+  const inProgressCount = tasks.filter(
+    (t) => t.status === 'uploading' || t.status === 'extracting' || t.status === 'pending',
+  ).length;
+
+  const overallPercent = total > 0 ? Math.round((successCount / total) * 100) : 0;
 
   return (
-    <Modal name="upload" title="Subiendo canciones" width={460} onClose={close}>
-      <div className="jf-upload">
-        <div className="jf-upload-counts">
-          <span>Total: {counts.total}</span>
-          <span className="is-success">✓ {counts.success}</span>
-          <span className="is-error">✕ {counts.error}</span>
+    <div className="jf-modal-backdrop" onClick={closeModal}>
+      <motion.div
+        className="jf-modal jf-upload-modal"
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 'min(580px, 94vw)' }}
+      >
+        {/* Encabezado con estado e insignia */}
+        <div className="jf-modal-header jf-upload-modal-header">
+          <div className="jf-upload-title-box">
+            <div className="jf-upload-icon-badge">
+              <Database size={20} weight="fill" />
+            </div>
+            <div>
+              <h2 className="jf-modal-title">Subida a la Base de Datos</h2>
+              <p className="jf-upload-subtitle">
+                {isUploading
+                  ? `Guardando canciones en MongoDB GridFS (${inProgressCount} restante${inProgressCount === 1 ? '' : 's'})`
+                  : total === 0
+                    ? 'No hay canciones en cola'
+                    : 'Todas las operaciones han finalizado'}
+              </p>
+            </div>
+          </div>
+
+          <div className="jf-upload-header-controls">
+            <button
+              type="button"
+              className="jf-upload-header-btn"
+              onClick={closeModal}
+              title="Minimizar (la subida continuará en segundo plano)"
+            >
+              <Minus size={18} weight="bold" />
+            </button>
+            <button
+              type="button"
+              className="jf-upload-header-btn jf-upload-header-btn--close"
+              onClick={closeModal}
+              title="Cerrar ventana"
+            >
+              <X size={18} weight="bold" />
+            </button>
+          </div>
         </div>
-        <ul className="jf-upload-list">
-          {items.map((item) => (
-            <li key={item.id} className={`jf-upload-item jf-upload-item--${item.status}`}>
-              {item.coverUrl ? (
-                <img className="jf-upload-cover" src={item.coverUrl} alt="" />
-              ) : (
-                <div className="jf-upload-cover jf-upload-cover--placeholder">
-                  <MusicNotes size={16} />
-                </div>
-              )}
-              <div className="jf-upload-info">
-                <p className="jf-upload-name">{item.name}</p>
-                {item.status === 'uploading' && (
-                  <div className="jf-upload-progress">
-                    <span style={{ width: `${item.progress}%` }} />
-                  </div>
-                )}
-                {item.status === 'duplicate' && <p className="jf-upload-error"><Warning size={12} /> {item.error}</p>}
-                {item.status === 'error' && <p className="jf-upload-error"><XCircle size={12} /> {item.error}</p>}
+
+        {/* Resumen de métricas y barra general */}
+        <div className="jf-upload-overview">
+          <div className="jf-upload-metrics">
+            <div className="jf-upload-metric jf-upload-metric--total">
+              <span className="jf-upload-metric-label">Total</span>
+              <span className="jf-upload-metric-val">{total}</span>
+            </div>
+            <div className="jf-upload-metric jf-upload-metric--in-progress">
+              <span className="jf-upload-metric-label">En proceso</span>
+              <span className="jf-upload-metric-val">
+                {isUploading && <span className="jf-upload-pulse-dot" />}
+                {inProgressCount}
+              </span>
+            </div>
+            <div className="jf-upload-metric jf-upload-metric--success">
+              <span className="jf-upload-metric-label">Guardadas</span>
+              <span className="jf-upload-metric-val">✓ {successCount}</span>
+            </div>
+            {errorCount > 0 && (
+              <div className="jf-upload-metric jf-upload-metric--error">
+                <span className="jf-upload-metric-label">Incidencias</span>
+                <span className="jf-upload-metric-val">✕ {errorCount}</span>
               </div>
-              {item.status === 'success' && <Check size={18} weight="bold" className="jf-upload-ok" />}
-            </li>
-          ))}
-        </ul>
-        {!uploading && (
-          <Button variant="primary" size="sm" onClick={close} className="jf-upload-done">
-            Hecho
-          </Button>
-        )}
-      </div>
-    </Modal>
+            )}
+          </div>
+
+          {total > 0 && (
+            <div className="jf-upload-overall-bar">
+              <div className="jf-upload-bar-info">
+                <span>Progreso total ({overallPercent}%)</span>
+                <span>
+                  {successCount} de {total} completadas
+                </span>
+              </div>
+              <div className="jf-upload-track">
+                <motion.div
+                  className="jf-upload-fill"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${overallPercent}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Lista de canciones con detalles, animación y carátula */}
+        <div className="jf-upload-body">
+          {tasks.length === 0 ? (
+            <div className="jf-upload-empty">
+              <CloudArrowUp size={44} weight="duotone" className="jf-upload-empty-icon" />
+              <p className="jf-upload-empty-text">Arrastra canciones o selecciónalas para subirlas a la base de datos.</p>
+            </div>
+          ) : (
+            <ul className="jf-upload-list">
+              <AnimatePresence initial={false}>
+                {tasks.map((task) => (
+                  <motion.li
+                    key={task.id}
+                    className={`jf-upload-item jf-upload-item--${task.status}`}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {/* Portada extraída o placeholder */}
+                    <div className="jf-upload-cover-wrap">
+                      {task.coverUrl ? (
+                        <img className="jf-upload-cover" src={task.coverUrl} alt="" />
+                      ) : (
+                        <div className="jf-upload-cover jf-upload-cover--placeholder">
+                          <MusicNotes size={20} weight="duotone" />
+                        </div>
+                      )}
+                      {task.status === 'uploading' && (
+                        <div className="jf-upload-cover-overlay">
+                          <span className="jf-upload-cover-pulse" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Información y progreso de la canción */}
+                    <div className="jf-upload-info">
+                      <div className="jf-upload-info-head">
+                        <span className="jf-upload-name" title={task.name}>
+                          {task.name}
+                        </span>
+                        {task.status === 'success' && (
+                          <span className="jf-upload-badge jf-upload-badge--success">
+                            <Check size={12} weight="bold" /> Guardado
+                          </span>
+                        )}
+                        {task.status === 'uploading' && (
+                          <span className="jf-upload-badge jf-upload-badge--uploading">
+                            <Sparkle size={12} weight="fill" className="jf-spin" /> Subiendo…
+                          </span>
+                        )}
+                        {task.status === 'extracting' && (
+                          <span className="jf-upload-badge jf-upload-badge--extracting">Leyendo ID3…</span>
+                        )}
+                        {task.status === 'duplicate' && (
+                          <span className="jf-upload-badge jf-upload-badge--duplicate">
+                            <Warning size={12} weight="bold" /> Duplicada
+                          </span>
+                        )}
+                        {task.status === 'error' && (
+                          <span className="jf-upload-badge jf-upload-badge--error">
+                            <XCircle size={12} weight="bold" /> Error
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="jf-upload-meta-row">
+                        {task.artist && <span className="jf-upload-artist">{task.artist}</span>}
+                        {task.album && <span className="jf-upload-album"> · {task.album}</span>}
+                      </div>
+
+                      {/* Progreso fluido */}
+                      {(task.status === 'uploading' || task.status === 'extracting' || task.status === 'pending') && (
+                        <div className="jf-upload-item-track">
+                          <div
+                            className="jf-upload-item-bar"
+                            style={{ width: `${Math.max(8, task.progress)}%` }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Errores con opción de reintentar */}
+                      {(task.status === 'error' || task.status === 'duplicate') && (
+                        <div className="jf-upload-error-detail">
+                          <span>{task.error}</span>
+                          {task.status === 'error' && (
+                            <button
+                              type="button"
+                              className="jf-upload-retry-btn"
+                              onClick={() => retryTask(task.id, session?.username ?? '')}
+                              title="Reintentar subida"
+                            >
+                              <ArrowClockwise size={13} weight="bold" /> Reintentar
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+          )}
+        </div>
+
+        {/* Pie de modal */}
+        <div className="jf-modal-footer jf-upload-modal-footer">
+          <div className="jf-upload-footer-left">
+            {successCount > 0 && (
+              <button
+                type="button"
+                className="jf-upload-clear-btn"
+                onClick={clearCompleted}
+                title="Quitar las canciones ya subidas de la lista"
+              >
+                <Trash size={14} /> Limpiar completadas
+              </button>
+            )}
+          </div>
+
+          <div className="jf-upload-footer-actions">
+            <button
+              type="button"
+              className="jf-btn jf-btn--secondary"
+              onClick={closeModal}
+              title="Continuar escuchando música mientras se sube"
+            >
+              {isUploading ? 'Minimizar a segundo plano' : 'Cerrar'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
   );
 }

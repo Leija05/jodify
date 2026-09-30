@@ -128,6 +128,34 @@ function ensureChain(): void {
     clarityFilter.connect(analyser);
     analyser.connect(context.destination);
 
+    context.onstatechange = () => {
+      if (context.state === 'suspended') {
+        if (audio && !audio.paused) {
+          context.resume().catch(() => undefined);
+        }
+      }
+    };
+
+    if (typeof document !== 'undefined' && !(window as unknown as { __jodifyAudioBgBound?: boolean }).__jodifyAudioBgBound) {
+      (window as unknown as { __jodifyAudioBgBound?: boolean }).__jodifyAudioBgBound = true;
+      document.addEventListener('visibilitychange', () => {
+        if (chain.context && chain.context.state === 'suspended') {
+          const el = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
+          if (el && !el.paused) {
+            chain.context.resume().catch(() => undefined);
+          }
+        }
+      });
+      window.addEventListener('blur', () => {
+        if (chain.context && chain.context.state === 'suspended') {
+          const el = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
+          if (el && !el.paused) {
+            chain.context.resume().catch(() => undefined);
+          }
+        }
+      });
+    }
+
     chain.context = context;
     chain.source = source;
     chain.preampNode = preampNode;
@@ -207,6 +235,15 @@ export const equalizerApi = {
     if (opts.preamp !== undefined) chain.preamp = opts.preamp;
     if (opts.bassBoost !== undefined) chain.bassBoost = opts.bassBoost;
     if (opts.clarity !== undefined) chain.clarity = opts.clarity;
+    applySettings();
+  },
+
+  reset(): void {
+    ensureChain();
+    chain.bandGains = Array(EQ_BANDS.length).fill(0);
+    chain.bassBoost = 0;
+    chain.clarity = 0;
+    chain.preamp = 0;
     applySettings();
   },
 

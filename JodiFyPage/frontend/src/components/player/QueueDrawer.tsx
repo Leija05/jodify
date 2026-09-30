@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   DotsSixVertical,
   X,
@@ -38,6 +38,8 @@ export function QueueDrawer() {
   const likedIds = useLibraryStore((s) => s.likedIds);
 
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const dragOccurredRef = useRef(false);
 
   // Pool de la colección actual según la pestaña activa
   const pool = useMemo(() => {
@@ -168,31 +170,54 @@ export function QueueDrawer() {
         ) : (
           <ul className="jf-queue-list">
             {items.map((song, index) => {
+              const isItemDragging = draggingIndex === index;
               return (
                 <li
                   key={`priority-${song.id}`}
-                  className="jf-queue-item jf-queue-item--priority"
+                  className={`jf-queue-item jf-queue-item--priority ${isItemDragging ? 'is-dragging' : ''} ${dragOver === index ? 'is-drag-over' : ''}`}
                   draggable
                   onDragStart={(e) => {
+                    dragOccurredRef.current = true;
+                    setDraggingIndex(index);
                     e.dataTransfer.setData('text/plain', String(index));
+                    e.dataTransfer.effectAllowed = 'move';
                   }}
                   onDragOver={(e) => {
                     e.preventDefault();
-                    setDragOver(index);
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOver !== index) setDragOver(index);
                   }}
                   onDragLeave={() => setDragOver((cur) => (cur === index ? null : cur))}
                   onDrop={(e) => {
+                    e.preventDefault();
                     const from = Number(e.dataTransfer.getData('text/plain'));
                     setDragOver(null);
-                    if (!Number.isNaN(from) && from !== index) move(from, index);
+                    setDraggingIndex(null);
+                    if (!Number.isNaN(from) && from !== index) {
+                      move(from, index);
+                      useToastStore.getState().show('Orden de la cola actualizado', 'success', 1200);
+                    }
+                    setTimeout(() => {
+                      dragOccurredRef.current = false;
+                    }, 120);
                   }}
-                  onDragEnd={() => setDragOver(null)}
-                  onClick={() => void playFromQueue(index)}
+                  onDragEnd={() => {
+                    setDragOver(null);
+                    setDraggingIndex(null);
+                    setTimeout(() => {
+                      dragOccurredRef.current = false;
+                    }, 120);
+                  }}
+                  onClick={() => {
+                    if (dragOccurredRef.current) return;
+                    void playFromQueue(index);
+                  }}
+                  title="Mantén presionado y arrastra para mover de orden"
                   data-testid={`queue-item-${song.id}`}
                 >
                   {dragOver === index && <span className="jf-queue-drop-line" aria-hidden="true" />}
                   <span className="jf-queue-grip" aria-hidden="true" title="Arrastrar para reordenar">
-                    <DotsSixVertical size={14} />
+                    <DotsSixVertical size={16} weight="bold" />
                   </span>
                   <SongCover song={song} alt="" className="jf-queue-cover" />
                   <div className="jf-queue-info">
