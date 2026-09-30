@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import re
@@ -32,23 +33,23 @@ def is_spotify_url(url: str) -> bool:
     return "open.spotify.com" in url.lower()
 
 
-def _get_ytdlp_opts(extract_flat: bool = False) -> dict[str, Any]:
+def _get_ytdlp_opts(extract_flat: bool = False, is_search: bool = False) -> dict[str, Any]:
     opts: dict[str, Any] = {
         "format": "bestaudio/best",
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
-        "extract_flat": "in_playlist" if extract_flat else False,
+        "extract_flat": "in_playlist" if (extract_flat or is_search) else False,
         "socket_timeout": 15,
-        "noplaylist": not extract_flat,
+        "noplaylist": False if is_search else not extract_flat,
         # Estrategia anti-bot en IPs de datacenter (Render / AWS / GCP)
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "ios", "mweb"],
+                "player_client": ["ios", "android", "mweb"],
             }
         },
         "http_headers": {
-            "User-Agent": "com.google.android.youtube/19.29.35 (Linux; U; Android 14; en_US; Pixel 7 Pro Build/UQ1A.240105.004) gzip",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
             "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
         },
     }
@@ -62,7 +63,8 @@ def _get_ytdlp_opts(extract_flat: bool = False) -> dict[str, Any]:
 
 
 def _extract_with_ytdlp(url: str, extract_flat: bool = False) -> dict[str, Any]:
-    ydl_opts = _get_ytdlp_opts(extract_flat)
+    is_search = url.startswith("ytsearch")
+    ydl_opts = _get_ytdlp_opts(extract_flat, is_search=is_search)
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         return ydl.sanitize_info(info) or {}
@@ -93,10 +95,10 @@ async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str,
             artist = parts[0].strip()
             title = parts[1].strip()
 
-    # Si maxresdefault puede dar 404 para videos viejos, aseguramos fallback a hqdefault
     if "maxresdefault.jpg" in thumbnail:
         thumbnail = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
 
+    stream_proxy_url = f"/api/links/stream?url=https://www.youtube.com/watch?v={video_id}"
     download_proxy_url = f"/api/links/download-proxy?url=https://www.youtube.com/watch?v={video_id}"
 
     return {
@@ -108,53 +110,131 @@ async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str,
         "album": "YouTube Audio",
         "duration": None,
         "thumbnail": thumbnail,
-        "stream_url": download_proxy_url,
+        "stream_url": stream_proxy_url,
         "download_url": download_proxy_url,
         "original_url": original_url,
         "webpage_url": f"https://www.youtube.com/watch?v={video_id}",
     }
 
 
-async def _resolve_spotify_oembed(url: str) -> dict[str, Any]:
-    """Resuelve metadatos de enlaces de Spotify mediante oEmbed oficial."""
-    oembed_url = f"https://open.spotify.com/oembed?url={url}"
+async def _resolve_spotify(url: str) -> dict[str, Any]:
+    """Resuelve metadatos de enlaces de Spotify y los empareja con audio real de YouTube."""
+    clean_url = url.split("?")[0].strip()
+    embed_url = re.sub(r"open\.spotify\.com\/(track|album|playlist)\/", r"open.spotify.com/embed/\1/", clean_url)
+
+    title = "Canción de Spotify"
+    artist = "Spotify"
+    album = "Spotify Web"
+    thumbnail = None
+    duration = None
+    track_type = "track"
+    playlist_items = []
+
     try:
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            resp = await client.get(oembed_url)
+        async with httpx.AsyncClient(
+            timeout=10.0,
+            follow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        ) as client:
+            resp = await client.get(embed_url)
             if resp.status_code == 200:
-                data = resp.json()
-                raw_title = data.get("title") or "Canción de Spotify"
-                thumbnail = data.get("thumbnail_url")
-                artist = "Spotify"
-                title = raw_title
-                if " by " in raw_title:
-                    parts = raw_title.split(" by ")
-                    title = parts[0].strip()
-                    artist = parts[1].strip()
-                elif "-" in raw_title:
-                    parts = re.split(r"\s*[-–—]\s*", raw_title, maxsplit=1)
-                    if len(parts) == 2:
-                        artist = parts[0].strip()
-                        title = parts[1].strip()
+                m = re.findall(r'<script[^>]+id="__NEXT_DATA__"[^>]*>([^<]+)</script>', resp.text)
+                if m:
+                    data = json.loads(m[0])
+                    state = data.get("props", {}).get("pageProps", {}).get("state", {}).get("data", {}).get("entity", {})
+                    entity_type = state.get("type", "track")
 
-                return {
-                    "type": "track",
-                    "source": "spotify",
-                    "id": f"sp-{abs(hash(url)) % 10000000}",
-                    "title": title,
-                    "artist": artist,
-                    "album": "Spotify Web",
-                    "duration": None,
-                    "thumbnail": thumbnail,
-                    "stream_url": f"/api/links/download-proxy?url={url}",
-                    "download_url": f"/api/links/download-proxy?url={url}",
-                    "original_url": url,
-                    "webpage_url": url,
-                }
+                    if entity_type == "track":
+                        title = state.get("name") or title
+                        artists = [a.get("name") for a in state.get("artists", []) if a.get("name")]
+                        if artists:
+                            artist = ", ".join(artists)
+                        if raw_dur := state.get("duration"):
+                            duration = int(raw_dur / 1000)
+                        images = state.get("visualIdentity", {}).get("image", [])
+                        if images and isinstance(images, list):
+                            thumbnail = images[-1].get("url")
+                    elif entity_type in ("album", "playlist"):
+                        track_type = "playlist"
+                        title = state.get("name") or "Playlist de Spotify"
+                        album = state.get("name") or album
+                        images = state.get("visualIdentity", {}).get("image", [])
+                        if images and isinstance(images, list):
+                            thumbnail = images[-1].get("url")
+
+                        raw_tracks = state.get("trackList", [])
+                        for item in raw_tracks:
+                            item_title = item.get("title") or "Canción"
+                            item_artists = [a.get("name") for a in item.get("artists", []) if a.get("name")]
+                            item_artist = ", ".join(item_artists) or artist
+                            item_dur = int(item.get("duration", 0) / 1000) if item.get("duration") else None
+                            search_target = f"ytsearch1:{item_artist} {item_title}"
+                            playlist_items.append({
+                                "id": f"sp-{abs(hash(item_title + item_artist)) % 10000000}",
+                                "title": item_title,
+                                "artist": item_artist,
+                                "duration": item_dur,
+                                "thumbnail": thumbnail,
+                                "url": f"https://www.youtube.com/results?search_query={item_artist}+{item_title}",
+                                "stream_url": f"/api/links/stream?url={search_target}",
+                            })
     except Exception as exc:
-        logger.warning(f"Fallo en Spotify oEmbed para {url}: {exc}")
+        logger.warning(f"Error parseando Spotify embed para {url}: {exc}")
 
-    raise ValueError("No se pudo obtener información del enlace de Spotify")
+    # Si es playlist / album de Spotify
+    if track_type == "playlist" and playlist_items:
+        return {
+            "type": "playlist",
+            "source": "spotify",
+            "title": title,
+            "artist": artist if artist != "Spotify" else "Varios Artistas",
+            "thumbnail": thumbnail,
+            "count": len(playlist_items),
+            "items": playlist_items,
+            "original_url": url,
+        }
+
+    # Si el título tiene formato "Título - Canción" o "Canción by Artista"
+    if " by " in title and artist == "Spotify":
+        parts = title.split(" by ")
+        title = parts[0].strip()
+        artist = parts[1].strip()
+
+    # Buscar stream de audio en YouTube mediante búsqueda rápida
+    loop = asyncio.get_running_loop()
+    yt_url = None
+    try:
+        search_query = f"ytsearch1:{artist} {title}"
+        search_info = await loop.run_in_executor(None, _extract_with_ytdlp, search_query, False)
+        if search_info and "entries" in search_info and search_info["entries"]:
+            first = search_info["entries"][0]
+            if first and first.get("id"):
+                yt_url = f"https://www.youtube.com/watch?v={first['id']}"
+                if not duration and first.get("duration"):
+                    duration = first.get("duration")
+                if not thumbnail and first.get("thumbnail"):
+                    thumbnail = first.get("thumbnail")
+    except Exception as exc:
+        logger.warning(f"No se pudo emparejar audio de YouTube para Spotify: {exc}")
+
+    effective_stream_target = yt_url or url
+    stream_url = f"/api/links/stream?url={effective_stream_target}"
+    download_url = f"/api/links/download-proxy?url={effective_stream_target}"
+
+    return {
+        "type": "track",
+        "source": "spotify",
+        "id": f"sp-{abs(hash(url)) % 10000000}",
+        "title": title,
+        "artist": artist,
+        "album": album,
+        "duration": duration,
+        "thumbnail": thumbnail,
+        "stream_url": stream_url,
+        "download_url": download_url,
+        "original_url": url,
+        "webpage_url": url,
+    }
 
 
 async def resolve_link(url: str) -> dict[str, Any]:
@@ -184,9 +264,9 @@ async def resolve_link(url: str) -> dict[str, Any]:
 
     # 2. Caso: Spotify
     if is_spotify_url(url):
-        return await _resolve_spotify_oembed(url)
+        return await _resolve_spotify(url)
 
-    # 3. Caso: yt-dlp con fallback garantizado anti-bot
+    # 3. Caso: YouTube, SoundCloud, etc.
     loop = asyncio.get_running_loop()
     yt_id = extract_youtube_id(url)
 
@@ -200,7 +280,7 @@ async def resolve_link(url: str) -> dict[str, Any]:
             raise ValueError("No se pudo obtener información del enlace")
 
         # Es playlist
-        if "_type" in info and info["_type"] == "playlist" or "entries" in info:
+        if ("_type" in info and info["_type"] == "playlist") or "entries" in info:
             entries = info.get("entries") or []
             playlist_items = []
             for item in entries:
@@ -214,7 +294,7 @@ async def resolve_link(url: str) -> dict[str, Any]:
                     "duration": item.get("duration"),
                     "thumbnail": item.get("thumbnail") or (f"https://i.ytimg.com/vi/{item.get('id')}/hqdefault.jpg" if item.get("id") else None),
                     "url": item_url,
-                    "stream_url": f"/api/links/download-proxy?url={item_url}",
+                    "stream_url": f"/api/links/stream?url={item_url}",
                 })
 
             return {
@@ -227,18 +307,6 @@ async def resolve_link(url: str) -> dict[str, Any]:
                 "items": playlist_items,
                 "original_url": url,
             }
-
-        # Es pista individual
-        stream_url = info.get("url")
-        if not stream_url and "formats" in info:
-            audio_formats = [
-                f for f in info["formats"]
-                if f.get("acodec") != "none" and (f.get("vcodec") == "none" or "audio" in f.get("format", "").lower())
-            ]
-            if audio_formats:
-                stream_url = audio_formats[-1].get("url")
-            elif info["formats"]:
-                stream_url = info["formats"][-1].get("url")
 
         title = info.get("title") or "Canción"
         artist = info.get("artist") or info.get("uploader") or info.get("channel") or "Desconocido"
@@ -253,7 +321,8 @@ async def resolve_link(url: str) -> dict[str, Any]:
         if not thumb and yt_id:
             thumb = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
 
-        effective_stream = stream_url or (f"/api/links/download-proxy?url={url}" if yt_id else url)
+        stream_url = f"/api/links/stream?url={url}"
+        download_url = f"/api/links/download-proxy?url={url}"
 
         return {
             "type": "track",
@@ -264,8 +333,8 @@ async def resolve_link(url: str) -> dict[str, Any]:
             "album": info.get("album") or "Enlace Externo",
             "duration": info.get("duration"),
             "thumbnail": thumb,
-            "stream_url": effective_stream,
-            "download_url": f"/api/links/download-proxy?url={url}",
+            "stream_url": stream_url,
+            "download_url": download_url,
             "original_url": url,
             "webpage_url": info.get("webpage_url") or url,
         }

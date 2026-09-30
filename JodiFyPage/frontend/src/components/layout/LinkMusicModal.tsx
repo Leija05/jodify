@@ -38,6 +38,7 @@ import type { Song } from '../../lib/types';
 import { useLibraryStore } from '../../store/library.store';
 import { downloadSong } from '../../services/offline.service';
 import { likesService } from '../../services/social.service';
+import { playSong } from '../../services/player.service';
 
 function toVirtualSong(track: {
   title: string;
@@ -152,14 +153,10 @@ export function LinkMusicModal() {
     }
   };
 
-  const handlePlayResolvedTrack = (track: ResolvedTrack) => {
+  const handlePlayResolvedTrack = async (track: ResolvedTrack) => {
     const virtualSong = toVirtualSong(track);
     useLibraryStore.getState().upsertSong(virtualSong);
-
-    const player = usePlayerStore.getState();
-    player.setCurrentSong(virtualSong);
-    player.setIsPlaying(true);
-    player.setSourceUrl(virtualSong.url);
+    await playSong(virtualSong);
     useToastStore.getState().show(`Reproduciendo «${track.title}»`, 'success', 2200);
   };
 
@@ -233,7 +230,7 @@ export function LinkMusicModal() {
     useToastStore.getState().show(`Iniciando descarga de «${track.title}.mp3»…`, 'info', 2200);
   };
 
-  const handlePlayAllPlaylist = (playlist: ResolvedMedia & { type: 'playlist' }) => {
+  const handlePlayAllPlaylist = async (playlist: ResolvedMedia & { type: 'playlist' }) => {
     if (!playlist.items.length) return;
     const songs = playlist.items.map((item) => toVirtualSong(item));
     songs.forEach((s) => useLibraryStore.getState().upsertSong(s));
@@ -241,10 +238,7 @@ export function LinkMusicModal() {
     const queue = useQueueStore.getState();
     songs.slice(1).forEach((s) => queue.add(s));
 
-    const player = usePlayerStore.getState();
-    player.setCurrentSong(songs[0]);
-    player.setIsPlaying(true);
-    player.setSourceUrl(songs[0].url);
+    await playSong(songs[0]);
     useToastStore.getState().show(`Reproduciendo playlist (${songs.length} pistas)`, 'success', 2500);
   };
 
@@ -700,12 +694,9 @@ export function LinkMusicModal() {
                             type="button"
                             className="jf-btn-icon"
                             title="Reproducir ahora"
-                            onClick={() => {
+                            onClick={async () => {
                               useLibraryStore.getState().upsertSong(vSong);
-                              const p = usePlayerStore.getState();
-                              p.setCurrentSong(vSong);
-                              p.setIsPlaying(true);
-                              p.setSourceUrl(vSong.url);
+                              await playSong(vSong);
                               useToastStore.getState().show(`Reproduciendo «${item.title}»`, 'success', 2000);
                             }}
                           >
