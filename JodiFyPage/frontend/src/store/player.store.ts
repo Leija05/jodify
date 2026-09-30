@@ -197,6 +197,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   seek: (time) => {
     const { currentSong } = get();
+    const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
+
+    if (audio && audio.src && audio.src !== window.location.href && !audio.src.endsWith('/index.html') && audio.duration) {
+      const safeTime = clamp(time, 0, audio.duration || 0);
+      audio.currentTime = safeTime;
+      set({ currentTime: safeTime });
+      useJamStore.getState().broadcastPlaybackChange('seek', safeTime);
+      return;
+    }
+
     const isYt = Boolean(
       currentSong?.youtube_id ||
       (currentSong?.url || '').includes('youtube.com') ||
@@ -212,7 +222,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
 
-    const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
     if (!audio) return;
     const safeTime = clamp(time, 0, audio.duration || 0);
     audio.currentTime = safeTime;

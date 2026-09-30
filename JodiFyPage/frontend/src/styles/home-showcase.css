@@ -60,13 +60,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 12px 18px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(16px);
   transition: all 0.25s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 [data-theme='light'] .jf-home-user-header {
@@ -84,6 +87,8 @@
   border-radius: var(--radius-md);
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
+  flex: 1 1 240px;
+  min-width: 0;
 }
 
 .jf-home-profile-badge:hover {
@@ -125,12 +130,14 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .jf-home-user-top {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .jf-home-user-greeting {
@@ -164,14 +171,17 @@
 .jf-home-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .jf-btn-header-action {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 8px 13px;
   border-radius: 99px;
   font-size: 12px;
   font-weight: 600;
@@ -180,6 +190,8 @@
   color: var(--text);
   transition: all 0.2s ease;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .jf-btn-header-action:hover {
@@ -199,6 +211,179 @@
   border-color: #00f0ff;
 }
 
+.jf-btn-header-action--profile {
+  background: rgba(127, 0, 255, 0.14);
+  border-color: rgba(127, 0, 255, 0.35);
+  color: #c780ff;
+}
+
+.jf-btn-header-action--profile:hover {
+  background: rgba(127, 0, 255, 0.28);
+  border-color: #c780ff;
+  color: #fff;
+}
+
+@media (max-width: 1260px) {
+  .jf-home-header-actions .jf-btn-header-action span {
+    display: none;
+  }
+  .jf-home-header-actions .jf-btn-header-action {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .jf-home-user-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .jf-home-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+}
+
+/* ============ Conmutador de Vista (Cuadros / Lista) ============ */
+.jf-view-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 99px;
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.jf-view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+
+.jf-view-mode-btn:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.jf-view-mode-btn.is-active {
+  background: var(--primary, #7c3aed);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.4);
+}
+
+/* ============ Barra de Control Principal (Tabs, Cuadros/Lista, Búsqueda) ============ */
+.jf-home-main-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+[data-theme='light'] .jf-home-main-toolbar {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.jf-home-toolbar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.jf-toolbar-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.jf-toolbar-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.jf-toolbar-tab.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(127, 0, 255, 0.35);
+}
+
+.jf-home-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.jf-view-mode-switcher--main {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 3px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jf-view-mode-switcher--main .jf-view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.jf-view-btn-text {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.jf-home-search-wrap--compact {
+  padding: 5px 12px;
+}
+
+.jf-search-clear-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0 4px;
+}
+
+.jf-search-clear-btn:hover {
+  color: var(--text);
+}
 
 /* ============ 2. Hero Featured Song (Portada Grande + Descripción) ============ */
 .jf-hero-featured {

@@ -55,13 +55,22 @@ export function getFadeMs(): number {
 
 export function ensurePlaying(): void {
   const player = usePlayerStore.getState();
+  const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
+
+  // Si hay audio HTML5 cargado (p. ej. stream directo en Electron o audio local)
+  if (audio && audio.src && audio.src !== window.location.href && !audio.src.endsWith('/index.html')) {
+    audio.play().then(() => player.setIsPlaying(true)).catch(() => undefined);
+    useJamStore.getState().broadcastPlaybackChange('play');
+    return;
+  }
+
   if (isYouTubeSong(player.currentSong)) {
     ytPlayerService.play();
     player.setIsPlaying(true);
     useJamStore.getState().broadcastPlaybackChange('play');
     return;
   }
-  const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
+
   if (!audio || !player.currentSong) return;
   audio.play().then(() => player.setIsPlaying(true)).catch(() => undefined);
   useJamStore.getState().broadcastPlaybackChange('play');
@@ -69,13 +78,23 @@ export function ensurePlaying(): void {
 
 export function pausePlayback(): void {
   const player = usePlayerStore.getState();
+  const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
+
+  // Si hay audio HTML5 activo, pausarlo
+  if (audio && audio.src && audio.src !== window.location.href && !audio.src.endsWith('/index.html')) {
+    audio.pause();
+    player.setIsPlaying(false);
+    useJamStore.getState().broadcastPlaybackChange('pause');
+    return;
+  }
+
   if (isYouTubeSong(player.currentSong)) {
     ytPlayerService.pause();
     player.setIsPlaying(false);
     useJamStore.getState().broadcastPlaybackChange('pause');
     return;
   }
-  const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
+
   if (!audio) return;
   audio.pause();
   player.setIsPlaying(false);
@@ -99,19 +118,42 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
   const offlineIds = await getAllOfflineIds();
 
   if (ytId && !offlineSong) {
-    if (audio) {
-      audio.pause();
-      audio.src = '';
-    }
     player.setCurrentSong(song);
     player.setCurrentTime(0);
     player.setDuration(song.duration ?? 0);
     player.setSourceUrl(song.url);
     player.setOfflinePlayback(false);
 
+    // En la app de escritorio (Electron), resolver flujo de audio directo de alta fidelidad
+    const desktopPlayer = (window as any).jodifyPlayer;
+    if (desktopPlayer && typeof desktopPlayer.resolveStream === 'function' && audio) {
+      try {
+        useToastStore.getState().show(`Cargando «${song.name}»…`, 'info', 1200);
+        const directUrl = await desktopPlayer.resolveStream(ytId);
+        if (directUrl) {
+          ytPlayerService.stop();
+          audio.src = directUrl;
+          audio.volume = player.volume;
+          audio.muted = player.muted;
+          await audio.play();
+          player.setIsPlaying(true);
+          player.setSourceUrl(directUrl);
+          useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
+          logListeningHistory(song, false);
+          return true;
+        }
+      } catch (err) {
+        console.warn('[player.service] Falló stream directo local, probando reproductor integrado:', err);
+      }
+    }
+
+    if (audio) {
+      audio.pause();
+      audio.src = '';
+    }
     await ytPlayerService.playVideo(ytId);
     player.setIsPlaying(true);
-    useToastStore.getState().show(`Reproduciendo «${song.name}» (YouTube)`, 'success', 2000);
+    useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
     logListeningHistory(song, false);
     return true;
   }

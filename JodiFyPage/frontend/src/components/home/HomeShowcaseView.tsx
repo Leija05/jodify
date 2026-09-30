@@ -57,6 +57,7 @@ export function HomeShowcaseView() {
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'liked' | 'recent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [homeTab, setHomeTab] = useState<'all' | 'songs' | 'playlists'>('all');
 
   // Modo de vista para canciones: 'grid' (cuadros grandes) o 'list' (lista compacta)
   const [songViewMode, setSongViewMode] = useState<'grid' | 'list'>(() => {
@@ -315,7 +316,14 @@ export function HomeShowcaseView() {
             tabIndex={0}
             title="Ver y personalizar mi perfil"
           >
-            <div className="jf-home-avatar-wrap">
+            <div
+              className="jf-home-avatar-wrap"
+              onClick={(e) => {
+                e.stopPropagation();
+                ui.open('profile');
+              }}
+              title="Haz clic para ver y editar tu foto de perfil"
+            >
               <Avatar
                 username={session?.username ?? 'U'}
                 src={resolveAvatarSrc(session)}
@@ -328,7 +336,10 @@ export function HomeShowcaseView() {
             <div className="jf-home-user-text">
               <div className="jf-home-user-top">
                 <span className="jf-home-user-greeting">{greeting},</span>
-                <span className="jf-home-user-name">{session?.username ?? 'Usuario'}</span>
+                <span className="jf-home-user-name">{session?.display_name || session?.username || 'Usuario'}</span>
+                {session?.custom_badge && (
+                  <span className="jf-custom-badge" title="Insignia personalizada">{session.custom_badge}</span>
+                )}
                 {isAdmin && <span className="jf-role-badge jf-role-badge--admin">Admin</span>}
                 {isDev && <span className="jf-role-badge jf-role-badge--dev">Dev</span>}
               </div>
@@ -338,6 +349,16 @@ export function HomeShowcaseView() {
 
           {/* Atajos rápidos en cabecera */}
           <div className="jf-home-header-actions">
+            <button
+              type="button"
+              className="jf-btn-header-action jf-btn-header-action--profile"
+              onClick={() => ui.open('profile')}
+              title="Ver y editar perfil de usuario"
+            >
+              <User size={16} weight="bold" />
+              <span>Mi Perfil</span>
+            </button>
+
             <button
               type="button"
               className="jf-btn-header-action"
@@ -378,6 +399,125 @@ export function HomeShowcaseView() {
             >
               <GearSix size={16} weight="bold" />
             </button>
+          </div>
+        </div>
+
+        {/* ================= BARRA DE CONTROL PRINCIPAL (TABS, CUADROS/LISTA, AGRUPACIÓN) ================= */}
+        <div className="jf-home-main-toolbar">
+          <div className="jf-home-toolbar-tabs">
+            <button
+              type="button"
+              className={`jf-toolbar-tab ${homeTab === 'all' && groupBy === 'none' ? 'is-active' : ''}`}
+              onClick={() => {
+                setHomeTab('all');
+                handleSetGroupBy('none');
+              }}
+              title="Mostrar todo el contenido"
+            >
+              <MusicNotes size={16} weight="bold" />
+              <span>Todas ({filteredSongs.length})</span>
+            </button>
+
+            <button
+              type="button"
+              className={`jf-toolbar-tab ${homeTab === 'playlists' ? 'is-active' : ''}`}
+              onClick={() => setHomeTab('playlists')}
+              title="Ver colecciones y playlists"
+            >
+              <FolderPlus size={16} weight="bold" />
+              <span>Playlists ({playlists.length})</span>
+            </button>
+
+            <button
+              type="button"
+              className={`jf-toolbar-tab ${groupBy === 'artist' ? 'is-active' : ''}`}
+              onClick={() => {
+                setHomeTab('songs');
+                handleSetGroupBy(groupBy === 'artist' ? 'none' : 'artist');
+              }}
+              title="Agrupar canciones por artista"
+            >
+              <User size={16} weight="bold" />
+              <span>Por Artista</span>
+            </button>
+
+            <button
+              type="button"
+              className={`jf-toolbar-tab ${groupBy === 'album' ? 'is-active' : ''}`}
+              onClick={() => {
+                setHomeTab('songs');
+                handleSetGroupBy(groupBy === 'album' ? 'none' : 'album');
+              }}
+              title="Agrupar canciones por álbum"
+            >
+              <Disc size={16} weight="bold" />
+              <span>Por Álbum</span>
+            </button>
+
+            <button
+              type="button"
+              className={`jf-toolbar-tab ${activeFilter === 'liked' ? 'is-active' : ''}`}
+              onClick={() => {
+                setHomeTab('songs');
+                setActiveFilter(activeFilter === 'liked' ? 'all' : 'liked');
+              }}
+              title="Ver mis canciones favoritas"
+            >
+              <Heart size={16} weight={activeFilter === 'liked' ? 'fill' : 'bold'} />
+              <span>Favoritas ({likedIds.length})</span>
+            </button>
+          </div>
+
+          <div className="jf-home-toolbar-right">
+            {/* Conmutador de vista (Iconos compactos Cuadros / Lista) */}
+            <div className="jf-view-mode-switcher jf-view-mode-switcher--main">
+              <button
+                type="button"
+                className={`jf-view-mode-btn ${songViewMode === 'grid' ? 'is-active' : ''}`}
+                onClick={() => {
+                  toggleSongView('grid');
+                  togglePlaylistView('grid');
+                }}
+                title="Mostrar canciones y playlists en cuadros grandes"
+                aria-label="Cuadros grandes"
+              >
+                <SquaresFour size={16} weight="bold" />
+              </button>
+              <button
+                type="button"
+                className={`jf-view-mode-btn ${songViewMode === 'list' ? 'is-active' : ''}`}
+                onClick={() => {
+                  toggleSongView('list');
+                  togglePlaylistView('list');
+                }}
+                title="Mostrar canciones y playlists en lista detallada"
+                aria-label="Lista detallada"
+              >
+                <ListBullets size={16} weight="bold" />
+              </button>
+            </div>
+
+            {/* Buscador reactivo rápido */}
+            <div className="jf-home-search-wrap jf-home-search-wrap--compact">
+              <MagnifyingGlass size={15} />
+              <input
+                type="text"
+                className="jf-home-search-input"
+                placeholder="Buscar música…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="jf-search-clear-btn"
+                  onClick={() => setSearchQuery('')}
+                  title="Limpiar búsqueda"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -519,12 +659,13 @@ export function HomeShowcaseView() {
         )}
 
         {/* ================= SECCIÓN DE PLAYLISTS EN INICIO ================= */}
-        <section className="jf-home-section jf-home-playlists-section">
-          <div className="jf-home-section-head">
-            <div className="jf-home-section-title-wrap">
-              <FolderPlus size={20} weight="fill" className="is-accent-icon" />
-              <h2 className="jf-home-section-title">Playlists & Colecciones</h2>
-            </div>
+        {(homeTab === 'all' || homeTab === 'playlists') && (
+          <section className="jf-home-section jf-home-playlists-section">
+            <div className="jf-home-section-head">
+              <div className="jf-home-section-title-wrap">
+                <FolderPlus size={20} weight="fill" className="is-accent-icon" />
+                <h2 className="jf-home-section-title">Playlists & Colecciones</h2>
+              </div>
 
             <div className="jf-home-section-right-tools">
               {/* Conmutador de vista de Playlists (Cuadros vs Lista) */}
@@ -670,8 +811,10 @@ export function HomeShowcaseView() {
             </div>
           )}
         </section>
+      )}
 
-        {/* ================= SECCIÓN DE CANCIONES ================= */}
+      {/* ================= SECCIÓN DE CANCIONES ================= */}
+      {(homeTab === 'all' || homeTab === 'songs') && (
         <section className="jf-home-section jf-home-songs-section">
           <div className="jf-home-section-head">
             <div className="jf-home-section-title-wrap">
@@ -836,6 +979,7 @@ export function HomeShowcaseView() {
             )
           )}
         </section>
+      )}
       </div>
     </section>
   );

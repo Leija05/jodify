@@ -188,6 +188,9 @@ class YouTubePlayerService {
       if (typeof this.player.setVolume === 'function') {
         this.player.setVolume(Math.round(vol * 100));
       }
+      if (typeof this.player.unMute === 'function') {
+        this.player.unMute();
+      }
       if (typeof this.player.loadVideoById === 'function') {
         this.player.loadVideoById(videoId);
       }

@@ -124,9 +124,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           usersService
             .updatePreferences(username, {
               theme: current.theme,
-              language: current.language,
               eq_preset: current.eqPreset,
-              custom_curves: current.customEqPresets,
+              custom_eq_presets: current.customEqPresets,
+              fade_enabled: current.fadeEnabled,
               fade_duration: current.fadeDuration,
             })
             .catch(() => undefined);

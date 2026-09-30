@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import { ArrowLeft, CheckCircle, Eye, EyeSlash, ShieldCheck, Sparkle } from '@phosphor-icons/react';
 import { useSession } from '../context/SessionContext';
@@ -20,7 +21,14 @@ const item: Variants = {
 };
 
 export function LoginPage() {
-  const { applyUserSession, savedTokenLogin, applyDevAccess } = useSession();
+  const { session, applyUserSession, savedTokenLogin, applyDevAccess } = useSession();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (session) {
+      navigate('/', { replace: true });
+    }
+  }, [session, navigate]);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

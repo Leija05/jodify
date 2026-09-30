@@ -11,6 +11,7 @@ import { toggleLikeCurrent } from '../../services/player-shortcuts';
 import { formatTime, songArtistMeta } from '../../lib/utils';
 import { SongCover } from '../ui/SongCover';
 import { ensurePlaying, pausePlayback } from '../../services/player.service';
+import { useContextMenuStore } from '../../store/contextmenu.store';
 
 export function PlayerBar() {
   const player = usePlayerStore();
@@ -34,7 +35,17 @@ export function PlayerBar() {
       transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
       data-testid="player-bar"
     >
-      <div className="jf-player-left">
+      <div
+        className="jf-player-left"
+        onContextMenu={(e) => {
+          if (song) {
+            e.preventDefault();
+            e.stopPropagation();
+            useContextMenuStore.getState().show(e.clientX, e.clientY, song);
+          }
+        }}
+        title={song ? `Clic derecho para ver opciones de «${song.name}»` : undefined}
+      >
         <AnimatePresence mode="popLayout">
           {song ? (
             <motion.div

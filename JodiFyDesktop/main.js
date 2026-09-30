@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
+const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const https = require('https');
 const { autoUpdater } = require('electron-updater');
 const { createTaskbarIcons } = require('./taskbar-icons');
 
@@ -26,7 +28,7 @@ function loadEnvFile(file) {
 loadEnvFile(path.join(__dirname, '.env'));
 
 const DEV_URL = process.env.JODIFY_DEV_URL;
-const API_URL = process.env.JODIFY_API_URL || '';
+const API_URL = (process.env.JODIFY_API_URL || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
 
 // Evitar throttling de audio y timers cuando la ventana está minimizada o en segundo plano
 app.commandLine.appendSwitch('disable-background-timer-throttling');
@@ -34,7 +36,44 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
+// Caché en memoria para enlaces directos de audio (evita invocar yt-dlp repetidamente)
+const localStreamCache = new Map(); // ytId -> { url: string, expiry: number }
+
+function resolveLocalStreamUrl(targetOrId) {
+  if (!targetOrId) return Promise.resolve(null);
+  const match = String(targetOrId).match(/(?:watch\?v=|youtu\.be\/|embed\/|shorts\/|yt-|v=)?([a-zA-Z0-9_-]{11})/);
+  const ytId = match ? match[1] : targetOrId;
+
+  const cached = localStreamCache.get(ytId);
+  if (cached && cached.expiry > Date.now()) {
+    return Promise.resolve(cached.url);
+  }
+
+  const target = `https://www.youtube.com/watch?v=${ytId}`;
+  return new Promise((resolve) => {
+    execFile(
+      'python',
+      ['-m', 'yt_dlp', '--get-url', '-f', 'bestaudio[ext=m4a]/bestaudio/best', '--no-warnings', '--quiet', target],
+      { timeout: 14000 },
+      (error, stdout) => {
+        if (error || !stdout) {
+          console.warn('[main] Error resolviendo stream local con yt_dlp:', error);
+          resolve(null);
+          return;
+        }
+        const lines = stdout.trim().split(/\r?\n/).filter((l) => l.startsWith('http'));
+        const direct = lines[0] || null;
+        if (direct) {
+          localStreamCache.set(ytId, { url: direct, expiry: Date.now() + 3600 * 1000 });
+        }
+        resolve(direct);
+      }
+    );
+  });
+}
+
 let appServer = null;
+const FIXED_APP_PORT = 8766;
 
 function startAppServer() {
   if (appServer && appServer.listening) {
@@ -61,6 +100,133 @@ function startAppServer() {
 
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
+      // 1. Endpoint proxy de audio local same-origin (sin restricciones CORS de WebAudio, 100% sonido)
+      if (req.url.startsWith('/api/local-stream')) {
+        const u = new URL(req.url, 'http://127.0.0.1');
+        const ytId = u.searchParams.get('v');
+        if (!ytId) {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          return res.end('Missing v parameter');
+        }
+
+        resolveLocalStreamUrl(ytId).then((streamUrl) => {
+          if (!streamUrl) {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            return res.end('Stream not found');
+          }
+
+          try {
+            const parsedStream = new URL(streamUrl);
+            const options = {
+              hostname: parsedStream.hostname,
+              port: 443,
+              path: parsedStream.pathname + parsedStream.search,
+              method: 'GET',
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              },
+            };
+
+            if (req.headers.range) {
+              options.headers.range = req.headers.range;
+            }
+
+            const proxyReq = https.request(options, (proxyRes) => {
+              const resHeaders = {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': '*',
+                'Content-Type': proxyRes.headers['content-type'] || 'audio/mp4',
+                'Accept-Ranges': 'bytes',
+                'Cache-Control': 'public, max-age=3600',
+              };
+              if (proxyRes.headers['content-range']) {
+                resHeaders['Content-Range'] = proxyRes.headers['content-range'];
+              }
+              if (proxyRes.headers['content-length']) {
+                resHeaders['Content-Length'] = proxyRes.headers['content-length'];
+              }
+
+              res.writeHead(proxyRes.statusCode || 200, resHeaders);
+              proxyRes.pipe(res);
+            });
+
+            proxyReq.on('error', (err) => {
+              console.warn('[app-server] Error transmitiendo audio proxy:', err.message);
+              if (!res.headersSent) res.writeHead(502);
+              res.end();
+            });
+
+            proxyReq.end();
+          } catch (e) {
+            console.warn('[app-server] Error creando request de proxy:', e);
+            if (!res.headersSent) res.writeHead(500);
+            res.end();
+          }
+        }).catch((err) => {
+          console.warn('[app-server] Error resolviendo stream:', err);
+          if (!res.headersSent) res.writeHead(500);
+          res.end();
+        });
+        return;
+      }
+
+      // 2. Proxy transparente hacia el backend real (Render / MongoDB) para datos de usuario, perfil, canciones, etc.
+      if (req.url.startsWith('/api/') || req.url === '/api' || req.url.startsWith('/songs/')) {
+        if (req.method === 'OPTIONS') {
+          res.writeHead(200, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Max-Age': '86400',
+          });
+          return res.end();
+        }
+
+        try {
+          const targetUrl = new URL(req.url, API_URL);
+          const reqHeaders = { ...req.headers };
+          reqHeaders.host = targetUrl.host;
+
+          const options = {
+            hostname: targetUrl.hostname,
+            port: targetUrl.port || (targetUrl.protocol === 'https:' ? 443 : 80),
+            path: targetUrl.pathname + targetUrl.search,
+            method: req.method,
+            headers: reqHeaders,
+          };
+
+          const clientModule = targetUrl.protocol === 'https:' ? https : http;
+          const proxyReq = clientModule.request(options, (proxyRes) => {
+            const resHeaders = {
+              ...proxyRes.headers,
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD',
+              'Access-Control-Allow-Headers': '*',
+            };
+            res.writeHead(proxyRes.statusCode || 200, resHeaders);
+            proxyRes.pipe(res);
+          });
+
+          proxyReq.on('error', (err) => {
+            console.warn('[app-server] Error proxying API request to backend:', err.message);
+            if (!res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+              res.end(JSON.stringify({ detail: 'No se pudo conectar con el servidor backend' }));
+            }
+          });
+
+          req.pipe(proxyReq);
+        } catch (e) {
+          console.warn('[app-server] Error creando proxy para backend:', e);
+          if (!res.headersSent) {
+            res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ detail: 'Error en proxy de backend' }));
+          }
+        }
+        return;
+      }
+
+      // 3. Servir archivos estáticos del frontend
       let reqPath = decodeURI((req.url || '/').split('?')[0]);
       if (reqPath === '/' || !reqPath) reqPath = '/index.html';
       let filePath = path.join(distDir, reqPath);
@@ -87,15 +253,26 @@ function startAppServer() {
     });
 
     server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.warn(`[app-server] Puerto ${FIXED_APP_PORT} en uso, probando puerto dinámico...`);
+        server.listen(0, '127.0.0.1', () => {
+          const port = server.address().port;
+          appServer = server;
+          console.log(`[app-server] Servidor local de JodiFy activo en http://127.0.0.1:${port}`);
+          resolve(`http://127.0.0.1:${port}`);
+        });
+        return;
+      }
       console.warn('[app-server] Error iniciando servidor local:', err);
       reject(err);
     });
 
-    server.listen(0, '127.0.0.1', () => {
-      const port = server.address().port;
+    // Fijar puerto en 8766 para que el origen http://127.0.0.1:8766 sea 100% PERSISTENTE
+    // y localStorage / sesión / descargas NUNCA se borren al reiniciar
+    server.listen(FIXED_APP_PORT, '127.0.0.1', () => {
       appServer = server;
-      console.log(`[app-server] Servidor local de JodiFy activo en http://127.0.0.1:${port}`);
-      resolve(`http://127.0.0.1:${port}`);
+      console.log(`[app-server] Servidor local de JodiFy activo en http://127.0.0.1:${FIXED_APP_PORT}`);
+      resolve(`http://127.0.0.1:${FIXED_APP_PORT}`);
     });
   });
 }
@@ -117,7 +294,7 @@ function createWindow() {
       sandbox: false,
       spellcheck: false,
       backgroundThrottling: false, // CRÍTICO: Mantiene la reproducción fluida en segundo plano y minimizada
-      additionalArguments: [`--jodify-api-url=${API_URL}`],
+      additionalArguments: ['--jodify-api-url=/api'],
     },
   });
 
@@ -265,6 +442,46 @@ function registerPlayerIpc() {
       };
     }
     updateThumbar();
+  });
+
+  ipcMain.handle('player:resolve-stream', async (_event, ytUrlOrId) => {
+    if (!ytUrlOrId) return null;
+    const match = String(ytUrlOrId).match(/(?:watch\?v=|youtu\.be\/|embed\/|shorts\/|yt-|v=)?([a-zA-Z0-9_-]{11})/);
+    const videoId = match ? match[1] : ytUrlOrId;
+    return `/api/local-stream?v=${encodeURIComponent(videoId)}`;
+  });
+
+  // ==================== Sesión Persistente a Disco (Electron) ====================
+  const sessionFile = path.join(app.getPath('userData'), 'user_session.json');
+
+  ipcMain.handle('auth:get-session', () => {
+    try {
+      if (fs.existsSync(sessionFile)) {
+        return JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+      }
+    } catch (e) {
+      console.warn('[main] Error leyendo user_session.json:', e);
+    }
+    return null;
+  });
+
+  ipcMain.handle('auth:save-session', (_event, sessionData) => {
+    try {
+      fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2), 'utf8');
+      return true;
+    } catch (e) {
+      console.warn('[main] Error guardando user_session.json:', e);
+      return false;
+    }
+  });
+
+  ipcMain.handle('auth:clear-session', () => {
+    try {
+      if (fs.existsSync(sessionFile)) fs.unlinkSync(sessionFile);
+      return true;
+    } catch (e) {
+      return false;
+    }
   });
 }
 

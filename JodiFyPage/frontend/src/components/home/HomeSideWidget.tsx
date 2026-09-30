@@ -14,10 +14,6 @@ import {
   Sparkle,
   Waveform,
   DotsSixVertical,
-  Headphones,
-  Broadcast,
-  Lightning,
-  SpeakerHigh,
 } from '@phosphor-icons/react';
 import { usePlayerStore } from '../../store/player.store';
 import { useQueueStore } from '../../store/queue.store';
@@ -25,14 +21,21 @@ import { useUiStore } from '../../store/ui.store';
 import { useLyrics } from '../../hooks/useLyrics';
 import { songArtistMeta, resolveMediaUrl, formatTime } from '../../lib/utils';
 import { useSongCoverGradient } from '../../lib/colorExtractor';
-import { useAudioFxStore } from '../../store/audioFx.store';
+import { useToastStore } from '../../store/toast.store';
+import { useContextMenuStore } from '../../store/contextmenu.store';
 import { audioFxService } from '../../services/audioFx.service';
 import { equalizerApi } from '../../services/equalizer.service';
-import { useToastStore } from '../../store/toast.store';
 
 export function HomeSideWidget() {
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+
+  const onContextMenuCurrentSong = (e: React.MouseEvent) => {
+    if (!currentSong) return;
+    e.preventDefault();
+    e.stopPropagation();
+    useContextMenuStore.getState().show(e.clientX, e.clientY, currentSong);
+  };
   const currentTime = usePlayerStore((s) => s.currentTime);
   const duration = usePlayerStore((s) => s.duration);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
@@ -45,9 +48,6 @@ export function HomeSideWidget() {
   const clearQueue = useQueueStore((s) => s.clear);
   const moveQueue = useQueueStore((s) => s.move);
   const ui = useUiStore();
-
-  // FX Store
-  const { spatial8D, lofiFilter, bassHyper, speed, toggle8D, toggleLofi, toggleBass, setSpeed } = useAudioFxStore();
 
   // Color de iluminación ambiental según portada de la canción actual
   const gradient = useSongCoverGradient(currentSong);
@@ -160,20 +160,6 @@ export function HomeSideWidget() {
     seek(ratio * totalDuration);
   };
 
-  const handleCycleSpeed = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (speed === 1.0) {
-      setSpeed(1.15);
-      useToastStore.getState().show('Modo Nightcore activo (1.15x)', 'info', 1400);
-    } else if (speed === 1.15) {
-      setSpeed(0.85);
-      useToastStore.getState().show('Modo Chilled activo (0.85x)', 'info', 1400);
-    } else {
-      setSpeed(1.0);
-      useToastStore.getState().show('Velocidad estándar (1.0x)', 'info', 1400);
-    }
-  };
-
   return (
     <aside className="jf-home-side-widget" data-testid="home-side-widget">
       {/* ================= WIDGET 1: TORNAMESA MASTER AUDIO ULTRA-DETALLADA ================= */}
@@ -269,7 +255,11 @@ export function HomeSideWidget() {
         </div>
 
         {/* ================= INFORMACIÓN NÍTIDA Y CONTROLES DE LA CANCIÓN ================= */}
-        <div className="jf-turntable-song-info-card">
+        <div
+          className="jf-turntable-song-info-card"
+          onContextMenu={onContextMenuCurrentSong}
+          title={currentSong ? `Clic derecho para ver opciones de «${currentSong.name}»` : undefined}
+        >
           <div className="jf-turntable-info-top">
             <div className="jf-turntable-text-wrap">
               <h3 className="jf-turntable-song-title" title={currentSong?.name || 'Sin canción seleccionada'}>
@@ -349,61 +339,6 @@ export function HomeSideWidget() {
               title="Siguiente canción"
             >
               <SkipForward size={18} weight="fill" />
-            </button>
-          </div>
-        </div>
-
-        {/* ================= AUDIO FX LAB (INNOVACIÓN: 8D AUDIO, LO-FI, BASS HYPER-DRIVE & DJ) ================= */}
-        <div className="jf-audio-fx-bar">
-          <div className="jf-audio-fx-title-row">
-            <span className="jf-audio-fx-label">
-              <Sparkle size={12} weight="fill" className="is-accent-icon" /> Audio FX Lab
-            </span>
-            {isScratching && <span className="jf-scratch-badge">⚡ DJ SCRATCH</span>}
-          </div>
-
-          <div className="jf-audio-fx-pills">
-            <button
-              type="button"
-              className={`jf-fx-btn ${spatial8D ? 'is-active' : ''}`}
-              onClick={toggle8D}
-              title="Audio 8D Espacial: Sonido envolvente en 360° para audífonos"
-            >
-              <Headphones size={13} weight="bold" />
-              <span>8D Audio</span>
-              {spatial8D && <span className="jf-fx-dot" />}
-            </button>
-
-            <button
-              type="button"
-              className={`jf-fx-btn ${lofiFilter ? 'is-active' : ''}`}
-              onClick={toggleLofi}
-              title="Vinilo Lo-Fi: Calidez analógica y textura vintage"
-            >
-              <Broadcast size={13} weight="bold" />
-              <span>Lo-Fi</span>
-              {lofiFilter && <span className="jf-fx-dot" />}
-            </button>
-
-            <button
-              type="button"
-              className={`jf-fx-btn ${bassHyper ? 'is-active' : ''}`}
-              onClick={toggleBass}
-              title="Sub-Bass Hyper-Drive: Graves resonantes +8dB"
-            >
-              <SpeakerHigh size={13} weight="bold" />
-              <span>Bass 320K</span>
-              {bassHyper && <span className="jf-fx-dot" />}
-            </button>
-
-            <button
-              type="button"
-              className={`jf-fx-btn jf-fx-btn--speed ${speed !== 1.0 ? 'is-active' : ''}`}
-              onClick={handleCycleSpeed}
-              title="Velocidad y Pitch: Clic para alternar (1.0x, 1.15x Nightcore, 0.85x Chilled)"
-            >
-              <Lightning size={13} weight="bold" />
-              <span>{speed === 1.0 ? '1.0x' : speed === 1.15 ? '1.15x' : '0.85x'}</span>
             </button>
           </div>
         </div>

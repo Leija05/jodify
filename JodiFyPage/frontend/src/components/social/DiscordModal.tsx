@@ -35,40 +35,60 @@ export function DiscordModal() {
         setCurrent(null);
         return;
       }
-      setCurrent(await fetchLanyardProfile(profile.discord_id));
+      setUserId(profile.discord_id);
+      const lanyard = await fetchLanyardProfile(profile.discord_id);
+      setCurrent(
+        lanyard || {
+          discord_id: profile.discord_id,
+          display_name: profile.display_name || session.username,
+          user_name: `ID: ${profile.discord_id}`,
+        },
+      );
     })();
   }, [ui.modal, session]);
 
   const previewDiscord = async (id: string) => {
     const clean = id.trim();
-    if (clean.length < 17) {
+    if (!clean) {
       setPreview(null);
       setError(null);
       return;
     }
+    if (clean.length < 17 || !/^\d+$/.test(clean)) {
+      setPreview(null);
+      setError('El ID de Discord consta de 17 a 19 dígitos numéricos.');
+      return;
+    }
+    setError(null);
     const profile = await fetchLanyardProfile(clean);
-    setPreview(profile);
-    setError(profile ? null : 'No se pudo encontrar ese usuario de Discord (Verifica haberte unido a Lanyard si requieres presencia)');
+    setPreview(
+      profile || {
+        discord_id: clean,
+        display_name: session?.display_name || session?.username || 'Usuario Discord',
+        user_name: `ID: ${clean}`,
+      },
+    );
   };
 
   const confirm = async () => {
     if (!session) return;
-    if (userId.trim().length < 17) {
-      setError('El ID de Discord debe tener al menos 17 dígitos');
+    const cleanId = userId.trim();
+    if (cleanId.length < 17 || !/^\d+$/.test(cleanId)) {
+      setError('El ID de Discord debe contener entre 17 y 19 dígitos numéricos');
       return;
     }
     setLoading(true);
     try {
-      await usersService.setDiscordId(session.username, userId.trim());
-      const linked = preview || (await fetchLanyardProfile(userId.trim())) || {
-        discord_id: userId.trim(),
+      await usersService.setDiscordId(session.username, cleanId);
+      const linked = preview || (await fetchLanyardProfile(cleanId)) || {
+        discord_id: cleanId,
         display_name: session.display_name || session.username,
-        user_name: session.username,
+        user_name: `ID: ${cleanId}`,
       };
       setCelebrationAccount(linked);
-      toast.show('¡Discord vinculado con éxito!', 'success', 3000);
+      toast.show('¡ID de Discord guardado en la base de datos!', 'success', 3000);
     } catch {
-      setError('No se pudo guardar la vinculación');
+      setError('No se pudo guardar la vinculación en la base de datos');
     } finally {
       setLoading(false);
     }

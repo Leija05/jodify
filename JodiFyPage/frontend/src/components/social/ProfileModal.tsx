@@ -258,17 +258,43 @@ export function ProfileModal() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2.8 * 1024 * 1024) {
-      toast.show('La imagen seleccionada supera los 2.8 MB. Elige una más liviana.', 'warning');
-      return;
-    }
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setAvatarUrl(dataUrl);
-      setInputUrl('');
-      setAvatarSource('custom');
-      toast.show('¡Foto cargada! Haz clic en "Guardar Cambios" para confirmar.', 'info', 2500);
+      const rawDataUrl = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 512;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          const optimized = canvas.toDataURL('image/webp', 0.9);
+          setAvatarUrl(optimized);
+        } else {
+          setAvatarUrl(rawDataUrl);
+        }
+        setInputUrl('');
+        setAvatarSource('custom');
+        toast.show('¡Foto cargada y optimizada! Haz clic en "Guardar Cambios" para confirmar.', 'info', 2500);
+      };
+      img.onerror = () => {
+        setAvatarUrl(rawDataUrl);
+        setAvatarSource('custom');
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   };
@@ -306,6 +332,7 @@ export function ProfileModal() {
         display_name: displayName.trim() ? displayName.trim() : null,
         avatar_url: avatarUrl.trim() ? avatarUrl.trim() : null,
         avatar_source: avatarSource,
+        discord_id: profile?.discord_id || null,
         theme: selectedTheme,
         avatar_frame: selectedFrame,
         accent_color: selectedAccent,
@@ -1580,10 +1607,12 @@ export function ProfileModal() {
                   <div className="jf-discord-panel">
                     <span className="jf-discord-chip"><DiscordLogo size={20} weight="fill" /></span>
                     <div className="jf-discord-info">
-                      {discord ? (
+                      {discord || profile?.discord_id ? (
                         <>
-                          <p className="jf-discord-name">{discord.display_name}</p>
-                          <p className="jf-discord-tag">@{discord.user_name} · Discord vinculado</p>
+                          <p className="jf-discord-name">{discord?.display_name || 'Discord Vinculado'}</p>
+                          <p className="jf-discord-tag">
+                            {discord ? `@${discord.user_name} · Discord vinculado` : `ID: ${profile?.discord_id} · Guardado en tu base de datos`}
+                          </p>
                         </>
                       ) : (
                         <>
@@ -1593,10 +1622,10 @@ export function ProfileModal() {
                       )}
                     </div>
                     <div className="jf-discord-actions">
-                      {discord ? (
+                      {discord || profile?.discord_id ? (
                         <>
                           <Button variant="outline" size="sm" onClick={handleLink}>
-                            <LinkSimple size={14} /> Cambiar
+                            <LinkSimple size={14} /> Cambiar ID
                           </Button>
                           <Button variant="danger" size="sm" onClick={() => void handleUnlink()}>
                             <LinkBreak size={14} /> Desvincular
@@ -1604,7 +1633,7 @@ export function ProfileModal() {
                         </>
                       ) : (
                         <Button variant="primary" size="sm" onClick={handleLink}>
-                          <DiscordLogo size={14} weight="fill" /> Vincular
+                          <DiscordLogo size={14} weight="fill" /> Vincular ID
                         </Button>
                       )}
                     </div>

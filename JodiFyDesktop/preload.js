@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const apiUrlArg = process.argv.find((a) => a.startsWith('--jodify-api-url='));
 
 contextBridge.exposeInMainWorld('jodifyEnv', {
-  apiUrl: apiUrlArg ? apiUrlArg.slice('--jodify-api-url='.length) : '',
+  apiUrl: apiUrlArg ? apiUrlArg.slice('--jodify-api-url='.length) : '/api',
 });
 
 contextBridge.exposeInMainWorld('jodifyUpdater', {
@@ -25,4 +25,11 @@ contextBridge.exposeInMainWorld('jodifyPlayer', {
     ipcRenderer.on('player:control', listener);
     return () => ipcRenderer.removeListener('player:control', listener);
   },
+  resolveStream: (target) => ipcRenderer.invoke('player:resolve-stream', target),
+});
+
+contextBridge.exposeInMainWorld('jodifyAuth', {
+  getSavedSession: () => ipcRenderer.invoke('auth:get-session'),
+  saveSession: (sessionData) => ipcRenderer.invoke('auth:save-session', sessionData),
+  clearSession: () => ipcRenderer.invoke('auth:clear-session'),
 });

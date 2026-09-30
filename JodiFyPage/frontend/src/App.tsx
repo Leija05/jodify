@@ -19,7 +19,7 @@ import { usePlayerStore } from './store/player.store';
 const isElectron = typeof window !== 'undefined' && navigator.userAgent.includes('Electron');
 
 function Root() {
-  const { session } = useSession();
+  const { session, ready } = useSession();
   const audioRef = useAudioEngine();
   const currentSong = usePlayerStore((s) => s.currentSong);
 
@@ -38,6 +38,34 @@ function Root() {
   useEffect(() => {
     document.title = currentSong ? `${currentSong.name} — JodiFy` : 'JodiFy — Free Music For Friends';
   }, [currentSong]);
+
+  if (!ready) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          width: '100vw',
+          background: '#07070a',
+          color: '#fff',
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: '3px solid rgba(255,255,255,0.12)',
+            borderTopColor: '#6366f1',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <>

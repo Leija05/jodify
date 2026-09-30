@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Role } from '../lib/types';
-import { setAuthToken } from '../lib/api';
+import { getAuthToken, setAuthToken } from '../lib/api';
 import { saveToken } from '../lib/token';
 import { usersService } from '../services/users.service';
 import { useToastStore } from '../store/toast.store';
@@ -12,6 +12,11 @@ export interface Session {
   avatar_url?: string | null;
   avatar_source?: 'custom' | 'discord' | 'initials' | null;
   avatar_frame?: string | null;
+  custom_badge?: string | null;
+  accent_color?: string | null;
+  theme?: string | null;
+  bio?: string | null;
+  vibe?: string | null;
 }
 
 interface SessionContextValue {
@@ -33,6 +38,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 const SESSION_KEY = 'jodify_session_active';
 const USER_KEY = 'currentUserName';
 const ROLE_KEY = 'jodify_user_role';
+const PROFILE_CACHE_KEY = 'jodify_saved_profile';
 
 async function syncUserPreferences(username: string) {
   try {
@@ -42,7 +48,8 @@ async function syncUserPreferences(username: string) {
       const patch: any = {};
       if (prefs.theme) patch.theme = prefs.theme;
       if (prefs.eq_preset) patch.eqPreset = prefs.eq_preset;
-      if (prefs.custom_curves) patch.customEqPresets = prefs.custom_curves;
+      if (prefs.custom_eq_presets) patch.customEqPresets = prefs.custom_eq_presets;
+      if (prefs.fade_enabled !== undefined) patch.fadeEnabled = prefs.fade_enabled;
       if (prefs.fade_duration != null) patch.fadeDuration = prefs.fade_duration;
       useSettingsStore.getState().set(patch);
     }
@@ -59,13 +66,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const prof = await usersService.fetchProfile(username);
       if (prof) {
-        setSession((prev) => (prev && prev.username.toLowerCase() === username.toLowerCase() ? {
-          ...prev,
-          display_name: prof.display_name,
-          avatar_url: prof.avatar_url,
-          avatar_source: prof.avatar_source,
-          avatar_frame: prof.avatar_frame,
-        } : prev));
+        setSession((prev) => {
+          if (!prev || prev.username.toLowerCase() !== username.toLowerCase()) return prev;
+          const updated: Session = {
+            ...prev,
+            display_name: prof.display_name,
+            avatar_url: prof.avatar_url,
+            avatar_source: prof.avatar_source,
+            avatar_frame: prof.avatar_frame,
+            custom_badge: prof.custom_badge,
+            accent_color: prof.accent_color,
+            theme: prof.theme,
+            bio: prof.bio,
+            vibe: prof.vibe,
+          };
+          try {
+            localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(updated));
+          } catch {}
+          const desktopAuth = (window as any).jodifyAuth;
+          if (desktopAuth && typeof desktopAuth.saveSession === 'function') {
+            desktopAuth.saveSession({
+              ...updated,
+              token: getAuthToken(),
+            }).catch(() => undefined);
+          }
+          return updated;
+        });
       }
     } catch {
       /* ignore */
@@ -73,30 +99,116 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateSessionProfile = useCallback((updates: Partial<Session>) => {
-    setSession((prev) => (prev ? { ...prev, ...updates } : prev));
+    setSession((prev) => {
+      if (!prev) return null;
+      const next = { ...prev, ...updates };
+      try {
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(next));
+      } catch {}
+      const desktopAuth = (window as any).jodifyAuth;
+      if (desktopAuth && typeof desktopAuth.saveSession === 'function') {
+        desktopAuth.saveSession({
+          ...next,
+          token: getAuthToken(),
+        }).catch(() => undefined);
+      }
+      return next;
+    });
   }, []);
 
   useEffect(() => {
-    try {
-      const active = localStorage.getItem(SESSION_KEY) === 'true';
-      const username = localStorage.getItem(USER_KEY);
-      const role = localStorage.getItem(ROLE_KEY) as Role | null;
-      if (active && username) {
-        setSession({ username, role: role ?? 'user' });
-        syncUserPreferences(username).catch(() => undefined);
-        fetchAndApplyProfile(username).catch(() => undefined);
+    async function initSession() {
+      try {
+        let active = localStorage.getItem(SESSION_KEY) === 'true';
+        let username: string | null = localStorage.getItem(USER_KEY);
+        let role: Role | null = localStorage.getItem(ROLE_KEY) as Role | null;
+        let cachedProfile: Partial<Session> = {};
+
+        try {
+          const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+          if (raw) cachedProfile = JSON.parse(raw);
+        } catch {}
+
+        // Si estamos en Electron, sincronizar siempre con el almacén persistente de disco
+        const desktopAuth = (window as any).jodifyAuth;
+        if (desktopAuth && typeof desktopAuth.getSavedSession === 'function') {
+          const diskSession = await desktopAuth.getSavedSession();
+          if (diskSession && diskSession.username) {
+            active = true;
+            username = String(diskSession.username);
+            role = (diskSession.role as Role) || 'user';
+            cachedProfile = { ...cachedProfile, ...diskSession };
+            localStorage.setItem(SESSION_KEY, 'true');
+            localStorage.setItem(USER_KEY, username);
+            localStorage.setItem(ROLE_KEY, role);
+            if (diskSession.token) {
+              setAuthToken(String(diskSession.token));
+            }
+          }
+        }
+
+        const validUser = username;
+        if (active && validUser) {
+          setSession({
+            username: validUser,
+            role: role ?? 'user',
+            display_name: cachedProfile.display_name ?? null,
+            avatar_url: cachedProfile.avatar_url ?? null,
+            avatar_source: cachedProfile.avatar_source ?? 'custom',
+            avatar_frame: cachedProfile.avatar_frame ?? 'none',
+            custom_badge: cachedProfile.custom_badge ?? null,
+            accent_color: cachedProfile.accent_color ?? null,
+            theme: cachedProfile.theme ?? null,
+            bio: cachedProfile.bio ?? null,
+            vibe: cachedProfile.vibe ?? null,
+          });
+          syncUserPreferences(validUser).catch(() => undefined);
+          fetchAndApplyProfile(validUser).catch(() => undefined);
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setReady(true);
       }
-    } catch {
-      /* ignore */
     }
-    setReady(true);
+
+    void initSession();
   }, [fetchAndApplyProfile]);
 
   const applyUserSession = useCallback((result: { username: string; role: Role }, keepSession: boolean) => {
-    setSession({ username: result.username, role: result.role });
+    setSession((prev) => {
+      const base: Session = {
+        username: result.username,
+        role: result.role,
+        ...(prev && prev.username.toLowerCase() === result.username.toLowerCase() ? prev : {}),
+      };
+      if (keepSession) {
+        try {
+          localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(base));
+        } catch {}
+      }
+      return base;
+    });
     localStorage.setItem(USER_KEY, result.username);
     localStorage.setItem(ROLE_KEY, result.role);
-    localStorage.setItem(SESSION_KEY, keepSession ? 'true' : 'true');
+
+    const desktopAuth = (window as any).jodifyAuth;
+    if (keepSession) {
+      localStorage.setItem(SESSION_KEY, 'true');
+      if (desktopAuth && typeof desktopAuth.saveSession === 'function') {
+        desktopAuth.saveSession({
+          username: result.username,
+          role: result.role,
+          token: getAuthToken(),
+        }).catch(() => undefined);
+      }
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+      if (desktopAuth && typeof desktopAuth.clearSession === 'function') {
+        desktopAuth.clearSession().catch(() => undefined);
+      }
+    }
 
     usersService.heartbeat(result.username, true).catch(() => undefined);
     syncUserPreferences(result.username).catch(() => undefined);
@@ -117,7 +229,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       console.error(error);
       return false;
     }
-  }, []);
+  }, [applyUserSession]);
 
   const logout = useCallback(async () => {
     if (session) {
@@ -127,11 +239,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
     }
-    const { setAuthToken } = await import('../lib/api');
     setAuthToken(null);
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(ROLE_KEY);
+    localStorage.removeItem(PROFILE_CACHE_KEY);
+    const desktopAuth = (window as any).jodifyAuth;
+    if (desktopAuth && typeof desktopAuth.clearSession === 'function') {
+      desktopAuth.clearSession().catch(() => undefined);
+    }
     setSession(null);
   }, [session]);
 
@@ -145,8 +261,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(SESSION_KEY, 'true');
       if (save) saveToken(result.token);
       usersService.heartbeat(result.username, true).catch(() => undefined);
+      syncUserPreferences(result.username).catch(() => undefined);
+      fetchAndApplyProfile(result.username).catch(() => undefined);
     },
-    [],
+    [fetchAndApplyProfile],
   );
 
   const devLogin = useCallback(async (devKey: string): Promise<{ ok: boolean; error?: string }> => {
