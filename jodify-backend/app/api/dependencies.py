@@ -22,6 +22,9 @@ async def get_user_doc(request: Request) -> dict:
     doc = await col("users").find_one({"username": username})
     if doc is None:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    return doc
+
+
 async def get_user_doc_optional(request: Request) -> dict | None:
     authorization = request.headers.get("Authorization", "")
     if not authorization.startswith("Bearer "):
@@ -42,12 +45,12 @@ OptionalUser = Annotated[dict | None, Depends(get_user_doc_optional)]
 
 
 async def require_admin(user: CurrentUser) -> dict:
-    if user.get("role") not in ("admin", "dev"):
+    if not user or user.get("role") not in ("admin", "dev"):
         raise HTTPException(status_code=403, detail="Se requieren permisos de administrador")
     return user
 
 
 async def require_dev(user: CurrentUser) -> dict:
-    if user.get("role") != "dev":
+    if not user or user.get("role") != "dev":
         raise HTTPException(status_code=403, detail="Se requieren permisos de desarrollo")
     return user
