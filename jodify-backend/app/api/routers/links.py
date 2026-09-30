@@ -244,6 +244,42 @@ async def approve_and_add_to_database(
 _STREAM_CACHE: dict[str, tuple[str, float, dict[str, str]]] = {}
 
 
+def _select_progressive_audio(target_info: dict[str, Any]) -> str | None:
+    formats = target_info.get("formats", [])
+    if not formats:
+        return target_info.get("url")
+
+    # 1. Pistas de solo audio progresivas (Opus, AAC) sin HLS (.m3u8)
+    audio_only = [
+        f for f in formats
+        if f.get("acodec") != "none"
+        and f.get("vcodec") in (None, "none")
+        and "m3u8" not in f.get("protocol", "")
+        and not f.get("url", "").endswith(".m3u8")
+        and f.get("url")
+    ]
+    if audio_only:
+        return audio_only[-1]["url"]
+
+    # 2. Pistas combinadas (ej: mp4) sin m3u8
+    any_audio = [
+        f for f in formats
+        if f.get("acodec") != "none"
+        and "m3u8" not in f.get("protocol", "")
+        and not f.get("url", "").endswith(".m3u8")
+        and f.get("url")
+    ]
+    if any_audio:
+        return any_audio[-1]["url"]
+
+    # 3. Fallback a URL directa si no es m3u8
+    for f in reversed(formats):
+        if f.get("url") and not f.get("url", "").endswith(".m3u8"):
+            return f["url"]
+
+    return target_info.get("url")
+
+
 def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     now = time.time()
     if url in _STREAM_CACHE:
@@ -252,50 +288,57 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             return cached_url, cached_headers
 
     is_search = url.startswith("ytsearch")
-    ydl_opts: dict[str, Any] = {
-        "format": "bestaudio/best",
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "noplaylist": False if is_search else True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["ios", "android", "mweb"],
-            }
-        },
-        "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-            "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
-        },
-    }
     cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
-    if cookie_path and os.path.exists(cookie_path):
-        ydl_opts["cookiefile"] = cookie_path
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        target_info = info
-        if "entries" in info and info["entries"]:
-            target_info = info["entries"][0] or info
+    configs = [
+        # Estrategia 1: Opciones automáticas de yt-dlp (visionos/tv_embedded/android sin colisión de headers)
+        {
+            "format": "bestaudio/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 15,
+        },
+        # Estrategia 2: Cliente Android nativo como fallback
+        {
+            "format": "bestaudio/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 15,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"],
+                }
+            },
+        },
+    ]
 
-        stream_url = target_info.get("url")
-        if not stream_url and "formats" in target_info:
-            audio_formats = [
-                f for f in target_info["formats"]
-                if f.get("acodec") != "none" and (f.get("vcodec") == "none" or "audio" in f.get("format", "").lower())
-            ]
-            if audio_formats:
-                stream_url = audio_formats[-1].get("url")
-            elif target_info["formats"]:
-                stream_url = target_info["formats"][-1].get("url")
+    last_error: Exception | None = None
+    for ydl_opts in configs:
+        if cookie_path and os.path.exists(cookie_path):
+            ydl_opts["cookiefile"] = cookie_path
 
-        if not stream_url:
-            raise ValueError("No se pudo obtener el flujo de audio del enlace")
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                target_info = info
+                if "entries" in info and info["entries"]:
+                    target_info = info["entries"][0] or info
 
-        raw_headers = target_info.get("http_headers") or info.get("http_headers") or {}
-        headers_dict = {str(k): str(v) for k, v in raw_headers.items()}
-        _STREAM_CACHE[url] = (stream_url, now + 3600, headers_dict)
-        return stream_url, headers_dict
+                stream_url = _select_progressive_audio(target_info)
+                if stream_url:
+                    raw_headers = target_info.get("http_headers") or info.get("http_headers") or {}
+                    headers_dict = {str(k): str(v) for k, v in raw_headers.items()}
+                    _STREAM_CACHE[url] = (stream_url, now + 3600, headers_dict)
+                    return stream_url, headers_dict
+        except Exception as exc:
+            last_error = exc
+            continue
+
+    raise ValueError(f"No se pudo obtener el flujo de audio del enlace: {last_error}")
 
 
 @router.get("/stream")

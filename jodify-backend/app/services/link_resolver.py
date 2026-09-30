@@ -42,16 +42,6 @@ def _get_ytdlp_opts(extract_flat: bool = False, is_search: bool = False) -> dict
         "extract_flat": "in_playlist" if (extract_flat or is_search) else False,
         "socket_timeout": 15,
         "noplaylist": False if is_search else not extract_flat,
-        # Estrategia anti-bot en IPs de datacenter (Render / AWS / GCP)
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["ios", "android", "mweb"],
-            }
-        },
-        "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-            "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
-        },
     }
 
     # Soporte para cookies opcionales si se configuran en el entorno
@@ -65,9 +55,21 @@ def _get_ytdlp_opts(extract_flat: bool = False, is_search: bool = False) -> dict
 def _extract_with_ytdlp(url: str, extract_flat: bool = False) -> dict[str, Any]:
     is_search = url.startswith("ytsearch")
     ydl_opts = _get_ytdlp_opts(extract_flat, is_search=is_search)
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        return ydl.sanitize_info(info) or {}
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return ydl.sanitize_info(info) or {}
+    except Exception as exc:
+        logger.warning(f"Extracción por defecto falló para {url} ({exc}), probando fallback Android...")
+        # Fallback a cliente Android
+        fallback_opts = dict(ydl_opts)
+        fallback_opts["extractor_args"] = {"youtube": {"player_client": ["android"]}}
+        try:
+            with yt_dlp.YoutubeDL(fallback_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                return ydl.sanitize_info(info) or {}
+        except Exception:
+            raise exc
 
 
 async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str, Any]:
@@ -120,7 +122,8 @@ async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str,
 async def _resolve_spotify(url: str) -> dict[str, Any]:
     """Resuelve metadatos de enlaces de Spotify y los empareja con audio real de YouTube."""
     clean_url = url.split("?")[0].strip()
-    embed_url = re.sub(r"open\.spotify\.com\/(track|album|playlist)\/", r"open.spotify.com/embed/\1/", clean_url)
+    m_sp = re.search(r"open\.spotify\.com/(?:intl-[a-zA-Z-]+/)?(track|album|playlist)/([a-zA-Z0-9]+)", clean_url)
+    embed_url = f"https://open.spotify.com/embed/{m_sp.group(1)}/{m_sp.group(2)}" if m_sp else clean_url
 
     title = "Canción de Spotify"
     artist = "Spotify"
