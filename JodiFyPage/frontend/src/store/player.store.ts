@@ -78,6 +78,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setVolume: (volume) => {
     localStorage.setItem('userVolume', String(volume));
     set({ volume, muted: volume === 0 });
+    const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
+    if (audio) audio.volume = volume;
+    import('../services/yt-player.service').then(({ ytPlayerService }) => {
+      ytPlayerService.setVolume(volume * 100);
+    }).catch(() => undefined);
   },
   setMuted: (muted) => set({ muted }),
   toggleShuffle: () => set((s) => ({ isShuffle: !s.isShuffle })),
@@ -191,6 +196,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   seek: (time) => {
+    const { currentSong } = get();
+    const isYt = Boolean(
+      currentSong?.youtube_id ||
+      (currentSong?.url || '').includes('youtube.com') ||
+      (currentSong?.url || '').includes('youtu.be')
+    );
+
+    if (isYt) {
+      import('../services/yt-player.service').then(({ ytPlayerService }) => {
+        ytPlayerService.seekTo(time);
+      }).catch(() => undefined);
+      set({ currentTime: time });
+      useJamStore.getState().broadcastPlaybackChange('seek', time);
+      return;
+    }
+
     const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
     if (!audio) return;
     const safeTime = clamp(time, 0, audio.duration || 0);

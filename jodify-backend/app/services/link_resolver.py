@@ -107,6 +107,7 @@ async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str,
         "type": "track",
         "source": "youtube",
         "id": f"yt-{video_id}",
+        "youtube_id": video_id,
         "title": title,
         "artist": artist,
         "album": "YouTube Audio",
@@ -117,6 +118,29 @@ async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str,
         "original_url": original_url,
         "webpage_url": f"https://www.youtube.com/watch?v={video_id}",
     }
+
+
+async def _search_youtube_video_id(query: str) -> str | None:
+    """Busca en YouTube por HTTP ligero y devuelve el primer video_id en ~150ms sin invocar yt-dlp."""
+    import urllib.parse
+    search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=6.0, follow_redirects=True, headers=headers) as client:
+            resp = await client.get(search_url)
+            if resp.status_code == 200:
+                matches = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})"', resp.text)
+                if matches:
+                    return matches[0]
+                href_matches = re.findall(r'/watch\?v=([a-zA-Z0-9_-]{11})', resp.text)
+                if href_matches:
+                    return href_matches[0]
+    except Exception as exc:
+        logger.warning(f"Error en búsqueda rápida de YouTube para '{query}': {exc}")
+    return None
 
 
 async def _resolve_spotify(url: str) -> dict[str, Any]:
@@ -171,18 +195,32 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                             item_artists = [a.get("name") for a in item.get("artists", []) if a.get("name")]
                             item_artist = ", ".join(item_artists) or artist
                             item_dur = int(item.get("duration", 0) / 1000) if item.get("duration") else None
-                            search_target = f"ytsearch1:{item_artist} {item_title}"
+                            search_target = f"https://www.youtube.com/results?search_query={item_artist}+{item_title}"
                             playlist_items.append({
                                 "id": f"sp-{abs(hash(item_title + item_artist)) % 10000000}",
                                 "title": item_title,
                                 "artist": item_artist,
                                 "duration": item_dur,
                                 "thumbnail": thumbnail,
-                                "url": f"https://www.youtube.com/results?search_query={item_artist}+{item_title}",
+                                "url": search_target,
                                 "stream_url": f"/api/links/stream?url={search_target}",
                             })
     except Exception as exc:
         logger.warning(f"Error parseando Spotify embed para {url}: {exc}")
+
+    # Fallback garantizado por oEmbed oficial de Spotify si falló el parseo
+    if title == "Canción de Spotify" and m_sp:
+        try:
+            oembed_target = f"https://open.spotify.com/{m_sp.group(1)}/{m_sp.group(2)}"
+            async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
+                o_resp = await client.get(f"https://open.spotify.com/oembed?url={oembed_target}")
+                if o_resp.status_code == 200:
+                    o_data = o_resp.json()
+                    title = o_data.get("title") or title
+                    if not thumbnail:
+                        thumbnail = o_data.get("thumbnail_url")
+        except Exception as exc:
+            logger.warning(f"Error en Spotify oEmbed fallback para {url}: {exc}")
 
     # Si es playlist / album de Spotify
     if track_type == "playlist" and playlist_items:
@@ -203,20 +241,15 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
         title = parts[0].strip()
         artist = parts[1].strip()
 
-    # Buscar stream de audio en YouTube mediante búsqueda rápida
-    loop = asyncio.get_running_loop()
+    # Buscar stream de audio en YouTube mediante búsqueda rápida HTTP (150ms, sin yt-dlp)
+    yt_id = None
     yt_url = None
     try:
-        search_query = f"ytsearch1:{artist} {title}"
-        search_info = await loop.run_in_executor(None, _extract_with_ytdlp, search_query, False)
-        if search_info and "entries" in search_info and search_info["entries"]:
-            first = search_info["entries"][0]
-            if first and first.get("id"):
-                yt_url = f"https://www.youtube.com/watch?v={first['id']}"
-                if not duration and first.get("duration"):
-                    duration = first.get("duration")
-                if not thumbnail and first.get("thumbnail"):
-                    thumbnail = first.get("thumbnail")
+        yt_id = await _search_youtube_video_id(f"{artist} {title}")
+        if yt_id:
+            yt_url = f"https://www.youtube.com/watch?v={yt_id}"
+            if not thumbnail:
+                thumbnail = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
     except Exception as exc:
         logger.warning(f"No se pudo emparejar audio de YouTube para Spotify: {exc}")
 
@@ -228,6 +261,7 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
         "type": "track",
         "source": "spotify",
         "id": f"sp-{abs(hash(url)) % 10000000}",
+        "youtube_id": yt_id,
         "title": title,
         "artist": artist,
         "album": album,
@@ -236,7 +270,7 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
         "stream_url": stream_url,
         "download_url": download_url,
         "original_url": url,
-        "webpage_url": url,
+        "webpage_url": yt_url or url,
     }
 
 
@@ -272,9 +306,13 @@ async def resolve_link(url: str) -> dict[str, Any]:
     # 3. Caso: YouTube, SoundCloud, etc.
     loop = asyncio.get_running_loop()
     yt_id = extract_youtube_id(url)
+    is_playlist_url = "playlist" in url.lower() or "list=" in url.lower()
+
+    # Si es video individual de YouTube, resolver al instante por oEmbed (50ms, 0 bloqueos de datacenter)
+    if yt_id and not is_playlist_url:
+        return await _resolve_youtube_oembed(yt_id, url)
 
     try:
-        is_playlist_url = "playlist" in url.lower() or "list=" in url.lower()
         info = await loop.run_in_executor(None, _extract_with_ytdlp, url, is_playlist_url)
 
         if not info:
@@ -331,6 +369,7 @@ async def resolve_link(url: str) -> dict[str, Any]:
             "type": "track",
             "source": info.get("extractor_key", "web").lower(),
             "id": f"trk-{yt_id or abs(hash(url)) % 10000000}",
+            "youtube_id": yt_id,
             "title": title,
             "artist": artist,
             "album": info.get("album") or "Enlace Externo",

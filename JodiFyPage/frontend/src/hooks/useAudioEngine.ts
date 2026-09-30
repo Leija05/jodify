@@ -48,6 +48,7 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
       void next();
     };
     const onError = () => {
+      if (!audio.src || audio.src === window.location.href || !audio.getAttribute('src')) return;
       usePlayerStore.getState().setLastError('Error de reproducción');
       useToastStore.getState().show('Error reproduciendo la canción, saltando…', 'warning');
       const { next } = usePlayerStore.getState();

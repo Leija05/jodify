@@ -7,6 +7,25 @@ import { useToastStore } from '../store/toast.store';
 import { getSongOffline, getAllOfflineIds } from '../lib/idb';
 import { resolveMediaUrl } from '../lib/utils';
 
+import { ytPlayerService } from './yt-player.service';
+
+export function extractYoutubeId(song: Song | null | undefined): string | null {
+  if (!song) return null;
+  if (song.youtube_id && /^[a-zA-Z0-9_-]{11}$/.test(song.youtube_id)) {
+    return song.youtube_id;
+  }
+  const idMatch = String(song.id || '').match(/^yt-([a-zA-Z0-9_-]{11})$/);
+  if (idMatch) return idMatch[1];
+
+  const fullText = decodeURIComponent(`${song.url || ''} ${String(song.id || '')}`);
+  const match = fullText.match(/(?:watch\?v=|youtu\.be\/|embed\/|shorts\/|yt-|v=)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
+export function isYouTubeSong(song: Song | null | undefined): boolean {
+  return Boolean(extractYoutubeId(song));
+}
+
 let fadeRaf: number | null = null;
 
 export function rampVolume(audio: HTMLAudioElement, target: number, durationMs: number): void {
@@ -35,16 +54,28 @@ export function getFadeMs(): number {
 }
 
 export function ensurePlaying(): void {
-  const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
   const player = usePlayerStore.getState();
+  if (isYouTubeSong(player.currentSong)) {
+    ytPlayerService.play();
+    player.setIsPlaying(true);
+    useJamStore.getState().broadcastPlaybackChange('play');
+    return;
+  }
+  const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
   if (!audio || !player.currentSong) return;
   audio.play().then(() => player.setIsPlaying(true)).catch(() => undefined);
   useJamStore.getState().broadcastPlaybackChange('play');
 }
 
 export function pausePlayback(): void {
-  const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
   const player = usePlayerStore.getState();
+  if (isYouTubeSong(player.currentSong)) {
+    ytPlayerService.pause();
+    player.setIsPlaying(false);
+    useJamStore.getState().broadcastPlaybackChange('pause');
+    return;
+  }
+  const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
   if (!audio) return;
   audio.pause();
   player.setIsPlaying(false);
@@ -56,12 +87,39 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
   const player = usePlayerStore.getState();
   const settings = useSettingsStore.getState();
   const jam = useJamStore.getState();
-  if (!audio) return false;
 
   if (jam.active && !jam.isHost && !jam.permissions.allowPlaybackControl) {
     useToastStore.getState().show('El host bloqueó la reproducción', 'warning');
     return false;
   }
+
+  // 1. Manejo nativo directo en cliente para canciones de YouTube (0 bloqueos, 100% audio completo)
+  const ytId = extractYoutubeId(song);
+  const offlineSong = await getSongOffline(song.id);
+  const offlineIds = await getAllOfflineIds();
+
+  if (ytId && !offlineSong) {
+    if (audio) {
+      audio.pause();
+      audio.src = '';
+    }
+    player.setCurrentSong(song);
+    player.setCurrentTime(0);
+    player.setDuration(song.duration ?? 0);
+    player.setSourceUrl(song.url);
+    player.setOfflinePlayback(false);
+
+    await ytPlayerService.playVideo(ytId);
+    player.setIsPlaying(true);
+    useToastStore.getState().show(`Reproduciendo «${song.name}» (YouTube)`, 'success', 2000);
+    logListeningHistory(song, false);
+    return true;
+  }
+
+  // Si no es canción de YouTube, detener el reproductor de YouTube
+  ytPlayerService.stop();
+
+  if (!audio) return false;
 
   if (options.fades !== false && settings.fadeEnabled && player.currentSong && player.isPlaying) {
     rampVolume(audio, 0, getFadeMs());
@@ -76,8 +134,6 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
   let blobUrl: string | null = null;
   let isOffline = false;
 
-  const offlineSong = await getSongOffline(song.id);
-  const offlineIds = await getAllOfflineIds();
   const library = useLibraryStore.getState();
 
   if (offlineSong) {

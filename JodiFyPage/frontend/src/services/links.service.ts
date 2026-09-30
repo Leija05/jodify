@@ -14,6 +14,7 @@ export interface ResolvedTrack {
   download_url?: string;
   original_url: string;
   webpage_url?: string;
+  youtube_id?: string;
 }
 
 export interface ResolvedPlaylistItem {
@@ -23,6 +24,7 @@ export interface ResolvedPlaylistItem {
   duration?: number;
   thumbnail?: string;
   url: string;
+  youtube_id?: string;
 }
 
 export interface ResolvedPlaylist {

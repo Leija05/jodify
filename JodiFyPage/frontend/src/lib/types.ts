@@ -92,6 +92,8 @@ export interface Song {
   artwork_url?: string;
   picture?: string;
   play_count?: number;
+  youtube_id?: string;
+  source?: string;
 }
 
 export interface UserAccess {

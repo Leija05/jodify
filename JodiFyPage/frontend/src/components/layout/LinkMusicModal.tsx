@@ -49,6 +49,10 @@ function toVirtualSong(track: {
   thumbnail?: string;
   duration?: number;
   id?: string;
+  youtube_id?: string;
+  source?: string;
+  original_url?: string;
+  webpage_url?: string;
 }): Song {
   const hashVal = Math.abs(
     Array.from(track.title + (track.artist || '')).reduce(
@@ -57,12 +61,21 @@ function toVirtualSong(track: {
     )
   );
   const cleanId = track.id ? String(track.id) : `link-${hashVal}`;
+
+  const allUrls = decodeURIComponent(
+    `${track.url || ''} ${track.stream_url || ''} ${track.id || ''} ${track.original_url || ''} ${track.webpage_url || ''}`
+  );
+  const ytMatch = allUrls.match(/(?:watch\?v=|youtu\.be\/|embed\/|shorts\/|yt-|v=)([a-zA-Z0-9_-]{11})/);
+  const ytId = track.youtube_id || (ytMatch ? ytMatch[1] : undefined);
+
   return {
     id: cleanId,
     name: track.title,
     artist: track.artist || 'Enlace Externo',
     album: track.album || 'Streaming Web',
     url: track.stream_url || track.url || '',
+    youtube_id: ytId,
+    source: track.source || (ytId ? 'youtube' : 'web'),
     cover_url: track.thumbnail || undefined,
     duration: track.duration,
     likes: 0,
