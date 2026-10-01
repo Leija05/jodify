@@ -175,7 +175,7 @@ class YouTubePlayerService {
           store.setDuration(dur);
         }
       } catch {}
-    }, 250);
+    }, 100);
   }
 
   public stopProgressTracker() {
@@ -226,6 +226,7 @@ class YouTubePlayerService {
   public play(): void {
     if (this.player && this.isReady && typeof this.player.playVideo === 'function') {
       this.player.playVideo();
+      this.startProgressTracker();
     }
   }
 
@@ -247,6 +248,7 @@ class YouTubePlayerService {
   public seekTo(seconds: number): void {
     if (this.player && this.isReady && typeof this.player.seekTo === 'function') {
       this.player.seekTo(seconds, true);
+      this.startProgressTracker();
     }
   }
 

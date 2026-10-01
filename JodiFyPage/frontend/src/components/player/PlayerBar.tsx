@@ -93,10 +93,11 @@ export function PlayerBar() {
           <span className="jf-time">{formatTime(player.currentTime)}</span>
           <Slider
             className="jf-progress"
+            fill
             min={0}
-            max={player.duration || 100}
+            max={player.duration && player.duration > 0 ? player.duration : 100}
             step={0.1}
-            value={Math.min(player.currentTime, player.duration || 100)}
+            value={Math.min(player.currentTime, player.duration && player.duration > 0 ? player.duration : 100)}
             onChange={(e) => player.seek(Number(e.target.value))}
             aria-label="Progreso"
             data-testid="progress-slider"

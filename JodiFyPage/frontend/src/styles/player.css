@@ -1810,8 +1810,11 @@
 }
 
 .jf-slider--fill {
-  background: linear-gradient(to right, var(--primary), var(--secondary)) no-repeat, var(--surface-active);
-  background-size: var(--fill-pct, 50%) 100%;
+  background-color: var(--surface-active);
+  background-image: linear-gradient(to right, var(--primary), var(--secondary));
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: var(--fill-pct, 0%) 100%;
 }
 
 .jf-progress {

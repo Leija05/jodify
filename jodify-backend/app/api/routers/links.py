@@ -36,6 +36,7 @@ class SuggestSongRequest(BaseModel):
     duration: float | None = None
     thumbnail: str | None = None
     stream_url: str | None = None
+    youtube_id: str | None = None
     notes: str | None = None
 
 
@@ -49,6 +50,7 @@ def suggestion_view(doc: dict[str, Any]) -> dict[str, Any]:
         "duration": doc.get("duration"),
         "thumbnail": doc.get("thumbnail"),
         "stream_url": doc.get("stream_url"),
+        "youtube_id": doc.get("youtube_id"),
         "notes": doc.get("notes"),
         "suggested_by": doc.get("suggested_by", "Anónimo"),
         "created_at": doc.get("created_at"),
@@ -80,6 +82,7 @@ async def suggest_song(
         "duration": body.duration,
         "thumbnail": body.thumbnail,
         "stream_url": body.stream_url,
+        "youtube_id": (body.youtube_id or "").strip() or None,
         "notes": (body.notes or "").strip(),
         "suggested_by": username,
         "created_at": datetime.now().isoformat(),
@@ -177,16 +180,24 @@ async def approve_and_add_to_database(
     from ...services.link_resolver import extract_youtube_id, is_spotify_url, _search_youtube_video_id
 
     # 1. Determinar identificador de YouTube si es posible
-    yt_id = extract_youtube_id(target_url) or extract_youtube_id(stream_url)
-    if not yt_id and is_spotify_url(target_url):
+    yt_id = (sug.get("youtube_id") or "").strip() or None
+    is_spotify = is_spotify_url(target_url) or is_spotify_url(stream_url)
+
+    if not yt_id and not is_spotify:
+        yt_id = extract_youtube_id(target_url) or extract_youtube_id(stream_url)
+
+    # Si es de Spotify o no tiene yt_id directo, buscar en YouTube por Artista y Título
+    if not yt_id or is_spotify:
         try:
-            yt_id = await _search_youtube_video_id(f"{artist} {title}")
+            matched_yt = await _search_youtube_video_id(f"{artist} {title}")
+            if matched_yt:
+                yt_id = matched_yt
         except Exception as exc:
-            logger.warning(f"No se pudo resolver youtube_id para sugerencia de Spotify: {exc}")
+            logger.warning(f"No se pudo resolver youtube_id para sugerencia: {exc}")
 
     cover_url = thumbnail or (f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg" if yt_id else None)
     effective_url = f"https://www.youtube.com/watch?v={yt_id}" if yt_id else (stream_url or target_url)
-    source = "youtube" if yt_id else ("spotify" if is_spotify_url(target_url) else "web")
+    source = "youtube" if yt_id else ("spotify" if is_spotify else "web")
 
     # 2. Comprobar si ya existe en la biblioteca global de canciones
     existing_query: dict[str, Any] = {}

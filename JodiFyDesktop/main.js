@@ -39,10 +39,22 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // Caché en memoria para enlaces directos de audio (evita invocar yt-dlp repetidamente)
 const localStreamCache = new Map(); // ytId -> { url: string, expiry: number }
 
+function extractValidYtId(targetOrId) {
+  if (!targetOrId) return null;
+  const str = String(targetOrId).trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
+  const ytPrefix = str.match(/^yt-([a-zA-Z0-9_-]{11})$/);
+  if (ytPrefix) return ytPrefix[1];
+  if (str.includes('spotify.com') || str.includes('soundcloud.com')) return null;
+  if (!str.includes('youtube.com') && !str.includes('youtu.be')) return null;
+  const match = str.match(/(?:watch\?v=|youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
 function resolveLocalStreamUrl(targetOrId) {
   if (!targetOrId) return Promise.resolve(null);
-  const match = String(targetOrId).match(/(?:watch\?v=|youtu\.be\/|embed\/|shorts\/|yt-|v=)?([a-zA-Z0-9_-]{11})/);
-  const ytId = match ? match[1] : targetOrId;
+  const ytId = extractValidYtId(targetOrId);
+  if (!ytId) return Promise.resolve(null);
 
   const cached = localStreamCache.get(ytId);
   if (cached && cached.expiry > Date.now()) {
@@ -478,8 +490,8 @@ function registerPlayerIpc() {
 
   ipcMain.handle('player:resolve-stream', async (_event, ytUrlOrId) => {
     if (!ytUrlOrId) return null;
-    const match = String(ytUrlOrId).match(/(?:watch\?v=|youtu\.be\/|embed\/|shorts\/|yt-|v=)?([a-zA-Z0-9_-]{11})/);
-    const videoId = match ? match[1] : ytUrlOrId;
+    const videoId = extractValidYtId(ytUrlOrId);
+    if (!videoId) return null;
     return `/api/local-stream?v=${encodeURIComponent(videoId)}`;
   });
 

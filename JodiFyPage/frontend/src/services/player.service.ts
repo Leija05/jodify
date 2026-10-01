@@ -18,7 +18,13 @@ export function extractYoutubeId(song: Song | null | undefined): string | null {
   if (idMatch) return idMatch[1];
 
   const fullText = decodeURIComponent(`${song.url || ''} ${String(song.id || '')}`);
-  const match = fullText.match(/(?:watch\?v=|youtu\.be\/|embed\/|shorts\/|yt-|v=)([a-zA-Z0-9_-]{11})/);
+  if (fullText.includes('spotify.com') || fullText.includes('soundcloud.com')) {
+    return null;
+  }
+  if (!fullText.includes('youtube.com') && !fullText.includes('youtu.be')) {
+    return null;
+  }
+  const match = fullText.match(/(?:watch\?v=|youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
   return match ? match[1] : null;
 }
 
@@ -166,11 +172,13 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
       audio.removeAttribute('src');
       audio.load();
     }
-    await ytPlayerService.playVideo(ytId);
-    player.setIsPlaying(true);
-    useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
-    logListeningHistory(song, false);
-    return true;
+    const ytSuccess = await ytPlayerService.playVideo(ytId);
+    if (ytSuccess || !song.url || song.url.includes('youtube.com') || song.url.includes('youtu.be')) {
+      player.setIsPlaying(true);
+      useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
+      logListeningHistory(song, false);
+      return true;
+    }
   }
 
   // Si no es canción de YouTube, detener el reproductor de YouTube

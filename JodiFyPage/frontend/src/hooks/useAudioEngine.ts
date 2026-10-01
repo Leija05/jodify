@@ -11,8 +11,8 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const getAudio = () => audioRef.current || document.querySelector<HTMLAudioElement>('audio#jodify-audio');
+    let boundAudio: HTMLAudioElement | null = null;
 
     const onPlay = () => {
       usePlayerStore.getState().setIsPlaying(true);
@@ -30,61 +30,117 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
       syncNowPlaying(usePlayerStore.getState().currentSong, true);
       lastPlaybackTick = Date.now();
     };
+
     const onPause = () => {
       usePlayerStore.getState().setIsPlaying(false);
       useJamStore.getState().broadcastPlaybackChange('pause');
       syncNowPlaying(usePlayerStore.getState().currentSong, false);
       tickListeningTime();
     };
+
     const onTimeUpdate = () => {
-      if (Number.isFinite(audio.currentTime)) {
-        usePlayerStore.getState().setCurrentTime(audio.currentTime);
+      const el = boundAudio || getAudio();
+      if (el && Number.isFinite(el.currentTime)) {
+        usePlayerStore.getState().setCurrentTime(el.currentTime);
       }
       obsService.persist();
       tickListeningTime();
     };
+
     const onLoadedMetadata = () => {
-      if (Number.isFinite(audio.duration) && audio.duration > 0) {
-        usePlayerStore.getState().setDuration(audio.duration);
+      const el = boundAudio || getAudio();
+      if (el && Number.isFinite(el.duration) && el.duration > 0) {
+        usePlayerStore.getState().setDuration(el.duration);
       }
     };
+
     const onEnded = () => {
+      const el = boundAudio || getAudio();
       const { repeatMode, isLoop, next } = usePlayerStore.getState();
       const jam = useJamStore.getState();
       if (jam.active && !jam.isHost) return;
       if (repeatMode === 'one' || isLoop) {
-        audio.currentTime = 0;
-        void audio.play().catch(() => undefined);
+        if (el) {
+          el.currentTime = 0;
+          void el.play().catch(() => undefined);
+        }
         return;
       }
       void next();
     };
+
     const onError = () => {
-      if (!audio.src || audio.src === window.location.href || !audio.getAttribute('src')) return;
+      const el = boundAudio || getAudio();
+      if (!el || !el.src || el.src === window.location.href || !el.getAttribute('src')) return;
       usePlayerStore.getState().setLastError('Error de reproducción');
       useToastStore.getState().show('Error reproduciendo la canción, saltando…', 'warning');
       const { next } = usePlayerStore.getState();
       setTimeout(() => void next(), 600);
     };
 
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('error', onError);
+    const bind = (el: HTMLAudioElement) => {
+      if (boundAudio === el) return;
+      if (boundAudio) {
+        unbind(boundAudio);
+      }
+      boundAudio = el;
+      el.addEventListener('play', onPlay);
+      el.addEventListener('playing', onPlay);
+      el.addEventListener('pause', onPause);
+      el.addEventListener('timeupdate', onTimeUpdate);
+      el.addEventListener('loadedmetadata', onLoadedMetadata);
+      el.addEventListener('durationchange', onLoadedMetadata);
+      el.addEventListener('canplay', onLoadedMetadata);
+      el.addEventListener('ended', onEnded);
+      el.addEventListener('error', onError);
 
-    const { volume, muted } = usePlayerStore.getState();
-    audio.volume = volume;
-    audio.muted = muted;
+      const { volume, muted } = usePlayerStore.getState();
+      el.volume = volume;
+      el.muted = muted;
+    };
+
+    const unbind = (el: HTMLAudioElement) => {
+      el.removeEventListener('play', onPlay);
+      el.removeEventListener('playing', onPlay);
+      el.removeEventListener('pause', onPause);
+      el.removeEventListener('timeupdate', onTimeUpdate);
+      el.removeEventListener('loadedmetadata', onLoadedMetadata);
+      el.removeEventListener('durationchange', onLoadedMetadata);
+      el.removeEventListener('canplay', onLoadedMetadata);
+      el.removeEventListener('ended', onEnded);
+      el.removeEventListener('error', onError);
+    };
+
+    const initialEl = getAudio();
+    if (initialEl) {
+      bind(initialEl);
+    }
+
+    // Intervalo de precisión (100ms) para garantizar que la barra de reproducción
+    // avance en tiempo real a 10 cuadros por segundo sin depender únicamente del evento timeupdate
+    const interval = window.setInterval(() => {
+      const el = getAudio();
+      if (!el) return;
+      if (boundAudio !== el) {
+        bind(el);
+      }
+      if (!el.paused && Number.isFinite(el.currentTime)) {
+        usePlayerStore.getState().setCurrentTime(el.currentTime);
+        if (Number.isFinite(el.duration) && el.duration > 0) {
+          const storeDur = usePlayerStore.getState().duration;
+          if (Math.abs(storeDur - el.duration) > 0.5) {
+            usePlayerStore.getState().setDuration(el.duration);
+          }
+        }
+      }
+    }, 100);
 
     return () => {
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('error', onError);
+      window.clearInterval(interval);
+      if (boundAudio) {
+        unbind(boundAudio);
+        boundAudio = null;
+      }
     };
   }, []);
 
@@ -93,9 +149,9 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
 
 export function useVolumeBinding(): void {
   useEffect(() => {
-    const audio = audioElement();
-    if (!audio) return;
     const unsub = usePlayerStore.subscribe((state, prev) => {
+      const audio = audioElement();
+      if (!audio) return;
       if (state.volume !== prev.volume) audio.volume = state.volume;
       if (state.muted !== prev.muted) audio.muted = state.muted;
     });

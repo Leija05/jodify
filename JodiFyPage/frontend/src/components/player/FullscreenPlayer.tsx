@@ -415,10 +415,11 @@ export function FullscreenPlayer() {
                 <div className="jf-fs-slider-wrap">
                   <Slider
                     className="jf-progress jf-progress--fullscreen"
+                    fill
                     min={0}
-                    max={player.duration || 100}
+                    max={player.duration && player.duration > 0 ? player.duration : 100}
                     step={0.1}
-                    value={Math.min(player.currentTime, player.duration || 100)}
+                    value={Math.min(player.currentTime, player.duration && player.duration > 0 ? player.duration : 100)}
                     onChange={(e) => player.seek(Number(e.target.value))}
                     aria-label="Línea de tiempo"
                   />

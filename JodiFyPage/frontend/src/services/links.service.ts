@@ -49,6 +49,7 @@ export interface SongSuggestion {
   duration?: number;
   thumbnail?: string;
   stream_url?: string;
+  youtube_id?: string;
   notes?: string;
   suggested_by: string;
   created_at: string;
@@ -69,6 +70,7 @@ export const linksService = {
     duration?: number;
     thumbnail?: string;
     stream_url?: string;
+    youtube_id?: string;
     notes?: string;
   }): Promise<SongSuggestion> {
     const res = await api.post<{ success: boolean; suggestion: SongSuggestion }>('/links/suggest', payload);

@@ -68,8 +68,11 @@ function toVirtualSong(track: {
   const allUrls = decodeURIComponent(
     `${track.url || ''} ${track.stream_url || ''} ${track.id || ''} ${track.original_url || ''} ${track.webpage_url || ''}`
   );
-  const ytMatch = allUrls.match(/(?:watch\?v=|youtu\.be\/|embed\/|shorts\/|yt-|v=)([a-zA-Z0-9_-]{11})/);
-  const ytId = track.youtube_id || (ytMatch ? ytMatch[1] : undefined);
+  let ytId = track.youtube_id;
+  if (!ytId && (allUrls.includes('youtube.com') || allUrls.includes('youtu.be') || allUrls.includes('yt-'))) {
+    const ytMatch = allUrls.match(/(?:watch\?v=|youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/)|yt-)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch) ytId = ytMatch[1];
+  }
 
   return {
     id: cleanId,
@@ -315,13 +318,14 @@ export function LinkMusicModal() {
     setSuggesting(true);
     try {
       await linksService.suggestSong({
-        url: track.original_url,
+        url: track.original_url || track.webpage_url || '',
         title: track.title,
         artist: track.artist,
         album: track.album,
         duration: track.duration,
         thumbnail: track.thumbnail,
         stream_url: track.stream_url,
+        youtube_id: track.youtube_id,
         notes: notes.trim() || undefined,
       });
       setSuggestedOk(true);

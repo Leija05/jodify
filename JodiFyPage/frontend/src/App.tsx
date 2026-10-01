@@ -45,48 +45,48 @@ function Root() {
     document.title = currentSong ? `${currentSong.name} — JodiFy` : 'JodiFy — Free Music For Friends';
   }, [currentSong]);
 
-  if (!ready) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          width: '100vw',
-          background: '#07070a',
-          color: '#fff',
-        }}
-      >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            border: '3px solid rgba(255,255,255,0.12)',
-            borderTopColor: '#6366f1',
-            animation: 'spin 0.8s linear infinite',
-          }}
-        />
-      </div>
-    );
-  }
-
   return (
     <>
       <audio ref={audioRef} id="jodify-audio" preload="metadata" hidden />
-      <DynamicBackground />
-      <GlobalErrorHandler />
-      <BackendStatusBanner />
-      <ConfirmDialog />
-      <SongContextMenu />
-      <Toaster />
-      <Routes>
-        <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route path="/" element={session ? <HomePage /> : isElectron ? <LoginPage /> : <IntroPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      {!ready ? (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100vh',
+            width: '100vw',
+            background: '#07070a',
+            color: '#fff',
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              border: '3px solid rgba(255,255,255,0.12)',
+              borderTopColor: '#6366f1',
+              animation: 'spin 0.8s linear infinite',
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          <DynamicBackground />
+          <GlobalErrorHandler />
+          <BackendStatusBanner />
+          <ConfirmDialog />
+          <SongContextMenu />
+          <Toaster />
+          <Routes>
+            <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
+            <Route path="/" element={session ? <HomePage /> : isElectron ? <LoginPage /> : <IntroPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </>
+      )}
     </>
   );
 }

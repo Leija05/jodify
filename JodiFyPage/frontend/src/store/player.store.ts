@@ -6,6 +6,7 @@ import { useJamStore } from './jam.store';
 import { useLibraryStore } from './library.store';
 import { getSongOffline } from '../lib/idb';
 import { clamp } from '../lib/utils';
+import { ytPlayerService } from '../services/yt-player.service';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
@@ -80,9 +81,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({ volume, muted: volume === 0 });
     const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
     if (audio) audio.volume = volume;
-    import('../services/yt-player.service').then(({ ytPlayerService }) => {
-      ytPlayerService.setVolume(volume * 100);
-    }).catch(() => undefined);
+    ytPlayerService.setVolume(volume * 100);
   },
   setMuted: (muted) => set({ muted }),
   toggleShuffle: () => set((s) => ({ isShuffle: !s.isShuffle })),
@@ -196,19 +195,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   seek: (time) => {
-    const { currentSong, isOfflinePlayback, duration } = get();
+    const { duration } = get();
     const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
 
-    const isYt = Boolean(
-      currentSong?.youtube_id ||
-      (currentSong?.url || '').includes('youtube.com') ||
-      (currentSong?.url || '').includes('youtu.be')
-    );
-
-    if (isYt && !isOfflinePlayback) {
-      import('../services/yt-player.service').then(({ ytPlayerService }) => {
-        ytPlayerService.seekTo(time);
-      }).catch(() => undefined);
+    if (ytPlayerService.isPlayingVideo()) {
+      ytPlayerService.seekTo(time);
       set({ currentTime: time });
       useJamStore.getState().broadcastPlaybackChange('seek', time);
       return;
@@ -225,18 +216,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
 
-    if (!audio) {
-      set({ currentTime: time });
-      return;
-    }
-
-    const maxDur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (duration || time);
-    const safeTime = clamp(time, 0, maxDur);
-    try {
-      audio.currentTime = safeTime;
-    } catch {}
-    set({ currentTime: safeTime });
-    useJamStore.getState().broadcastPlaybackChange('seek', safeTime);
+    ytPlayerService.seekTo(time);
+    set({ currentTime: time });
   },
 }));
 

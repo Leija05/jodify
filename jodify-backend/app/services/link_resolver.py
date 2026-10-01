@@ -18,9 +18,30 @@ def is_direct_audio_url(url: str) -> bool:
 
 
 def extract_youtube_id(url: str) -> str | None:
+    if not url or not isinstance(url, str):
+        return None
+    url = url.strip()
+
+    # Si es exactamente un ID de 11 caracteres (ej. 'AqJO7JMkTVk')
+    if re.fullmatch(r"[a-zA-Z0-9_-]{11}", url):
+        return url
+
+    # Si es un prefijo interno yt-ID
+    m_yt = re.fullmatch(r"yt-([a-zA-Z0-9_-]{11})", url)
+    if m_yt:
+        return m_yt.group(1)
+
+    lower = url.lower()
+    # Spotify, SoundCloud y otros servicios nunca son URLs directas de YouTube
+    if "spotify.com" in lower or "soundcloud.com" in lower:
+        return None
+
+    if "youtube.com" not in lower and "youtu.be" not in lower:
+        return None
+
     patterns = [
-        r"(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})",
-        r"(?:watch\?v=)([a-zA-Z0-9_-]{11})",
+        r"(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})",
+        r"[?&]v=([a-zA-Z0-9_-]{11})",
     ]
     for pattern in patterns:
         m = re.search(pattern, url)
