@@ -130,7 +130,7 @@ export function HomeShowcaseView() {
       const q = searchQuery.toLowerCase();
       list = list.filter(
         (s) =>
-          s.name.toLowerCase().includes(q) ||
+          String(s.name ?? '').toLowerCase().includes(q) ||
           (s.artist && s.artist.toLowerCase().includes(q)) ||
           (s.album && s.album.toLowerCase().includes(q)),
       );

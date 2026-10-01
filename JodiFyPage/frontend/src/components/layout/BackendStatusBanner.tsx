@@ -11,6 +11,8 @@ import { useBackendStore } from '../../store/backend.store';
 import { useLibraryStore } from '../../store/library.store';
 import { useSession } from '../../context/SessionContext';
 
+import { enterOfflineMode } from '../../hooks/useOffline';
+
 export function BackendStatusBanner() {
   const status = useBackendStore((s) => s.status);
   const isWaking = useBackendStore((s) => s.isWaking);
@@ -31,6 +33,7 @@ export function BackendStatusBanner() {
   }
 
   const handleOfflineMode = () => {
+    void enterOfflineMode();
     setCurrentTab('downloads');
     setDismissed(true);
   };

@@ -91,6 +91,20 @@ export const linksService = {
     await api.del(`/links/suggestions/${id}`);
   },
 
+  async matchTrack(artist: string, title: string): Promise<{ youtube_id: string; url: string } | null> {
+    try {
+      const res = await api.get<{ success: boolean; youtube_id: string; url: string }>(
+        `/links/match-track?artist=${encodeURIComponent(artist || '')}&title=${encodeURIComponent(title || '')}`
+      );
+      if (res && res.youtube_id) {
+        return { youtube_id: res.youtube_id, url: res.url };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
   getDownloadUrl(url: string, filename?: string): string {
     let cleanUrl = (url || '').trim();
     if (cleanUrl.includes('download-proxy?') || cleanUrl.includes('/links/download-proxy')) {

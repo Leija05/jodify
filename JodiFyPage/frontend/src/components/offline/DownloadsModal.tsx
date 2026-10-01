@@ -150,24 +150,30 @@ export function DownloadsModal() {
                         {task.song.name}
                       </span>
                       <span className={`jf-dl-item-percent is-${task.status}`}>
-                        {task.status === 'completed'
-                          ? 'Completado'
-                          : task.status === 'error'
-                          ? 'Error'
-                          : `${task.progress}%`}
+                        {task.status === 'completed' ? (
+                          <>
+                            <CheckCircle size={12} weight="fill" /> Listo
+                          </>
+                        ) : task.status === 'error' ? (
+                          <>
+                            <WarningCircle size={12} weight="fill" /> Error
+                          </>
+                        ) : (
+                          `${Math.round(task.progress)}%`
+                        )}
                       </span>
                     </div>
 
                     <div className="jf-dl-item-sub">
-                      <span>{task.song.artist || 'Artista'}</span>
+                      <span className="jf-dl-sub-artist">{task.song.artist || 'Artista'}</span>
                       {task.bytesReceived > 0 && (
-                        <span>
+                        <span className="jf-dl-sub-bytes">
                           • {formatBytes(task.bytesReceived)}
                           {task.totalBytes > 0 ? ` / ${formatBytes(task.totalBytes)}` : ''}
                         </span>
                       )}
                       {task.song.duration && (
-                        <span>• {formatDuration(task.song.duration)}</span>
+                        <span className="jf-dl-sub-duration">• {formatDuration(task.song.duration)}</span>
                       )}
                     </div>
 
@@ -175,7 +181,9 @@ export function DownloadsModal() {
                     <div className="jf-dl-progress-track">
                       <div
                         className={`jf-dl-progress-fill is-${task.status}`}
-                        style={{ width: `${task.status === 'completed' ? 100 : task.progress}%` }}
+                        style={{
+                          width: `${task.status === 'completed' ? 100 : Math.max(3, task.progress)}%`,
+                        }}
                       />
                     </div>
 
@@ -190,13 +198,25 @@ export function DownloadsModal() {
 
           {/* Footer Informativo */}
           <div className="jf-dl-modal-footer">
-            <span className="jf-dl-footer-stats">
-              {completedTasks.length} completadas • {activeTasks.length} en curso
-              {errorTasks.length > 0 ? ` • ${errorTasks.length} con error` : ''}
-            </span>
+            <div className="jf-dl-footer-stats">
+              <span className={`jf-dl-stat-pill ${activeTasks.length > 0 ? 'is-active' : ''}`}>
+                <SpinnerGap size={12} weight="bold" className={activeTasks.length > 0 ? 'jf-spin' : ''} />
+                {activeTasks.length} en curso
+              </span>
+              <span className="jf-dl-stat-pill is-completed">
+                <CheckCircle size={12} weight="fill" />
+                {completedTasks.length} completadas
+              </span>
+              {errorTasks.length > 0 && (
+                <span className="jf-dl-stat-pill is-error">
+                  <WarningCircle size={12} weight="fill" />
+                  {errorTasks.length} con error
+                </span>
+              )}
+            </div>
             <button
               type="button"
-              className="jf-btn jf-btn--primary jf-btn--sm"
+              className="jf-btn jf-btn--primary jf-btn--sm jf-dl-confirm-btn"
               onClick={closeModal}
             >
               Entendido

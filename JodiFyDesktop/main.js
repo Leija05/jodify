@@ -65,7 +65,18 @@ function resolveLocalStreamUrl(targetOrId) {
   return new Promise((resolve) => {
     execFile(
       'python',
-      ['-m', 'yt_dlp', '--get-url', '-f', 'bestaudio[ext=m4a]/bestaudio/best', '--no-warnings', '--quiet', target],
+      [
+        '-m',
+        'yt_dlp',
+        '--get-url',
+        '--extractor-args',
+        'youtube:player_client=android,web',
+        '-f',
+        'bestaudio[ext=m4a]/bestaudio/best',
+        '--no-warnings',
+        '--quiet',
+        target,
+      ],
       { timeout: 14000 },
       (error, stdout) => {
         if (error || !stdout) {

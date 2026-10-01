@@ -28,7 +28,16 @@ interface PlaylistsState {
     username?: string,
     description?: string,
     color?: string,
+    coverUrl?: string,
   ) => CustomPlaylist;
+  createFullPlaylist: (options: {
+    name: string;
+    description?: string;
+    coverUrl?: string;
+    color?: string;
+    songIds?: string[];
+    username?: string;
+  }) => CustomPlaylist;
   addSongToPlaylist: (playlistId: string, songId: string) => boolean;
   removeSongFromPlaylist: (playlistId: string, songId: string) => void;
   deletePlaylist: (playlistId: string) => void;
@@ -77,12 +86,13 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     }
   },
 
-  createPlaylist: (name, initialSongId, username = 'Usuario', description = '', color) => {
+  createPlaylist: (name, initialSongId, username = 'Usuario', description = '', color, coverUrl) => {
     const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
     const newPl: CustomPlaylist = {
       id: `pl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: name.trim() || 'Mi Playlist',
       description: description.trim() || (initialSongId ? 'Creada desde una canción' : 'Lista de reproducción personalizada'),
+      coverUrl: coverUrl || undefined,
       color: color || randomColor,
       songIds: initialSongId ? [String(initialSongId)] : [],
       createdAt: new Date().toISOString(),
@@ -101,6 +111,34 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     });
 
     useToastStore.getState().show(`Playlist «${newPl.name}» creada`, 'success', 2200);
+    return newPl;
+  },
+
+  createFullPlaylist: ({ name, description = '', coverUrl, color, songIds = [], username = 'Usuario' }) => {
+    const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+    const newPl: CustomPlaylist = {
+      id: `pl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: name.trim() || 'Mi Playlist',
+      description: description.trim() || 'Playlist importada en JodiFy',
+      coverUrl: coverUrl || undefined,
+      color: color || randomColor,
+      songIds: Array.from(new Set(songIds.map(String))),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: username,
+    };
+
+    set((state) => {
+      const updated = [newPl, ...state.playlists];
+      try {
+        localStorage.setItem(`jf_playlists_${username}`, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return { playlists: updated, activePlaylistId: newPl.id };
+    });
+
+    useToastStore.getState().show(`¡Playlist «${newPl.name}» guardada con éxito en JodiFy!`, 'success', 3000);
     return newPl;
   },
 

@@ -20,7 +20,7 @@ import { Spinner } from '../ui/Spinner';
 import { Button } from '../ui/Button';
 import { useUiStore } from '../../store/ui.store';
 import { useToastStore } from '../../store/toast.store';
-import { fetchCommunityUsers, fetchListeningStats, fetchTopSongs } from '../../services/users.service';
+import { fetchCommunityUsers, fetchListeningStats, fetchTopSongs, usersService } from '../../services/users.service';
 import { fetchLanyardProfile } from '../../services/social.service';
 import { useLibraryStore } from '../../store/library.store';
 import { usePlayerStore } from '../../store/player.store';
@@ -46,6 +46,7 @@ export function UserDetailModal() {
   const [topSongs, setTopSongs] = useState<Array<{ song_name: string; count: number }>>([]);
   const [now, setNow] = useState(() => Date.now());
   const [particles, setParticles] = useState<Array<{ id: number; emoji: string; x: number }>>([]);
+  const [entranceKey, setEntranceKey] = useState(0);
 
   const myCurrentSong = usePlayerStore((s) => s.currentSong);
   const myIsPlaying = usePlayerStore((s) => s.isPlaying);
@@ -55,19 +56,29 @@ export function UserDetailModal() {
   useEffect(() => {
     if (ui.modal !== 'userDetail' || !username) return;
     setLoading(true);
+    setEntranceKey((k) => k + 1);
     void (async () => {
       try {
-        const [rows, statsData, userTopSongs] = await Promise.all([
+        const [rows, statsData, userTopSongs, fullProfile] = await Promise.all([
           fetchCommunityUsers(),
           fetchListeningStats(username).catch(() => null),
           fetchTopSongs(username, 3).catch(() => []),
+          usersService.fetchProfile(username).catch(() => null),
         ]);
         const row = rows.find((r) => r.username.toLowerCase() === username.toLowerCase()) ?? null;
-        if (row?.discord_id) {
-          const discord = await fetchLanyardProfile(row.discord_id);
-          setUser({ ...row, discord });
+        const merged = { ...row, ...fullProfile } as CommunityUser;
+        if (merged && session && merged.username.toLowerCase() === session.username?.toLowerCase()) {
+          merged.profile_animation = session.profile_animation || merged.profile_animation;
+          merged.profile_effect = session.profile_effect || merged.profile_effect;
+          merged.pet_type = session.pet_type || merged.pet_type;
+          merged.pet_variant = session.pet_variant || merged.pet_variant;
+          merged.pet_name = session.pet_name || merged.pet_name;
+        }
+        if (merged?.discord_id) {
+          const discord = await fetchLanyardProfile(merged.discord_id);
+          setUser({ ...merged, discord });
         } else {
-          setUser(row ? { ...row, discord: null } : null);
+          setUser(merged ? { ...merged, discord: null } : null);
         }
         setStats(statsData);
         setTopSongs(userTopSongs);
@@ -77,7 +88,7 @@ export function UserDetailModal() {
         setLoading(false);
       }
     })();
-  }, [ui.modal, username]);
+  }, [ui.modal, username, session]);
 
   useEffect(() => {
     if (ui.modal !== 'userDetail') return;
@@ -169,6 +180,24 @@ export function UserDetailModal() {
     return user.theme ? `theme--${user.theme}` : 'theme--aurora';
   }, [user]);
 
+  const effectiveAnimation = useMemo(() => {
+    if (user?.profile_animation && user.profile_animation !== 'none') {
+      return user.profile_animation;
+    }
+    if (isMe && session?.profile_animation && session.profile_animation !== 'none') {
+      return session.profile_animation;
+    }
+    // Si no tiene animación configurada, inferir la mejor desbloqueada según su rango
+    const lvl = melomano.level || 1;
+    if (lvl >= 15) return 'abyssal-flame';
+    if (lvl >= 12) return 'supernova-gold';
+    if (lvl >= 9) return 'sakura-drift';
+    if (lvl >= 7) return 'neon-equalizer';
+    if (lvl >= 5) return 'synthwave-horizon';
+    if (lvl >= 3) return 'cyber-glitch';
+    return 'astral-pulse';
+  }, [user?.profile_animation, isMe, session?.profile_animation, melomano.level]);
+
   const frameClass = user?.avatar_frame && user.avatar_frame !== 'none' ? `jf-avatar-frame--${user.avatar_frame}` : '';
   const avatarSrc = resolveAvatarSrc(user);
 
@@ -191,13 +220,18 @@ export function UserDetailModal() {
             </span>
           ))}
 
+          {/* Animación de entrada JodiFy Pulse (sobre todo el modal sin recortarse) */}
+          {effectiveAnimation && effectiveAnimation !== 'none' && (
+            <ProfileEntranceAnimation
+              key={entranceKey}
+              animationType={effectiveAnimation}
+              username={user.display_name || user.username}
+            />
+          )}
+
           <div className="jf-profile-banner" aria-hidden="true">
             {user.profile_effect && user.profile_effect !== 'none' && (
               <div className={`jf-profile-effect-layer jf-profile-effect--${user.profile_effect}`} />
-            )}
-            {/* Animación de entrada JodiFy Pulse */}
-            {user.profile_animation && user.profile_animation !== 'none' && (
-              <ProfileEntranceAnimation animationType={user.profile_animation} username={user.username} />
             )}
             <span className="jf-profile-orb jf-profile-orb--a" />
             <span className="jf-profile-orb jf-profile-orb--b" />
@@ -231,6 +265,15 @@ export function UserDetailModal() {
                       title="Compartir perfil"
                     >
                       <ShareNetwork size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="jf-anthem-icon-btn"
+                      style={{ width: '28px', height: '28px', marginLeft: '4px' }}
+                      onClick={() => setEntranceKey((k) => k + 1)}
+                      title="Repetir animación de entrada JodiFy Pulse"
+                    >
+                      <Sparkle size={14} weight="fill" color="#38bdf8" />
                     </button>
                   </div>
                   <div className="jf-profile-hero-badges">

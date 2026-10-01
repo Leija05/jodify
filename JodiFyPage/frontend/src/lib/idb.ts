@@ -51,7 +51,13 @@ export async function getSongOffline(id: number | string): Promise<OfflineSong |
   try {
     const db = await getDB();
     if (!db) return undefined;
-    return await db.get('songs', id);
+    let res = await db.get('songs', id);
+    if (!res && typeof id === 'string' && !isNaN(Number(id))) {
+      res = await db.get('songs', Number(id));
+    } else if (!res && typeof id === 'number') {
+      res = await db.get('songs', String(id));
+    }
+    return res;
   } catch (err) {
     console.warn('[idb] Error obteniendo canción offline:', err);
     return undefined;
@@ -85,6 +91,11 @@ export async function deleteSongOffline(id: number | string): Promise<void> {
     const db = await getDB();
     if (!db) return;
     await db.delete('songs', id);
+    if (typeof id === 'string' && !isNaN(Number(id))) {
+      await db.delete('songs', Number(id));
+    } else if (typeof id === 'number') {
+      await db.delete('songs', String(id));
+    }
   } catch (err) {
     console.warn('[idb] Error eliminando canción offline:', err);
   }

@@ -24,6 +24,8 @@ export interface Session {
   pet_variant?: string | null;
   pet_name?: string | null;
   profile_animation?: string | null;
+  profile_effect?: string | null;
+  profile_bg_mode?: 'preset' | 'gradient' | 'anthem_cover';
 }
 
 interface SessionContextValue {

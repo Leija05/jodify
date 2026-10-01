@@ -7,6 +7,8 @@ import tempfile
 from typing import Annotated, Any
 
 import time
+import re
+import urllib.parse
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
@@ -343,6 +345,32 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     raise ValueError(f"No se pudo obtener el flujo de audio del enlace: {last_error}")
 
 
+@router.get("/match-track")
+async def match_track(
+    artist: str = Query(""),
+    title: str = Query(...),
+) -> dict[str, Any]:
+    """Busca en YouTube por Artista y Título en ~100ms y devuelve el youtube_id y url para reproducción instantánea."""
+    from ...services.link_resolver import _search_youtube_video_id
+    query = f"{artist.strip()} {title.strip()}".strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query vacía")
+
+    yt_id = await _search_youtube_video_id(query)
+    if not yt_id:
+        clean_title = re.sub(r"[\(\[\{].*?[\)\]\}]", "", title).strip()
+        yt_id = await _search_youtube_video_id(f"{artist.strip()} {clean_title}".strip())
+
+    if not yt_id:
+        raise HTTPException(status_code=404, detail="No se encontró video en YouTube para este tema")
+
+    return {
+        "success": True,
+        "youtube_id": yt_id,
+        "url": f"https://www.youtube.com/watch?v={yt_id}",
+    }
+
+
 @router.get("/stream")
 async def stream_audio_link(
     url: str = Query(...),
@@ -351,6 +379,16 @@ async def stream_audio_link(
     """Transmite audio de YouTube, SoundCloud o enlaces web directamente al reproductor con soporte de Range."""
     if is_direct_audio_url(url):
         return RedirectResponse(url)
+
+    # Si la URL es una búsqueda de YouTube o proviene de Spotify
+    from ...services.link_resolver import _search_youtube_video_id
+    if "youtube.com/results" in url or "search_query=" in url:
+        m = re.search(r"search_query=([^&]+)", url)
+        if m:
+            query = urllib.parse.unquote_plus(m.group(1)).replace("+", " ")
+            matched_id = await _search_youtube_video_id(query)
+            if matched_id:
+                url = f"https://www.youtube.com/watch?v={matched_id}"
 
     loop = asyncio.get_running_loop()
     try:

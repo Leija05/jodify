@@ -1171,12 +1171,15 @@
 
 .jf-dl-modal {
   width: 100%;
-  max-width: 580px;
-  max-height: 82vh;
-  background: rgba(18, 18, 28, 0.88);
+  max-width: 600px;
+  max-height: 84vh;
+  background: rgba(14, 16, 28, 0.94);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 40px rgba(99, 102, 241, 0.15);
-  border-radius: var(--radius-lg, 16px);
+  border-top-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.75), 0 0 50px rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-xl, 20px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1187,9 +1190,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 22px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 18px 24px;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .jf-dl-modal-title-group {
@@ -1274,28 +1277,33 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 22px;
-  background: rgba(99, 102, 241, 0.12);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 10px 24px;
+  background: rgba(99, 102, 241, 0.1);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.18);
 }
 
 .jf-dl-spinner-pulse {
-  color: #6366f1;
+  color: #00f0ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .jf-dl-banner-text {
   font-size: 12px;
-  color: #a5b4fc;
+  color: #cbd5e1;
   line-height: 1.4;
+  font-weight: 500;
 }
 
 .jf-dl-list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 22px;
+  padding: 16px 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: 400px;
 }
 
 .jf-dl-empty {
@@ -1326,16 +1334,22 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-  padding: 10px 14px;
-  transition: all 0.18s ease;
+  border-radius: 14px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+
+.jf-dl-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .jf-dl-item.is-downloading {
-  border-color: rgba(99, 102, 241, 0.35);
-  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(0, 240, 255, 0.35);
+  background: rgba(0, 240, 255, 0.04);
+  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.08);
 }
 
 .jf-dl-item.is-completed {
@@ -1344,16 +1358,20 @@
 
 .jf-dl-item.is-error {
   border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.06);
+  background: rgba(239, 68, 68, 0.05);
 }
 
 .jf-dl-item-cover-wrap {
   position: relative;
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 10px;
   overflow: hidden;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .jf-dl-item-cover {
@@ -1366,6 +1384,7 @@
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1383,79 +1402,177 @@
   color: #ef4444;
 }
 
-.jf-dl-item-info {
+.jf-dl-item-details {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
 }
 
-.jf-dl-item-title {
-  margin: 0;
-  font-size: 13.5px;
-  font-weight: 600;
+.jf-dl-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.jf-dl-item-name {
+  font-size: 14px;
+  font-weight: 700;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
-.jf-dl-item-artist {
-  margin: 0;
-  font-size: 11.5px;
-  color: var(--text-muted);
+.jf-dl-item-percent {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 99px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jf-dl-item-percent.is-downloading {
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.jf-dl-item-percent.is-completed {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.jf-dl-item-percent.is-error {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.jf-dl-item-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.jf-dl-item-status-col {
-  width: 160px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  flex-shrink: 0;
+.jf-dl-sub-artist {
+  color: #e2e8f0;
+  font-weight: 600;
 }
 
-.jf-dl-progress-bar-wrap {
+.jf-dl-sub-bytes {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-muted, #94a3b8);
+}
+
+.jf-dl-sub-duration {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-muted, #94a3b8);
+}
+
+.jf-dl-progress-track {
   width: 100%;
   height: 6px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 99px;
   overflow: hidden;
+  margin-top: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.jf-dl-progress-bar-fill {
+.jf-dl-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6366f1, #00f0ff);
   border-radius: 99px;
-  transition: width 0.25s ease;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.jf-dl-meta-row {
+.jf-dl-progress-fill.is-downloading {
+  background: linear-gradient(90deg, #6366f1, #00f0ff);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
+}
+
+.jf-dl-progress-fill.is-completed {
+  background: linear-gradient(90deg, #10b981, #34d399);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+}
+
+.jf-dl-progress-fill.is-error {
+  background: #ef4444;
+}
+
+.jf-dl-item-error-msg {
+  font-size: 11px;
+  color: #ef4444;
+  margin-top: 2px;
+}
+
+.jf-dl-modal-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  padding: 14px 24px;
+  background: rgba(0, 0, 0, 0.35);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 16px;
 }
 
-.jf-dl-percent {
-  font-weight: 700;
-  font-family: var(--font-mono);
+.jf-dl-footer-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jf-dl-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted, #94a3b8);
+}
+
+.jf-dl-stat-pill.is-active {
   color: #00f0ff;
+  background: rgba(0, 240, 255, 0.1);
+  border-color: rgba(0, 240, 255, 0.3);
 }
 
-.jf-dl-bytes {
-  font-family: var(--font-mono);
-  color: var(--text-muted);
+.jf-dl-stat-pill.is-completed {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.25);
 }
 
-.jf-dl-error-msg {
-  font-size: 11px;
+.jf-dl-stat-pill.is-error {
   color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
 }
+
+.jf-dl-confirm-btn {
+  min-width: 90px;
+}
+
 
 /* WIDGET FLOTANTE PERMANENTE / NOTIFICACIÓN ESTÁTICA */
 .jf-dl-floating-badge {
@@ -2286,3 +2403,25 @@
   background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
 }
+
+/* Fallback & strict clamp for Link Music Playlist Thumbnails */
+.jf-link-item-thumb {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+  border-radius: 6px !important;
+  object-fit: cover !important;
+  flex-shrink: 0 !important;
+  display: block !important;
+}
+
+.jf-link-playlist-cover {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+

@@ -26,10 +26,12 @@ import {
   CheckSquare,
   Square,
   PlusCircle,
+  FolderSimplePlus,
 } from '@phosphor-icons/react';
 import { useUiStore } from '../../store/ui.store';
 import { usePlayerStore } from '../../store/player.store';
 import { useQueueStore } from '../../store/queue.store';
+import { usePlaylistsStore } from '../../store/playlists.store';
 import { useToastStore } from '../../store/toast.store';
 import { useIsAdmin, useIsDev, useSession } from '../../context/SessionContext';
 import {
@@ -78,6 +80,11 @@ function toVirtualSong(track: {
     const ytMatch = allUrls.match(/(?:watch\?v=|youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/)|yt-)([a-zA-Z0-9_-]{11})/);
     if (ytMatch) ytId = ytMatch[1];
   }
+  if (!ytId && track.id && /^[a-zA-Z0-9_-]{11}$/.test(String(track.id))) {
+    ytId = String(track.id);
+  }
+
+  const effectiveSource = track.source || (ytId ? 'youtube' : (allUrls.includes('spotify') ? 'spotify' : 'web'));
 
   return {
     id: cleanId,
@@ -86,7 +93,7 @@ function toVirtualSong(track: {
     album: track.album || 'Streaming Web',
     url: track.stream_url || track.url || '',
     youtube_id: ytId,
-    source: track.source || (ytId ? 'youtube' : 'web'),
+    source: effectiveSource,
     cover_url: track.thumbnail || undefined,
     duration: track.duration,
     likes: 0,
@@ -144,15 +151,17 @@ export function LinkMusicModal() {
   const [showDuplicateAlert, setShowDuplicateAlert] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  const normalize = (text: string = '') =>
-    text.toLowerCase().replace(/[^a-z0-9]/gi, '').trim();
+  const normalize = (text?: string | null) =>
+    String(text ?? '').toLowerCase().replace(/[^a-z0-9]/gi, '').trim();
 
-  const checkDuplicate = (item: { title: string; artist?: string; youtube_id?: string; url?: string }) => {
+  const checkDuplicate = (item?: { title?: string | null; artist?: string | null; youtube_id?: string | null; url?: string | null } | null) => {
+    if (!item) return false;
     const itemNormTitle = normalize(item.title);
-    const itemNormArtist = normalize(item.artist || '');
+    const itemNormArtist = normalize(item.artist);
     const v = toVirtualSong(item as any);
 
     return librarySongs.some((s) => {
+      if (!s) return false;
       if (v.youtube_id && s.youtube_id && v.youtube_id === s.youtube_id) {
         return true;
       }
@@ -228,6 +237,121 @@ export function LinkMusicModal() {
         .getState()
         .show(`Seleccionadas ${newIndices.length} canciones nuevas (duplicadas desmarcadas)`, 'info', 2200);
     }
+  };
+
+  const handleAddAllPlaylist = () => {
+    if (resolved?.type !== 'playlist' || !resolved.items?.length) return;
+    setSelectedIndices(new Set(resolved.items.map((_, i) => i)));
+    if (duplicateCountInPlaylist > 0) {
+      setShowDuplicateAlert(true);
+    } else {
+      void executeImport(resolved.items, false);
+    }
+  };
+
+  const handleSaveAsCustomPlaylist = async (playlist: ResolvedMedia & { type: 'playlist' }) => {
+    const targetItems = selectedItems.length > 0 ? selectedItems : playlist.items;
+    if (!targetItems.length) {
+      useToastStore.getState().show('No hay canciones para guardar', 'warning');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const vSongs = targetItems.map((item) => toVirtualSong(item));
+      vSongs.forEach((s) => useLibraryStore.getState().upsertSong(s));
+
+      if (session?.username) {
+        try {
+          const batchPayload = vSongs.map((v) => ({
+            name: v.name,
+            artist: v.artist,
+            album: v.album,
+            url: v.url,
+            youtube_id: v.youtube_id,
+            cover_url: v.cover_url,
+            duration: v.duration,
+            added_by: session.username,
+          }));
+          await songsService.registerBatch(batchPayload, true);
+        } catch (e) {
+          console.warn('[LinkMusicModal] Error guardando batch para playlist:', e);
+        }
+      }
+
+      const cover = playlist.thumbnail || targetItems[0]?.thumbnail || vSongs[0]?.cover_url;
+      const created = usePlaylistsStore.getState().createFullPlaylist({
+        name: playlist.title || 'Mi Playlist de JodiFy',
+        description: `Importada desde ${playlist.source.toUpperCase()} (${vSongs.length} temas) · ${playlist.artist || 'Varios Artistas'}`,
+        coverUrl: cover,
+        songIds: vSongs.map((s) => String(s.id)),
+        username: session?.username || 'Usuario',
+      });
+
+      useToastStore.getState().show(
+        `📁 ¡Playlist «${created.name}» guardada con éxito! Ya puedes escucharla desde tus Playlists`,
+        'success',
+        4000
+      );
+    } catch (err: any) {
+      useToastStore.getState().show(err.message || 'Error al guardar la playlist', 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleLikeAllSongs = async () => {
+    if (resolved?.type !== 'playlist' || !resolved.items?.length) return;
+    const targetItems = selectedItems.length > 0 ? selectedItems : resolved.items;
+    if (!targetItems.length) return;
+
+    setIsImporting(true);
+    let count = 0;
+    try {
+      const vSongs = targetItems.map((item) => toVirtualSong(item));
+      for (const s of vSongs) {
+        useLibraryStore.getState().upsertSong(s);
+        useLibraryStore.getState().toggleLikeLocal(s.id, true);
+        cacheExternalLikedSong(s);
+        count++;
+      }
+
+      if (session?.username) {
+        try {
+          const batchPayload = vSongs.map((v) => ({
+            name: v.name,
+            artist: v.artist,
+            album: v.album,
+            url: v.url,
+            youtube_id: v.youtube_id,
+            cover_url: v.cover_url,
+            duration: v.duration,
+            added_by: session.username,
+            liked_by: session.username,
+          }));
+          await songsService.registerBatch(batchPayload, false);
+          for (const s of vSongs) {
+            void likesService.addLike(session.username, s.id).catch(() => undefined);
+          }
+        } catch (e) {
+          console.warn('[LinkMusicModal] Error guardando likes en backend:', e);
+        }
+      }
+
+      useToastStore.getState().show(
+        `❤️ ¡Se añadieron ${count} canciones a tus Me Gusta!`,
+        'success',
+        3000
+      );
+    } catch (err: any) {
+      useToastStore.getState().show(err.message || 'Error dando like a canciones', 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleAddSingleSong = async (item: ResolvedTrack | ResolvedPlaylistItem) => {
+    await executeImport([item], false);
   };
 
   const handleStartImport = () => {
@@ -555,13 +679,18 @@ export function LinkMusicModal() {
   return (
     <div className="jf-modal-backdrop" onClick={() => ui.close('linkMusic')}>
       <motion.div
-        className="jf-modal jf-link-music-modal"
+        className="jf-modal jf-modal-card jf-link-music-modal"
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 'min(720px, 94vw)' }}
+        style={{
+          width: 'min(940px, 95vw)',
+          maxWidth: '940px',
+          height: resolved?.type === 'playlist' ? 'min(92vh, 880px)' : 'auto',
+          maxHeight: '92vh',
+        }}
       >
         <div className="jf-modal-header">
           <div className="jf-modal-header-icon jf-modal-header-icon--link">
@@ -893,44 +1022,63 @@ export function LinkMusicModal() {
                 transition={{ duration: 0.35 }}
               >
                 <div className="jf-link-playlist-head">
-                  {resolved.thumbnail && (
-                    <img className="jf-link-playlist-cover" src={resolved.thumbnail} alt="" />
-                  )}
+                  <div className="jf-link-playlist-cover-wrap">
+                    {resolved.thumbnail || resolved.items[0]?.thumbnail ? (
+                      <img
+                        className="jf-link-playlist-cover"
+                        src={resolved.thumbnail || resolved.items[0]?.thumbnail}
+                        alt={resolved.title}
+                      />
+                    ) : (
+                      <div className="jf-link-playlist-cover jf-link-playlist-cover--placeholder">
+                        <MusicNotes size={40} weight="duotone" />
+                      </div>
+                    )}
+                    <span
+                      className={`jf-link-source-badge ${
+                        resolved.source.includes('youtube')
+                          ? 'is-youtube'
+                          : resolved.source.includes('spotify')
+                          ? 'is-spotify'
+                          : 'is-web'
+                      }`}
+                    >
+                      {resolved.source.includes('youtube') ? (
+                        <YoutubeLogo size={13} weight="fill" />
+                      ) : resolved.source.includes('spotify') ? (
+                        <SpotifyLogo size={13} weight="fill" />
+                      ) : (
+                        <Globe size={13} weight="fill" />
+                      )}
+                      {resolved.source.toUpperCase()}
+                    </span>
+                  </div>
+
                   <div className="jf-link-playlist-meta">
                     <div className="jf-link-playlist-badges-row">
                       <span className="jf-link-playlist-badge">Playlist Completa</span>
-                      <span className="jf-link-playlist-count">{resolved.items.length} canciones</span>
+                      <span className="jf-link-playlist-total-count">
+                        <MusicNotes size={13} weight="bold" /> {resolved.items.length} canciones en total
+                      </span>
                       {duplicateCountInPlaylist > 0 && (
                         <span className="jf-link-playlist-dup-badge">
                           <Warning size={13} weight="fill" /> {duplicateCountInPlaylist} en biblioteca
                         </span>
                       )}
                     </div>
+
                     <h3 className="jf-link-playlist-title">{resolved.title}</h3>
                     <p className="jf-link-playlist-sub">
-                      Canal / Creador: {resolved.artist || 'Varios Artistas'}
+                      Canal / Creador: <strong>{resolved.artist || 'Varios Artistas'}</strong>
                     </p>
 
                     <div className="jf-link-playlist-actions">
                       <button
                         type="button"
-                        className="jf-btn jf-btn--primary"
-                        onClick={() => handlePlaySelectedPlaylist(resolved)}
-                      >
-                        <Play size={16} weight="fill" /> Reproducir Seleccionadas ({selectedIndices.size})
-                      </button>
-                      <button
-                        type="button"
-                        className="jf-btn jf-btn--secondary"
-                        onClick={() => handleQueueSelectedPlaylist(resolved)}
-                      >
-                        <Queue size={16} /> Añadir a la Cola
-                      </button>
-                      <button
-                        type="button"
                         className="jf-btn jf-btn--primary jf-btn--emerald"
-                        disabled={isImporting || selectedIndices.size === 0}
-                        onClick={handleStartImport}
+                        disabled={isImporting || resolved.items.length === 0}
+                        onClick={handleAddAllPlaylist}
+                        title="Agregar todas las canciones de la playlist a la biblioteca de una sola vez"
                       >
                         {isImporting ? (
                           <>
@@ -938,15 +1086,67 @@ export function LinkMusicModal() {
                           </>
                         ) : (
                           <>
-                            <PlusCircle size={16} weight="bold" /> Agregar {selectedIndices.size} a Biblioteca
+                            <PlusCircle size={16} weight="fill" /> Agregar a Biblioteca ({resolved.items.length})
                           </>
                         )}
+                      </button>
+
+                      {/* Guardar como Playlist personalizada de JodiFy con portada y canciones */}
+                      <button
+                        type="button"
+                        className="jf-btn jf-btn--primary jf-btn-save-playlist"
+                        disabled={isImporting || resolved.items.length === 0}
+                        onClick={() => void handleSaveAsCustomPlaylist(resolved)}
+                        title="Crear y guardar esta playlist con su portada y canciones en tus Playlists de JodiFy"
+                      >
+                        <FolderSimplePlus size={16} weight="bold" /> Guardar como Playlist ({selectedIndices.size > 0 && selectedIndices.size < resolved.items.length ? selectedIndices.size : resolved.items.length})
+                      </button>
+
+                      {/* Dar Like a Todas */}
+                      <button
+                        type="button"
+                        className="jf-btn jf-btn--secondary jf-btn-like-all"
+                        disabled={isImporting || resolved.items.length === 0}
+                        onClick={() => void handleLikeAllSongs()}
+                        title="Dar Me Gusta a todas las canciones de esta playlist"
+                      >
+                        <Heart size={16} weight="fill" color="#ff3366" /> Like a Todas ({selectedIndices.size > 0 && selectedIndices.size < resolved.items.length ? selectedIndices.size : resolved.items.length})
+                      </button>
+
+                      {selectedIndices.size > 0 && selectedIndices.size < resolved.items.length && (
+                        <button
+                          type="button"
+                          className="jf-btn jf-btn--secondary"
+                          disabled={isImporting}
+                          onClick={handleStartImport}
+                          title="Agregar solo las canciones seleccionadas"
+                        >
+                          <PlusCircle size={15} weight="bold" /> Agregar Seleccionadas ({selectedIndices.size})
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        className="jf-btn jf-btn--secondary"
+                        onClick={() => handlePlaySelectedPlaylist(resolved)}
+                        title="Reproducir playlist ahora"
+                      >
+                        <Play size={15} weight="fill" /> Reproducir Playlist
+                      </button>
+
+                      <button
+                        type="button"
+                        className="jf-btn jf-btn--ghost"
+                        onClick={() => handleQueueSelectedPlaylist(resolved)}
+                        title="Añadir a la cola"
+                      >
+                        <Queue size={15} /> A la Cola
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Playlist Selection Toolbar */}
+                {/* Toolbar de selección */}
                 <div className="jf-playlist-toolbar">
                   <div className="jf-playlist-toolbar-left">
                     <span className="jf-playlist-selection-count">
@@ -954,7 +1154,7 @@ export function LinkMusicModal() {
                     </span>
                     {duplicateCountInPlaylist > 0 && (
                       <span className="jf-playlist-dup-summary">
-                        ({duplicateCountInPlaylist} ya existen en biblioteca)
+                        ({duplicateCountInPlaylist} ya están en tu biblioteca)
                       </span>
                     )}
                   </div>
@@ -983,16 +1183,27 @@ export function LinkMusicModal() {
                         <Sparkle size={14} weight="fill" /> Solo Nuevas ({resolved.items.length - duplicateCountInPlaylist})
                       </button>
                     )}
+                    {selectedIndices.size > 0 && selectedIndices.size < resolved.items.length && (
+                      <button
+                        type="button"
+                        className="jf-toolbar-btn is-highlight"
+                        onClick={() => void handleLikeAllSongs()}
+                        title="Dar Me Gusta a las canciones seleccionadas"
+                      >
+                        <Heart size={14} weight="fill" color="#ff3366" /> Like a Seleccionadas ({selectedIndices.size})
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* List of ALL tracks (Sin límite de 50) */}
+                {/* Lista de Todas las Canciones de la Playlist */}
                 <div className="jf-link-playlist-items">
                   {resolved.items.map((item, idx) => {
                     const isSelected = selectedIndices.has(idx);
                     const isDup = checkDuplicate(item);
                     const vSong = toVirtualSong(item);
                     const liked = isTrackLiked(vSong.id);
+                    const itemThumb = item.thumbnail || resolved.thumbnail || resolved.items[0]?.thumbnail;
 
                     return (
                       <div
@@ -1010,6 +1221,7 @@ export function LinkMusicModal() {
                             e.stopPropagation();
                             handleToggleSelect(idx);
                           }}
+                          title={isSelected ? 'Desmarcar' : 'Marcar para acción múltiple'}
                         >
                           {isSelected ? (
                             <CheckSquare size={18} weight="fill" style={{ color: 'var(--accent, #00f0ff)' }} />
@@ -1019,38 +1231,69 @@ export function LinkMusicModal() {
                         </div>
 
                         <span className="jf-link-item-num">{idx + 1}</span>
-                        {item.thumbnail ? (
-                          <img className="jf-link-item-thumb" src={item.thumbnail} alt="" />
+
+                        {itemThumb ? (
+                          <img
+                            className="jf-link-item-thumb"
+                            src={itemThumb}
+                            alt=""
+                            style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+                          />
                         ) : (
-                          <div className="jf-link-item-thumb jf-link-item-thumb--placeholder">
+                          <div
+                            className="jf-link-item-thumb jf-link-item-thumb--placeholder"
+                            style={{ width: 44, height: 44, minWidth: 44, minHeight: 44, borderRadius: 6, flexShrink: 0 }}
+                          >
                             <MusicNotes size={16} />
                           </div>
                         )}
+
                         <div className="jf-link-item-meta">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span className="jf-link-item-title">{item.title}</span>
+                          <div className="jf-link-item-title-row">
+                            <span className="jf-link-item-title" title={item.title}>{item.title}</span>
                             {isDup ? (
                               <span className="jf-playlist-dup-tag" title="Esta canción ya está en tu biblioteca">
-                                ⚠️ Ya en biblioteca
+                                ⚠️ En biblioteca
                               </span>
                             ) : (
                               <span className="jf-playlist-new-tag">✨ Nueva</span>
                             )}
                           </div>
-                          <span className="jf-link-item-artist">{item.artist || 'Artista Desconocido'}</span>
+                          <span className="jf-link-item-artist" title={item.artist || 'Artista Desconocido'}>
+                            {item.artist || 'Artista Desconocido'}
+                          </span>
                         </div>
-                        {item.duration && (
-                          <span className="jf-link-item-dur">{formatTime(item.duration)}</span>
-                        )}
 
-                        <div className="jf-link-item-actions">
+                        {item.duration ? (
+                          <span className="jf-link-item-dur">{formatTime(item.duration)}</span>
+                        ) : null}
+
+                        <div className="jf-link-item-actions" onClick={(e) => e.stopPropagation()}>
+                          {/* Opción para agregar canciones 1 por 1 */}
+                          <button
+                            type="button"
+                            className={`jf-btn-add-single ${isDup ? 'is-added' : ''}`}
+                            disabled={isImporting}
+                            onClick={() => void handleAddSingleSong(item)}
+                            title={isDup ? 'Ya está en tu biblioteca. Haz clic para re-agregar.' : 'Agregar solo esta canción'}
+                          >
+                            {isDup ? (
+                              <>
+                                <CheckCircle size={13} weight="fill" /> Guardada
+                              </>
+                            ) : (
+                              <>
+                                <PlusCircle size={13} weight="bold" /> + Agregar
+                              </>
+                            )}
+                          </button>
+
                           {/* Botón Play directo */}
                           <button
                             type="button"
                             className={`jf-btn-icon ${isTrackPlaying(item) ? 'is-active' : ''}`}
                             title={isTrackPlaying(item) ? 'Pausar' : 'Reproducir ahora'}
-                            onClick={async (e) => {
-                              e.stopPropagation();
+                            onClick={async () => {
                               if (isTrackPlaying(item)) {
                                 usePlayerStore.getState().togglePlay();
                                 return;
@@ -1068,8 +1311,7 @@ export function LinkMusicModal() {
                             type="button"
                             className="jf-btn-icon"
                             title="Añadir a la cola"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => {
                               useLibraryStore.getState().upsertSong(vSong);
                               useQueueStore.getState().add(vSong);
                               useToastStore.getState().show(`«${item.title}» a la cola`, 'info', 1600);
@@ -1078,16 +1320,21 @@ export function LinkMusicModal() {
                             <Queue size={14} />
                           </button>
 
-                          {/* Botón Like directo en playlist con registro en MongoDB */}
+                          {/* Botón Like directo en playlist con persistencia */}
                           <button
                             type="button"
-                            className={`jf-btn-icon ${liked ? 'is-liked' : ''}`}
-                            title={liked ? 'En tus Me Gusta' : 'Dar Like y guardar'}
+                            className={`jf-btn-icon jf-item-like-btn ${liked ? 'is-liked' : ''}`}
+                            title={liked ? 'En tus Me Gusta (Haz clic para quitar)' : 'Dar Me Gusta ❤️'}
                             onClick={async (e) => {
                               e.stopPropagation();
                               const next = !liked;
                               useLibraryStore.getState().upsertSong(vSong);
                               useLibraryStore.getState().toggleLikeLocal(vSong.id, next);
+                              if (next) {
+                                cacheExternalLikedSong(vSong);
+                              } else {
+                                removeExternalLikedSong(vSong.id);
+                              }
                               if (session?.username) {
                                 try {
                                   if (next) {
@@ -1107,25 +1354,29 @@ export function LinkMusicModal() {
                                     cacheExternalLikedSong(reg);
                                   } else {
                                     await likesService.removeLike(session.username, vSong.id);
-                                    removeExternalLikedSong(vSong.id);
                                   }
                                 } catch {
                                   // local
                                 }
                               }
                               useToastStore.getState().show(
-                                next ? 'Añadida a tus Me Gusta ❤️' : 'Eliminada de tus Me Gusta',
+                                next ? `«${item.title}» añadida a tus Me Gusta ❤️` : `«${item.title}» quitada de Me Gusta`,
                                 next ? 'success' : 'info',
                                 1800
                               );
                             }}
                           >
-                            <Heart size={14} weight={liked ? 'fill' : 'regular'} color={liked ? '#ff3366' : 'currentColor'} />
+                            <Heart size={16} weight={liked ? 'fill' : 'regular'} color={liked ? '#ff3366' : 'currentColor'} />
                           </button>
                         </div>
                       </div>
                     );
                   })}
+
+                  <div className="jf-link-playlist-footer-note">
+                    <MusicNotes size={14} weight="bold" />
+                    <span>Mostrando {resolved.items.length} canciones cargadas · Puedes reproducir, descargar, agregar individualmente o dar Me Gusta ❤️</span>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -1192,7 +1443,7 @@ export function LinkMusicModal() {
                 if (sugStatusFilter !== 'all' && s.status !== sugStatusFilter) return false;
                 if (!q) return true;
                 return (
-                  s.title.toLowerCase().includes(q) ||
+                  String(s.title || '').toLowerCase().includes(q) ||
                   (s.artist && s.artist.toLowerCase().includes(q)) ||
                   (s.suggested_by && s.suggested_by.toLowerCase().includes(q)) ||
                   (s.notes && s.notes.toLowerCase().includes(q))

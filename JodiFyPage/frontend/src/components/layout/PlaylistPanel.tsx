@@ -462,8 +462,12 @@ export function PlaylistPanel() {
                       onClick={() => setViewingPlaylistId(pl.id)}
                       title="Haz clic para abrir y ver todas las canciones de la playlist"
                     >
-                      <div className="jf-pl-sidebar-card-thumb" style={{ background: pl.color || '#7f00ff' }}>
-                        <MusicNotes size={18} weight="duotone" />
+                      <div className="jf-pl-sidebar-card-thumb" style={{ background: pl.color || '#7f00ff', overflow: 'hidden' }}>
+                        {pl.coverUrl ? (
+                          <img src={pl.coverUrl} alt={pl.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <MusicNotes size={18} weight="duotone" />
+                        )}
                       </div>
                       <div className="jf-pl-sidebar-card-details">
                         <span className="jf-pl-sidebar-card-title">{pl.name}</span>

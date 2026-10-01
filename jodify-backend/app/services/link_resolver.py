@@ -225,6 +225,7 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                 "thumbnail": thumbnail,
                                 "url": search_target,
                                 "stream_url": f"/api/links/stream?url={search_target}",
+                                "source": "spotify",
                             })
     except Exception as exc:
         logger.warning(f"Error parseando Spotify embed para {url}: {exc}")
@@ -348,15 +349,18 @@ async def resolve_link(url: str) -> dict[str, Any]:
             for item in entries:
                 if not item:
                     continue
-                item_url = item.get("url") or item.get("webpage_url") or f"https://www.youtube.com/watch?v={item.get('id')}"
+                yt_vid_id = item.get("id")
+                item_url = item.get("url") or item.get("webpage_url") or (f"https://www.youtube.com/watch?v={yt_vid_id}" if yt_vid_id else "")
                 playlist_items.append({
-                    "id": item.get("id"),
+                    "id": yt_vid_id or f"yt-{abs(hash(item.get('title', ''))) % 10000000}",
+                    "youtube_id": yt_vid_id,
+                    "source": "youtube",
                     "title": item.get("title") or "Canción",
                     "artist": item.get("uploader") or item.get("artist") or item.get("channel") or "Desconocido",
                     "duration": item.get("duration"),
-                    "thumbnail": item.get("thumbnail") or (f"https://i.ytimg.com/vi/{item.get('id')}/hqdefault.jpg" if item.get("id") else None),
+                    "thumbnail": item.get("thumbnail") or (f"https://i.ytimg.com/vi/{yt_vid_id}/hqdefault.jpg" if yt_vid_id else None),
                     "url": item_url,
-                    "stream_url": f"/api/links/stream?url={item_url}",
+                    "stream_url": f"/api/links/stream?url={item_url}" if item_url else "",
                 })
 
             return {

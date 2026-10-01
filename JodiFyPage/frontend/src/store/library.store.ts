@@ -89,12 +89,12 @@ export const useLibraryStore = create<LibraryState>((set) => ({
 export function selectFilteredSongs(state: LibraryState): Song[] {
   const { songs, currentTab, searchTerm, currentSort, addedByFilter, likedIds, downloadedIds } = state;
   let list = songs;
-  if (currentTab === 'personal') list = songs.filter((s) => likedIds.includes(s.id));
-  if (currentTab === 'downloads') list = songs.filter((s) => downloadedIds.includes(s.id));
+  if (currentTab === 'personal') list = songs.filter((s) => likedIds.some((id) => String(id) === String(s.id)));
+  if (currentTab === 'downloads') list = songs.filter((s) => downloadedIds.some((id) => String(id) === String(s.id)));
   if (addedByFilter) list = list.filter((s) => s.added_by === addedByFilter);
   if (searchTerm.trim()) {
     const q = searchTerm.toLowerCase();
-    list = list.filter((s) => s.name.toLowerCase().includes(q) || String(s.artist ?? '').toLowerCase().includes(q));
+    list = list.filter((s) => String(s.name ?? '').toLowerCase().includes(q) || String(s.artist ?? '').toLowerCase().includes(q));
   }
   return sortSongs(list, currentSort);
 }

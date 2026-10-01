@@ -3,7 +3,7 @@ import { useLibraryStore } from '../store/library.store';
 import { useSession } from '../context/SessionContext';
 import { songsService } from '../services/songs.service';
 import { likesService, downloadsService } from '../services/social.service';
-import { getAllOfflineIds } from '../lib/idb';
+import { getAllOfflineIds, getAllSongsOffline } from '../lib/idb';
 import type { Song } from '../lib/types';
 import { useToastStore } from '../store/toast.store';
 import { useUiStore } from '../store/ui.store';
@@ -42,6 +42,9 @@ export async function loadLibrary(username: string | null): Promise<void> {
   const library = useLibraryStore.getState();
   library.setRefreshing(true);
   try {
+    const offlineSongs = await getAllSongsOffline();
+    const offlineKeys = await getAllOfflineIds();
+
     if (username) {
       const [fetchedSongs, fetchedLikedIds, downloadedIds] = await Promise.all([
         songsService.fetchAll().catch((): Song[] => []),
@@ -60,7 +63,7 @@ export async function loadLibrary(username: string | null): Promise<void> {
           for (const cs of cachedSongs) {
             if (!existingIds.has(String(cs.id))) {
               songs.push(cs);
-              if (!likedIds.includes(cs.id)) {
+              if (!likedIds.some((id) => String(id) === String(cs.id))) {
                 likedIds.push(cs.id);
               }
             }
@@ -68,14 +71,31 @@ export async function loadLibrary(username: string | null): Promise<void> {
         }
       } catch {}
 
+      // Integrar canciones descargadas en IndexedDB para que SIEMPRE aparezcan aunque no haya red
+      const existingSongIds = new Set(songs.map((s) => String(s.id)));
+      for (const os of offlineSongs) {
+        if (!existingSongIds.has(String(os.id))) {
+          songs.push(os);
+          existingSongIds.add(String(os.id));
+        }
+      }
+
+      const combinedDownloaded = Array.from(new Set([...downloadedIds.map(String), ...offlineKeys.map(String)]));
+
       library.setSongs(songs);
       library.setLikedIds(likedIds);
-      library.setDownloadedIds(downloadedIds);
+      library.setDownloadedIds(combinedDownloaded);
     } else {
-      const songs = await songsService.fetchAll().catch(() => [] as never[]);
-      const offlineIds = await getAllOfflineIds();
+      const songs = await songsService.fetchAll().catch(() => [] as Song[]);
+      const existingSongIds = new Set(songs.map((s) => String(s.id)));
+      for (const os of offlineSongs) {
+        if (!existingSongIds.has(String(os.id))) {
+          songs.push(os);
+          existingSongIds.add(String(os.id));
+        }
+      }
       library.setSongs(songs);
-      library.setDownloadedIds(offlineIds);
+      library.setDownloadedIds(offlineKeys);
     }
     library.setLoaded(true);
   } finally {
@@ -86,7 +106,18 @@ export async function loadLibrary(username: string | null): Promise<void> {
 export async function enterOfflineMode(): Promise<void> {
   const library = useLibraryStore.getState();
   library.setCurrentTab('downloads');
+  const offlineSongs = await getAllSongsOffline();
   const offlineIds = await getAllOfflineIds();
+
+  if (offlineSongs.length > 0) {
+    const existingIds = new Set(library.songs.map((s) => String(s.id)));
+    for (const os of offlineSongs) {
+      if (!existingIds.has(String(os.id))) {
+        library.upsertSong(os);
+      }
+    }
+  }
+
   library.setDownloadedIds(offlineIds);
   library.setLoaded(true);
   useUiStore.getState().close('offline');
