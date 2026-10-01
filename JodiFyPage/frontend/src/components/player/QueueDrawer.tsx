@@ -18,6 +18,7 @@ import { useLibraryStore } from '../../store/library.store';
 import { playSong } from '../../services/player.service';
 import { useToastStore } from '../../store/toast.store';
 import { songArtistMeta, formatDuration } from '../../lib/utils';
+import { confirmDialog } from '../../store/confirm.store';
 import { SongCover } from '../ui/SongCover';
 import type { Song } from '../../lib/types';
 
@@ -138,7 +139,17 @@ export function QueueDrawer() {
               )}
               <button
                 className="jf-queue-clear"
-                onClick={() => {
+                onClick={async () => {
+                  if (items.length > 1) {
+                    const ok = await confirmDialog({
+                      title: 'Vaciar cola de reproducción',
+                      message: `¿Deseas quitar las ${items.length} canciones en espera de la cola prioritaria?`,
+                      confirmLabel: 'Vaciar',
+                      tone: 'danger',
+                      icon: 'trash',
+                    });
+                    if (!ok) return;
+                  }
                   clear();
                   useToastStore.getState().show('Cola prioritaria vaciada', 'info', 1500);
                 }}

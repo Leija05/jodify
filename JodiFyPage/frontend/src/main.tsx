@@ -23,6 +23,15 @@ if (!isFileProtocol && 'serviceWorker' in navigator) {
   registerSW({ immediate: true });
 }
 
+// Reemplazar window.alert nativo para que nunca aparezca una ventana genérica del navegador
+if (typeof window !== 'undefined') {
+  window.alert = (message?: any) => {
+    import('./store/toast.store').then(({ useToastStore }) => {
+      useToastStore.getState().show(String(message ?? ''), 'info', 3500);
+    });
+  };
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

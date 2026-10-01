@@ -5,9 +5,9 @@ import { useSettingsStore } from '../store/settings.store';
 import { useJamStore } from '../store/jam.store';
 import { useToastStore } from '../store/toast.store';
 import { getSongOffline, getAllOfflineIds } from '../lib/idb';
+import { API_BASE } from '../lib/api';
 import { resolveMediaUrl } from '../lib/utils';
 import { linksService } from './links.service';
-
 import { ytPlayerService } from './yt-player.service';
 
 export function extractYoutubeId(song: Song | null | undefined): string | null {
@@ -160,26 +160,36 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
     player.setSourceUrl(song.url);
     player.setOfflinePlayback(false);
 
-    // En la app de escritorio (Electron), resolver flujo de audio directo de alta fidelidad
+    // En la app de escritorio o navegador, probar streams de audio directos de alta fidelidad
+    const streamCandidates: string[] = [];
     const desktopPlayer = (window as any).jodifyPlayer;
-    if (desktopPlayer && typeof desktopPlayer.resolveStream === 'function' && audio) {
+    if (desktopPlayer && typeof desktopPlayer.resolveStream === 'function') {
+      try {
+        const directUrl = await desktopPlayer.resolveStream(ytId);
+        if (directUrl) streamCandidates.push(directUrl);
+      } catch (err) {
+        console.warn('[player.service] Error obteniendo stream local:', err);
+      }
+    }
+    // Fallback robusto al stream del backend
+    streamCandidates.push(`${API_BASE}/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`);
+
+    for (const streamCandidate of streamCandidates) {
+      if (!audio) break;
       try {
         useToastStore.getState().show(`Cargando «${song.name}»…`, 'info', 1200);
-        const directUrl = await desktopPlayer.resolveStream(ytId);
-        if (directUrl) {
-          ytPlayerService.stop();
-          audio.src = directUrl;
-          audio.volume = player.volume;
-          audio.muted = player.muted;
-          await audio.play();
-          player.setIsPlaying(true);
-          player.setSourceUrl(directUrl);
-          useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
-          logListeningHistory(song, false);
-          return true;
-        }
+        ytPlayerService.stop();
+        audio.src = streamCandidate;
+        audio.volume = player.volume;
+        audio.muted = player.muted;
+        await audio.play();
+        player.setIsPlaying(true);
+        player.setSourceUrl(streamCandidate);
+        useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
+        logListeningHistory(song, false);
+        return true;
       } catch (err) {
-        console.warn('[player.service] Falló stream directo local, probando reproductor integrado:', err);
+        console.warn(`[player.service] Falló stream directo (${streamCandidate}), probando siguiente opción:`, err);
       }
     }
 
@@ -223,7 +233,12 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
     isOffline = true;
     if (player.blobUrl && player.blobUrl !== blobUrl) URL.revokeObjectURL(player.blobUrl);
   } else {
-    sourceUrl = song.url ? resolveMediaUrl(song.url) : null;
+    // Si la URL es una búsqueda o Spotify que no se emparejó, enrutarla al endpoint de stream del backend
+    if (song.url && (song.url.includes('search_query') || song.url.includes('spotify.com') || song.source === 'spotify')) {
+      sourceUrl = `${API_BASE}/links/stream?url=${encodeURIComponent(song.url)}`;
+    } else {
+      sourceUrl = song.url ? resolveMediaUrl(song.url) : null;
+    }
   }
 
   if (!sourceUrl) {

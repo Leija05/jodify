@@ -6,6 +6,7 @@ import { useToastStore } from '../store/toast.store';
 import { equalizerApi } from '../services/equalizer.service';
 import { obsService } from '../services/obs.service';
 import { useEqStore } from '../store/eq.store';
+import { ytPlayerService } from '../services/yt-player.service';
 
 export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -69,13 +70,21 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
       void next();
     };
 
+    let lastErrorSkip = 0;
     const onError = () => {
       const el = boundAudio || getAudio();
       if (!el || !el.src || el.src === window.location.href || !el.getAttribute('src')) return;
+      // Si el reproductor integrado de YouTube está activo o cargando, no saltar la canción
+      if (ytPlayerService.isPlayingVideo()) return;
+
+      const now = Date.now();
+      if (now - lastErrorSkip < 1800) return;
+      lastErrorSkip = now;
+
       usePlayerStore.getState().setLastError('Error de reproducción');
       useToastStore.getState().show('Error reproduciendo la canción, saltando…', 'warning');
       const { next } = usePlayerStore.getState();
-      setTimeout(() => void next(), 600);
+      setTimeout(() => void next(), 800);
     };
 
     const bind = (el: HTMLAudioElement) => {

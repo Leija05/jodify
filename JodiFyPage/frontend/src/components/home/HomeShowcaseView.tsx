@@ -34,6 +34,7 @@ import { usePlaylistsStore } from '../../store/playlists.store';
 import { useUiStore } from '../../store/ui.store';
 import { useContextMenuStore } from '../../store/contextmenu.store';
 import { useToastStore } from '../../store/toast.store';
+import { confirmDialog } from '../../store/confirm.store';
 import { useSongCoverGradient } from '../../lib/colorExtractor';
 import { playSong } from '../../services/player.service';
 import { toggleLikeCurrent } from '../../services/player-shortcuts';
@@ -859,9 +860,18 @@ export function HomeShowcaseView() {
                   <button
                     type="button"
                     className="jf-btn-icon jf-btn-icon--danger"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      deletePlaylist(pl.id);
+                      const ok = await confirmDialog({
+                        title: `Eliminar «${pl.name}»`,
+                        message: 'Esta playlist y su lista personalizada se eliminarán.',
+                        confirmLabel: 'Eliminar',
+                        tone: 'danger',
+                        icon: 'trash',
+                      });
+                      if (ok) {
+                        deletePlaylist(pl.id);
+                      }
                     }}
                     title="Eliminar playlist"
                   >

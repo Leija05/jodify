@@ -389,6 +389,8 @@ async def stream_audio_link(
             matched_id = await _search_youtube_video_id(query)
             if matched_id:
                 url = f"https://www.youtube.com/watch?v={matched_id}"
+            else:
+                url = f"ytsearch1:{query}"
 
     loop = asyncio.get_running_loop()
     try:

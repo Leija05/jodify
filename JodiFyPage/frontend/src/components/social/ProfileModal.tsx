@@ -495,12 +495,14 @@ export function ProfileModal() {
             {selectedEffect !== 'none' && (
               <div className={`jf-profile-effect-layer jf-profile-effect--${selectedEffect}`} />
             )}
-            <ProfileEntranceAnimation animation={selectedAnimation} key={`main-${previewAnimationKey}`} />
             <span className="jf-profile-orb jf-profile-orb--a" />
             <span className="jf-profile-orb jf-profile-orb--b" />
           </div>
 
           <div className="jf-profile">
+            {/* Animación continua en bucle (loop) al ver perfil - capa de fondo */}
+            <ProfileEntranceAnimation animation={selectedAnimation} key={`main-${previewAnimationKey}`} loop={true} />
+
             {/* Sub-navegación estilo Steam Studio (Sin scroll horizontal) */}
             <div className="jf-profile-mode-nav">
               <button
@@ -563,7 +565,7 @@ export function ProfileModal() {
                   {selectedEffect !== 'none' && (
                     <div className={`jf-profile-effect-layer jf-profile-effect--${selectedEffect}`} />
                   )}
-                  <ProfileEntranceAnimation animation={selectedAnimation} key={`prev-${previewAnimationKey}`} />
+                  <ProfileEntranceAnimation animation={selectedAnimation} key={`prev-${previewAnimationKey}`} loop={true} />
                   <span className="jf-profile-orb jf-profile-orb--a" />
                   <span className="jf-profile-orb jf-profile-orb--b" />
                 </div>

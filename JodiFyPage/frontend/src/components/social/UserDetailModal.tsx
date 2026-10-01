@@ -220,15 +220,6 @@ export function UserDetailModal() {
             </span>
           ))}
 
-          {/* Animación de entrada JodiFy Pulse (sobre todo el modal sin recortarse) */}
-          {effectiveAnimation && effectiveAnimation !== 'none' && (
-            <ProfileEntranceAnimation
-              key={entranceKey}
-              animationType={effectiveAnimation}
-              username={user.display_name || user.username}
-            />
-          )}
-
           <div className="jf-profile-banner" aria-hidden="true">
             {user.profile_effect && user.profile_effect !== 'none' && (
               <div className={`jf-profile-effect-layer jf-profile-effect--${user.profile_effect}`} />
@@ -238,6 +229,16 @@ export function UserDetailModal() {
           </div>
 
           <div className="jf-profile">
+            {/* Animación continua en bucle (loop) al inspeccionar perfil - capa de fondo */}
+            {effectiveAnimation && effectiveAnimation !== 'none' && (
+              <ProfileEntranceAnimation
+                key={entranceKey}
+                animationType={effectiveAnimation}
+                username={user.display_name || user.username}
+                loop={true}
+              />
+            )}
+
             {/* Hero Header Espacioso */}
             <div className="jf-profile-hero">
               <div className="jf-profile-hero-left">

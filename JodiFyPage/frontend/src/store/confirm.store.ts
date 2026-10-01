@@ -5,7 +5,8 @@ export interface ConfirmOptions {
   message?: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  tone?: 'primary' | 'danger';
+  tone?: 'primary' | 'danger' | 'warning';
+  icon?: 'trash' | 'warning' | 'info' | 'question';
 }
 
 type Resolver = (ok: boolean) => void;

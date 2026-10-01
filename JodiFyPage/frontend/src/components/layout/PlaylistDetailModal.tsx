@@ -22,6 +22,7 @@ import { usePlayerStore } from '../../store/player.store';
 import { useToastStore } from '../../store/toast.store';
 import { SongCover } from '../ui/SongCover';
 import { formatDuration, shuffleArray } from '../../lib/utils';
+import { confirmDialog } from '../../store/confirm.store';
 import type { Song } from '../../lib/types';
 
 export function PlaylistDetailModal() {
@@ -87,13 +88,30 @@ export function PlaylistDetailModal() {
     useToastStore.getState().show(`Reproduciendo «${playlist.name}» en aleatorio`, 'success', 2200);
   };
 
-  const handleRemove = (e: React.MouseEvent, songId: string | number) => {
+  const handleRemove = async (e: React.MouseEvent, songId: string | number) => {
     e.stopPropagation();
-    removeSongFromPlaylist(playlist.id, String(songId));
+    const song = playlistSongs.find((s) => String(s.id) === String(songId));
+    const ok = await confirmDialog({
+      title: 'Quitar de la playlist',
+      message: `¿Deseas quitar «${song?.name || 'esta canción'}» de la playlist?`,
+      confirmLabel: 'Quitar',
+      tone: 'danger',
+      icon: 'trash',
+    });
+    if (ok) {
+      removeSongFromPlaylist(playlist.id, String(songId));
+    }
   };
 
-  const handleDelete = () => {
-    if (window.confirm(`¿Estás seguro de eliminar la playlist «${playlist.name}»?`)) {
+  const handleDelete = async () => {
+    const ok = await confirmDialog({
+      title: `Eliminar playlist «${playlist.name}»`,
+      message: '¿Estás seguro de que deseas eliminar esta playlist? Esta acción eliminará su lista personalizada y no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      tone: 'danger',
+      icon: 'trash',
+    });
+    if (ok) {
       deletePlaylist(playlist.id);
       ui.close('playlistDetail');
     }

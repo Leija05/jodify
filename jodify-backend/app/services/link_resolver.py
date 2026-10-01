@@ -143,9 +143,38 @@ async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str,
 
 
 async def _search_youtube_video_id(query: str) -> str | None:
-    """Busca en YouTube por HTTP ligero y devuelve el primer video_id en ~150ms sin invocar yt-dlp."""
+    """Busca en YouTube Music / YouTube por HTTP ligero y devuelve el primer video_id en ~100ms."""
+    if not query or not query.strip():
+        return None
+
+    clean_q = query.strip()
+
+    # 1. Estrategia Principal: YouTube Music InnerTube API (WEB_REMIX) ~100ms (sin bloqueos de bot)
+    try:
+        url = "https://music.youtube.com/youtubei/v1/search"
+        payload = {
+            "context": {
+                "client": {
+                    "clientName": "WEB_REMIX",
+                    "clientVersion": "1.20240101.01.00",
+                    "hl": "es",
+                    "gl": "US",
+                }
+            },
+            "query": clean_q,
+        }
+        async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
+            resp = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
+            if resp.status_code == 200:
+                matches = re.findall(r'"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"', resp.text)
+                if matches:
+                    return matches[0]
+    except Exception as exc:
+        logger.warning(f"Error en InnerTube search para '{clean_q}': {exc}")
+
+    # 2. Estrategia Secundaria: Búsqueda HTML en youtube.com
     import urllib.parse
-    search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
+    search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(clean_q)}"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
@@ -161,7 +190,23 @@ async def _search_youtube_video_id(query: str) -> str | None:
                 if href_matches:
                     return href_matches[0]
     except Exception as exc:
-        logger.warning(f"Error en búsqueda rápida de YouTube para '{query}': {exc}")
+        logger.warning(f"Error en búsqueda HTML de YouTube para '{clean_q}': {exc}")
+
+    # 3. Estrategia de Fallback: yt-dlp ytsearch1
+    try:
+        loop = asyncio.get_running_loop()
+        def _ytsearch():
+            with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True, "extract_flat": True}) as ydl:
+                res = ydl.extract_info(f"ytsearch1:{clean_q}", download=False)
+                if res and "entries" in res and res["entries"]:
+                    return res["entries"][0].get("id")
+            return None
+        yt_id = await loop.run_in_executor(None, _ytsearch)
+        if yt_id:
+            return yt_id
+    except Exception as exc:
+        logger.warning(f"Fallback yt-dlp search falló para '{clean_q}': {exc}")
+
     return None
 
 
@@ -245,15 +290,16 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                 "source": "spotify",
                             })
 
-                        # Para playlists: resolver las fotos/carátulas reales de cada canción concurrentemente
+                        # Para playlists: resolver concurrentemente fotos reales y emparejamiento con YouTube
                         if entity_type == "playlist" and playlist_items:
-                            sem = asyncio.Semaphore(25)
+                            sem = asyncio.Semaphore(15)
 
-                            async def _resolve_track_cover(p_item: dict[str, Any], raw_item: dict[str, Any]):
+                            async def _resolve_track_details(p_item: dict[str, Any], raw_item: dict[str, Any]):
                                 raw_uri = raw_item.get("uri") or ""
                                 tid = raw_uri.split(":")[-1] if raw_uri.startswith("spotify:track:") else None
+                                q = f"{p_item.get('artist', '')} {p_item.get('title', '')}".strip()
 
-                                # 1. Spotify oEmbed (carátula oficial del álbum desde CDN de Spotify)
+                                # 1. Cover de Spotify oEmbed
                                 if tid:
                                     async with sem:
                                         try:
@@ -265,13 +311,11 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                                 t_url = res.json().get("thumbnail_url")
                                                 if t_url:
                                                     p_item["thumbnail"] = t_url
-                                                    return
                                         except Exception:
                                             pass
 
-                                # 2. Fallback a iTunes Search API
-                                q = f"{p_item.get('artist', '')} {p_item.get('title', '')}".strip()
-                                if q:
+                                # 2. Fallback cover de iTunes Search API si no hay carátula
+                                if not p_item.get("thumbnail") and q:
                                     async with sem:
                                         try:
                                             res = await client.get(
@@ -282,15 +326,29 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                                 data = res.json().get("results", [])
                                                 if data and data[0].get("artworkUrl100"):
                                                     p_item["thumbnail"] = data[0]["artworkUrl100"].replace("100x100bb", "300x300bb")
-                                                    return
                                         except Exception:
                                             pass
 
-                            cover_tasks = [
-                                _resolve_track_cover(p_item, raw_item)
+                                # 3. Emparejar con YouTube ID directo
+                                if q:
+                                    async with sem:
+                                        try:
+                                            yid = await _search_youtube_video_id(q)
+                                            if yid:
+                                                p_item["youtube_id"] = yid
+                                                p_item["url"] = f"https://www.youtube.com/watch?v={yid}"
+                                                p_item["stream_url"] = f"/api/links/stream?url=https://www.youtube.com/watch?v={yid}"
+                                                p_item["download_url"] = f"/api/links/download-proxy?url=https://www.youtube.com/watch?v={yid}"
+                                                if not p_item.get("thumbnail"):
+                                                    p_item["thumbnail"] = f"https://i.ytimg.com/vi/{yid}/hqdefault.jpg"
+                                        except Exception:
+                                            pass
+
+                            track_tasks = [
+                                _resolve_track_details(p_item, raw_item)
                                 for p_item, raw_item in zip(playlist_items, raw_tracks)
                             ]
-                            await asyncio.gather(*cover_tasks, return_exceptions=True)
+                            await asyncio.gather(*track_tasks, return_exceptions=True)
     except Exception as exc:
         logger.warning(f"Error parseando Spotify embed para {url}: {exc}")
 

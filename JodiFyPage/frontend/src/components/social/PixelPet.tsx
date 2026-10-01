@@ -15,6 +15,8 @@ export interface PixelPetProps {
   showBadge?: boolean;
   className?: string;
   isMusicPlaying?: boolean;
+  isWalking?: boolean;
+  facing?: number;
   onClick?: () => void;
 }
 
@@ -31,6 +33,8 @@ export function PixelPet({
   showBadge = false,
   className = '',
   isMusicPlaying: propIsPlaying,
+  isWalking = false,
+  facing = 1,
   onClick,
 }: PixelPetProps) {
   const storeIsMusicPlaying = usePlayerStore((s) => s.isPlaying);
@@ -123,8 +127,12 @@ export function PixelPet({
       {/* Renderizado Pixel Art SVG de Alta Fidelidad */}
       <div
         className={`jf-pixel-pet-inner ${bounce ? 'is-bouncing' : ''} ${
-          isMusicPlaying ? 'is-dancing' : 'is-idle'
+          isWalking ? 'is-walking' : isMusicPlaying ? 'is-dancing' : 'is-idle'
         }`}
+        style={{
+          transform: facing === -1 ? 'scaleX(-1)' : 'scaleX(1)',
+          transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        }}
       >
         <PixelPetSvg type={activeType} variant={activeVariant} isPlaying={isMusicPlaying} />
       </div>

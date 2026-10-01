@@ -28,6 +28,7 @@ import { SongCover } from '../ui/SongCover';
 import { SongListSkeleton } from '../ui/Skeleton';
 import { EmptyState } from '../ui/EmptyState';
 import { useUiStore } from '../../store/ui.store';
+import { confirmDialog } from '../../store/confirm.store';
 import { useLibraryStore, selectFilteredSongs } from '../../store/library.store';
 import { useBackendStore } from '../../store/backend.store';
 import { useUploadStore } from '../../store/upload.store';
@@ -428,9 +429,18 @@ export function PlaylistPanel() {
                         <button
                           type="button"
                           className="jf-pl-sidebar-remove"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            removeSongFromPlaylist(viewingPlaylist.id, String(song.id));
+                            const ok = await confirmDialog({
+                              title: 'Quitar de la playlist',
+                              message: `¿Deseas quitar «${song.name}» de esta playlist?`,
+                              confirmLabel: 'Quitar',
+                              tone: 'danger',
+                              icon: 'trash',
+                            });
+                            if (ok) {
+                              removeSongFromPlaylist(viewingPlaylist.id, String(song.id));
+                            }
                           }}
                           title="Quitar canción de la playlist"
                         >
@@ -490,9 +500,16 @@ export function PlaylistPanel() {
                         <button
                           type="button"
                           className="jf-pl-trash-pill"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            if (window.confirm(`¿Eliminar «${pl.name}»?`)) {
+                            const ok = await confirmDialog({
+                              title: `¿Eliminar playlist?`,
+                              message: `Se eliminará «${pl.name}» de forma permanente. Esta acción no se puede deshacer.`,
+                              confirmLabel: 'Eliminar',
+                              tone: 'danger',
+                              icon: 'trash',
+                            });
+                            if (ok) {
                               deletePlaylist(pl.id);
                             }
                           }}

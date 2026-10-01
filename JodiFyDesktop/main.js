@@ -80,16 +80,19 @@ function resolveLocalStreamUrl(targetOrId) {
       { timeout: 14000 },
       (error, stdout) => {
         if (error || !stdout) {
-          console.warn('[main] Error resolviendo stream local con yt_dlp:', error);
-          resolve(null);
+          console.warn('[main] Python local no disponible o yt_dlp falló, usando stream de backend:', error?.message || error);
+          const fallback = `${API_URL}/api/links/stream?url=${encodeURIComponent(target)}`;
+          resolve(fallback);
           return;
         }
         const lines = stdout.trim().split(/\r?\n/).filter((l) => l.startsWith('http'));
         const direct = lines[0] || null;
         if (direct) {
           localStreamCache.set(ytId, { url: direct, expiry: Date.now() + 3600 * 1000 });
+          resolve(direct);
+        } else {
+          resolve(`${API_URL}/api/links/stream?url=${encodeURIComponent(target)}`);
         }
-        resolve(direct);
       }
     );
   });
@@ -138,53 +141,69 @@ function startAppServer() {
             return res.end('Stream not found');
           }
 
-          try {
-            const parsedStream = new URL(streamUrl);
-            const options = {
-              hostname: parsedStream.hostname,
-              port: 443,
-              path: parsedStream.pathname + parsedStream.search,
-              method: 'GET',
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              },
-            };
-
-            if (req.headers.range) {
-              options.headers.range = req.headers.range;
+          function proxyTo(targetStreamUrl, redirectCount = 0) {
+            if (redirectCount > 4) {
+              if (!res.headersSent) res.writeHead(502);
+              return res.end();
             }
 
-            const proxyReq = https.request(options, (proxyRes) => {
-              const resHeaders = {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': '*',
-                'Content-Type': proxyRes.headers['content-type'] || 'audio/mp4',
-                'Accept-Ranges': 'bytes',
-                'Cache-Control': 'public, max-age=3600',
+            try {
+              const parsedStream = new URL(targetStreamUrl);
+              const isHttps = parsedStream.protocol === 'https:';
+              const clientModule = isHttps ? https : http;
+              const options = {
+                hostname: parsedStream.hostname,
+                port: parsedStream.port || (isHttps ? 443 : 80),
+                path: parsedStream.pathname + parsedStream.search,
+                method: 'GET',
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                },
               };
-              if (proxyRes.headers['content-range']) {
-                resHeaders['Content-Range'] = proxyRes.headers['content-range'];
-              }
-              if (proxyRes.headers['content-length']) {
-                resHeaders['Content-Length'] = proxyRes.headers['content-length'];
+
+              if (req.headers.range) {
+                options.headers.range = req.headers.range;
               }
 
-              res.writeHead(proxyRes.statusCode || 200, resHeaders);
-              proxyRes.pipe(res);
-            });
+              const proxyReq = clientModule.request(options, (proxyRes) => {
+                if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+                  const nextUrl = new URL(proxyRes.headers.location, targetStreamUrl).toString();
+                  return proxyTo(nextUrl, redirectCount + 1);
+                }
 
-            proxyReq.on('error', (err) => {
-              console.warn('[app-server] Error transmitiendo audio proxy:', err.message);
-              if (!res.headersSent) res.writeHead(502);
+                const resHeaders = {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': '*',
+                  'Content-Type': proxyRes.headers['content-type'] || 'audio/mp4',
+                  'Accept-Ranges': 'bytes',
+                  'Cache-Control': 'public, max-age=3600',
+                };
+                if (proxyRes.headers['content-range']) {
+                  resHeaders['Content-Range'] = proxyRes.headers['content-range'];
+                }
+                if (proxyRes.headers['content-length']) {
+                  resHeaders['Content-Length'] = proxyRes.headers['content-length'];
+                }
+
+                res.writeHead(proxyRes.statusCode || 200, resHeaders);
+                proxyRes.pipe(res);
+              });
+
+              proxyReq.on('error', (err) => {
+                console.warn('[app-server] Error transmitiendo audio proxy:', err.message);
+                if (!res.headersSent) res.writeHead(502);
+                res.end();
+              });
+
+              proxyReq.end();
+            } catch (e) {
+              console.warn('[app-server] Error creando request de proxy:', e);
+              if (!res.headersSent) res.writeHead(500);
               res.end();
-            });
-
-            proxyReq.end();
-          } catch (e) {
-            console.warn('[app-server] Error creando request de proxy:', e);
-            if (!res.headersSent) res.writeHead(500);
-            res.end();
+            }
           }
+
+          proxyTo(streamUrl);
         }).catch((err) => {
           console.warn('[app-server] Error resolviendo stream:', err);
           if (!res.headersSent) res.writeHead(500);

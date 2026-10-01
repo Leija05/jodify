@@ -232,64 +232,254 @@
   overflow: hidden;
 }
 
-.jf-confirm-card {
+/* ==========================================================================
+   JODIFY CONFIRMATION & ALERT DIALOG (PREMIUM MODAL)
+   ========================================================================== */
+.jf-confirm-backdrop {
+  z-index: 99999;
+  backdrop-filter: blur(12px) brightness(0.65);
+  background: rgba(0, 0, 0, 0.72);
   display: flex;
-  gap: var(--space-md);
-  align-items: flex-start;
-  width: min(420px, 100%);
-  background: var(--surface-solid);
-  border: 1px solid var(--border);
-  border-top-color: rgba(255, 255, 255, 0.12);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+}
+
+.jf-confirm-card {
+  position: relative;
+  width: min(450px, 92vw);
+  background: #0e0e14;
+  background: linear-gradient(175deg, rgba(26, 26, 36, 0.95) 0%, rgba(12, 12, 18, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  padding: var(--space-lg);
+  padding: 22px 24px;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.jf-confirm-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.jf-confirm-card.is-danger {
+  border-color: rgba(239, 68, 68, 0.35);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 0 40px -10px rgba(239, 68, 68, 0.25);
+}
+.jf-confirm-card.is-danger::before {
+  background: linear-gradient(90deg, transparent, #ef4444, transparent);
+}
+
+.jf-confirm-card.is-warning {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 0 40px -10px rgba(245, 158, 11, 0.25);
+}
+.jf-confirm-card.is-warning::before {
+  background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+}
+
+.jf-confirm-card.is-primary {
+  border-color: rgba(0, 240, 255, 0.35);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 0 40px -10px rgba(0, 240, 255, 0.2);
+}
+.jf-confirm-card.is-primary::before {
+  background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+}
+
+.jf-confirm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jf-confirm-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+.jf-confirm-tag.is-danger {
+  background: rgba(239, 68, 68, 0.16);
+  color: #ff6b6b;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.jf-confirm-tag.is-warning {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.jf-confirm-tag.is-primary {
+  background: rgba(0, 240, 255, 0.16);
+  color: #00f0ff;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+.jf-confirm-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+}
+.jf-confirm-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.jf-confirm-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
 }
 
 .jf-confirm-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-md);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.jf-confirm-card:hover .jf-confirm-icon {
+  transform: scale(1.05);
 }
 
 .jf-confirm-icon.is-danger {
-  background: rgba(var(--danger-rgb, 255, 80, 80), 0.14);
-  color: var(--danger, #ff5d5d);
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.28) 0%, rgba(239, 68, 68, 0.1) 80%);
+  color: #ff5252;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.35);
 }
-
+.jf-confirm-icon.is-warning {
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.28) 0%, rgba(245, 158, 11, 0.1) 80%);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.35);
+}
 .jf-confirm-icon.is-primary {
-  background: rgba(var(--primary-rgb), 0.14);
-  color: var(--primary);
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.28) 0%, rgba(127, 0, 255, 0.15) 80%);
+  color: #00f0ff;
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
 }
 
 .jf-confirm-content {
-  min-width: 0;
   flex: 1;
+  min-width: 0;
 }
 
 .jf-confirm-title {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text);
+  font-family: var(--font-display, inherit);
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
 }
 
 .jf-confirm-message {
-  margin-top: 6px;
+  margin: 8px 0 0;
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-muted);
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.68);
+  word-break: break-word;
+}
+
+.jf-confirm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jf-confirm-hints {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.jf-confirm-hints span {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .jf-confirm-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: var(--space-md);
+  align-items: center;
+  gap: 10px;
+}
+
+.jf-confirm-btn-cancel {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  transition: all 0.2s ease !important;
+}
+.jf-confirm-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.jf-confirm-btn-action.is-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4) !important;
+  font-weight: 700 !important;
+  transition: all 0.18s ease !important;
+}
+.jf-confirm-btn-action.is-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(239, 68, 68, 0.6) !important;
+  filter: brightness(1.1);
+}
+
+.jf-confirm-btn-action.is-primary {
+  background: linear-gradient(135deg, #00f0ff 0%, #7000ff 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(0, 240, 255, 0.4) !important;
+  font-weight: 700 !important;
+  transition: all 0.18s ease !important;
+}
+.jf-confirm-btn-action.is-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(0, 240, 255, 0.6) !important;
+  filter: brightness(1.1);
 }
 
 .jf-crash {

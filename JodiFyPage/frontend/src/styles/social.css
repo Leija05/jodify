@@ -2993,12 +2993,14 @@
    ======================================================== */
 .jf-listening-hero-card {
   position: relative;
+  z-index: 2;
   overflow: hidden;
   border-radius: var(--radius-xl);
   padding: 18px 20px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(249, 115, 22, 0.08) 50%, rgba(15, 23, 42, 0.85) 100%);
+  background: linear-gradient(135deg, rgba(22, 28, 44, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 215, 0, 0.35);
-  box-shadow: 0 14px 36px -10px rgba(255, 215, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 0 14px 36px -10px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 215, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -3007,7 +3009,7 @@
 
 .jf-listening-hero-card:hover {
   border-color: rgba(255, 215, 0, 0.6);
-  box-shadow: 0 16px 42px -8px rgba(255, 215, 0, 0.38);
+  box-shadow: 0 16px 42px -8px rgba(0, 0, 0, 0.7), 0 0 24px rgba(255, 215, 0, 0.25);
 }
 
 .jf-listening-hero-top {
@@ -3231,6 +3233,10 @@
 }
 
 /* Animaciones de mascota */
+.jf-pixel-pet-inner.is-walking {
+  animation: jfPetWalk 0.28s ease-in-out infinite alternate !important;
+}
+
 .jf-pixel-pet-inner.is-dancing {
   animation: jfPetDance 0.55s ease-in-out infinite alternate;
 }
@@ -3241,6 +3247,12 @@
 
 .jf-pixel-pet-inner.is-bouncing {
   animation: jfPetJump 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes jfPetWalk {
+  0% { transform: translateY(0px) rotate(-6deg) scale(1, 0.94); }
+  50% { transform: translateY(-6px) rotate(0deg) scale(0.95, 1.05); }
+  100% { transform: translateY(0px) rotate(6deg) scale(1, 0.94); }
 }
 
 @keyframes jfPetDance {
@@ -3326,111 +3338,201 @@
   color: #e2e8f0;
 }
 
-/* Floating on-screen companion widget */
-.jf-pet-widget-container {
+/* Floating on-screen companion widget (Wandering Pet across the screen) */
+.jf-pet-roamer {
   position: fixed;
-  bottom: 84px;
-  right: 24px;
-  z-index: 9990;
+  top: 0;
+  left: 0;
+  z-index: 850; /* Above ordinary pages, below modals (z-modal: 1000) */
   pointer-events: auto;
-}
-
-.jf-pet-widget-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px 8px 10px;
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.65), 0 0 16px rgba(0, 240, 255, 0.15);
-  position: relative;
-  transition: all 0.25s ease;
-}
-
-.jf-pet-widget-card:hover {
-  border-color: rgba(0, 240, 255, 0.4);
-  box-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.75), 0 0 24px rgba(0, 240, 255, 0.3);
-}
-
-.jf-pet-widget-avatar {
-  flex-shrink: 0;
-}
-
-.jf-pet-widget-info {
+  user-select: none;
+  cursor: grab;
   display: flex;
   flex-direction: column;
-  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+  will-change: transform;
 }
 
-.jf-pet-widget-title {
-  font-size: 12.5px;
+.jf-pet-roamer:active {
+  cursor: grabbing;
+}
+
+/* Hover HUD controls */
+.jf-pet-roam-hud {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 4px 8px 4px 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 14px rgba(0, 240, 255, 0.25);
+  white-space: nowrap;
+  pointer-events: auto;
+  animation: jfHudPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 860;
+}
+
+@keyframes jfHudPop {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.jf-pet-roam-name {
+  font-size: 11px;
   font-weight: 700;
   color: #fff;
-  margin: 0;
+  letter-spacing: -0.01em;
 }
 
-.jf-pet-widget-sub {
-  font-size: 10.5px;
-  color: #94a3b8;
-  margin: 0;
+.jf-pet-roam-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 2px;
 }
 
-.jf-pet-widget-close {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 20px;
-  height: 20px;
+.jf-pet-roam-btn {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: rgba(30, 41, 59, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
+  padding: 0;
 }
 
-.jf-pet-widget-close:hover {
-  background: #ef4444;
-  color: #fff;
+.jf-pet-roam-btn:hover {
+  background: rgba(0, 240, 255, 0.2);
+  color: #00f0ff;
+  border-color: rgba(0, 240, 255, 0.4);
   transform: scale(1.1);
 }
 
-.jf-pet-widget-minimized-btn {
-  width: 42px;
-  height: 42px;
+.jf-pet-roam-btn--close:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Thought bubble for autonomous feelings */
+.jf-pet-roam-thought {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55), 0 0 12px rgba(0, 240, 255, 0.25);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: jfThoughtPop 0.25s ease-out forwards;
+  z-index: 865;
+}
+
+@keyframes jfThoughtPop {
+  0% { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.85); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* Floor contact shadow that squashes during waddle */
+.jf-pet-roam-shadow {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 8px;
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(0, 240, 255, 0.4);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 240, 255, 0.3);
+  background: rgba(0, 0, 0, 0.35);
+  filter: blur(2px);
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.jf-pet-roamer.is-walking .jf-pet-roam-shadow {
+  animation: jfShadowPulse 0.28s ease-in-out infinite alternate;
+}
+
+@keyframes jfShadowPulse {
+  0% { transform: translateX(-50%) scale(1); opacity: 0.4; }
+  100% { transform: translateX(-50%) scale(0.7); opacity: 0.18; }
+}
+
+/* Floating minimized button in bottom-right corner */
+.jf-pet-widget-minimized-btn {
+  position: fixed;
+  bottom: 84px;
+  right: 24px;
+  z-index: 850;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(0, 240, 255, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 16px rgba(0, 240, 255, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 19px;
   color: #00f0ff;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .jf-pet-widget-minimized-btn:hover {
-  transform: scale(1.12);
+  transform: scale(1.14);
   border-color: #00f0ff;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65), 0 0 22px rgba(0, 240, 255, 0.55);
 }
 
 /* ==========================================================================
-   JODIFY PULSE · PROFILE ENTRANCE ANIMATIONS
+   JODIFY PULSE · PROFILE ENTRANCE & BACKGROUND ANIMATIONS
    ========================================================================== */
 .jf-profile-entrance {
   position: absolute;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 40;
+  z-index: 0; /* Background layer: sits strictly behind all profile content */
   border-radius: inherit;
+}
+
+/* Ensure all cards, text containers, and interactive elements sit above background pulse */
+.jf-profile-hero,
+.jf-listening-hero-card,
+.jf-kudos-bar,
+.jf-profile-bento,
+.jf-profile-bento-main,
+.jf-profile-bento-side,
+.jf-showcase-card,
+.jf-anthem-card,
+.jf-profile-stats,
+.jf-stat-card,
+.jf-discord-rich-card,
+.jf-profile-split,
+.jf-profile-mode-nav {
+  position: relative;
+  z-index: 2;
 }
 
 .jf-entrance-inner {
@@ -3439,18 +3541,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .jf-entrance-badge-pill {
   position: absolute;
   top: 14px;
   right: 18px;
+  z-index: 10;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(10, 14, 24, 0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 215, 0, 0.35);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 11px;
@@ -3458,7 +3563,12 @@
   color: #ffd700;
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-  animation: jfPulseFade 2.6s ease-in-out forwards;
+  animation: jfBadgeIn 0.35s ease-out forwards;
+}
+
+@keyframes jfBadgeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes jfPulseFade {
@@ -3471,37 +3581,40 @@
 /* 1. Astral Pulse */
 .jf-astral-stage {
   perspective: 600px;
+  mix-blend-mode: screen;
+  opacity: 0.6;
 }
 
 .jf-astral-ring {
   position: absolute;
-  width: 220px;
-  height: 220px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
-  border: 3px solid rgba(56, 189, 248, 0.8);
-  box-shadow: 0 0 30px rgba(56, 189, 248, 0.6), inset 0 0 30px rgba(168, 85, 247, 0.6);
+  border: 2px solid rgba(56, 189, 248, 0.65);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.4), inset 0 0 24px rgba(168, 85, 247, 0.4);
+  filter: blur(0.5px);
 }
 
 .jf-astral-ring--2 {
-  border-color: rgba(168, 85, 247, 0.8);
+  border-color: rgba(168, 85, 247, 0.65);
 }
 
 .jf-astral-burst {
   position: absolute;
-  width: 140px;
-  height: 140px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(56, 189, 248, 0.6) 40%, transparent 70%);
-  filter: blur(6px);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.7) 0%, rgba(56, 189, 248, 0.4) 40%, transparent 70%);
+  filter: blur(8px);
 }
 
 .jf-astral-star {
   position: absolute;
-  width: 4px;
-  height: 4px;
+  width: 3.5px;
+  height: 3.5px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 0 0 8px #fff, 0 0 16px #38bdf8;
+  box-shadow: 0 0 8px #fff, 0 0 14px #38bdf8;
   animation: jfStarBlink 1.4s ease-in-out infinite alternate;
 }
 
@@ -3581,8 +3694,15 @@
     transparent 2px,
     transparent 14px
   );
+  background-size: 100% 14px;
+  animation: jfSynthGridMove 1.2s linear infinite;
   transform: perspective(120px) rotateX(45deg);
   transform-origin: bottom center;
+}
+
+@keyframes jfSynthGridMove {
+  0% { background-position-y: 0; }
+  100% { background-position-y: 14px; }
 }
 
 /* 4. Equalizer Stage */
@@ -3670,6 +3790,12 @@
   height: 60%;
   background: linear-gradient(to top, rgba(126, 34, 206, 0.5) 0%, rgba(168, 85, 247, 0.25) 50%, transparent 100%);
   filter: blur(14px);
+  animation: jfAbyssFirePulse 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes jfAbyssFirePulse {
+  0% { opacity: 0.55; transform: scaleY(0.92); }
+  100% { opacity: 0.95; transform: scaleY(1.08); }
 }
 
 .jf-abyss-ember {

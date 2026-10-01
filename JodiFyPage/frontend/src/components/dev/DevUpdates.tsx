@@ -13,6 +13,7 @@ import { Button } from '../ui/Button';
 import { devService } from '../../services/dev.service';
 import { useToastStore } from '../../store/toast.store';
 import { API_BASE } from '../../lib/api';
+import { confirmDialog } from '../../store/confirm.store';
 import type { AppUpdateItem } from '../../lib/types';
 
 function formatBytes(bytes: number): string {
@@ -151,7 +152,14 @@ export function DevUpdates() {
   };
 
   const handleDelete = async (updateId: string, ver: string) => {
-    if (!window.confirm(`¿Seguro que deseas eliminar la versión v${ver} de la base de datos?`)) return;
+    const ok = await confirmDialog({
+      title: `Eliminar versión v${ver}`,
+      message: `¿Estás seguro de que deseas eliminar la versión v${ver} de la base de datos? Esta acción es irreversible.`,
+      confirmLabel: 'Eliminar',
+      tone: 'danger',
+      icon: 'trash',
+    });
+    if (!ok) return;
     setBusyId(updateId);
     try {
       const res = await devService.deleteAppUpdate(updateId);
