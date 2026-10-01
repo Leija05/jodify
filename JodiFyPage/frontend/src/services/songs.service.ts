@@ -35,6 +35,29 @@ export const songsService = {
     return api.post<Song>('/songs/register', data);
   },
 
+  async registerBatch(
+    songs: Array<{
+      name: string;
+      artist?: string;
+      album?: string;
+      url?: string;
+      youtube_id?: string;
+      cover_url?: string;
+      duration?: number;
+      added_by?: string;
+      liked_by?: string;
+    }>,
+    skipDuplicates = true
+  ): Promise<{
+    success: boolean;
+    added_count: number;
+    skipped_count: number;
+    added: Song[];
+    skipped: Song[];
+  }> {
+    return api.post('/songs/register-batch', { songs, skip_duplicates: skipDuplicates });
+  },
+
   async uploadAudio(file: File, options: UploadOptions = {}): Promise<Song> {
     const formData = new FormData();
     formData.append('file', file, sanitizeFileName(file.name) || file.name);

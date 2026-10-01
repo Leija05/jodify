@@ -20,6 +20,10 @@ export interface Session {
   vibe?: string | null;
   discord_id?: string | null;
   discord?: DiscordProfile | null;
+  pet_type?: string | null;
+  pet_variant?: string | null;
+  pet_name?: string | null;
+  profile_animation?: string | null;
 }
 
 interface SessionContextValue {
@@ -98,6 +102,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             vibe: prof.vibe,
             discord_id: prof.discord_id,
             discord: discordProfile || prev.discord || null,
+            pet_type: prof.pet_type,
+            pet_variant: prof.pet_variant,
+            pet_name: prof.pet_name,
+            profile_animation: prof.profile_animation,
           };
           try {
             localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(updated));

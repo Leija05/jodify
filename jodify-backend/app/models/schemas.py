@@ -52,6 +52,10 @@ class UpdateProfileRequest(BaseModel):
     custom_gradient_start: str | None = None
     custom_gradient_end: str | None = None
     show_discord_activity: bool | None = None
+    pet_type: str | None = None
+    pet_variant: str | None = None
+    pet_name: str | None = None
+    profile_animation: str | None = None
 
 
 class ListeningTimeRequest(BaseModel):
@@ -179,3 +183,8 @@ class RegisterSongRequest(BaseModel):
     duration: float | None = None
     added_by: str | None = None
     liked_by: str | None = None
+
+
+class RegisterBatchSongsRequest(BaseModel):
+    songs: list[RegisterSongRequest]
+    skip_duplicates: bool = True

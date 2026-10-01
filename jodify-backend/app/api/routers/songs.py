@@ -9,7 +9,14 @@ from pymongo import ReturnDocument
 from starlette.requests import Request
 
 from ...core.database import col, sid
-from ...models.schemas import CheckNameRequest, DeleteSongsRequest, LikesDeltaRequest, RegisterSongRequest, UpdateSongRequest
+from ...models.schemas import (
+    CheckNameRequest,
+    DeleteSongsRequest,
+    LikesDeltaRequest,
+    RegisterBatchSongsRequest,
+    RegisterSongRequest,
+    UpdateSongRequest,
+)
 from ...services.audio_streaming import delete_audio, serve_audio, serve_cover, store_audio
 from ..dependencies import require_admin
 
@@ -151,6 +158,64 @@ async def register_song(body: RegisterSongRequest) -> dict:
             pass
 
     return song_view(song_doc)
+
+
+@router.post("/register-batch", response_model=None)
+async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
+    added = []
+    skipped = []
+
+    for s_req in body.songs:
+        name_clean = (s_req.name or "").strip()
+        if not name_clean:
+            continue
+
+        query: dict = {}
+        if s_req.youtube_id:
+            query = {"youtube_id": s_req.youtube_id}
+        else:
+            query = {"name": name_clean}
+            if s_req.artist:
+                query["artist"] = s_req.artist.strip()
+
+        existing = await col("songs").find_one(query)
+        if existing:
+            if body.skip_duplicates:
+                skipped.append(song_view(existing))
+                continue
+            await col("songs").update_one({"_id": existing["_id"]}, {"$inc": {"likes": 1}})
+            existing["likes"] = existing.get("likes", 0) + 1
+            added.append(song_view(existing))
+            continue
+
+        song_doc = {
+            "name": name_clean,
+            "artist": (s_req.artist or "").strip(),
+            "album": (s_req.album or "Playlist Import").strip(),
+            "url": s_req.url or "",
+            "youtube_id": s_req.youtube_id,
+            "cover_url": s_req.cover_url,
+            "duration": s_req.duration,
+            "added_by": s_req.added_by or "Playlist Import",
+            "created_at": datetime.now().isoformat(),
+            "likes": 1,
+            "play_count": 0,
+            "source": "youtube" if s_req.youtube_id else "web",
+        }
+        res = await col("songs").insert_one(song_doc)
+        song_doc["_id"] = res.inserted_id
+        added.append(song_view(song_doc))
+
+    if added:
+        invalidate_songs_cache()
+
+    return {
+        "success": True,
+        "added_count": len(added),
+        "skipped_count": len(skipped),
+        "added": added,
+        "skipped": skipped,
+    }
 
 
 @router.post("/upload", response_model=None)

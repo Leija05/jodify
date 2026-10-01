@@ -1450,8 +1450,14 @@
   background: rgba(var(--primary-rgb), 0.12);
 }
 
-.jf-queue-item.dragging {
-  opacity: 0.45;
+.jf-queue-item.dragging,
+.jf-queue-item.is-dragging {
+  opacity: 0.35;
+  transform: scale(0.98);
+}
+
+.jf-queue-item.is-drag-over {
+  background: rgba(var(--primary-rgb), 0.1);
 }
 
 .jf-queue-drop-line {
@@ -1470,6 +1476,15 @@
   color: var(--text-muted);
   cursor: grab;
   opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.jf-queue-grip:hover {
+  opacity: 1;
+}
+
+.jf-queue-grip:active {
+  cursor: grabbing;
 }
 
 .jf-queue-cover {

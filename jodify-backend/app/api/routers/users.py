@@ -64,6 +64,10 @@ def user_view(doc: dict) -> dict:
         "custom_gradient_start": doc.get("custom_gradient_start", "#6366f1"),
         "custom_gradient_end": doc.get("custom_gradient_end", "#ec4899"),
         "show_discord_activity": doc.get("show_discord_activity", True),
+        "pet_type": doc.get("pet_type", "none"),
+        "pet_variant": doc.get("pet_variant", "orange"),
+        "pet_name": doc.get("pet_name"),
+        "profile_animation": doc.get("profile_animation", "none"),
         "anthem_song_id": doc.get("anthem_song_id"),
         "anthem_song_name": doc.get("anthem_song_name"),
         "custom_badge": doc.get("custom_badge"),
@@ -220,6 +224,18 @@ async def update_profile(username: str, body: UpdateProfileRequest) -> dict:
         updates["custom_gradient_end"] = clean
     if "show_discord_activity" in fields_set:
         updates["show_discord_activity"] = bool(body.show_discord_activity) if body.show_discord_activity is not None else True
+    if "pet_type" in fields_set:
+        clean = body.pet_type.strip() if body.pet_type else "none"
+        updates["pet_type"] = clean
+    if "pet_variant" in fields_set:
+        clean = body.pet_variant.strip() if body.pet_variant else "orange"
+        updates["pet_variant"] = clean
+    if "pet_name" in fields_set:
+        clean = body.pet_name.strip()[:30] if body.pet_name else None
+        updates["pet_name"] = clean
+    if "profile_animation" in fields_set:
+        clean = body.profile_animation.strip() if body.profile_animation else "none"
+        updates["profile_animation"] = clean
 
 
     if body.new_username and body.new_username.strip() != username:

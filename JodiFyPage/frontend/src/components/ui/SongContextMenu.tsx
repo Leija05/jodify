@@ -183,14 +183,10 @@ export function SongContextMenu() {
   const handleOffline = async () => {
     if (!session || !song) return;
     hide();
-    const toast = useToastStore.getState();
     if (isDownloaded) {
       await removeDownload(song.id, session.username);
-      toast.show(`«${song.name}» fuera de línea`, 'info', 1800);
     } else {
-      toast.show(`Guardando «${song.name}»…`, 'info', 1800);
       await downloadSong(song, session.username);
-      toast.show(`«${song.name}» disponible sin conexión`, 'success', 2200);
     }
   };
 

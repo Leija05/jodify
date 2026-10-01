@@ -21,6 +21,7 @@ export type ModalName =
   | 'fullscreen'
   | 'offline'
   | 'createPlaylist'
+  | 'playlistDetail'
   | 'linkMusic'
   | 'adminSuggestions';
 

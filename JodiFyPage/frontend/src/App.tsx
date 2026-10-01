@@ -15,6 +15,10 @@ import { SongContextMenu } from './components/ui/SongContextMenu';
 import { Toaster } from './components/ui/Toaster';
 import { BackendStatusBanner } from './components/layout/BackendStatusBanner';
 import { AppErrorBoundary, GlobalErrorHandler } from './components/GlobalErrorHandler';
+import { PetCompanionWidget } from './components/social/PetCompanionWidget';
+import { DownloadsModal } from './components/offline/DownloadsModal';
+import { DownloadsBadge } from './components/offline/DownloadsBadge';
+import { PlaylistDetailModal } from './components/layout/PlaylistDetailModal';
 import { usePlayerStore } from './store/player.store';
 import { useBackendStore } from './store/backend.store';
 
@@ -80,6 +84,10 @@ function Root() {
           <ConfirmDialog />
           <SongContextMenu />
           <Toaster />
+          <PetCompanionWidget />
+          <DownloadsModal />
+          <DownloadsBadge />
+          <PlaylistDetailModal />
           <Routes>
             <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
             <Route path="/" element={session ? <HomePage /> : isElectron ? <LoginPage /> : <IntroPage />} />

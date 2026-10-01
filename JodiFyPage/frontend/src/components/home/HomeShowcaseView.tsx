@@ -760,9 +760,10 @@ export function HomeShowcaseView() {
                   className="jf-playlist-card"
                   whileHover={{ y: -4 }}
                   transition={{ duration: 0.18 }}
-                  onClick={() => playPlaylist(pl.id)}
+                  onClick={() => ui.open('playlistDetail', { playlistId: pl.id })}
                   role="button"
                   tabIndex={0}
+                  title="Haz clic para abrir la playlist y ver/reordenar canciones"
                 >
                   <div className="jf-playlist-card-cover" style={{ background: pl.color }}>
                     <div className="jf-playlist-card-pattern" />
@@ -811,7 +812,8 @@ export function HomeShowcaseView() {
                 <div
                   key={pl.id}
                   className="jf-playlist-list-row"
-                  onClick={() => playPlaylist(pl.id)}
+                  onClick={() => ui.open('playlistDetail', { playlistId: pl.id })}
+                  title="Haz clic para ver las canciones o acomodarlas"
                 >
                   <div className="jf-playlist-list-dot" style={{ background: pl.color }}>
                     <MusicNotes size={16} weight="duotone" />

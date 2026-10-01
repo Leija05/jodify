@@ -62,14 +62,10 @@ export function SongRow({ song, index }: SongRowProps) {
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!session) return;
-    const toast = useToastStore.getState();
     if (isDownloaded) {
       await removeDownload(song.id, session.username);
-      toast.show(`«${song.name}» fuera de línea`, 'info', 1800);
     } else {
-      toast.show(`Descargando «${song.name}»…`, 'info', 1800);
       await downloadSong(song, session.username);
-      toast.show(`«${song.name}» disponible sin conexión`, 'success', 2200);
     }
   };
 

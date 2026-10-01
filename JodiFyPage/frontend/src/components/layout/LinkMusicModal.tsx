@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Link as LinkIcon,
@@ -22,6 +22,10 @@ import {
   CloudArrowDown,
   ClipboardText,
   Lightning,
+  Warning,
+  CheckSquare,
+  Square,
+  PlusCircle,
 } from '@phosphor-icons/react';
 import { useUiStore } from '../../store/ui.store';
 import { usePlayerStore } from '../../store/player.store';
@@ -32,6 +36,7 @@ import {
   linksService,
   ResolvedMedia,
   ResolvedTrack,
+  ResolvedPlaylistItem,
   SongSuggestion,
 } from '../../services/links.service';
 import { formatTime } from '../../lib/utils';
@@ -130,6 +135,212 @@ export function LinkMusicModal() {
       (Boolean(v.youtube_id) && currentSong.youtube_id === v.youtube_id) ||
       (Boolean(currentSong.url) && Boolean(v.url) && currentSong.url === v.url)
     );
+  };
+
+  const librarySongs = useLibraryStore((s) => s.songs);
+
+  // Playlist State: Selection & Duplicate Handling
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [showDuplicateAlert, setShowDuplicateAlert] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const normalize = (text: string = '') =>
+    text.toLowerCase().replace(/[^a-z0-9]/gi, '').trim();
+
+  const checkDuplicate = (item: { title: string; artist?: string; youtube_id?: string; url?: string }) => {
+    const itemNormTitle = normalize(item.title);
+    const itemNormArtist = normalize(item.artist || '');
+    const v = toVirtualSong(item as any);
+
+    return librarySongs.some((s) => {
+      if (v.youtube_id && s.youtube_id && v.youtube_id === s.youtube_id) {
+        return true;
+      }
+      if (v.url && s.url && v.url === s.url) {
+        return true;
+      }
+      const sNormTitle = normalize(s.name);
+      const sNormArtist = normalize(s.artist);
+
+      if (itemNormTitle && sNormTitle && itemNormTitle === sNormTitle) {
+        if (!itemNormArtist || !sNormArtist) return true;
+        if (itemNormArtist === sNormArtist) return true;
+        if (itemNormArtist.includes(sNormArtist) || sNormArtist.includes(itemNormArtist)) return true;
+      }
+      return false;
+    });
+  };
+
+  useEffect(() => {
+    if (resolved?.type === 'playlist' && resolved.items) {
+      setSelectedIndices(new Set(resolved.items.map((_, i) => i)));
+    } else {
+      setSelectedIndices(new Set());
+    }
+  }, [resolved]);
+
+  const selectedItems = useMemo(() => {
+    if (resolved?.type !== 'playlist' || !resolved.items) return [];
+    return Array.from(selectedIndices)
+      .sort((a, b) => a - b)
+      .map((idx) => resolved.items[idx])
+      .filter(Boolean);
+  }, [resolved, selectedIndices]);
+
+  const duplicateItemsInSelected = useMemo(() => {
+    return selectedItems.filter((item) => checkDuplicate(item));
+  }, [selectedItems, librarySongs]);
+
+  const duplicateCountInPlaylist = useMemo(() => {
+    if (resolved?.type !== 'playlist' || !resolved.items) return 0;
+    return resolved.items.filter((item) => checkDuplicate(item)).length;
+  }, [resolved, librarySongs]);
+
+  const handleToggleSelect = (index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (resolved?.type === 'playlist' && resolved.items) {
+      setSelectedIndices(new Set(resolved.items.map((_, i) => i)));
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIndices(new Set());
+  };
+
+  const handleSelectOnlyNew = () => {
+    if (resolved?.type === 'playlist' && resolved.items) {
+      const newIndices = resolved.items
+        .map((it, i) => (!checkDuplicate(it) ? i : -1))
+        .filter((i) => i !== -1);
+      setSelectedIndices(new Set(newIndices));
+      useToastStore
+        .getState()
+        .show(`Seleccionadas ${newIndices.length} canciones nuevas (duplicadas desmarcadas)`, 'info', 2200);
+    }
+  };
+
+  const handleStartImport = () => {
+    if (selectedItems.length === 0) {
+      useToastStore.getState().show('Selecciona al menos una canción para agregar', 'warning');
+      return;
+    }
+    if (duplicateItemsInSelected.length > 0) {
+      setShowDuplicateAlert(true);
+    } else {
+      void executeImport(selectedItems, false);
+    }
+  };
+
+  const executeImport = async (
+    itemsToImport: Array<ResolvedTrack | ResolvedPlaylistItem>,
+    skipDups: boolean = false
+  ) => {
+    if (itemsToImport.length === 0) {
+      useToastStore.getState().show('No hay canciones para agregar', 'info');
+      return;
+    }
+    setIsImporting(true);
+    setShowDuplicateAlert(false);
+
+    try {
+      if (isAdmin || isDev) {
+        const batchPayload = itemsToImport.map((item) => {
+          const v = toVirtualSong(item);
+          return {
+            name: v.name,
+            artist: v.artist,
+            album: v.album,
+            url: v.url,
+            youtube_id: v.youtube_id,
+            cover_url: v.cover_url,
+            duration: v.duration,
+            added_by: session?.username || 'Admin',
+            liked_by: session?.username,
+          };
+        });
+
+        const res = await songsService.registerBatch(batchPayload, skipDups);
+        if (res.added && res.added.length > 0) {
+          for (const song of res.added) {
+            useLibraryStore.getState().upsertSong(song);
+          }
+        }
+        useToastStore
+          .getState()
+          .show(
+            `✅ ¡Éxito! Se agregaron ${res.added_count} canciones a la biblioteca${
+              res.skipped_count > 0 ? ` (${res.skipped_count} duplicadas omitidas)` : ''
+            }.`,
+            'success',
+            4000
+          );
+      } else {
+        let count = 0;
+        for (const item of itemsToImport) {
+          const v = toVirtualSong(item);
+          useLibraryStore.getState().upsertSong(v);
+          if (session?.username) {
+            try {
+              const reg = await songsService.registerSong({
+                name: v.name,
+                artist: v.artist,
+                album: v.album,
+                url: v.url,
+                youtube_id: v.youtube_id,
+                cover_url: v.cover_url,
+                duration: v.duration,
+                added_by: session.username,
+                liked_by: session.username,
+              });
+              useLibraryStore.getState().upsertSong(reg);
+            } catch {
+              // duplicate or local
+            }
+          }
+          count++;
+        }
+        useToastStore.getState().show(`✅ ¡${count} canciones añadidas a tu biblioteca!`, 'success', 3500);
+      }
+    } catch (err: any) {
+      useToastStore.getState().show(err.message || 'Error al procesar canciones de la playlist', 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handlePlaySelectedPlaylist = async (playlist: ResolvedMedia & { type: 'playlist' }) => {
+    const targetItems = selectedItems.length > 0 ? selectedItems : playlist.items;
+    if (!targetItems.length) return;
+    const songs = targetItems.map((item) => toVirtualSong(item));
+    songs.forEach((s) => useLibraryStore.getState().upsertSong(s));
+
+    const queue = useQueueStore.getState();
+    songs.slice(1).forEach((s) => queue.add(s));
+
+    await playSong(songs[0]);
+    useToastStore.getState().show(`Reproduciendo playlist (${songs.length} pistas)`, 'success', 2500);
+  };
+
+  const handleQueueSelectedPlaylist = (playlist: ResolvedMedia & { type: 'playlist' }) => {
+    const targetItems = selectedItems.length > 0 ? selectedItems : playlist.items;
+    if (!targetItems.length) return;
+    const songs = targetItems.map((item) => toVirtualSong(item));
+    songs.forEach((s) => {
+      useLibraryStore.getState().upsertSong(s);
+      useQueueStore.getState().add(s);
+    });
+    useToastStore.getState().show(`Se agregaron ${songs.length} canciones a la cola`, 'info', 2200);
   };
 
   useEffect(() => {
@@ -265,16 +476,8 @@ export function LinkMusicModal() {
     try {
       useLibraryStore.getState().upsertSong(virtualSong);
       await downloadSong(virtualSong, session?.username || 'usuario');
-      useToastStore.getState().show(
-        `«${track.title}» guardada localmente para escuchar sin conexión`,
-        'success',
-        2500
-      );
     } catch (err) {
-      useToastStore.getState().show(
-        'No se pudo guardar localmente: ' + (err instanceof Error ? err.message : ''),
-        'error'
-      );
+      console.error('[LinkMusicModal] Error guardando offline:', err);
     } finally {
       setSavingOffline(false);
     }
@@ -290,28 +493,6 @@ export function LinkMusicModal() {
     a.click();
     document.body.removeChild(a);
     useToastStore.getState().show(`Iniciando descarga de «${track.title}.mp3»…`, 'info', 2200);
-  };
-
-  const handlePlayAllPlaylist = async (playlist: ResolvedMedia & { type: 'playlist' }) => {
-    if (!playlist.items.length) return;
-    const songs = playlist.items.map((item) => toVirtualSong(item));
-    songs.forEach((s) => useLibraryStore.getState().upsertSong(s));
-
-    const queue = useQueueStore.getState();
-    songs.slice(1).forEach((s) => queue.add(s));
-
-    await playSong(songs[0]);
-    useToastStore.getState().show(`Reproduciendo playlist (${songs.length} pistas)`, 'success', 2500);
-  };
-
-  const handleQueueAllPlaylist = (playlist: ResolvedMedia & { type: 'playlist' }) => {
-    if (!playlist.items.length) return;
-    const songs = playlist.items.map((item) => toVirtualSong(item));
-    songs.forEach((s) => {
-      useLibraryStore.getState().upsertSong(s);
-      useQueueStore.getState().add(s);
-    });
-    useToastStore.getState().show(`Se agregaron ${songs.length} canciones a la cola`, 'info', 2200);
   };
 
   const handleSuggest = async (track: ResolvedTrack) => {
@@ -718,7 +899,12 @@ export function LinkMusicModal() {
                   <div className="jf-link-playlist-meta">
                     <div className="jf-link-playlist-badges-row">
                       <span className="jf-link-playlist-badge">Playlist Completa</span>
-                      <span className="jf-link-playlist-count">{resolved.count} canciones</span>
+                      <span className="jf-link-playlist-count">{resolved.items.length} canciones</span>
+                      {duplicateCountInPlaylist > 0 && (
+                        <span className="jf-link-playlist-dup-badge">
+                          <Warning size={13} weight="fill" /> {duplicateCountInPlaylist} en biblioteca
+                        </span>
+                      )}
                     </div>
                     <h3 className="jf-link-playlist-title">{resolved.title}</h3>
                     <p className="jf-link-playlist-sub">
@@ -729,27 +915,109 @@ export function LinkMusicModal() {
                       <button
                         type="button"
                         className="jf-btn jf-btn--primary"
-                        onClick={() => handlePlayAllPlaylist(resolved)}
+                        onClick={() => handlePlaySelectedPlaylist(resolved)}
                       >
-                        <Play size={16} weight="fill" /> Reproducir Todo
+                        <Play size={16} weight="fill" /> Reproducir Seleccionadas ({selectedIndices.size})
                       </button>
                       <button
                         type="button"
                         className="jf-btn jf-btn--secondary"
-                        onClick={() => handleQueueAllPlaylist(resolved)}
+                        onClick={() => handleQueueSelectedPlaylist(resolved)}
                       >
-                        <Queue size={16} /> Añadir Todo a la Cola
+                        <Queue size={16} /> Añadir a la Cola
+                      </button>
+                      <button
+                        type="button"
+                        className="jf-btn jf-btn--primary jf-btn--emerald"
+                        disabled={isImporting || selectedIndices.size === 0}
+                        onClick={handleStartImport}
+                      >
+                        {isImporting ? (
+                          <>
+                            <SpinnerGap size={16} weight="bold" className="jf-spin" /> Guardando…
+                          </>
+                        ) : (
+                          <>
+                            <PlusCircle size={16} weight="bold" /> Agregar {selectedIndices.size} a Biblioteca
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
                 </div>
 
+                {/* Playlist Selection Toolbar */}
+                <div className="jf-playlist-toolbar">
+                  <div className="jf-playlist-toolbar-left">
+                    <span className="jf-playlist-selection-count">
+                      <strong>{selectedIndices.size}</strong> de {resolved.items.length} seleccionadas
+                    </span>
+                    {duplicateCountInPlaylist > 0 && (
+                      <span className="jf-playlist-dup-summary">
+                        ({duplicateCountInPlaylist} ya existen en biblioteca)
+                      </span>
+                    )}
+                  </div>
+                  <div className="jf-playlist-toolbar-actions">
+                    <button
+                      type="button"
+                      className="jf-toolbar-btn"
+                      onClick={handleSelectAll}
+                    >
+                      <CheckSquare size={14} weight="bold" /> Seleccionar Todas
+                    </button>
+                    <button
+                      type="button"
+                      className="jf-toolbar-btn"
+                      onClick={handleDeselectAll}
+                    >
+                      <Square size={14} /> Desmarcar Todas
+                    </button>
+                    {duplicateCountInPlaylist > 0 && (
+                      <button
+                        type="button"
+                        className="jf-toolbar-btn is-highlight"
+                        onClick={handleSelectOnlyNew}
+                        title="Desmarca automáticamente las canciones que ya tienes agregadas"
+                      >
+                        <Sparkle size={14} weight="fill" /> Solo Nuevas ({resolved.items.length - duplicateCountInPlaylist})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* List of ALL tracks (Sin límite de 50) */}
                 <div className="jf-link-playlist-items">
-                  {resolved.items.slice(0, 50).map((item, idx) => {
+                  {resolved.items.map((item, idx) => {
+                    const isSelected = selectedIndices.has(idx);
+                    const isDup = checkDuplicate(item);
                     const vSong = toVirtualSong(item);
                     const liked = isTrackLiked(vSong.id);
+
                     return (
-                      <div key={item.id || idx} className="jf-link-playlist-item">
+                      <div
+                        key={item.id || `${item.title}-${idx}`}
+                        className={`jf-link-playlist-item ${isSelected ? 'is-selected' : ''} ${isDup ? 'is-duplicate' : ''}`}
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('.jf-link-item-actions')) return;
+                          handleToggleSelect(idx);
+                        }}
+                      >
+                        {/* Checkbox de Selección */}
+                        <div
+                          className="jf-link-item-checkbox"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleSelect(idx);
+                          }}
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={18} weight="fill" style={{ color: 'var(--accent, #00f0ff)' }} />
+                          ) : (
+                            <Square size={18} style={{ color: 'rgba(255,255,255,0.4)' }} />
+                          )}
+                        </div>
+
                         <span className="jf-link-item-num">{idx + 1}</span>
                         {item.thumbnail ? (
                           <img className="jf-link-item-thumb" src={item.thumbnail} alt="" />
@@ -759,8 +1027,17 @@ export function LinkMusicModal() {
                           </div>
                         )}
                         <div className="jf-link-item-meta">
-                          <span className="jf-link-item-title">{item.title}</span>
-                          <span className="jf-link-item-artist">{item.artist}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span className="jf-link-item-title">{item.title}</span>
+                            {isDup ? (
+                              <span className="jf-playlist-dup-tag" title="Esta canción ya está en tu biblioteca">
+                                ⚠️ Ya en biblioteca
+                              </span>
+                            ) : (
+                              <span className="jf-playlist-new-tag">✨ Nueva</span>
+                            )}
+                          </div>
+                          <span className="jf-link-item-artist">{item.artist || 'Artista Desconocido'}</span>
                         </div>
                         {item.duration && (
                           <span className="jf-link-item-dur">{formatTime(item.duration)}</span>
@@ -772,7 +1049,8 @@ export function LinkMusicModal() {
                             type="button"
                             className={`jf-btn-icon ${isTrackPlaying(item) ? 'is-active' : ''}`}
                             title={isTrackPlaying(item) ? 'Pausar' : 'Reproducir ahora'}
-                            onClick={async () => {
+                            onClick={async (e) => {
+                              e.stopPropagation();
                               if (isTrackPlaying(item)) {
                                 usePlayerStore.getState().togglePlay();
                                 return;
@@ -790,7 +1068,8 @@ export function LinkMusicModal() {
                             type="button"
                             className="jf-btn-icon"
                             title="Añadir a la cola"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               useLibraryStore.getState().upsertSong(vSong);
                               useQueueStore.getState().add(vSong);
                               useToastStore.getState().show(`«${item.title}» a la cola`, 'info', 1600);
@@ -804,7 +1083,8 @@ export function LinkMusicModal() {
                             type="button"
                             className={`jf-btn-icon ${liked ? 'is-liked' : ''}`}
                             title={liked ? 'En tus Me Gusta' : 'Dar Like y guardar'}
-                            onClick={async () => {
+                            onClick={async (e) => {
+                              e.stopPropagation();
                               const next = !liked;
                               useLibraryStore.getState().upsertSong(vSong);
                               useLibraryStore.getState().toggleLikeLocal(vSong.id, next);
@@ -1051,6 +1331,91 @@ export function LinkMusicModal() {
             })()}
           </div>
         )}
+
+        {/* MODAL / AVISO DE DUPLICADOS DETECTADOS */}
+        <AnimatePresence>
+          {showDuplicateAlert && (
+            <motion.div
+              className="jf-dup-modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDuplicateAlert(false)}
+            >
+              <motion.div
+                className="jf-dup-modal-content"
+                initial={{ scale: 0.94, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.94, y: 15 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="jf-dup-modal-header">
+                  <div className="jf-dup-modal-icon">
+                    <Warning size={28} weight="fill" />
+                  </div>
+                  <div>
+                    <h3 className="jf-dup-modal-title">¡Atención! Canciones Duplicadas Detectadas</h3>
+                    <p className="jf-dup-modal-sub">
+                      Detectamos que <strong>{duplicateItemsInSelected.length}</strong> de las {selectedItems.length} canciones seleccionadas ya existen en tu biblioteca (mismo título y artista).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="jf-dup-list-preview">
+                  <span className="jf-dup-list-title">Canciones ya presentes en tu colección:</span>
+                  <div className="jf-dup-chips-scroll">
+                    {duplicateItemsInSelected.slice(0, 12).map((dup, i) => (
+                      <div key={i} className="jf-dup-chip">
+                        <span className="jf-dup-chip-title">{dup.title}</span>
+                        <span className="jf-dup-chip-artist">• {dup.artist || 'Artista'}</span>
+                      </div>
+                    ))}
+                    {duplicateItemsInSelected.length > 12 && (
+                      <div className="jf-dup-chip is-more">
+                        +{duplicateItemsInSelected.length - 12} canciones más...
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <p className="jf-dup-modal-advice">
+                  ¿Cómo prefieres proceder? Te recomendamos <strong>saltar los duplicados</strong> para evitar canciones repetidas en tu biblioteca.
+                </p>
+
+                <div className="jf-dup-modal-actions">
+                  <button
+                    type="button"
+                    className="jf-btn jf-btn--secondary"
+                    onClick={() => setShowDuplicateAlert(false)}
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="jf-btn jf-btn--ghost jf-dup-btn-all"
+                    onClick={() => void executeImport(selectedItems, false)}
+                    title="Agregar todas de todos modos"
+                  >
+                    Agregar todas ({selectedItems.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    className="jf-btn jf-btn--primary jf-dup-btn-skip"
+                    onClick={() => {
+                      const newOnly = selectedItems.filter((it) => !checkDuplicate(it));
+                      void executeImport(newOnly, true);
+                    }}
+                  >
+                    <CheckCircle size={16} weight="fill" />
+                    Saltar Duplicados (Agregar {selectedItems.length - duplicateItemsInSelected.length} nuevas)
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

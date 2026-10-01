@@ -1,5 +1,5 @@
 export type Role = 'dev' | 'admin' | 'mod' | 'user';
-export type Tab = 'global' | 'personal' | 'downloads';
+export type Tab = 'global' | 'personal' | 'downloads' | 'playlists';
 export type SortMode = 'recent' | 'old' | 'popular' | 'artist' | 'name';
 export type Presence = 'online' | 'idle' | 'dnd' | 'offline';
 
@@ -139,6 +139,10 @@ export interface UserAccess {
   custom_gradient_start?: string;
   custom_gradient_end?: string;
   show_discord_activity?: boolean | number;
+  pet_type?: string | null;
+  pet_variant?: string | null;
+  pet_name?: string | null;
+  profile_animation?: string | null;
   listening_seconds?: number;
   created_at?: string;
 }

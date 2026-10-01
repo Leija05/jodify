@@ -23,7 +23,6 @@ import type { Song } from '../../lib/types';
 
 export function QueueDrawer() {
   const items = useQueueStore((s) => s.items);
-  const addToQueue = useQueueStore((s) => s.add);
   const remove = useQueueStore((s) => s.remove);
   const clear = useQueueStore((s) => s.clear);
   const move = useQueueStore((s) => s.move);
@@ -87,15 +86,6 @@ export function QueueDrawer() {
   const playDirectly = async (song: Song) => {
     await playSong(song);
     usePlayerStore.getState().setIsPlaying(true);
-  };
-
-  const prioritizeSong = (song: Song) => {
-    const added = addToQueue(song);
-    if (added) {
-      useToastStore.getState().show(`"${song.name}" agregada con prioridad`, 'success', 1500);
-    } else {
-      useToastStore.getState().show('Ya está en la cola', 'info', 1200);
-    }
   };
 
   const totalUpcomingCount = items.length + upcomingFromCollection.length;
@@ -190,9 +180,39 @@ export function QueueDrawer() {
                   onDragLeave={() => setDragOver((cur) => (cur === index ? null : cur))}
                   onDrop={(e) => {
                     e.preventDefault();
-                    const from = Number(e.dataTransfer.getData('text/plain'));
+                    const textData = e.dataTransfer.getData('text/plain');
+                    const customData = e.dataTransfer.getData('application/json');
                     setDragOver(null);
                     setDraggingIndex(null);
+
+                    if (customData) {
+                      try {
+                        const parsed = JSON.parse(customData);
+                        if (parsed.type === 'upcoming' && parsed.song) {
+                          const songToInsert = parsed.song;
+                          const currentItems = useQueueStore.getState().items;
+                          const existsIdx = currentItems.findIndex((x) => String(x.id) === String(songToInsert.id));
+                          if (existsIdx !== -1) {
+                            move(existsIdx, index);
+                          } else {
+                            useQueueStore.getState().add(songToInsert);
+                            setTimeout(() => {
+                              const fresh = useQueueStore.getState().items;
+                              const newIdx = fresh.findIndex((x) => String(x.id) === String(songToInsert.id));
+                              if (newIdx !== -1 && newIdx !== index) {
+                                move(newIdx, index);
+                              }
+                            }, 40);
+                          }
+                          useToastStore.getState().show(`«${songToInsert.name}» colocada a continuación`, 'success', 1500);
+                          return;
+                        }
+                      } catch {
+                        // ignore
+                      }
+                    }
+
+                    const from = Number(textData);
                     if (!Number.isNaN(from) && from !== index) {
                       move(from, index);
                       useToastStore.getState().show('Orden de la cola actualizado', 'success', 1200);
@@ -212,7 +232,7 @@ export function QueueDrawer() {
                     if (dragOccurredRef.current) return;
                     void playFromQueue(index);
                   }}
-                  title="Mantén presionado y arrastra para mover de orden"
+                  title="Mantén pulsado click izquierdo y arrastra para mover de posición o poner arriba de otra"
                   data-testid={`queue-item-${song.id}`}
                 >
                   {dragOver === index && <span className="jf-queue-drop-line" aria-hidden="true" />}
@@ -272,7 +292,13 @@ export function QueueDrawer() {
               <li
                 key={`upcoming-${song.id}-${i}`}
                 className="jf-queue-item jf-queue-item--upcoming"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/json', JSON.stringify({ type: 'upcoming', song }));
+                  e.dataTransfer.effectAllowed = 'copyMove';
+                }}
                 onClick={() => void playDirectly(song)}
+                title="Haz clic para reproducir, o arrastra hacia arriba para colocarla en la cola prioritaria"
               >
                 <span className="jf-queue-index">{i + 1}</span>
                 <SongCover song={song} alt="" className="jf-queue-cover" />
@@ -286,10 +312,11 @@ export function QueueDrawer() {
                 <div className="jf-queue-item-actions">
                   <button
                     className="jf-queue-action-btn"
-                    title="Añadir a prioridad arriba"
+                    title="Mover a continuación directa (arriba del todo)"
                     onClick={(e) => {
                       e.stopPropagation();
-                      prioritizeSong(song);
+                      useQueueStore.getState().addPriority(song);
+                      useToastStore.getState().show(`"${song.name}" se reproducirá a continuación`, 'success', 1600);
                     }}
                   >
                     <Plus size={14} />

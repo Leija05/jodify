@@ -50,10 +50,14 @@ import {
   ACCENT_COLOR_PRESETS,
   PROFILE_BADGE_PRESETS,
   DISCORD_GRADIENT_PRESETS,
+  PET_UNLOCKS,
+  PROFILE_ANIMATION_UNLOCKS,
   isStyleUnlocked,
 } from '../../lib/unlocks';
 import { useSongCoverGradient } from '../../lib/colorExtractor';
 import { AnthemCard } from './AnthemCard';
+import { PixelPet } from './PixelPet';
+import { ProfileEntranceAnimation } from './ProfileEntranceAnimation';
 import type { DiscordProfile, UserAccess } from '../../lib/types';
 
 export const PROFILE_THEMES = [
@@ -118,7 +122,7 @@ export function ProfileModal() {
   const toast = useToastStore();
   const librarySongs = useLibraryStore((s) => s.songs);
 
-  const [activeTab, setActiveTab] = useState<'showcase' | 'avatar' | 'style' | 'identity' | 'account'>('showcase');
+  const [activeTab, setActiveTab] = useState<'showcase' | 'avatar' | 'style' | 'pet' | 'identity' | 'account'>('showcase');
   const [profile, setProfile] = useState<UserAccess | null>(null);
   const [discord, setDiscord] = useState<DiscordProfile | null>(null);
   const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number } | null>(null);
@@ -144,6 +148,13 @@ export function ProfileModal() {
   const [customGradientStart, setCustomGradientStart] = useState('#6366f1');
   const [customGradientEnd, setCustomGradientEnd] = useState('#ec4899');
   const [showDiscordActivity, setShowDiscordActivity] = useState(true);
+
+  // JodiFy Pets & Pulse Entrance FX States
+  const [selectedPetType, setSelectedPetType] = useState('none');
+  const [selectedPetVariant, setSelectedPetVariant] = useState('orange');
+  const [petCustomName, setPetCustomName] = useState('');
+  const [selectedAnimation, setSelectedAnimation] = useState('none');
+  const [previewAnimationKey, setPreviewAnimationKey] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -180,6 +191,10 @@ export function ProfileModal() {
         setCustomGradientStart(profileData.custom_gradient_start || '#6366f1');
         setCustomGradientEnd(profileData.custom_gradient_end || '#ec4899');
         setShowDiscordActivity(profileData.show_discord_activity !== undefined ? Boolean(profileData.show_discord_activity) : true);
+        setSelectedPetType(profileData.pet_type || 'none');
+        setSelectedPetVariant(profileData.pet_variant || (profileData.pet_type === 'magikarp' ? 'classic' : 'orange'));
+        setPetCustomName(profileData.pet_name || '');
+        setSelectedAnimation(profileData.profile_animation || 'none');
       }
 
       if (profileData?.discord_id) {
@@ -349,6 +364,10 @@ export function ProfileModal() {
         custom_gradient_start: customGradientStart,
         custom_gradient_end: customGradientEnd,
         show_discord_activity: showDiscordActivity,
+        pet_type: selectedPetType,
+        pet_variant: selectedPetVariant,
+        pet_name: petCustomName.trim() ? petCustomName.trim() : null,
+        profile_animation: selectedAnimation,
         custom_badge: selectedBadge ? selectedBadge.trim() : null,
         vibe: vibeText.trim() ? vibeText.trim() : null,
         bio: bioText.trim(),
@@ -374,6 +393,10 @@ export function ProfileModal() {
       setCustomGradientStart(updated.custom_gradient_start || '#6366f1');
       setCustomGradientEnd(updated.custom_gradient_end || '#ec4899');
       setShowDiscordActivity(updated.show_discord_activity !== undefined ? Boolean(updated.show_discord_activity) : true);
+      setSelectedPetType(updated.pet_type || 'none');
+      setSelectedPetVariant(updated.pet_variant || (updated.pet_type === 'magikarp' ? 'classic' : 'orange'));
+      setPetCustomName(updated.pet_name || '');
+      setSelectedAnimation(updated.profile_animation || 'none');
 
       updateSessionProfile({
         display_name: updated.display_name,
@@ -387,6 +410,10 @@ export function ProfileModal() {
         vibe: updated.vibe,
         discord_id: updated.discord_id,
         discord: discord,
+        pet_type: updated.pet_type,
+        pet_variant: updated.pet_variant,
+        pet_name: updated.pet_name,
+        profile_animation: updated.profile_animation,
       });
 
       toast.show('¡Perfil actualizado y guardado correctamente!', 'success', 2500);
@@ -468,6 +495,7 @@ export function ProfileModal() {
             {selectedEffect !== 'none' && (
               <div className={`jf-profile-effect-layer jf-profile-effect--${selectedEffect}`} />
             )}
+            <ProfileEntranceAnimation animation={selectedAnimation} key={`main-${previewAnimationKey}`} />
             <span className="jf-profile-orb jf-profile-orb--a" />
             <span className="jf-profile-orb jf-profile-orb--b" />
           </div>
@@ -495,6 +523,13 @@ export function ProfileModal() {
                 onClick={() => setActiveTab('style')}
               >
                 <PaintBrush size={16} /> Temas y Marcos
+              </button>
+              <button
+                type="button"
+                className={`jf-profile-mode-btn ${activeTab === 'pet' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('pet')}
+              >
+                🐾 Mascota Pixel
               </button>
               <button
                 type="button"
@@ -528,6 +563,7 @@ export function ProfileModal() {
                   {selectedEffect !== 'none' && (
                     <div className={`jf-profile-effect-layer jf-profile-effect--${selectedEffect}`} />
                   )}
+                  <ProfileEntranceAnimation animation={selectedAnimation} key={`prev-${previewAnimationKey}`} />
                   <span className="jf-profile-orb jf-profile-orb--a" />
                   <span className="jf-profile-orb jf-profile-orb--b" />
                 </div>
@@ -559,6 +595,17 @@ export function ProfileModal() {
                     {bioText ? `"${bioText}"` : 'Sin biografía configurada'}
                   </span>
                 </div>
+                {selectedPetType && selectedPetType !== 'none' && (
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', paddingRight: '8px' }}>
+                    <PixelPet
+                      type={selectedPetType}
+                      variant={selectedPetVariant}
+                      customName={petCustomName}
+                      scale={1.8}
+                      isMusicPlaying={isPlaying}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -622,6 +669,17 @@ export function ProfileModal() {
                     </div>
 
                     <div className="jf-profile-hero-right">
+                      {selectedPetType && selectedPetType !== 'none' && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                          <PixelPet
+                            type={selectedPetType}
+                            variant={selectedPetVariant}
+                            customName={petCustomName}
+                            scale={2.2}
+                            isMusicPlaying={isPlaying}
+                          />
+                        </div>
+                      )}
                       <div className="jf-melomano-left" style={{ justifyContent: 'flex-end', width: '100%' }}>
                         <div className="jf-melomano-info" style={{ textAlign: 'right' }}>
                           <span className="jf-melomano-title" style={{ justifyContent: 'flex-end' }}>
@@ -882,6 +940,14 @@ export function ProfileModal() {
                         <Button variant="primary" size="md" onClick={() => setActiveTab('style')} style={{ width: '100%' }}>
                           <PaintBrush size={16} /> Personalizar Estilo
                         </Button>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <Button variant="glass" size="sm" onClick={() => setActiveTab('pet')}>
+                            🐾 Mi Mascota
+                          </Button>
+                          <Button variant="glass" size="sm" onClick={() => setPreviewAnimationKey((k) => k + 1)}>
+                            <Sparkle size={14} weight="fill" /> Probar Entrada
+                          </Button>
+                        </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           <Button variant="glass" size="sm" onClick={() => setActiveTab('avatar')}>
                             <ImageIcon size={14} /> Cambiar Foto
@@ -1454,6 +1520,82 @@ export function ProfileModal() {
                     />
                   </div>
 
+                  {/* Selector de Animación de Entrada: JodiFy Pulse */}
+                  <div className="jf-profile-editor-field">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label className="jf-profile-editor-label" style={{ margin: 0 }}>
+                        <span>JodiFy Pulse · Animaciones de Entrada</span>
+                        <span style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'none' }}>
+                          Efectos cinematográficos al abrir y visualizar tu perfil público
+                        </span>
+                      </label>
+                      <Button
+                        variant="glass"
+                        size="sm"
+                        onClick={() => setPreviewAnimationKey((k) => k + 1)}
+                        title="Disparar y previsualizar la animación de entrada ahora"
+                      >
+                        <Sparkle size={13} weight="fill" style={{ color: '#00f0ff' }} />
+                        <span>Probar Animación</span>
+                      </Button>
+                    </div>
+
+                    <div className="jf-profile-theme-grid">
+                      {PROFILE_ANIMATION_UNLOCKS.map((an) => {
+                        const unlocked = isStyleUnlocked(an.requiredLevel, melomano.level);
+                        const progress = Math.min(100, Math.round((melomano.level / an.requiredLevel) * 100));
+                        const isActive = selectedAnimation === an.id;
+                        return (
+                          <button
+                            key={an.id}
+                            type="button"
+                            className={`jf-profile-theme-card jf-unlock-card ${isActive ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                            onClick={() => {
+                              if (!unlocked) {
+                                toast.show(
+                                  `🔒 Animación bloqueada: Requiere Nivel ${an.requiredLevel} (${an.name}). ¡Sigue escuchando música para desbloquearla!`,
+                                  'warning',
+                                  3200,
+                                );
+                                return;
+                              }
+                              setSelectedAnimation(an.id);
+                              setPreviewAnimationKey((k) => k + 1);
+                            }}
+                          >
+                            <span className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}>
+                              {unlocked ? `✓ Nvl ${an.requiredLevel}` : <><Lock size={10} weight="bold" /> Nvl ${an.requiredLevel}</>}
+                            </span>
+                            <span
+                              className="jf-theme-swatch"
+                              style={{
+                                background: `linear-gradient(135deg, ${an.accent} 0%, rgba(255,255,255,0.2) 100%)`,
+                                boxShadow: isActive ? `0 0 12px ${an.accent}` : 'none',
+                              }}
+                            />
+                            <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontWeight: 700, fontSize: '12px', color: '#fff' }}>{an.name}</span>
+                                <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: an.accent, fontWeight: 700 }}>
+                                  {an.badge}
+                                </span>
+                              </div>
+                              <span style={{ display: 'block', fontSize: '10px', color: 'rgba(255,255,255,0.55)', marginTop: '2px' }}>
+                                {an.description}
+                              </span>
+                              {!unlocked && (
+                                <div className="jf-unlock-progress-bar">
+                                  <div className="jf-unlock-progress-fill" style={{ width: `${progress}%` }} />
+                                </div>
+                              )}
+                            </div>
+                            {isActive && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Sticky Save Bar */}
                   <div className="jf-studio-sticky-bar">
                     <div className="jf-studio-sticky-info">
@@ -1463,6 +1605,236 @@ export function ProfileModal() {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <Button variant="glass" size="md" onClick={() => setActiveTab('showcase')}>
                         Cancelar
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        disabled={saving}
+                        onClick={() => void handleSaveCustomization()}
+                      >
+                        {saving ? <Spinner size={16} /> : <FloppyDisk size={16} weight="bold" />}
+                        <span>Guardar Cambios</span>
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* TAB: MASCOTA PIXEL ART DESBLOQUEABLE */}
+              {activeTab === 'pet' && (
+                <motion.div
+                  key="pet"
+                  className="jf-profile-editor"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {/* Banner de Rango de Melómano */}
+                  <div
+                    style={{
+                      padding: '14px 18px',
+                      borderRadius: 'var(--radius-lg)',
+                      background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.15) 0%, rgba(217, 70, 239, 0.15) 100%)',
+                      border: '1px solid rgba(234, 88, 12, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '14px', color: '#fff' }}>
+                        <span>🐾 Compañero Pixel Art de JodiFy · Tu Nivel: {melomano.level}</span>
+                      </div>
+                      <p style={{ margin: '3px 0 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.8)' }}>
+                        ¡Desbloquea mascotas retro 8-bit a medida que subes de nivel escuchando música! Tu mascota reacciona bailando en vivo al compás de tus canciones y viaja contigo en tu perfil y pantalla.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Selector de Especie de Mascota */}
+                  <div className="jf-profile-editor-field">
+                    <label className="jf-profile-editor-label">
+                      <span>Elige tu Mascota</span>
+                      <span style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'none' }}>
+                        Se desbloquean según tu nivel melómano
+                      </span>
+                    </label>
+
+                    <div className="jf-pet-grid">
+                      {/* Opción Sin Mascota */}
+                      <button
+                        type="button"
+                        className={`jf-pet-card ${selectedPetType === 'none' ? 'is-active' : ''}`}
+                        onClick={() => setSelectedPetType('none')}
+                      >
+                        <span className="jf-pet-card-emoji">🚫</span>
+                        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                          <span style={{ display: 'block', fontWeight: 700, fontSize: '12.5px', color: '#fff' }}>
+                            Sin Mascota
+                          </span>
+                          <span style={{ display: 'block', fontSize: '10.5px', color: 'rgba(255,255,255,0.5)' }}>
+                            No mostrar compañero
+                          </span>
+                        </div>
+                        {selectedPetType === 'none' && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                      </button>
+
+                      {PET_UNLOCKS.map((pet) => {
+                        const unlocked = isStyleUnlocked(pet.requiredLevel, melomano.level);
+                        const isActive = selectedPetType === pet.species;
+                        const progress = Math.min(100, Math.round((melomano.level / pet.requiredLevel) * 100));
+
+                        return (
+                          <button
+                            key={pet.id}
+                            type="button"
+                            className={`jf-pet-card jf-unlock-card ${isActive ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                            onClick={() => {
+                              if (!unlocked) {
+                                toast.show(
+                                  `🔒 Mascota bloqueada: ${pet.name} requiere Nivel ${pet.requiredLevel}. ¡Escucha más canciones para adoptarlo!`,
+                                  'warning',
+                                  3200,
+                                );
+                                return;
+                              }
+                              setSelectedPetType(pet.species);
+                              if (!pet.variants.some((v) => v.id === selectedPetVariant)) {
+                                setSelectedPetVariant(pet.variants[0].id);
+                              }
+                            }}
+                          >
+                            <span className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}>
+                              {unlocked ? `✓ Nvl ${pet.requiredLevel}` : <><Lock size={10} weight="bold" /> Nvl ${pet.requiredLevel}</>}
+                            </span>
+                            <span className="jf-pet-card-emoji">{pet.emoji}</span>
+                            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                              <span style={{ display: 'block', fontWeight: 700, fontSize: '12.5px', color: '#fff' }}>
+                                {pet.name}
+                              </span>
+                              <span style={{ display: 'block', fontSize: '10.5px', color: 'rgba(255,255,255,0.6)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                {pet.description}
+                              </span>
+                              {!unlocked && (
+                                <div className="jf-unlock-progress-bar">
+                                  <div className="jf-unlock-progress-fill" style={{ width: `${progress}%` }} />
+                                </div>
+                              )}
+                            </div>
+                            {isActive && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Variantes y Configuración de Mascota Seleccionada */}
+                  {selectedPetType !== 'none' && (
+                    <>
+                      {/* Selector de Variante / Color */}
+                      {(() => {
+                        const curPet = PET_UNLOCKS.find((p) => p.species === selectedPetType);
+                        if (!curPet) return null;
+                        return (
+                          <div className="jf-profile-editor-field">
+                            <label className="jf-profile-editor-label">
+                              <span>Variante de Color & Estilo de {curPet.name}</span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'none' }}>
+                                Variantes especiales desbloqueables
+                              </span>
+                            </label>
+                            <div className="jf-pet-variant-grid">
+                              {curPet.variants.map((v) => {
+                                const variantUnlocked = isStyleUnlocked(v.requiredLevel, melomano.level);
+                                const isVarActive = selectedPetVariant === v.id;
+                                return (
+                                  <button
+                                    key={v.id}
+                                    type="button"
+                                    className={`jf-pet-variant-card ${isVarActive ? 'is-active' : ''} ${!variantUnlocked ? 'is-locked' : ''}`}
+                                    onClick={() => {
+                                      if (!variantUnlocked) {
+                                        toast.show(
+                                          `🔒 Variante bloqueada: ${v.name} requiere Nivel ${v.requiredLevel}.`,
+                                          'warning',
+                                        );
+                                        return;
+                                      }
+                                      setSelectedPetVariant(v.id);
+                                    }}
+                                  >
+                                    <span
+                                      className="jf-pet-color-dot"
+                                      style={{ background: v.previewColor }}
+                                    />
+                                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#fff', display: 'block' }}>
+                                        {v.name}
+                                      </span>
+                                      <span style={{ fontSize: '10px', color: variantUnlocked ? 'var(--accent)' : 'rgba(255,255,255,0.45)' }}>
+                                        {variantUnlocked ? v.tag : `🔒 Nvl ${v.requiredLevel}`}
+                                      </span>
+                                    </div>
+                                    {isVarActive && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Apodo Personalizado para la Mascota */}
+                      <div className="jf-profile-editor-field">
+                        <label className="jf-profile-editor-label">Nombre o Apodo de tu Compañero</label>
+                        <input
+                          type="text"
+                          className="jf-input"
+                          placeholder="Ej: Michi, Doradito, Firulais, Sparky..."
+                          maxLength={24}
+                          value={petCustomName}
+                          onChange={(e) => setPetCustomName(e.target.value)}
+                        />
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          Aparecerá en el globo de diálogo y en la tarjeta de tu mascota.
+                        </span>
+                      </div>
+
+                      {/* Live Interactive Pet Preview Card */}
+                      <div className="jf-pet-preview-box">
+                        <div className="jf-pet-preview-header">
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>
+                            ✨ Previsualización Interactiva (Haz clic sobre tu mascota para acariciarla)
+                          </span>
+                          <span style={{ fontSize: '11px', color: isPlaying ? '#10b981' : 'rgba(255,255,255,0.6)' }}>
+                            {isPlaying ? '🎵 Música sonando: Bailando' : '💤 En reposo: Dale play a una rola'}
+                          </span>
+                        </div>
+                        <div className="jf-pet-preview-stage">
+                          <PixelPet
+                            type={selectedPetType}
+                            variant={selectedPetVariant}
+                            customName={petCustomName}
+                            scale={3.2}
+                            isMusicPlaying={isPlaying}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Sticky Save Bar */}
+                  <div className="jf-studio-sticky-bar">
+                    <div className="jf-studio-sticky-info">
+                      <Sparkle size={16} weight="fill" style={{ color: '#00f0ff' }} />
+                      <span>Configuración de mascota lista para guardar</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <Button variant="glass" size="md" onClick={() => setActiveTab('showcase')}>
+                        Volver a Mi Perfil
                       </Button>
                       <Button
                         variant="primary"

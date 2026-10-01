@@ -30,6 +30,8 @@ import { timeAgo, resolveAvatarSrc, calculateMelomanoLevel } from '../../lib/uti
 import { statusView, jfIsOnline, presenceLabel } from '../../lib/status';
 import { useSongCoverGradient } from '../../lib/colorExtractor';
 import { AnthemCard } from './AnthemCard';
+import { PixelPet } from './PixelPet';
+import { ProfileEntranceAnimation } from './ProfileEntranceAnimation';
 import type { CommunityUser } from '../../lib/types';
 
 export function UserDetailModal() {
@@ -193,6 +195,10 @@ export function UserDetailModal() {
             {user.profile_effect && user.profile_effect !== 'none' && (
               <div className={`jf-profile-effect-layer jf-profile-effect--${user.profile_effect}`} />
             )}
+            {/* Animación de entrada JodiFy Pulse */}
+            {user.profile_animation && user.profile_animation !== 'none' && (
+              <ProfileEntranceAnimation animationType={user.profile_animation} username={user.username} />
+            )}
             <span className="jf-profile-orb jf-profile-orb--a" />
             <span className="jf-profile-orb jf-profile-orb--b" />
           </div>
@@ -256,7 +262,20 @@ export function UserDetailModal() {
                 </div>
               </div>
 
-              <div className="jf-profile-hero-right">
+              <div className="jf-profile-hero-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {/* Mascota Pixel Art del usuario */}
+                {user.pet_type && user.pet_type !== 'none' && (
+                  <div className="jf-profile-pet-slot" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <PixelPet
+                      petType={user.pet_type}
+                      variant={user.pet_variant}
+                      petName={user.pet_name}
+                      size={64}
+                      interactive={true}
+                      showBadge={true}
+                    />
+                  </div>
+                )}
                 <div className="jf-melomano-left" style={{ justifyContent: 'flex-end', width: '100%' }}>
                   <div className="jf-melomano-info" style={{ textAlign: 'right' }}>
                     <span className="jf-melomano-title" style={{ justifyContent: 'flex-end' }}>

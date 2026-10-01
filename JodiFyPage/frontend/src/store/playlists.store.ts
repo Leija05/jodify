@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useToastStore } from './toast.store';
 import { usePlayerStore } from './player.store';
 import { useLibraryStore } from './library.store';
+import { useQueueStore } from './queue.store';
 import { playSong } from '../services/player.service';
 
 export interface CustomPlaylist {
@@ -32,6 +33,7 @@ interface PlaylistsState {
   removeSongFromPlaylist: (playlistId: string, songId: string) => void;
   deletePlaylist: (playlistId: string) => void;
   playPlaylist: (playlistId: string) => Promise<void>;
+  reorderPlaylistSongs: (playlistId: string, fromIndex: number, toIndex: number) => void;
   setActivePlaylist: (id: string | null) => void;
 }
 
@@ -200,9 +202,49 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     }
 
     set({ activePlaylistId: playlistId });
+    // Carga todas las canciones restantes de la playlist en la cola para que se reproduzca entera
+    const queue = useQueueStore.getState();
+    queue.clear();
+    if (songsToPlay.length > 1) {
+      queue.addMany(songsToPlay.slice(1));
+    }
     await playSong(songsToPlay[0]);
     usePlayerStore.getState().setIsPlaying(true);
-    useToastStore.getState().show(`Reproduciendo playlist «${pl.name}»`, 'success', 2200);
+    useToastStore.getState().show(
+      `Reproduciendo playlist «${pl.name}» (${songsToPlay.length} canciones)`,
+      'success',
+      2500
+    );
+  },
+
+  reorderPlaylistSongs: (playlistId, fromIndex, toIndex) => {
+    set((state) => {
+      let user = '';
+      const updated = state.playlists.map((pl) => {
+        if (pl.id !== playlistId) return pl;
+        user = pl.createdBy;
+        if (fromIndex < 0 || fromIndex >= pl.songIds.length || toIndex < 0 || toIndex >= pl.songIds.length) {
+          return pl;
+        }
+        const newIds = [...pl.songIds];
+        const [moved] = newIds.splice(fromIndex, 1);
+        newIds.splice(toIndex, 0, moved);
+        return {
+          ...pl,
+          songIds: newIds,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      if (user) {
+        try {
+          localStorage.setItem(`jf_playlists_${user}`, JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+      }
+      return { playlists: updated };
+    });
   },
 
   setActivePlaylist: (id) => set({ activePlaylistId: id }),
