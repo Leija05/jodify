@@ -765,9 +765,19 @@ export function HomeShowcaseView() {
                   tabIndex={0}
                   title="Haz clic para abrir la playlist y ver/reordenar canciones"
                 >
-                  <div className="jf-playlist-card-cover" style={{ background: pl.color }}>
-                    <div className="jf-playlist-card-pattern" />
-                    <MusicNotes size={32} weight="duotone" className="jf-playlist-card-icon" />
+                  <div className="jf-playlist-card-cover" style={{ background: pl.color, overflow: 'hidden' }}>
+                    {pl.coverUrl ? (
+                      <img
+                        src={pl.coverUrl}
+                        alt={pl.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                    ) : (
+                      <>
+                        <div className="jf-playlist-card-pattern" />
+                        <MusicNotes size={32} weight="duotone" className="jf-playlist-card-icon" />
+                      </>
+                    )}
                     <button
                       type="button"
                       className="jf-playlist-card-play-btn"
@@ -815,8 +825,16 @@ export function HomeShowcaseView() {
                   onClick={() => ui.open('playlistDetail', { playlistId: pl.id })}
                   title="Haz clic para ver las canciones o acomodarlas"
                 >
-                  <div className="jf-playlist-list-dot" style={{ background: pl.color }}>
-                    <MusicNotes size={16} weight="duotone" />
+                  <div className="jf-playlist-list-dot" style={{ background: pl.color, overflow: 'hidden' }}>
+                    {pl.coverUrl ? (
+                      <img
+                        src={pl.coverUrl}
+                        alt={pl.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                    ) : (
+                      <MusicNotes size={16} weight="duotone" />
+                    )}
                   </div>
                   <div className="jf-playlist-list-info">
                     <span className="jf-playlist-list-name">{pl.name}</span>

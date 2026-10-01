@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Playlist, Plus, X, MusicNotes, Sparkle } from '@phosphor-icons/react';
+import { Playlist, Plus, X, MusicNotes, Sparkle, UploadSimple, Trash } from '@phosphor-icons/react';
 import { useUiStore } from '../../store/ui.store';
 import { usePlaylistsStore } from '../../store/playlists.store';
 import { useSession } from '../../context/SessionContext';
@@ -26,16 +26,20 @@ export function CreatePlaylistModal() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLOR_PRESETS[0]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (ui.modal === 'createPlaylist') {
       if (song) {
         setName(`Playlist · ${song.name}`);
         setDescription(`Inspirada en ${song.name} de ${song.artist || 'JodiFy'}`);
+        setCoverUrl(song.cover_url ? resolveMediaUrl(song.cover_url) : '');
       } else {
         setName('');
         setDescription('');
+        setCoverUrl('');
       }
       setSelectedColor(COLOR_PRESETS[Math.floor(Math.random() * COLOR_PRESETS.length)]);
     }
@@ -53,6 +57,7 @@ export function CreatePlaylistModal() {
       session?.username ?? 'Usuario',
       description.trim(),
       selectedColor,
+      coverUrl.trim() || undefined,
     );
     ui.close('createPlaylist');
   };
@@ -91,11 +96,12 @@ export function CreatePlaylistModal() {
           <div className="jf-playlist-preview-card" style={{ background: selectedColor }}>
             <div className="jf-playlist-preview-pattern" />
             <div className="jf-playlist-preview-content">
-              {song?.cover_url ? (
+              {coverUrl ? (
                 <img
                   className="jf-playlist-preview-thumb"
-                  src={resolveMediaUrl(song.cover_url)}
+                  src={resolveMediaUrl(coverUrl)}
                   alt=""
+                  style={{ width: 60, height: 60, borderRadius: 10, objectFit: 'cover' }}
                 />
               ) : (
                 <div className="jf-playlist-preview-icon">
@@ -111,6 +117,57 @@ export function CreatePlaylistModal() {
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Foto de portada personalizada */}
+          <div className="jf-form-field">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label className="jf-form-label" style={{ margin: 0 }}>Foto de portada (opcional)</label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (evt) => {
+                    if (evt.target?.result) setCoverUrl(evt.target.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+              <button
+                type="button"
+                className="jf-btn jf-btn--secondary"
+                style={{ padding: '4px 10px', fontSize: 11 }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <UploadSimple size={13} weight="bold" /> Subir archivo
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                className="jf-input"
+                value={coverUrl}
+                onChange={(e) => setCoverUrl(e.target.value)}
+                placeholder="O pega una URL: https://.../portada.jpg"
+                style={{ fontSize: 13 }}
+              />
+              {coverUrl && (
+                <button
+                  type="button"
+                  className="jf-btn"
+                  style={{ padding: '4px 8px', fontSize: 11, color: '#f87171' }}
+                  onClick={() => setCoverUrl('')}
+                  title="Quitar foto"
+                >
+                  <Trash size={14} />
+                </button>
+              )}
             </div>
           </div>
 

@@ -9,6 +9,10 @@ import {
   MusicNotes,
   Clock,
   User,
+  Camera,
+  PencilSimple,
+  UploadSimple,
+  Check,
 } from '@phosphor-icons/react';
 import { useUiStore } from '../../store/ui.store';
 import { usePlaylistsStore, CustomPlaylist } from '../../store/playlists.store';
@@ -25,6 +29,7 @@ export function PlaylistDetailModal() {
   const playlists = usePlaylistsStore((s) => s.playlists);
   const playPlaylist = usePlaylistsStore((s) => s.playPlaylist);
   const deletePlaylist = usePlaylistsStore((s) => s.deletePlaylist);
+  const updatePlaylist = usePlaylistsStore((s) => s.updatePlaylist);
   const removeSongFromPlaylist = usePlaylistsStore((s) => s.removeSongFromPlaylist);
   const reorderPlaylistSongs = usePlaylistsStore((s) => s.reorderPlaylistSongs);
   const librarySongs = useLibraryStore((s) => s.songs);
@@ -33,6 +38,11 @@ export function PlaylistDetailModal() {
 
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editCover, setEditCover] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const dragOccurredRef = useRef(false);
 
   const isOpen = ui.modal === 'playlistDetail';
@@ -89,6 +99,41 @@ export function PlaylistDetailModal() {
     }
   };
 
+  const openEditor = () => {
+    setEditName(playlist.name);
+    setEditDesc(playlist.description || '');
+    setEditCover(playlist.coverUrl || '');
+    setIsEditing(true);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      useToastStore.getState().show('La imagen no debe superar los 10MB', 'warning');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target?.result as string;
+      if (dataUrl) {
+        setEditCover(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveEdits = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) return;
+    updatePlaylist(playlist.id, {
+      name: editName.trim(),
+      description: editDesc.trim() || undefined,
+      coverUrl: editCover.trim() || undefined,
+    });
+    setIsEditing(false);
+  };
+
   return (
     <AnimatePresence>
       <div className="jf-modal-backdrop" onClick={() => ui.close('playlistDetail')}>
@@ -118,8 +163,26 @@ export function PlaylistDetailModal() {
             </button>
 
             <div className="jf-pl-modal-hero-content">
-              <div className="jf-pl-modal-big-icon">
-                <MusicNotes size={48} weight="duotone" />
+              <div
+                className="jf-pl-modal-cover-wrapper"
+                onClick={openEditor}
+                title="Haz clic para cambiar la foto de portada"
+              >
+                {playlist.coverUrl ? (
+                  <img
+                    src={playlist.coverUrl}
+                    alt={playlist.name}
+                    className="jf-pl-modal-cover-img"
+                  />
+                ) : (
+                  <div className="jf-pl-modal-big-icon">
+                    <MusicNotes size={48} weight="duotone" />
+                  </div>
+                )}
+                <div className="jf-pl-cover-hover-overlay">
+                  <Camera size={26} weight="fill" />
+                  <span>Cambiar Foto</span>
+                </div>
               </div>
 
               <div className="jf-pl-modal-meta">
@@ -173,6 +236,15 @@ export function PlaylistDetailModal() {
               >
                 <Shuffle size={16} weight="bold" />
                 <span>Aleatorio</span>
+              </button>
+              <button
+                type="button"
+                className="jf-pl-btn-secondary"
+                onClick={openEditor}
+                title="Cambiar foto de portada o editar nombre de la playlist"
+              >
+                <PencilSimple size={15} weight="bold" />
+                <span>Editar Portada</span>
               </button>
             </div>
 
@@ -317,6 +389,128 @@ export function PlaylistDetailModal() {
               </div>
             )}
           </div>
+
+          {/* Sub-modal para Editar Portada y Detalles */}
+          {isEditing && (
+            <div className="jf-pl-edit-overlay" onClick={() => setIsEditing(false)}>
+              <div className="jf-pl-edit-card" onClick={(e) => e.stopPropagation()}>
+                <div className="jf-pl-edit-header">
+                  <h3>Personalizar Portada de la Playlist</h3>
+                  <button
+                    type="button"
+                    className="jf-pl-modal-close"
+                    style={{ position: 'static', width: 30, height: 30 }}
+                    onClick={() => setIsEditing(false)}
+                    title="Cerrar"
+                  >
+                    <X size={15} weight="bold" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveEdits} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {/* Vista previa de portada y controles de carga */}
+                  <div className="jf-pl-edit-preview-row">
+                    <div className="jf-pl-edit-thumb-box" style={{ background: playlist.color }}>
+                      {editCover ? (
+                        <img src={editCover} alt="" />
+                      ) : (
+                        <MusicNotes size={32} weight="duotone" />
+                      )}
+                    </div>
+                    <div className="jf-pl-edit-thumb-actions">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handleImageUpload}
+                      />
+                      <button
+                        type="button"
+                        className="jf-btn jf-btn--primary"
+                        style={{ padding: '7px 14px', fontSize: 12, justifyContent: 'flex-start' }}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <UploadSimple size={15} weight="bold" /> Subir foto desde el equipo
+                      </button>
+                      {editCover && (
+                        <button
+                          type="button"
+                          className="jf-btn"
+                          style={{ padding: '4px 8px', fontSize: 11, color: '#f87171', justifyContent: 'flex-start', background: 'transparent' }}
+                          onClick={() => setEditCover('')}
+                        >
+                          <Trash size={13} /> Quitar foto actual
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="jf-form-field">
+                    <label className="jf-form-label" style={{ fontSize: 12 }}>
+                      O pega el enlace URL de la imagen
+                    </label>
+                    <input
+                      type="text"
+                      className="jf-input"
+                      value={editCover}
+                      onChange={(e) => setEditCover(e.target.value)}
+                      placeholder="https://ejemplo.com/portada.jpg"
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
+
+                  <div className="jf-form-field">
+                    <label className="jf-form-label" style={{ fontSize: 12 }}>
+                      Nombre de la playlist
+                    </label>
+                    <input
+                      type="text"
+                      className="jf-input"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Nombre de la playlist"
+                      maxLength={60}
+                      required
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
+
+                  <div className="jf-form-field">
+                    <label className="jf-form-label" style={{ fontSize: 12 }}>
+                      Descripción (opcional)
+                    </label>
+                    <textarea
+                      className="jf-input jf-textarea"
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                      placeholder="Descripción de la playlist"
+                      rows={2}
+                      maxLength={150}
+                      style={{ fontSize: 13 }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+                    <button
+                      type="button"
+                      className="jf-btn jf-btn--secondary"
+                      onClick={() => setIsEditing(false)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="jf-btn jf-btn--primary"
+                      disabled={!editName.trim()}
+                    >
+                      <Check size={14} weight="bold" /> Guardar Cambios
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>

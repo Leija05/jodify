@@ -1203,7 +1203,7 @@ export function LinkMusicModal() {
                     const isDup = checkDuplicate(item);
                     const vSong = toVirtualSong(item);
                     const liked = isTrackLiked(vSong.id);
-                    const itemThumb = item.thumbnail || (resolved.type === 'album' ? resolved.thumbnail : undefined) || (item.youtube_id ? `https://i.ytimg.com/vi/${item.youtube_id}/hqdefault.jpg` : undefined);
+                    const itemThumb = item.thumbnail || (item.youtube_id ? `https://i.ytimg.com/vi/${item.youtube_id}/hqdefault.jpg` : undefined);
 
                     return (
                       <div

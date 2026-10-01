@@ -41,6 +41,10 @@ interface PlaylistsState {
   addSongToPlaylist: (playlistId: string, songId: string) => boolean;
   removeSongFromPlaylist: (playlistId: string, songId: string) => void;
   deletePlaylist: (playlistId: string) => void;
+  updatePlaylist: (
+    playlistId: string,
+    updates: Partial<Pick<CustomPlaylist, 'name' | 'description' | 'coverUrl' | 'color'>>,
+  ) => void;
   playPlaylist: (playlistId: string) => Promise<void>;
   reorderPlaylistSongs: (playlistId: string, fromIndex: number, toIndex: number) => void;
   setActivePlaylist: (id: string | null) => void;
@@ -221,6 +225,31 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
       return { playlists: updated, activePlaylistId: state.activePlaylistId === playlistId ? null : state.activePlaylistId };
     });
     useToastStore.getState().show('Playlist eliminada', 'info', 1800);
+  },
+
+  updatePlaylist: (playlistId, updates) => {
+    set((state) => {
+      let user = '';
+      const updated = state.playlists.map((pl) => {
+        if (pl.id !== playlistId) return pl;
+        user = pl.createdBy;
+        return {
+          ...pl,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      if (user) {
+        try {
+          localStorage.setItem(`jf_playlists_${user}`, JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+      }
+      return { playlists: updated };
+    });
+    useToastStore.getState().show('Playlist actualizada', 'success', 2000);
   },
 
   playPlaylist: async (playlistId) => {
