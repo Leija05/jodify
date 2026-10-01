@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import urllib.parse
 from typing import Any
 import httpx
 import yt_dlp
@@ -197,6 +198,8 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                         artists = [a.get("name") for a in state.get("artists", []) if a.get("name")]
                         if artists:
                             artist = ", ".join(artists)
+                        elif state.get("subtitle"):
+                            artist = state.get("subtitle")
                         if raw_dur := state.get("duration"):
                             duration = int(raw_dur / 1000)
                         images = state.get("visualIdentity", {}).get("image", [])
@@ -204,8 +207,13 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                             thumbnail = images[-1].get("url")
                     elif entity_type in ("album", "playlist"):
                         track_type = "playlist"
-                        title = state.get("name") or "Playlist de Spotify"
+                        title = state.get("name") or ("Álbum de Spotify" if entity_type == "album" else "Playlist de Spotify")
                         album = state.get("name") or album
+                        if state.get("subtitle"):
+                            artist = state.get("subtitle")
+                        elif entity_artists := [a.get("name") for a in state.get("artists", []) if a.get("name")]:
+                            artist = ", ".join(entity_artists)
+
                         images = state.get("visualIdentity", {}).get("image", [])
                         if images and isinstance(images, list):
                             thumbnail = images[-1].get("url")
@@ -213,32 +221,89 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                         raw_tracks = state.get("trackList", [])
                         for item in raw_tracks:
                             item_title = item.get("title") or "Canción"
+                            item_sub = item.get("subtitle")
                             item_artists = [a.get("name") for a in item.get("artists", []) if a.get("name")]
-                            item_artist = ", ".join(item_artists) or artist
+                            if item_sub:
+                                item_artist = item_sub
+                            elif item_artists:
+                                item_artist = ", ".join(item_artists)
+                            else:
+                                item_artist = artist if artist != "Spotify" else "Varios Artistas"
+
                             item_dur = int(item.get("duration", 0) / 1000) if item.get("duration") else None
-                            search_target = f"https://www.youtube.com/results?search_query={item_artist}+{item_title}"
+                            search_target = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(f'{item_artist} {item_title}')}"
+                            item_thumb = thumbnail if entity_type == "album" else None
+
                             playlist_items.append({
                                 "id": f"sp-{abs(hash(item_title + item_artist)) % 10000000}",
                                 "title": item_title,
                                 "artist": item_artist,
                                 "duration": item_dur,
-                                "thumbnail": thumbnail,
+                                "thumbnail": item_thumb,
                                 "url": search_target,
                                 "stream_url": f"/api/links/stream?url={search_target}",
                                 "source": "spotify",
                             })
+
+                        # Para playlists: resolver las fotos/carátulas reales de cada canción concurrentemente
+                        if entity_type == "playlist" and playlist_items:
+                            sem = asyncio.Semaphore(25)
+
+                            async def _resolve_track_cover(p_item: dict[str, Any], raw_item: dict[str, Any]):
+                                raw_uri = raw_item.get("uri") or ""
+                                tid = raw_uri.split(":")[-1] if raw_uri.startswith("spotify:track:") else None
+
+                                # 1. Spotify oEmbed (carátula oficial del álbum desde CDN de Spotify)
+                                if tid:
+                                    async with sem:
+                                        try:
+                                            res = await client.get(
+                                                f"https://open.spotify.com/oembed?url=https://open.spotify.com/track/{tid}",
+                                                timeout=3.5,
+                                            )
+                                            if res.status_code == 200:
+                                                t_url = res.json().get("thumbnail_url")
+                                                if t_url:
+                                                    p_item["thumbnail"] = t_url
+                                                    return
+                                        except Exception:
+                                            pass
+
+                                # 2. Fallback a iTunes Search API
+                                q = f"{p_item.get('artist', '')} {p_item.get('title', '')}".strip()
+                                if q:
+                                    async with sem:
+                                        try:
+                                            res = await client.get(
+                                                f"https://itunes.apple.com/search?term={urllib.parse.quote_plus(q)}&media=music&entity=song&limit=1",
+                                                timeout=3.0,
+                                            )
+                                            if res.status_code == 200:
+                                                data = res.json().get("results", [])
+                                                if data and data[0].get("artworkUrl100"):
+                                                    p_item["thumbnail"] = data[0]["artworkUrl100"].replace("100x100bb", "300x300bb")
+                                                    return
+                                        except Exception:
+                                            pass
+
+                            cover_tasks = [
+                                _resolve_track_cover(p_item, raw_item)
+                                for p_item, raw_item in zip(playlist_items, raw_tracks)
+                            ]
+                            await asyncio.gather(*cover_tasks, return_exceptions=True)
     except Exception as exc:
         logger.warning(f"Error parseando Spotify embed para {url}: {exc}")
 
-    # Fallback garantizado por oEmbed oficial de Spotify si falló el parseo
-    if title == "Canción de Spotify" and m_sp:
+    # Fallback garantizado por oEmbed oficial de Spotify si falló el parseo o falta thumbnail
+    if (title == "Canción de Spotify" or not thumbnail) and m_sp:
         try:
             oembed_target = f"https://open.spotify.com/{m_sp.group(1)}/{m_sp.group(2)}"
             async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
                 o_resp = await client.get(f"https://open.spotify.com/oembed?url={oembed_target}")
                 if o_resp.status_code == 200:
                     o_data = o_resp.json()
-                    title = o_data.get("title") or title
+                    if title == "Canción de Spotify":
+                        title = o_data.get("title") or title
                     if not thumbnail:
                         thumbnail = o_data.get("thumbnail_url")
         except Exception as exc:

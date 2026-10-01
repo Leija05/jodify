@@ -136,7 +136,7 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
   // 0. Si la canción no tiene youtube_id pero proviene de Spotify o es un enlace de búsqueda
   if (!extractYoutubeId(song) && (song.source === 'spotify' || (song.url && (song.url.includes('search_query') || song.url.includes('spotify.com'))))) {
     try {
-      const match = await linksService.matchTrack(song.artist, song.name);
+      const match = await linksService.matchTrack(song.artist || '', song.name);
       if (match && match.youtube_id) {
         song.youtube_id = match.youtube_id;
         song.url = match.url;

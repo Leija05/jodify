@@ -94,7 +94,7 @@ function toVirtualSong(track: {
     url: track.stream_url || track.url || '',
     youtube_id: ytId,
     source: effectiveSource,
-    cover_url: track.thumbnail || undefined,
+    cover_url: track.thumbnail || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined),
     duration: track.duration,
     likes: 0,
     added_by: 'Enlace Web',
@@ -1203,7 +1203,7 @@ export function LinkMusicModal() {
                     const isDup = checkDuplicate(item);
                     const vSong = toVirtualSong(item);
                     const liked = isTrackLiked(vSong.id);
-                    const itemThumb = item.thumbnail || resolved.thumbnail || resolved.items[0]?.thumbnail;
+                    const itemThumb = item.thumbnail || (resolved.type === 'album' ? resolved.thumbnail : undefined) || (item.youtube_id ? `https://i.ytimg.com/vi/${item.youtube_id}/hqdefault.jpg` : undefined);
 
                     return (
                       <div

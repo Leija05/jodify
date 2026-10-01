@@ -91,7 +91,7 @@ export const linksService = {
     await api.del(`/links/suggestions/${id}`);
   },
 
-  async matchTrack(artist: string, title: string): Promise<{ youtube_id: string; url: string } | null> {
+  async matchTrack(artist?: string, title?: string): Promise<{ youtube_id: string; url: string } | null> {
     try {
       const res = await api.get<{ success: boolean; youtube_id: string; url: string }>(
         `/links/match-track?artist=${encodeURIComponent(artist || '')}&title=${encodeURIComponent(title || '')}`
