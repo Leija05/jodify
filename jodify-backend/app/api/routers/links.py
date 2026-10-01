@@ -156,7 +156,7 @@ async def approve_and_add_to_database(
     suggestion_id: str,
     _admin: Annotated[dict, Depends(require_admin)],
 ) -> dict[str, Any]:
-    """Descarga el audio del enlace sugerido y lo agrega directamente a MongoDB GridFS y canciones."""
+    """Aprueba la canción sugerida guardando su enlace y metadatos globalmente en la base de datos sin descarga en el servidor."""
     try:
         oid = ObjectId(suggestion_id)
     except Exception:
@@ -166,79 +166,70 @@ async def approve_and_add_to_database(
     if not sug:
         raise HTTPException(status_code=404, detail="Sugerencia no encontrada")
 
-    target_url = sug.get("url")
-    title = sug.get("title") or "Canción Sugerida"
-    artist = sug.get("artist") or "Desconocido"
+    target_url = (sug.get("url") or "").strip()
+    stream_url = (sug.get("stream_url") or "").strip()
+    title = (sug.get("title") or "Canción Sugerida").strip()
+    artist = (sug.get("artist") or "Desconocido").strip()
+    album = (sug.get("album") or "Sugerencias de la Comunidad").strip()
+    duration = sug.get("duration")
+    thumbnail = sug.get("thumbnail")
 
-    loop = asyncio.get_running_loop()
-    temp_dir = tempfile.mkdtemp()
-    base_target = os.path.join(temp_dir, "audio")
+    from ...services.link_resolver import extract_youtube_id, is_spotify_url, _search_youtube_video_id
 
-    try:
-        # Descarga el audio usando yt-dlp con clientes android/ios
-        downloaded_file, thumb_file = await loop.run_in_executor(
-            None, _download_song_sync, target_url, base_target
-        )
+    # 1. Determinar identificador de YouTube si es posible
+    yt_id = extract_youtube_id(target_url) or extract_youtube_id(stream_url)
+    if not yt_id and is_spotify_url(target_url):
+        try:
+            yt_id = await _search_youtube_video_id(f"{artist} {title}")
+        except Exception as exc:
+            logger.warning(f"No se pudo resolver youtube_id para sugerencia de Spotify: {exc}")
 
-        with open(downloaded_file, "rb") as f:
-            audio_bytes = f.read()
+    cover_url = thumbnail or (f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg" if yt_id else None)
+    effective_url = f"https://www.youtube.com/watch?v={yt_id}" if yt_id else (stream_url or target_url)
+    source = "youtube" if yt_id else ("spotify" if is_spotify_url(target_url) else "web")
 
-        filename = os.path.basename(downloaded_file)
-        audio_fid = await store_audio(filename, "audio/mpeg", audio_bytes)
+    # 2. Comprobar si ya existe en la biblioteca global de canciones
+    existing_query: dict[str, Any] = {}
+    if yt_id:
+        existing_query = {"youtube_id": yt_id}
+    else:
+        existing_query = {"name": title, "artist": artist}
 
-        cover_fid = None
-        if thumb_file and os.path.exists(thumb_file):
-            with open(thumb_file, "rb") as cf:
-                cover_bytes = cf.read()
-            cover_fid = await store_audio("cover.jpg", "image/jpeg", cover_bytes)
-        elif sug.get("thumbnail"):
-            try:
-                async with httpx.AsyncClient(timeout=10) as client:
-                    resp = await client.get(sug["thumbnail"])
-                    if resp.status_code == 200:
-                        cover_fid = await store_audio("cover.jpg", "image/jpeg", resp.content)
-            except Exception:
-                pass
-
-        # Crear documento de canción en la DB
+    existing_song = await col("songs").find_one(existing_query)
+    if existing_song:
+        song_doc = existing_song
+        await col("songs").update_one({"_id": existing_song["_id"]}, {"$inc": {"likes": 1}})
+        song_doc["likes"] = song_doc.get("likes", 0) + 1
+    else:
+        # Crear documento de canción global en la base de datos
         song_doc = {
             "name": title,
             "artist": artist,
-            "album": sug.get("album") or "Sugerencias de la Comunidad",
-            "url": "",
+            "album": album,
+            "url": effective_url,
+            "youtube_id": yt_id,
+            "cover_url": cover_url,
+            "duration": duration,
             "likes": 1,
-            "added_by": sug.get("suggested_by") or _admin.get("username"),
+            "added_by": sug.get("suggested_by") or _admin.get("username") or "Comunidad",
             "created_at": datetime.now().isoformat(),
-            "audio_file_id": audio_fid,
             "play_count": 0,
+            "source": source,
         }
-        if cover_fid:
-            song_doc["cover_file_id"] = cover_fid
-
         ins = await col("songs").insert_one(song_doc)
         song_doc["_id"] = ins.inserted_id
 
-        # Marcar sugerencia aprobada
-        await col("song_suggestions").update_one(
-            {"_id": oid},
-            {"$set": {"status": "approved", "approved_at": datetime.now().isoformat()}}
-        )
+    # 3. Marcar sugerencia como aprobada
+    await col("song_suggestions").update_one(
+        {"_id": oid},
+        {"$set": {"status": "approved", "approved_at": datetime.now().isoformat()}}
+    )
 
-        # Import local para vista de canción
-        from .songs import invalidate_songs_cache, song_view
-        invalidate_songs_cache()
+    # 4. Invalidar caché global de canciones para que aparezca en toda la app de inmediato
+    from .songs import invalidate_songs_cache, song_view
+    invalidate_songs_cache()
 
-        return {"success": True, "song": song_view(song_doc)}
-
-    except Exception as e:
-        logger.error(f"Error aprobando sugerencia: {e}")
-        raise HTTPException(status_code=500, detail=f"Error al descargar y guardar en la base de datos: {str(e)}")
-    finally:
-        try:
-            import shutil
-            shutil.rmtree(temp_dir, ignore_errors=True)
-        except Exception:
-            pass
+    return {"success": True, "song": song_view(song_doc)}
 
 
 _STREAM_CACHE: dict[str, tuple[str, float, dict[str, str]]] = {}
@@ -415,11 +406,30 @@ async def download_proxy(
 ):
     """Proxy para descargar audio libremente sin bloqueos de navegador."""
     try:
+        import urllib.parse
+        import re
+
+        clean_url = url.strip()
+        # Desempaquetar URLs anidadas tipo /api/links/download-proxy?url=...
+        while "download-proxy" in clean_url and "url=" in clean_url:
+            m = re.search(r"url=([^&]+)", clean_url)
+            if m:
+                clean_url = urllib.parse.unquote(m.group(1)).strip()
+            else:
+                break
+
+        clean_url = urllib.parse.unquote(clean_url).strip()
+        if clean_url.startswith("/"):
+            if "url=" in clean_url:
+                m = re.search(r"url=([^&]+)", clean_url)
+                if m:
+                    clean_url = urllib.parse.unquote(m.group(1)).strip()
+
         # Si es un enlace directo de audio
-        if is_direct_audio_url(url):
+        if is_direct_audio_url(clean_url):
             async def stream_audio_url():
                 async with httpx.AsyncClient(follow_redirects=True, timeout=60) as client:
-                    async with client.stream("GET", url) as resp:
+                    async with client.stream("GET", clean_url) as resp:
                         async for chunk in resp.aiter_bytes():
                             yield chunk
 
@@ -437,7 +447,7 @@ async def download_proxy(
 
         try:
             downloaded_file, _ = await loop.run_in_executor(
-                None, _download_song_sync, url, base_target
+                None, _download_song_sync, clean_url, base_target
             )
 
             def file_iterator():

@@ -196,16 +196,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   seek: (time) => {
-    const { currentSong } = get();
+    const { currentSong, isOfflinePlayback, duration } = get();
     const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
-
-    if (audio && audio.src && audio.src !== window.location.href && !audio.src.endsWith('/index.html') && audio.duration) {
-      const safeTime = clamp(time, 0, audio.duration || 0);
-      audio.currentTime = safeTime;
-      set({ currentTime: safeTime });
-      useJamStore.getState().broadcastPlaybackChange('seek', safeTime);
-      return;
-    }
 
     const isYt = Boolean(
       currentSong?.youtube_id ||
@@ -213,7 +205,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       (currentSong?.url || '').includes('youtu.be')
     );
 
-    if (isYt) {
+    if (isYt && !isOfflinePlayback) {
       import('../services/yt-player.service').then(({ ytPlayerService }) => {
         ytPlayerService.seekTo(time);
       }).catch(() => undefined);
@@ -222,9 +214,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
 
-    if (!audio) return;
-    const safeTime = clamp(time, 0, audio.duration || 0);
-    audio.currentTime = safeTime;
+    if (audio && audio.src && audio.src !== window.location.href && !audio.src.endsWith('/index.html')) {
+      const maxDur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (duration || time);
+      const safeTime = clamp(time, 0, maxDur);
+      try {
+        audio.currentTime = safeTime;
+      } catch {}
+      set({ currentTime: safeTime });
+      useJamStore.getState().broadcastPlaybackChange('seek', safeTime);
+      return;
+    }
+
+    if (!audio) {
+      set({ currentTime: time });
+      return;
+    }
+
+    const maxDur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (duration || time);
+    const safeTime = clamp(time, 0, maxDur);
+    try {
+      audio.currentTime = safeTime;
+    } catch {}
     set({ currentTime: safeTime });
     useJamStore.getState().broadcastPlaybackChange('seek', safeTime);
   },

@@ -136,6 +136,11 @@ class YouTubePlayerService {
       store.setIsPlaying(true);
       this.startProgressTracker();
     }
+    // 3: BUFFERING
+    else if (state === 3) {
+      store.setIsPlaying(true);
+      this.startProgressTracker();
+    }
     // 2: PAUSED
     else if (state === 2) {
       store.setIsPlaying(false);
@@ -155,7 +160,7 @@ class YouTubePlayerService {
     }
   }
 
-  private startProgressTracker() {
+  public startProgressTracker() {
     this.stopProgressTracker();
     this.timer = window.setInterval(() => {
       if (!this.player || !this.isReady) return;
@@ -166,14 +171,14 @@ class YouTubePlayerService {
         if (Number.isFinite(cur) && cur >= 0) {
           store.setCurrentTime(cur);
         }
-        if (Number.isFinite(dur) && dur > 0 && Math.abs(store.duration - dur) > 1) {
+        if (Number.isFinite(dur) && dur > 0 && Math.abs(store.duration - dur) > 0.5) {
           store.setDuration(dur);
         }
       } catch {}
     }, 250);
   }
 
-  private stopProgressTracker() {
+  public stopProgressTracker() {
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
@@ -197,6 +202,7 @@ class YouTubePlayerService {
       if (typeof this.player.playVideo === 'function') {
         this.player.playVideo();
       }
+      this.startProgressTracker();
       return true;
     } catch (e) {
       console.warn('[YT Player] Error en executePlayVideo:', e);

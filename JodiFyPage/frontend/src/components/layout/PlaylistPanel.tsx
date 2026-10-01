@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { MagnifyingGlass, Queue, SlidersHorizontal, TerminalWindow, UsersThree, Users, GearSix, ArrowDown, Shuffle, MusicNotes } from '@phosphor-icons/react';
+import { MagnifyingGlass, Queue, SlidersHorizontal, TerminalWindow, UsersThree, Users, GearSix, ArrowDown, Shuffle, MusicNotes, CloudSlash } from '@phosphor-icons/react';
 import { Segmented } from '../ui/Segmented';
 import { IconButton } from '../ui/IconButton';
 import { Button } from '../ui/Button';
@@ -10,6 +10,7 @@ import { SongListSkeleton } from '../ui/Skeleton';
 import { EmptyState } from '../ui/EmptyState';
 import { useUiStore } from '../../store/ui.store';
 import { useLibraryStore, selectFilteredSongs } from '../../store/library.store';
+import { useBackendStore } from '../../store/backend.store';
 import { useUploadStore } from '../../store/upload.store';
 import { useQueueStore } from '../../store/queue.store';
 import { useSettingsStore } from '../../store/settings.store';
@@ -27,6 +28,9 @@ export function PlaylistPanel() {
   const ui = useUiStore();
   const { session } = useSession();
   const library = useLibraryStore();
+  const backendStatus = useBackendStore((s) => s.status);
+  const backendRetrying = useBackendStore((s) => s.retrying);
+  const checkBackendNow = useBackendStore((s) => s.checkNow);
   const queueCount = useQueueStore((s) => s.items.length);
   const settings = useSettingsStore();
   const { remainingMs, totalMs } = useSleepTimer();
@@ -226,11 +230,21 @@ export function PlaylistPanel() {
         {!library.loaded ? (
           <SongListSkeleton />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={MusicNotes}
-            title={library.currentTab === 'downloads' ? 'Nada descargado aún' : library.searchTerm ? 'Sin resultados' : 'Biblioteca vacía'}
-            description={library.currentTab === 'downloads' ? 'Descarga canciones para escucharlas sin conexión.' : undefined}
-          />
+          backendStatus === 'offline' && library.currentTab !== 'downloads' ? (
+            <EmptyState
+              icon={CloudSlash}
+              title="Servidor backend inactivo"
+              description="No se pudieron cargar las canciones del servidor. La app reconectará en tiempo real en cuanto el backend esté activo."
+              actionLabel={backendRetrying ? 'Comprobando…' : 'Reintentar ahora'}
+              onAction={() => void checkBackendNow(true)}
+            />
+          ) : (
+            <EmptyState
+              icon={MusicNotes}
+              title={library.currentTab === 'downloads' ? 'Nada descargado aún' : library.searchTerm ? 'Sin resultados' : 'Biblioteca vacía'}
+              description={library.currentTab === 'downloads' ? 'Descarga canciones para escucharlas sin conexión.' : undefined}
+            />
+          )
         ) : (
           <ul className="jf-song-list">
             {filtered.map((song, i) => (

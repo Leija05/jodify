@@ -17,6 +17,14 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
     const onPlay = () => {
       usePlayerStore.getState().setIsPlaying(true);
       equalizerApi.resume();
+      const eq = useEqStore.getState();
+      equalizerApi.syncAll({
+        enabled: eq.enabled,
+        bandGains: eq.values,
+        preamp: eq.preamp,
+        bassBoost: eq.bassBoost,
+        clarity: eq.clarity,
+      });
       const { broadcastPlaybackChange } = useJamStore.getState();
       broadcastPlaybackChange('play');
       syncNowPlaying(usePlayerStore.getState().currentSong, true);
@@ -29,12 +37,16 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
       tickListeningTime();
     };
     const onTimeUpdate = () => {
-      usePlayerStore.getState().setCurrentTime(audio.currentTime);
+      if (Number.isFinite(audio.currentTime)) {
+        usePlayerStore.getState().setCurrentTime(audio.currentTime);
+      }
       obsService.persist();
       tickListeningTime();
     };
     const onLoadedMetadata = () => {
-      usePlayerStore.getState().setDuration(audio.duration);
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        usePlayerStore.getState().setDuration(audio.duration);
+      }
     };
     const onEnded = () => {
       const { repeatMode, isLoop, next } = usePlayerStore.getState();
@@ -93,14 +105,24 @@ export function useVolumeBinding(): void {
 
 export function useEqBinding(): void {
   useEffect(() => {
-    const eq = useEqStore.getState();
-    equalizerApi.syncAll({
-      enabled: eq.enabled,
-      bandGains: eq.values,
-      preamp: eq.preamp,
-      bassBoost: eq.bassBoost,
-      clarity: eq.clarity,
+    const applyCurrentEq = () => {
+      const eq = useEqStore.getState();
+      equalizerApi.syncAll({
+        enabled: eq.enabled,
+        bandGains: eq.values,
+        preamp: eq.preamp,
+        bassBoost: eq.bassBoost,
+        clarity: eq.clarity,
+      });
+    };
+
+    applyCurrentEq();
+
+    const unsub = useEqStore.subscribe(() => {
+      applyCurrentEq();
     });
+
+    return unsub;
   }, []);
 }
 

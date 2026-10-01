@@ -9,6 +9,7 @@ import { useJamStore } from './store/jam.store';
 import { useSettingsStore } from './store/settings.store';
 import { useToastStore } from './store/toast.store';
 import { useEqStore } from './store/eq.store';
+import { useBackendStore } from './store/backend.store';
 import type { Song } from './lib/types';
 
 const songs: Song[] = [
@@ -43,6 +44,7 @@ function resetStores(): void {
     useSettingsStore.setState(useSettingsStore.getInitialState());
     useToastStore.setState(useToastStore.getInitialState());
     useEqStore.setState(useEqStore.getInitialState());
+    useBackendStore.setState(useBackendStore.getInitialState());
   });
   localStorage.clear();
 }

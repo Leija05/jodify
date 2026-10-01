@@ -13,8 +13,10 @@ import { DynamicBackground } from './components/layout/DynamicBackground';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { SongContextMenu } from './components/ui/SongContextMenu';
 import { Toaster } from './components/ui/Toaster';
+import { BackendStatusBanner } from './components/layout/BackendStatusBanner';
 import { AppErrorBoundary, GlobalErrorHandler } from './components/GlobalErrorHandler';
 import { usePlayerStore } from './store/player.store';
+import { useBackendStore } from './store/backend.store';
 
 const isElectron = typeof window !== 'undefined' && navigator.userAgent.includes('Electron');
 
@@ -30,6 +32,10 @@ function Root() {
   useShortcutHint();
   useMediaSession();
   useJamBoot();
+
+  useEffect(() => {
+    useBackendStore.getState().init();
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -72,6 +78,7 @@ function Root() {
       <audio ref={audioRef} id="jodify-audio" preload="metadata" hidden />
       <DynamicBackground />
       <GlobalErrorHandler />
+      <BackendStatusBanner />
       <ConfirmDialog />
       <SongContextMenu />
       <Toaster />

@@ -41,19 +41,40 @@ export function setAuthToken(token: string | null): void {
   }
 }
 
+export interface BackendStatusHook {
+  onSuccess: () => void;
+  onFailure: (status?: number, message?: string) => void;
+}
+
+let backendHook: BackendStatusHook | null = null;
+
+export function registerBackendHook(hook: BackendStatusHook | null): void {
+  backendHook = hook;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   const token = getAuthToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Error de conexión';
+    backendHook?.onFailure(undefined, msg);
+    throw err;
+  }
 
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) {
+    backendHook?.onSuccess();
+    return undefined as T;
+  }
 
   const text = await response.text();
   let json: unknown = null;
@@ -64,10 +85,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 
   if (!response.ok) {
+    if ([502, 503, 504].includes(response.status)) {
+      backendHook?.onFailure(response.status, response.statusText);
+    }
     const detail = (json as { detail?: unknown } | null)?.detail;
     const message = typeof detail === 'string' ? detail : text || response.statusText;
     throw new ApiError(message || 'Error de conexión', response.status);
   }
+
+  backendHook?.onSuccess();
   return json as T;
 }
 

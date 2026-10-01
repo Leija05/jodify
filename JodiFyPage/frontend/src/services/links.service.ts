@@ -90,7 +90,15 @@ export const linksService = {
   },
 
   getDownloadUrl(url: string, filename?: string): string {
-    const params = new URLSearchParams({ url });
+    let cleanUrl = (url || '').trim();
+    if (cleanUrl.includes('download-proxy?') || cleanUrl.includes('/links/download-proxy')) {
+      try {
+        const u = new URL(cleanUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+        const nested = u.searchParams.get('url');
+        if (nested) cleanUrl = nested;
+      } catch {}
+    }
+    const params = new URLSearchParams({ url: cleanUrl });
     if (filename) params.append('filename', filename);
     return `${API_BASE}/links/download-proxy?${params.toString()}`;
   },

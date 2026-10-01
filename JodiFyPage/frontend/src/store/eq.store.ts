@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { EQ_BANDS } from '../lib/constants';
+import { EQ_BANDS, DEFAULT_EQ_PRESETS } from '../lib/constants';
 import { useSettingsStore } from './settings.store';
 import { equalizerApi } from '../services/equalizer.service';
 
@@ -56,10 +56,11 @@ function smoothValues(values: number[]): number[] {
 
 export const useEqStore = create<EqState>((set, get) => {
   const settings = useSettingsStore.getState();
+  const initialPreset = settings.eqPreset || 'flat';
   const initialValues =
     settings.eqCustomValues && settings.eqCustomValues.length === EQ_BANDS.length
       ? settings.eqCustomValues
-      : Array(EQ_BANDS.length).fill(0);
+      : (DEFAULT_EQ_PRESETS[initialPreset] ?? settings.customEqPresets?.[initialPreset] ?? Array(EQ_BANDS.length).fill(0));
 
   const initialEnabled = readBool('jfEqEnabled', true);
   const initialPreamp = readNum('jfEqPreamp', 0);
@@ -80,7 +81,7 @@ export const useEqStore = create<EqState>((set, get) => {
   return {
     enabled: initialEnabled,
     values: initialValues,
-    activePreset: settings.eqPreset || 'flat',
+    activePreset: initialPreset,
     preamp: initialPreamp,
     bassBoost: initialBassBoost,
     clarity: initialClarity,
@@ -125,12 +126,10 @@ export const useEqStore = create<EqState>((set, get) => {
     applyPreset: (name) => {
       const presets = useSettingsStore.getState().customEqPresets;
       const pool = { ...presets } as Record<string, number[]>;
-      import('../lib/constants').then(({ DEFAULT_EQ_PRESETS }) => {
-        const values = DEFAULT_EQ_PRESETS[name] ?? pool[name] ?? Array(EQ_BANDS.length).fill(0);
-        set({ values, activePreset: name });
-        syncEngine();
-        useSettingsStore.getState().set({ eqPreset: name, eqCustomValues: values });
-      });
+      const values = DEFAULT_EQ_PRESETS[name] ?? pool[name] ?? Array(EQ_BANDS.length).fill(0);
+      set({ values, activePreset: name });
+      syncEngine();
+      useSettingsStore.getState().set({ eqPreset: name, eqCustomValues: values });
     },
 
     saveCustom: (name) => {
@@ -176,4 +175,29 @@ export const useEqStore = create<EqState>((set, get) => {
       useSettingsStore.getState().set({ eqPreset: '', eqCustomValues: values });
     },
   };
+});
+
+// Sincronizar automáticamente useEqStore cuando useSettingsStore cargue preferencias del usuario
+useSettingsStore.subscribe((settings, prev) => {
+  if (
+    settings.eqPreset !== prev.eqPreset ||
+    settings.eqCustomValues !== prev.eqCustomValues ||
+    settings.customEqPresets !== prev.customEqPresets
+  ) {
+    let newValues: number[] | null = null;
+    if (settings.eqCustomValues && settings.eqCustomValues.length === EQ_BANDS.length) {
+      newValues = settings.eqCustomValues;
+    } else if (settings.eqPreset) {
+      newValues = DEFAULT_EQ_PRESETS[settings.eqPreset] ?? settings.customEqPresets?.[settings.eqPreset] ?? null;
+    }
+    if (newValues) {
+      const current = useEqStore.getState();
+      const isDiff =
+        newValues.some((v, i) => v !== current.values[i]) || current.activePreset !== settings.eqPreset;
+      if (isDiff) {
+        useEqStore.setState({ values: newValues, activePreset: settings.eqPreset });
+        equalizerApi.syncAll({ bandGains: newValues });
+      }
+    }
+  }
 });

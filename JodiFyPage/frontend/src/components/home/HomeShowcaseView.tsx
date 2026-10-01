@@ -24,9 +24,11 @@ import {
   User,
   Disc,
   Keyboard,
+  CloudSlash,
 } from '@phosphor-icons/react';
 import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
+import { useBackendStore } from '../../store/backend.store';
 import { useQueueStore } from '../../store/queue.store';
 import { usePlaylistsStore } from '../../store/playlists.store';
 import { useUiStore } from '../../store/ui.store';
@@ -40,6 +42,7 @@ import { useIsAdmin, useIsDev, useSession } from '../../context/SessionContext';
 import { formatTime, resolveMediaUrl, resolveAvatarSrc } from '../../lib/utils';
 import { Avatar } from '../ui/Avatar';
 import { SongRow } from '../player/SongRow';
+import { EmptyState } from '../ui/EmptyState';
 import type { Song } from '../../lib/types';
 
 export function HomeShowcaseView() {
@@ -55,6 +58,9 @@ export function HomeShowcaseView() {
   const deletePlaylist = usePlaylistsStore((s) => s.deletePlaylist);
   const openContextMenu = useContextMenuStore((s) => s.show);
   const ui = useUiStore();
+  const backendStatus = useBackendStore((s) => s.status);
+  const backendRetrying = useBackendStore((s) => s.retrying);
+  const checkBackendNow = useBackendStore((s) => s.checkNow);
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'liked' | 'recent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -993,6 +999,27 @@ export function HomeShowcaseView() {
                 </div>
               ))}
             </div>
+          ) : filteredSongs.length === 0 ? (
+            /* ================= ESTADO VACÍO (OFFLINE O SIN RESULTADOS) ================= */
+            backendStatus === 'offline' ? (
+              <div style={{ padding: '40px 0' }}>
+                <EmptyState
+                  icon={CloudSlash}
+                  title="Servidor backend inactivo"
+                  description="No se pudieron cargar las canciones porque el backend no está disponible. La biblioteca se actualizará automáticamente en cuanto se restablezca la conexión."
+                  actionLabel={backendRetrying ? 'Comprobando…' : 'Reintentar ahora'}
+                  onAction={() => void checkBackendNow(true)}
+                />
+              </div>
+            ) : (
+              <div style={{ padding: '40px 0' }}>
+                <EmptyState
+                  icon={MusicNotes}
+                  title={searchQuery ? 'Sin resultados para la búsqueda' : 'No hay canciones en esta sección'}
+                  description={searchQuery ? 'Prueba con otro término de búsqueda o limpia el filtro.' : undefined}
+                />
+              </div>
+            )
           ) : (
             /* ================= MODO ESTÁNDAR / PLANO ================= */
             songViewMode === 'grid' ? (

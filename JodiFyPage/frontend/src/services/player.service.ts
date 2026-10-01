@@ -57,6 +57,13 @@ export function ensurePlaying(): void {
   const player = usePlayerStore.getState();
   const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
 
+  if (isYouTubeSong(player.currentSong) && !player.isOfflinePlayback && ytPlayerService.isPlayingVideo()) {
+    ytPlayerService.play();
+    player.setIsPlaying(true);
+    useJamStore.getState().broadcastPlaybackChange('play');
+    return;
+  }
+
   // Si hay audio HTML5 cargado (p. ej. stream directo en Electron o audio local)
   if (audio && audio.src && audio.src !== window.location.href && !audio.src.endsWith('/index.html')) {
     audio.play().then(() => player.setIsPlaying(true)).catch(() => undefined);
@@ -64,7 +71,7 @@ export function ensurePlaying(): void {
     return;
   }
 
-  if (isYouTubeSong(player.currentSong)) {
+  if (isYouTubeSong(player.currentSong) && !player.isOfflinePlayback) {
     ytPlayerService.play();
     player.setIsPlaying(true);
     useJamStore.getState().broadcastPlaybackChange('play');
@@ -80,6 +87,13 @@ export function pausePlayback(): void {
   const player = usePlayerStore.getState();
   const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
 
+  if (isYouTubeSong(player.currentSong) && !player.isOfflinePlayback && ytPlayerService.isPlayingVideo()) {
+    ytPlayerService.pause();
+    player.setIsPlaying(false);
+    useJamStore.getState().broadcastPlaybackChange('pause');
+    return;
+  }
+
   // Si hay audio HTML5 activo, pausarlo
   if (audio && audio.src && audio.src !== window.location.href && !audio.src.endsWith('/index.html')) {
     audio.pause();
@@ -88,7 +102,7 @@ export function pausePlayback(): void {
     return;
   }
 
-  if (isYouTubeSong(player.currentSong)) {
+  if (isYouTubeSong(player.currentSong) && !player.isOfflinePlayback) {
     ytPlayerService.pause();
     player.setIsPlaying(false);
     useJamStore.getState().broadcastPlaybackChange('pause');
@@ -149,7 +163,8 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
 
     if (audio) {
       audio.pause();
-      audio.src = '';
+      audio.removeAttribute('src');
+      audio.load();
     }
     await ytPlayerService.playVideo(ytId);
     player.setIsPlaying(true);

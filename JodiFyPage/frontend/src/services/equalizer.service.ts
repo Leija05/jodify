@@ -41,15 +41,19 @@ function applySettings(): void {
   if (!chain.enabled) {
     // Modo BYPASS: respuesta plana sin distorsión ni procesamiento
     for (const filter of chain.filters) {
+      filter.gain.value = 0;
       filter.gain.setTargetAtTime(0, t, timeConstant);
     }
     if (chain.preampNode) {
+      chain.preampNode.gain.value = 1.0;
       chain.preampNode.gain.setTargetAtTime(1.0, t, timeConstant);
     }
     if (chain.bassFilter) {
+      chain.bassFilter.gain.value = 0;
       chain.bassFilter.gain.setTargetAtTime(0, t, timeConstant);
     }
     if (chain.clarityFilter) {
+      chain.clarityFilter.gain.value = 0;
       chain.clarityFilter.gain.setTargetAtTime(0, t, timeConstant);
     }
     return;
@@ -58,38 +62,43 @@ function applySettings(): void {
   // Modo ACTIVO: aplicar 10 bandas + master preamp + bass boost + clarity
   chain.filters.forEach((filter, i) => {
     const gain = clamp(chain.bandGains[i] ?? 0, EQ_MIN, EQ_MAX);
+    filter.gain.value = gain;
     filter.gain.setTargetAtTime(gain, t, timeConstant);
   });
 
   if (chain.preampNode) {
     const preampDb = clamp(chain.preamp, -12, 12);
     const preampLinear = Math.pow(10, preampDb / 20);
+    chain.preampNode.gain.value = preampLinear;
     chain.preampNode.gain.setTargetAtTime(preampLinear, t, timeConstant);
   }
 
   if (chain.bassFilter) {
     // Bass Boost sub-grave dinámico en 80 Hz (hasta +10 dB)
     const boostDb = (clamp(chain.bassBoost, 0, 100) / 100) * 10;
+    chain.bassFilter.gain.value = boostDb;
     chain.bassFilter.gain.setTargetAtTime(boostDb, t, timeConstant);
   }
 
   if (chain.clarityFilter) {
     // Air/Clarity en 10 kHz+ (hasta +8 dB)
     const clarityDb = (clamp(chain.clarity, 0, 100) / 100) * 8;
+    chain.clarityFilter.gain.value = clarityDb;
     chain.clarityFilter.gain.setTargetAtTime(clarityDb, t, timeConstant);
   }
 }
 
 function ensureChain(): void {
-  if (chain.initialized) return;
+  if (chain.initialized && chain.context && chain.source) return;
   const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
   if (!audio) return;
   try {
     const Ctx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const context = new Ctx();
-    const source = context.createMediaElementSource(audio);
+    if (!Ctx) return;
+    const context = chain.context || new Ctx();
+    const source = chain.source || context.createMediaElementSource(audio);
 
     const analyser = context.createAnalyser();
     analyser.fftSize = 128;
@@ -163,12 +172,13 @@ function ensureChain(): void {
     chain.filters = filters;
     chain.clarityFilter = clarityFilter;
     chain.analyser = analyser;
-  } catch {
-    chain.context = null;
-    chain.analyser = null;
-  } finally {
     chain.initialized = true;
     applySettings();
+  } catch {
+    chain.context = null;
+    chain.source = null;
+    chain.analyser = null;
+    chain.initialized = false;
   }
 }
 
@@ -248,8 +258,13 @@ export const equalizerApi = {
   },
 
   resume(): void {
+    ensureChain();
     if (chain.context && chain.context.state === 'suspended') {
-      chain.context.resume().catch(() => undefined);
+      chain.context.resume().then(() => {
+        applySettings();
+      }).catch(() => undefined);
+    } else {
+      applySettings();
     }
   },
 };

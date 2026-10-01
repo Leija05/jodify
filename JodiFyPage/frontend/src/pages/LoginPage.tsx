@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
-import { ArrowLeft, CheckCircle, Eye, EyeSlash, ShieldCheck, Sparkle } from '@phosphor-icons/react';
+import { ArrowLeft, CheckCircle, Eye, EyeSlash, ShieldCheck, Sparkle, CloudSlash, ArrowClockwise } from '@phosphor-icons/react';
 import { useSession } from '../context/SessionContext';
 import { GUEST_HINT } from '../lib/constants';
 import { hasSavedToken } from '../lib/token';
 import { useToastStore } from '../store/toast.store';
+import { useBackendStore } from '../store/backend.store';
 import { TokenValidation } from '../components/auth/TokenValidation';
 import { usersService } from '../services/users.service';
 import type { DevAccessResult } from '../services/dev.service';
@@ -23,6 +24,12 @@ const item: Variants = {
 export function LoginPage() {
   const { session, applyUserSession, savedTokenLogin, applyDevAccess } = useSession();
   const navigate = useNavigate();
+
+  const backendStatus = useBackendStore((s) => s.status);
+  const backendWaking = useBackendStore((s) => s.isWaking);
+  const backendCountdown = useBackendStore((s) => s.countdown);
+  const backendRetrying = useBackendStore((s) => s.retrying);
+  const checkBackendNow = useBackendStore((s) => s.checkNow);
 
   useEffect(() => {
     if (session) {
@@ -180,6 +187,36 @@ export function LoginPage() {
                 )}
 
                 <form className="jf-login-form" onSubmit={submit}>
+                  {backendStatus === 'offline' && (
+                    <motion.div className="jf-login-backend-warning" variants={item}>
+                      <CloudSlash size={22} weight="duotone" className="jf-login-backend-warning-icon" />
+                      <div className="jf-login-backend-warning-body">
+                        <h5 className="jf-login-backend-warning-title">
+                          {backendWaking ? 'Servidor backend iniciando…' : 'Servidor backend no disponible'}
+                        </h5>
+                        <p className="jf-login-backend-warning-text">
+                          {backendWaking
+                            ? 'El servicio en Render está arrancando. Reconectará automáticamente sin recargar.'
+                            : 'No se puede conectar con el backend. Reconectando en tiempo real…'}
+                        </p>
+                        <div className="jf-login-backend-warning-footer">
+                          <span className="jf-login-backend-warning-timer">
+                            {backendRetrying ? 'Comprobando conexión…' : `Reintento automático en ${backendCountdown}s`}
+                          </span>
+                          <button
+                            type="button"
+                            className="jf-login-backend-warning-btn"
+                            onClick={() => void checkBackendNow(true)}
+                            disabled={backendRetrying}
+                          >
+                            <ArrowClockwise size={12} className={backendRetrying ? 'jf-spin' : ''} />
+                            <span>Reintentar ahora</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
                   <motion.div className="jf-input-group" variants={item}>
                     <input
                       className="jf-input jf-input--lg"

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Link as LinkIcon,
   Play,
+  Pause,
   Download,
   PaperPlaneTilt,
   CheckCircle,
@@ -110,11 +111,23 @@ export function LinkMusicModal() {
 
   const likedIds = useLibraryStore((s) => s.likedIds);
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const currentSong = usePlayerStore((s) => s.currentSong);
 
   const isTrackLiked = (songId: string | number) =>
     likedIds.some((id) => String(id) === String(songId));
   const isTrackDownloaded = (songId: string | number) =>
     downloadedIds.some((id) => String(id) === String(songId));
+
+  const isTrackPlaying = (track: { id?: string | number; youtube_id?: string; title: string; artist?: string; url?: string; stream_url?: string }) => {
+    if (!currentSong || !isPlaying) return false;
+    const v = toVirtualSong(track as any);
+    return (
+      String(currentSong.id) === String(v.id) ||
+      (Boolean(v.youtube_id) && currentSong.youtube_id === v.youtube_id) ||
+      (Boolean(currentSong.url) && Boolean(v.url) && currentSong.url === v.url)
+    );
+  };
 
   useEffect(() => {
     if (!isAdmin && !isDev && activeTab === 'suggestions') {
@@ -178,6 +191,15 @@ export function LinkMusicModal() {
 
   const handlePlayResolvedTrack = async (track: ResolvedTrack) => {
     const virtualSong = toVirtualSong(track);
+    if (
+      currentSong &&
+      (String(currentSong.id) === String(virtualSong.id) ||
+        (Boolean(virtualSong.youtube_id) && currentSong.youtube_id === virtualSong.youtube_id) ||
+        (Boolean(currentSong.url) && Boolean(virtualSong.url) && currentSong.url === virtualSong.url))
+    ) {
+      usePlayerStore.getState().togglePlay();
+      return;
+    }
     useLibraryStore.getState().upsertSong(virtualSong);
     await playSong(virtualSong);
     useToastStore.getState().show(`Reproduciendo «${track.title}»`, 'success', 2200);
@@ -256,7 +278,7 @@ export function LinkMusicModal() {
   };
 
   const handleDownloadFile = (track: ResolvedTrack) => {
-    const targetUrl = track.download_url || track.original_url || track.stream_url;
+    const targetUrl = track.webpage_url || track.original_url || track.stream_url || track.download_url || '';
     const downloadUrl = linksService.getDownloadUrl(targetUrl, `${track.title}.mp3`);
     const a = document.createElement('a');
     a.href = downloadUrl;
@@ -551,10 +573,23 @@ export function LinkMusicModal() {
                   <div className="jf-link-actions-grid">
                     <button
                       type="button"
-                      className="jf-btn jf-btn--primary jf-link-action-play"
+                      className={`jf-btn ${isTrackPlaying(resolved) ? 'jf-btn--secondary is-playing' : 'jf-btn--primary'} jf-link-action-play`}
                       onClick={() => handlePlayResolvedTrack(resolved)}
                     >
-                      <Play size={16} weight="fill" /> Reproducir ahora
+                      {isTrackPlaying(resolved) ? (
+                        <>
+                          <Pause size={16} weight="fill" /> Pausar
+                        </>
+                      ) : (
+                        <>
+                          <Play size={16} weight="fill" />{' '}
+                          {currentSong &&
+                          (String(currentSong.id) === String(toVirtualSong(resolved).id) ||
+                            (Boolean(resolved.youtube_id) && currentSong.youtube_id === resolved.youtube_id))
+                            ? 'Reanudar'
+                            : 'Reproducir ahora'}
+                        </>
+                      )}
                     </button>
 
                     <button
@@ -731,15 +766,19 @@ export function LinkMusicModal() {
                           {/* Botón Play directo */}
                           <button
                             type="button"
-                            className="jf-btn-icon"
-                            title="Reproducir ahora"
+                            className={`jf-btn-icon ${isTrackPlaying(item) ? 'is-active' : ''}`}
+                            title={isTrackPlaying(item) ? 'Pausar' : 'Reproducir ahora'}
                             onClick={async () => {
+                              if (isTrackPlaying(item)) {
+                                usePlayerStore.getState().togglePlay();
+                                return;
+                              }
                               useLibraryStore.getState().upsertSong(vSong);
                               await playSong(vSong);
                               useToastStore.getState().show(`Reproduciendo «${item.title}»`, 'success', 2000);
                             }}
                           >
-                            <Play size={14} weight="fill" />
+                            {isTrackPlaying(item) ? <Pause size={14} weight="fill" /> : <Play size={14} weight="fill" />}
                           </button>
 
                           {/* Botón Añadir a la cola */}
