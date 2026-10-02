@@ -5,13 +5,10 @@ import {
   StyleSheet,
   Animated,
   Easing,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { getProfileAnimationDefinition } from '../../lib/avatar';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface ProfileInspectionAnimationProps {
   animationId?: string | null | undefined;

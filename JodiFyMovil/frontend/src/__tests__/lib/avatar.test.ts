@@ -3,6 +3,7 @@ import {
   resolveAvatarUrl,
   getFrameDefinition,
   getThemeDefinition,
+  getProfileAnimationDefinition,
   AVATAR_FRAMES,
   PROFILE_THEMES,
 } from '../../lib/avatar';
@@ -62,4 +63,19 @@ describe('avatar utility', () => {
     const fallback = getThemeDefinition('non_existent_theme');
     expect(fallback.id).toBe('aurora');
   });
+
+  it('returns valid profile inspection animations', () => {
+    const astral = getProfileAnimationDefinition('astral-pulse');
+    expect(astral.id).toBe('astral-pulse');
+    expect(astral.accent).toBe('#38bdf8');
+    expect(astral.name).toContain('Astral');
+
+    const cyber = getProfileAnimationDefinition('cyber-glitch');
+    expect(cyber.id).toBe('cyber-glitch');
+    expect(cyber.badge).toBe('JodiFy Cyber');
+
+    const fallback = getProfileAnimationDefinition('unknown_animation');
+    expect(fallback.id).toBe('none');
+  });
 });
+
