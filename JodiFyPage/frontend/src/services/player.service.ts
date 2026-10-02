@@ -34,6 +34,64 @@ export function isYouTubeSong(song: Song | null | undefined): boolean {
 }
 
 let fadeRaf: number | null = null;
+let preloadedSongId: string | number | null = null;
+let preloadedBlobUrl: string | null = null;
+let preloadedAudio: HTMLAudioElement | null = null;
+
+export async function preloadNextTrack(song: Song | null | undefined): Promise<void> {
+  if (!song || song.id === preloadedSongId) return;
+  preloadedSongId = song.id;
+
+  try {
+    // 1. Si la pista está en IndexedDB (modo offline), crear blob URL caliente
+    const offline = (await getSongOffline(song.id).catch(() => null)) || (await findSongOffline(song).catch(() => null));
+    if (offline && offline.blob) {
+      if (preloadedBlobUrl) {
+        try {
+          URL.revokeObjectURL(preloadedBlobUrl);
+        } catch {}
+      }
+      preloadedBlobUrl = URL.createObjectURL(offline.blob);
+      if (!preloadedAudio && typeof document !== 'undefined') {
+        preloadedAudio = document.createElement('audio');
+        preloadedAudio.id = 'jodify-preloader';
+        preloadedAudio.preload = 'auto';
+        preloadedAudio.style.display = 'none';
+        document.body.appendChild(preloadedAudio);
+      }
+      if (preloadedAudio) {
+        preloadedAudio.src = preloadedBlobUrl;
+        preloadedAudio.load();
+      }
+      return;
+    }
+
+    // 2. Si es remota, inicializar preload en elemento silencioso para calentar buffer de red
+    const ytId = extractYoutubeId(song);
+    let candidate = '';
+    if (ytId) {
+      candidate = `${API_BASE}/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`;
+    } else if (song.url) {
+      candidate = (song.url.includes('search_query') || song.url.includes('spotify.com') || song.source === 'spotify')
+        ? `${API_BASE}/links/stream?url=${encodeURIComponent(song.url)}`
+        : resolveMediaUrl(song.url);
+    }
+
+    if (candidate && typeof document !== 'undefined') {
+      if (!preloadedAudio) {
+        preloadedAudio = document.createElement('audio');
+        preloadedAudio.id = 'jodify-preloader';
+        preloadedAudio.preload = 'auto';
+        preloadedAudio.style.display = 'none';
+        document.body.appendChild(preloadedAudio);
+      }
+      preloadedAudio.src = candidate;
+      preloadedAudio.load();
+    }
+  } catch (err) {
+    console.warn('[player.service] Falló precarga silenciosa:', err);
+  }
+}
 
 export function rampVolume(audio: HTMLAudioElement, target: number, durationMs: number): void {
   const player = usePlayerStore.getState();
@@ -160,8 +218,8 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
     player.setCurrentTime(0);
     player.setDuration(offlineSong.duration || song.duration || 0);
 
-    const blobUrl = URL.createObjectURL(offlineSong.blob);
-    if (player.blobUrl && player.blobUrl !== blobUrl) {
+    const blobUrl = (song.id === preloadedSongId && preloadedBlobUrl) ? preloadedBlobUrl : URL.createObjectURL(offlineSong.blob);
+    if (player.blobUrl && player.blobUrl !== blobUrl && player.blobUrl !== preloadedBlobUrl) {
       try {
         URL.revokeObjectURL(player.blobUrl);
       } catch {}

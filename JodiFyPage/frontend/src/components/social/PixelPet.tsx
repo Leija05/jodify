@@ -16,6 +16,7 @@ export interface PixelPetProps {
   className?: string;
   isMusicPlaying?: boolean;
   isWalking?: boolean;
+  isSleeping?: boolean;
   facing?: number;
   onClick?: () => void;
 }
@@ -34,6 +35,7 @@ export function PixelPet({
   className = '',
   isMusicPlaying: propIsPlaying,
   isWalking = false,
+  isSleeping = false,
   facing = 1,
   onClick,
 }: PixelPetProps) {
@@ -122,24 +124,30 @@ export function PixelPet({
         </span>
       ))}
 
-      {/* Indicador de música activa (notas musicales flotantes pixel) */}
-      {isMusicPlaying && (
+      {/* Indicador de música activa o estado de siesta */}
+      {isMusicPlaying && !isSleeping && (
         <span className="jf-pet-music-note" aria-hidden="true">
           ♪
+        </span>
+      )}
+
+      {isSleeping && (
+        <span className="jf-pet-sleep-snore" aria-hidden="true" title="Zzz... Durmiendo una siesta">
+          z z Z
         </span>
       )}
 
       {/* Renderizado Pixel Art SVG de Alta Fidelidad */}
       <div
         className={`jf-pixel-pet-inner ${bounce ? 'is-bouncing' : ''} ${
-          isWalking ? 'is-walking' : isMusicPlaying ? 'is-dancing' : 'is-idle'
+          isSleeping ? 'is-sleeping' : isWalking ? 'is-walking' : isMusicPlaying ? 'is-dancing' : 'is-idle'
         }`}
         style={{
           transform: facing === -1 ? 'scaleX(-1)' : 'scaleX(1)',
           transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
       >
-        <PixelPetSvg type={activeType} variant={activeVariant} isPlaying={isMusicPlaying} />
+        <PixelPetSvg type={activeType} variant={activeVariant} isPlaying={isMusicPlaying && !isSleeping} />
       </div>
 
       {showBadge && (

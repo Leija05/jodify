@@ -7,24 +7,29 @@ import { equalizerApi } from '../services/equalizer.service';
 import { obsService } from '../services/obs.service';
 import { useEqStore } from '../store/eq.store';
 import { ytPlayerService } from '../services/yt-player.service';
+import { preloadNextTrack } from '../services/player.service';
 
 export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasPreloadedRef = useRef(false);
 
   useEffect(() => {
     const getAudio = () => audioRef.current || document.querySelector<HTMLAudioElement>('audio#jodify-audio');
     let boundAudio: HTMLAudioElement | null = null;
 
     const onPlay = () => {
+      hasPreloadedRef.current = false;
       usePlayerStore.getState().setIsPlaying(true);
       equalizerApi.resume();
       const eq = useEqStore.getState();
+      const settings = useSettingsStore.getState();
       equalizerApi.syncAll({
         enabled: eq.enabled,
         bandGains: eq.values,
         preamp: eq.preamp,
         bassBoost: eq.bassBoost,
         clarity: eq.clarity,
+        volumeNormalization: settings.volumeNormalization,
       });
       const { broadcastPlaybackChange } = useJamStore.getState();
       broadcastPlaybackChange('play');
@@ -140,6 +145,15 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
           if (Math.abs(storeDur - el.duration) > 0.5) {
             usePlayerStore.getState().setDuration(el.duration);
           }
+          // Precarga inteligente sin brechas (Gapless Audio Preloading al 88% de la pista)
+          const ratio = el.currentTime / el.duration;
+          if (ratio >= 0.88 && !hasPreloadedRef.current) {
+            hasPreloadedRef.current = true;
+            const nextSong = usePlayerStore.getState().getNextSong();
+            if (nextSong) {
+              void preloadNextTrack(nextSong);
+            }
+          }
         }
       }
     }, 100);
@@ -172,22 +186,33 @@ export function useEqBinding(): void {
   useEffect(() => {
     const applyCurrentEq = () => {
       const eq = useEqStore.getState();
+      const settings = useSettingsStore.getState();
       equalizerApi.syncAll({
         enabled: eq.enabled,
         bandGains: eq.values,
         preamp: eq.preamp,
         bassBoost: eq.bassBoost,
         clarity: eq.clarity,
+        volumeNormalization: settings.volumeNormalization,
       });
     };
 
     applyCurrentEq();
 
-    const unsub = useEqStore.subscribe(() => {
+    const unsubEq = useEqStore.subscribe(() => {
       applyCurrentEq();
     });
 
-    return unsub;
+    const unsubSettings = useSettingsStore.subscribe((state, prev) => {
+      if (state.volumeNormalization !== prev.volumeNormalization) {
+        applyCurrentEq();
+      }
+    });
+
+    return () => {
+      unsubEq();
+      unsubSettings();
+    };
   }, []);
 }
 

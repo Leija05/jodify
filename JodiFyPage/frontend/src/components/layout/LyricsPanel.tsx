@@ -1,12 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { MusicNotes, ArrowsOut, Play } from '@phosphor-icons/react';
+import { MusicNotes, ArrowsOut, Play, Translate } from '@phosphor-icons/react';
 import { usePlayerStore } from '../../store/player.store';
 import { useUiStore } from '../../store/ui.store';
 import { useLyrics } from '../../hooks/useLyrics';
 import { useSettingsStore } from '../../store/settings.store';
 import { songArtistMeta, formatTime } from '../../lib/utils';
 import { isSynced } from '../../lib/lrc';
+import { getPhoneticTranscript } from '../../lib/romanization';
 
 export function LyricsPanel() {
   const song = usePlayerStore((s) => s.currentSong);
@@ -14,6 +15,7 @@ export function LyricsPanel() {
   const { lines, activeIndex, loading } = useLyrics(song?.name ?? null, songArtistMeta(song), song?.lyrics ?? null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const focusMode = useSettingsStore((s) => s.focusMode);
+  const [showPhonetic, setShowPhonetic] = useState(true);
 
   useEffect(() => {
     if (activeIndex < 0 || !scrollRef.current) return;
@@ -47,14 +49,25 @@ export function LyricsPanel() {
 
         <div className="jf-lyrics-head-actions">
           {song && (
-            <button
-              className="jf-lyrics-expand"
-              aria-label="Abrir en pantalla grande"
-              title="Pantalla grande (F)"
-              onClick={() => useUiStore.getState().open('fullscreen')}
-            >
-              <ArrowsOut size={14} />
-            </button>
+            <>
+              <button
+                className={`jf-lyrics-phonetic-btn ${showPhonetic ? 'is-active' : ''}`}
+                aria-label="Alternar lectura fonética Romaji"
+                title={`Fonética / Romaji: ${showPhonetic ? 'Activado' : 'Desactivado'}`}
+                onClick={() => setShowPhonetic((p) => !p)}
+              >
+                <Translate size={13} weight={showPhonetic ? 'bold' : 'regular'} />
+                <span>Romaji</span>
+              </button>
+              <button
+                className="jf-lyrics-expand"
+                aria-label="Abrir en pantalla grande"
+                title="Pantalla grande (F)"
+                onClick={() => useUiStore.getState().open('fullscreen')}
+              >
+                <ArrowsOut size={14} />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -83,6 +96,7 @@ export function LyricsPanel() {
             {lines.map((line, i) => {
               const active = synced && i === activeIndex;
               const seekable = line.time >= 0;
+              const phonetic = showPhonetic ? getPhoneticTranscript(line.text) : null;
               return (
                 <motion.div
                   key={i}
@@ -97,17 +111,24 @@ export function LyricsPanel() {
                       <span>{formatTime(line.time)}</span>
                     </span>
                   )}
-                  <motion.p
-                    className={`jf-lyrics-panel-line jf-lyrics-panel-line--${i} ${active ? 'is-active' : ''}`}
-                    animate={{
-                      opacity: !synced ? 0.88 : active ? 1 : 0.3,
-                      scale: active ? 1.04 : 1,
-                      x: active ? 4 : 0,
-                    }}
-                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    {line.text}
-                  </motion.p>
+                  <div className="jf-lyrics-panel-line-content">
+                    <motion.p
+                      className={`jf-lyrics-panel-line jf-lyrics-panel-line--${i} ${active ? 'is-active' : ''}`}
+                      animate={{
+                        opacity: !synced ? 0.88 : active ? 1 : 0.3,
+                        scale: active ? 1.04 : 1,
+                        x: active ? 4 : 0,
+                      }}
+                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      {line.text}
+                    </motion.p>
+                    {phonetic && (
+                      <span className="jf-lyrics-panel-phonetic">
+                        {phonetic}
+                      </span>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}

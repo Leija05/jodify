@@ -4822,5 +4822,261 @@
   }
 }
 
+/* ==========================================================================
+   28. PET SLEEP & SNACK INTERACTIONS
+   ========================================================================== */
+.jf-pet-sleep-snore {
+  position: absolute;
+  top: -14px;
+  right: -8px;
+  font-family: 'Press Start 2P', monospace, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: #a78bfa;
+  text-shadow: 0 0 8px rgba(167, 139, 250, 0.8), 0 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  animation: jfSnoreDrift 2.6s ease-in-out infinite;
+  z-index: 10;
+}
+
+@keyframes jfSnoreDrift {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.7);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1);
+  }
+  75% {
+    opacity: 0.85;
+    transform: translateY(-12px) translateX(4px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) translateX(8px) scale(1.25);
+  }
+}
+
+.jf-pixel-pet-inner.is-sleeping {
+  opacity: 0.82;
+  filter: brightness(0.92) contrast(0.95);
+  animation: jfSleepBreathe 3s ease-in-out infinite alternate;
+}
+
+@keyframes jfSleepBreathe {
+  0% {
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: scale(0.96, 0.93) translateY(3px) rotate(2deg);
+  }
+}
+
+.jf-pet-roam-btn--snack:hover {
+  background: rgba(245, 158, 11, 0.25);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.5);
+  transform: scale(1.15);
+}
+
+/* ==========================================================================
+   29. ACHIEVEMENTS & BADGES SHOWCASE
+   ========================================================================== */
+.jf-achievements-studio-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.jf-achievements-banner {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(0, 240, 255, 0.08) 100%);
+  border-color: rgba(255, 215, 0, 0.28);
+}
+
+.jf-achievements-pet-card {
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.jf-achievements-pet-card:hover {
+  border-color: rgba(255, 107, 107, 0.35);
+  background: rgba(255, 107, 107, 0.04);
+}
+
+.jf-achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 14px;
+}
+
+.jf-achievement-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.jf-achievement-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.jf-achievement-card.is-unlocked {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.08) 0%, rgba(255, 215, 0, 0.06) 100%);
+  border-color: rgba(0, 240, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.jf-achievement-card.is-unlocked::before {
+  background: linear-gradient(180deg, #00f0ff, #ffd700);
+}
+
+.jf-achievement-card.is-unlocked:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 240, 255, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 240, 255, 0.18);
+}
+
+.jf-achievement-card.is-locked {
+  opacity: 0.65;
+  filter: grayscale(0.4);
+}
+
+.jf-achievement-card.is-locked:hover {
+  opacity: 0.85;
+  filter: grayscale(0.1);
+}
+
+.jf-achievement-badge-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.jf-achievement-badge-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s ease;
+}
+
+.jf-achievement-card.is-unlocked .jf-achievement-badge-icon {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(0, 240, 255, 0.25));
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.35);
+}
+
+.jf-achievement-card.is-locked .jf-achievement-badge-icon {
+  background: rgba(255, 255, 255, 0.05);
+  color: #64748b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jf-achievement-category-tag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.jf-achievement-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.jf-achievement-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.jf-achievement-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.jf-achievement-xp {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  white-space: nowrap;
+}
+
+.jf-achievement-desc {
+  margin: 4px 0 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.jf-achievement-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  font-size: 10.5px;
+  gap: 8px;
+}
+
+.jf-achievement-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.jf-achievement-status.is-done {
+  color: #00f0ff;
+}
+
+.jf-achievement-status.is-pending {
+  color: #64748b;
+}
+
+.jf-achievement-badge-name {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+
 
 

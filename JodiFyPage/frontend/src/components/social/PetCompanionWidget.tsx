@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkle, Minus, Play, Pause, Gear } from '@phosphor-icons/react';
+import { Sparkle, Minus, Play, Pause, Gear, Cookie } from '@phosphor-icons/react';
 import { useSession } from '../../context/SessionContext';
 import { PixelPet } from './PixelPet';
 import { useUiStore } from '../../store/ui.store';
 import { usePlayerStore } from '../../store/player.store';
 import { useSettingsStore } from '../../store/settings.store';
+import { useAchievementsStore } from '../../store/achievements.store';
 
 export function PetCompanionWidget() {
   const { session } = useSession();
@@ -49,6 +50,48 @@ export function PetCompanionWidget() {
     if (petType === 'dragon') return 'Dragoncito';
     return 'Compañero';
   }, [petName, petType]);
+
+  // Estado de sueño tras inactividad prolongada (5 min sin música)
+  const [isSleeping, setIsSleeping] = useState(false);
+  const lastMusicRef = useRef(Date.now());
+  const marathonSecondsRef = useRef(0);
+  const unlockAchievement = useAchievementsStore((s) => s.unlock);
+  const feedPetSnack = useAchievementsStore((s) => s.feedPetSnack);
+  const addPetAffection = useAchievementsStore((s) => s.addPetAffection);
+
+  // Monitor de música, sueño tras 5 minutos y comprobación de logros en tiempo real
+  useEffect(() => {
+    if (isMusicPlaying) {
+      lastMusicRef.current = Date.now();
+      if (isSleeping) {
+        setIsSleeping(false);
+      }
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      // Si la música está pausada por más de 5 minutos, la mascota se duerme
+      if (!isMusicPlaying) {
+        if (now - lastMusicRef.current >= 5 * 60 * 1000 && !isSleeping) {
+          setIsSleeping(true);
+        }
+      } else {
+        // Logro Noctámbulo: Escuchar música entre las 2 AM y las 5 AM
+        const hour = new Date().getHours();
+        if (hour >= 2 && hour < 5) {
+          unlockAchievement('night_owl');
+        }
+
+        // Contador de maratón continua (5 horas = 18000 segundos)
+        marathonSecondsRef.current += 10;
+        if (marathonSecondsRef.current >= 18000) {
+          unlockAchievement('marathon');
+        }
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isMusicPlaying, isSleeping, unlockAchievement]);
 
   // Posición actual de la mascota en pantalla
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
@@ -246,6 +289,22 @@ export function PetCompanionWidget() {
                   <div className="jf-pet-roam-actions">
                     <button
                       type="button"
+                      className="jf-pet-roam-btn jf-pet-roam-btn--snack"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        feedPetSnack();
+                        popThought('🍪 ¡Ñam ñam! +20 Afecto ♥');
+                        if (isSleeping) {
+                          setIsSleeping(false);
+                          lastMusicRef.current = Date.now();
+                        }
+                      }}
+                      title="Dar snack (+20 Afecto)"
+                    >
+                      <Cookie size={11} weight="fill" />
+                    </button>
+                    <button
+                      type="button"
                       className="jf-pet-roam-btn"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -292,6 +351,17 @@ export function PetCompanionWidget() {
               isWalking={isWalking}
               facing={facing}
               isMusicPlaying={isMusicPlaying}
+              isSleeping={isSleeping}
+              onClick={() => {
+                if (isSleeping) {
+                  setIsSleeping(false);
+                  lastMusicRef.current = Date.now();
+                  popThought('¡Buenos días! ☀️🐾');
+                } else {
+                  addPetAffection(5);
+                  popThought('♥ ¡Gracias por el cariño! +5');
+                }
+              }}
             />
           </motion.div>
         ) : (

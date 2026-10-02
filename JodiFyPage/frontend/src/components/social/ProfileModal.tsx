@@ -29,7 +29,11 @@ import {
   GameController,
   Prohibit,
   SpeakerHigh,
+  Trophy,
+  Cookie,
 } from '@phosphor-icons/react';
+import { ACHIEVEMENTS_LIST } from '../../lib/achievements';
+import { useAchievementsStore } from '../../store/achievements.store';
 import { DiscordOfficialLogo } from '../ui/DiscordOfficialLogo';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
@@ -124,7 +128,12 @@ export function ProfileModal() {
   const toast = useToastStore();
   const librarySongs = useLibraryStore((s) => s.songs);
 
-  const [activeTab, setActiveTab] = useState<'showcase' | 'avatar' | 'style' | 'pet' | 'identity' | 'account'>('showcase');
+  const [activeTab, setActiveTab] = useState<'showcase' | 'avatar' | 'style' | 'pet' | 'achievements' | 'identity' | 'account'>('showcase');
+  const unlockedAchievements = useAchievementsStore((s) => s.unlocked);
+  const affectionPoints = useAchievementsStore((s) => s.affectionPoints);
+  const snackCount = useAchievementsStore((s) => s.snackCount);
+  const feedPetSnack = useAchievementsStore((s) => s.feedPetSnack);
+  const achStats = useAchievementsStore((s) => s.getStats());
   const [profile, setProfile] = useState<UserAccess | null>(null);
   const [discord, setDiscord] = useState<DiscordProfile | null>(null);
   const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number } | null>(null);
@@ -537,6 +546,13 @@ export function ProfileModal() {
               </button>
               <button
                 type="button"
+                className={`jf-profile-mode-btn ${activeTab === 'achievements' ? 'is-active' : ''}`}
+                onClick={() => setActiveTab('achievements')}
+              >
+                <Trophy size={16} /> Insignias y Logros
+              </button>
+              <button
+                type="button"
                 className={`jf-profile-mode-btn ${activeTab === 'identity' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('identity')}
               >
@@ -552,7 +568,7 @@ export function ProfileModal() {
             </div>
 
             {/* LIVE PREVIEW BANNER (Visible en pestañas de personalización) */}
-            {activeTab !== 'showcase' && activeTab !== 'account' && (
+            {activeTab !== 'showcase' && activeTab !== 'account' && activeTab !== 'achievements' && (
               <div
                 className={`jf-studio-live-preview ${
                   profileBgMode === 'gradient'
@@ -2041,6 +2057,117 @@ export function ProfileModal() {
                         <span>Guardar Cambios</span>
                       </Button>
                     </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* TAB: INSIGNIAS Y LOGROS DESBLOQUEABLES */}
+              {activeTab === 'achievements' && (
+                <motion.div
+                  key="achievements"
+                  className="jf-profile-editor jf-achievements-studio-root"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {/* Banner de Progreso de Insignias y Recompensas */}
+                  <div className="jf-pet-banner jf-achievements-banner">
+                    <div className="jf-pet-banner-header">
+                      <div className="jf-pet-banner-title">
+                        <Trophy size={22} weight="duotone" className="jf-pet-banner-icon" style={{ color: '#ffd700' }} />
+                        <span>Sala de Logros e Insignias JodiFy</span>
+                        <span className="jf-pet-level-pill" style={{ background: 'rgba(255, 215, 0, 0.15)', color: '#ffd700', borderColor: 'rgba(255, 215, 0, 0.35)' }}>
+                          +{achStats.totalXp} XP Acumulados
+                        </span>
+                      </div>
+                      <div className="jf-pet-banner-stats">
+                        <span>
+                          {achStats.unlockedCount} de {achStats.total} ({achStats.percent}%) Desbloqueados
+                        </span>
+                      </div>
+                    </div>
+                    <p className="jf-pet-banner-desc">
+                      Consigue medallas con recompensas de XP escuchando música a altas horas, maratones continuas, cuidando a tu mascota o manteniendo tu colección offline.
+                    </p>
+                    <div className="jf-unlock-progress-bar" style={{ height: '8px', marginTop: '12px' }}>
+                      <div className="jf-unlock-progress-fill" style={{ width: `${achStats.percent}%`, background: 'linear-gradient(90deg, #ffd700, #00f0ff)' }} />
+                    </div>
+                  </div>
+
+                  {/* Resumen de Cuidado de Mascota & Snacks */}
+                  <div className="jf-achievements-pet-card">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 107, 107, 0.12)', border: '1px solid rgba(255, 107, 107, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Heart size={26} weight="fill" style={{ color: '#ff6b6b' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#fff' }}>Afecto de Mascota & Vínculo</h4>
+                          <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: '#00f0ff', fontWeight: 700 }}>
+                            {affectionPoints} Puntos
+                          </span>
+                        </div>
+                        <p style={{ margin: '3px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
+                          Alimenta o interactúa con tu compañero para ganar afecto y desbloquear el logro "Amor de Mascota" (Snacks comidos: {snackCount}).
+                        </p>
+                      </div>
+                      <Button
+                        variant="glass"
+                        size="sm"
+                        onClick={() => {
+                          feedPetSnack();
+                          toast.show('🍪 ¡Le has dado un snack a tu compañero! (+20 Afecto)', 'success');
+                        }}
+                      >
+                        <Cookie size={14} weight="fill" style={{ color: '#f59e0b' }} />
+                        <span>Dar Snack</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* GRID DE LOGROS */}
+                  <div className="jf-achievements-grid">
+                    {ACHIEVEMENTS_LIST.map((ach) => {
+                      const unlocked = Boolean(unlockedAchievements[ach.id]);
+                      const unlockedData = unlockedAchievements[ach.id];
+                      return (
+                        <div
+                          key={ach.id}
+                          className={`jf-achievement-card ${unlocked ? 'is-unlocked' : 'is-locked'}`}
+                        >
+                          <div className="jf-achievement-badge-col">
+                            <div className="jf-achievement-badge-icon">
+                              {unlocked ? <Trophy size={20} weight="fill" /> : <Lock size={18} weight="bold" />}
+                            </div>
+                            <span className="jf-achievement-category-tag">{ach.category}</span>
+                          </div>
+
+                          <div className="jf-achievement-content">
+                            <div className="jf-achievement-title-row">
+                              <h5 className="jf-achievement-title">{ach.title}</h5>
+                              <span className="jf-achievement-xp">+{ach.xpReward} XP</span>
+                            </div>
+                            <p className="jf-achievement-desc">{ach.description}</p>
+                            <div className="jf-achievement-footer">
+                              {unlocked ? (
+                                <span className="jf-achievement-status is-done">
+                                  <Check size={11} weight="bold" /> Desbloqueado{' '}
+                                  {unlockedData?.unlockedAt
+                                    ? `· ${new Date(unlockedData.unlockedAt).toLocaleDateString()}`
+                                    : ''}
+                                </span>
+                              ) : (
+                                <span className="jf-achievement-status is-pending">
+                                  <Lock size={11} weight="bold" /> Por desbloquear
+                                </span>
+                              )}
+                              <span className="jf-achievement-badge-name">Insignia: {ach.badge}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}

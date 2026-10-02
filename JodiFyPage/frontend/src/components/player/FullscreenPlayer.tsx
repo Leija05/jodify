@@ -18,6 +18,7 @@ import {
   Sparkle,
   SpeakerHigh,
   SpeakerSimpleX,
+  Translate,
 } from '@phosphor-icons/react';
 import { Modal } from '../ui/Modal';
 import { Slider } from '../ui/Slider';
@@ -31,6 +32,9 @@ import { SongCover } from '../ui/SongCover';
 import { ensurePlaying, pausePlayback } from '../../services/player.service';
 import { toggleLikeCurrent } from '../../services/player-shortcuts';
 import { FullscreenVisualizer } from './FullscreenVisualizer';
+import { useSongCoverGradient } from '../../lib/colorExtractor';
+import { getPhoneticTranscript } from '../../lib/romanization';
+import { useAchievementsStore } from '../../store/achievements.store';
 
 type FullscreenMode = 'studio' | 'lyrics' | 'visualizer';
 
@@ -45,6 +49,16 @@ export function FullscreenPlayer() {
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const [isIdle, setIsIdle] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [showPhonetic, setShowPhonetic] = useState(true);
+
+  const coverColors = useSongCoverGradient(song);
+
+  // Desbloquear logro de Estrella de Karaoke al entrar a modo Sing / letras
+  useEffect(() => {
+    if (mode === 'lyrics') {
+      useAchievementsStore.getState().unlock('karaoke_hero');
+    }
+  }, [mode]);
 
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
@@ -124,6 +138,11 @@ export function FullscreenPlayer() {
       {song && (
         <div
           className={`jf-fullscreen ${cinemaMode ? 'is-cinema' : ''} ${isIdle ? 'is-idle' : ''} mode--${mode}`}
+          style={{
+            '--jf-cover-primary': coverColors.primary,
+            '--jf-cover-secondary': coverColors.secondary,
+            '--jf-cover-glow': coverColors.glowColor,
+          } as React.CSSProperties}
           onMouseMove={resetIdleTimer}
           onClick={resetIdleTimer}
         >
@@ -305,19 +324,23 @@ export function FullscreenPlayer() {
                           <span className="jf-lyrics-subhint">Siente la vibración del sonido puro.</span>
                         </div>
                       ) : (
-                        lines.map((line, i) => (
-                          <p
-                            key={i}
-                            className={`jf-lyrics-line jf-lyrics-line--${i} ${
-                              i === activeIndex ? 'is-active' : ''
-                            } ${i < activeIndex ? 'is-past' : ''} ${line.time >= 0 ? 'is-seekable' : ''}`}
-                            onClick={() => {
-                              if (line.time >= 0) usePlayerStore.getState().seek(line.time);
-                            }}
-                          >
-                            {line.text}
-                          </p>
-                        ))
+                        lines.map((line, i) => {
+                          const phonetic = showPhonetic ? getPhoneticTranscript(line.text) : null;
+                          return (
+                            <div
+                              key={i}
+                              className={`jf-lyrics-line jf-lyrics-line--${i} ${
+                                i === activeIndex ? 'is-active' : ''
+                              } ${i < activeIndex ? 'is-past' : ''} ${line.time >= 0 ? 'is-seekable' : ''}`}
+                              onClick={() => {
+                                if (line.time >= 0) usePlayerStore.getState().seek(line.time);
+                              }}
+                            >
+                              <span className="jf-lyrics-text">{line.text}</span>
+                              {phonetic && <span className="jf-lyrics-phonetic">{phonetic}</span>}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -340,6 +363,15 @@ export function FullscreenPlayer() {
                       <h2 className="jf-sing-title">{song.name}</h2>
                       <p className="jf-sing-artist">{songArtistMeta(song) || 'JodiFy'}</p>
                     </div>
+                    <button
+                      type="button"
+                      className={`jf-sing-phonetic-toggle ${showPhonetic ? 'is-active' : ''}`}
+                      onClick={() => setShowPhonetic((p) => !p)}
+                      title="Alternar transcripción fonética (Romaji / Pinyin / Hangul RR)"
+                    >
+                      <Translate size={14} weight="bold" />
+                      <span>Romaji: {showPhonetic ? 'ON' : 'OFF'}</span>
+                    </button>
                   </div>
 
                   <div className="jf-fs-lyrics-container jf-fs-lyrics--expanded" ref={lyricsRef} aria-live="polite">
@@ -354,19 +386,23 @@ export function FullscreenPlayer() {
                         <p className="jf-lyrics-hint">No hay letras sincronizadas para esta canción.</p>
                       </div>
                     ) : (
-                      lines.map((line, i) => (
-                        <p
-                          key={i}
-                          className={`jf-lyrics-line jf-lyrics-line--${i} jf-lyrics-line--giant ${
-                            i === activeIndex ? 'is-active' : ''
-                          } ${i < activeIndex ? 'is-past' : ''} ${line.time >= 0 ? 'is-seekable' : ''}`}
-                          onClick={() => {
-                            if (line.time >= 0) usePlayerStore.getState().seek(line.time);
-                          }}
-                        >
-                          {line.text}
-                        </p>
-                      ))
+                      lines.map((line, i) => {
+                        const phonetic = showPhonetic ? getPhoneticTranscript(line.text) : null;
+                        return (
+                          <div
+                            key={i}
+                            className={`jf-lyrics-line jf-lyrics-line--${i} jf-lyrics-line--giant ${
+                              i === activeIndex ? 'is-active' : ''
+                            } ${i < activeIndex ? 'is-past' : ''} ${line.time >= 0 ? 'is-seekable' : ''}`}
+                            onClick={() => {
+                              if (line.time >= 0) usePlayerStore.getState().seek(line.time);
+                            }}
+                          >
+                            <span className="jf-lyrics-text">{line.text}</span>
+                            {phonetic && <span className="jf-lyrics-phonetic">{phonetic}</span>}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </motion.div>

@@ -19,6 +19,7 @@ import yt_dlp
 from ...core.database import col, sid
 from ...services.audio_streaming import serve_audio, store_audio
 from ...services.link_resolver import is_direct_audio_url, resolve_link
+from ...services.stream_cache import global_stream_cache, global_import_manager
 from ..dependencies import OptionalUser, require_admin
 
 logger = logging.getLogger("jodify.links_router")
@@ -245,7 +246,7 @@ async def approve_and_add_to_database(
     return {"success": True, "song": song_view(song_doc)}
 
 
-_STREAM_CACHE: dict[str, tuple[str, float, dict[str, str]]] = {}
+# Reemplazado por global_stream_cache (LRUAudioStreamCache con TTL de 4 horas y normalización)
 
 
 def _select_progressive_audio(target_info: dict[str, Any]) -> str | None:
@@ -285,11 +286,12 @@ def _select_progressive_audio(target_info: dict[str, Any]) -> str | None:
 
 
 def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
+    cached = global_stream_cache.get(url)
+    if cached is not None:
+        cached_url, cached_headers, _ = cached
+        return cached_url, cached_headers
+
     now = time.time()
-    if url in _STREAM_CACHE:
-        cached_url, exp, cached_headers = _STREAM_CACHE[url]
-        if now < exp:
-            return cached_url, cached_headers
 
     is_search = url.startswith("ytsearch")
     cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
@@ -336,7 +338,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 if stream_url:
                     raw_headers = target_info.get("http_headers") or info.get("http_headers") or {}
                     headers_dict = {str(k): str(v) for k, v in raw_headers.items()}
-                    _STREAM_CACHE[url] = (stream_url, now + 3600, headers_dict)
+                    global_stream_cache.put(url, stream_url, headers=headers_dict, ttl=14400.0)
                     return stream_url, headers_dict
         except Exception as exc:
             last_error = exc
@@ -368,6 +370,48 @@ async def match_track(
         "success": True,
         "youtube_id": yt_id,
         "url": f"https://www.youtube.com/watch?v={yt_id}",
+    }
+
+
+@router.get("/cache-stats")
+async def get_stream_cache_stats() -> dict[str, Any]:
+    """Estadísticas de la caché LRU de streaming (hits, misses, tamaño y memoria)."""
+    return {
+        "success": True,
+        "stats": global_stream_cache.get_stats(),
+    }
+
+
+class ImportQueueRequest(BaseModel):
+    items: list[dict[str, Any]] = Field(..., min_items=1, max_items=500)
+
+
+@router.post("/import-queue")
+async def create_import_queue_task(
+    body: ImportQueueRequest,
+    current_user: OptionalUser = None,
+) -> dict[str, Any]:
+    """Crea una tarea en segundo plano para procesar e importar listas masivas (100+ temas) sin bloquear HTTP."""
+    username = current_user.get("username") if current_user else "Usuario"
+    task_id = global_import_manager.create_task(body.items, created_by=username)
+    return {
+        "success": True,
+        "task_id": task_id,
+        "total": len(body.items),
+        "status": "queued",
+        "message": f"Tarea de importación iniciada en segundo plano para {len(body.items)} canciones",
+    }
+
+
+@router.get("/import-queue/{task_id}")
+async def get_import_queue_task(task_id: str) -> dict[str, Any]:
+    """Consulta el progreso y estado en tiempo real de una tarea de importación masiva."""
+    task = global_import_manager.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarea de importación no encontrada")
+    return {
+        "success": True,
+        "task": task,
     }
 
 
@@ -412,7 +456,7 @@ async def stream_audio_link(
 
         if resp.status_code >= 400:
             # Cache bust si el URL expiró o fue rechazado y reintentar una vez
-            _STREAM_CACHE.pop(url, None)
+            global_stream_cache.invalidate(url)
             await resp.aclose()
             await client.aclose()
 

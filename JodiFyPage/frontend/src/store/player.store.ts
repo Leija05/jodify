@@ -44,6 +44,7 @@ export interface PlayerState {
   next: () => Promise<void>;
   previous: () => Promise<void>;
   seek: (time: number) => void;
+  getNextSong: () => Song | null;
 }
 
 function randomIndex(len: number, exclude: number): number {
@@ -224,6 +225,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     ytPlayerService.seekTo(time);
     set({ currentTime: time });
+  },
+
+  getNextSong: () => {
+    const { currentSong, isShuffle } = get();
+    const queue = useQueueStore.getState().items;
+    if (queue.length > 0) return queue[0];
+
+    const library = useLibraryStore.getState();
+    const isOffline = (typeof navigator !== 'undefined' && !navigator.onLine) || get().isOfflinePlayback;
+    const pool = (library.currentTab === 'downloads' || isOffline)
+      ? library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)))
+      : library.currentTab === 'personal'
+        ? library.songs.filter((s) => library.likedIds.some((id) => String(id) === String(s.id)))
+        : library.songs;
+    if (pool.length === 0) return null;
+
+    const idx = pool.findIndex((s) => String(s.id) === String(currentSong?.id));
+    if (idx < 0) return pool[0] || null;
+    if (isShuffle) {
+      return pool[randomIndex(pool.length, idx)] || null;
+    }
+    return pool[(idx + 1) % pool.length] || null;
   },
 }));
 

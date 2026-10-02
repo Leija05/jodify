@@ -15,6 +15,8 @@ interface EqChain {
   bassBoost: number;
   clarity: number;
   bandGains: number[];
+  compressorNode: DynamicsCompressorNode | null;
+  volumeNormalization: boolean;
 }
 
 const chain: EqChain = {
@@ -24,6 +26,7 @@ const chain: EqChain = {
   bassFilter: null,
   filters: [],
   clarityFilter: null,
+  compressorNode: null,
   analyser: null,
   initialized: false,
   enabled: true,
@@ -31,6 +34,7 @@ const chain: EqChain = {
   bassBoost: 0,
   clarity: 0,
   bandGains: Array(EQ_BANDS.length).fill(0),
+  volumeNormalization: false,
 };
 
 function applySettings(): void {
@@ -86,6 +90,21 @@ function applySettings(): void {
     chain.clarityFilter.gain.value = clarityDb;
     chain.clarityFilter.gain.setTargetAtTime(clarityDb, t, timeConstant);
   }
+
+  if (chain.compressorNode) {
+    if (chain.volumeNormalization) {
+      // Normalización de volumen activa: compresión dinámica suave (ReplayGain)
+      chain.compressorNode.threshold.setTargetAtTime(-22, t, timeConstant);
+      chain.compressorNode.knee.setTargetAtTime(10, t, timeConstant);
+      chain.compressorNode.ratio.setTargetAtTime(4.0, t, timeConstant);
+      chain.compressorNode.attack.setTargetAtTime(0.003, t, timeConstant);
+      chain.compressorNode.release.setTargetAtTime(0.25, t, timeConstant);
+    } else {
+      // Bypass transparente: ganancia 1:1 sin modificación de dinámica
+      chain.compressorNode.threshold.setTargetAtTime(0, t, timeConstant);
+      chain.compressorNode.ratio.setTargetAtTime(1.0, t, timeConstant);
+    }
+  }
 }
 
 function ensureChain(): void {
@@ -126,6 +145,14 @@ function ensureChain(): void {
     clarityFilter.frequency.value = 10000;
     clarityFilter.gain.value = 0;
 
+    // Nodo de compresión / Normalización de volumen dinámico
+    const compressorNode = context.createDynamicsCompressor();
+    compressorNode.threshold.value = 0;
+    compressorNode.knee.value = 10;
+    compressorNode.ratio.value = 1.0;
+    compressorNode.attack.value = 0.003;
+    compressorNode.release.value = 0.25;
+
     // Conectar la cadena de audio
     source.connect(preampNode);
     preampNode.connect(bassFilter);
@@ -134,7 +161,8 @@ function ensureChain(): void {
       filters[i].connect(filters[i + 1]);
     }
     filters[filters.length - 1].connect(clarityFilter);
-    clarityFilter.connect(analyser);
+    clarityFilter.connect(compressorNode);
+    compressorNode.connect(analyser);
     analyser.connect(context.destination);
 
     context.onstatechange = () => {
@@ -232,12 +260,19 @@ export const equalizerApi = {
     applySettings();
   },
 
+  setVolumeNormalization(enabled: boolean): void {
+    ensureChain();
+    chain.volumeNormalization = enabled;
+    applySettings();
+  },
+
   syncAll(opts: {
     enabled?: boolean;
     bandGains?: number[];
     preamp?: number;
     bassBoost?: number;
     clarity?: number;
+    volumeNormalization?: boolean;
   }): void {
     ensureChain();
     if (opts.enabled !== undefined) chain.enabled = opts.enabled;
@@ -245,6 +280,7 @@ export const equalizerApi = {
     if (opts.preamp !== undefined) chain.preamp = opts.preamp;
     if (opts.bassBoost !== undefined) chain.bassBoost = opts.bassBoost;
     if (opts.clarity !== undefined) chain.clarity = opts.clarity;
+    if (opts.volumeNormalization !== undefined) chain.volumeNormalization = opts.volumeNormalization;
     applySettings();
   },
 
