@@ -52,7 +52,7 @@ export function resolveSongTitle(song: Song): string {
   return rawName || 'Sin título';
 }
 
-export function resolveArtist(song: Song): string {
+export function resolveArtist(song: Song): string | null {
   const rawArtist = (song.artist || '').trim();
   const rawName = (song.name || '').trim();
 

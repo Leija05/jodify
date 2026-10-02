@@ -46,11 +46,24 @@ export async function sendHeartbeat(
 export async function updateUserProfile(
   username: string,
   data: {
-    display_name?: string;
-    new_username?: string;
-    avatar_url?: string;
-    avatar_source?: 'custom' | 'discord';
-    discord_id?: string;
+    display_name?: string | null | undefined;
+    new_username?: string | null | undefined;
+    avatar_url?: string | null | undefined;
+    avatar_source?: ('custom' | 'discord' | 'presets' | 'initials') | undefined;
+    discord_id?: string | null | undefined;
+    bio?: string | undefined;
+    theme?: string | undefined;
+    avatar_frame?: string | undefined;
+    accent_color?: string | null | undefined;
+    profile_effect?: string | undefined;
+    profile_animation?: string | undefined;
+    profile_bg_mode?: string | undefined;
+    custom_gradient_start?: string | undefined;
+    custom_gradient_end?: string | undefined;
+    vibe?: string | null | undefined;
+    custom_badge?: string | null | undefined;
+    anthem_song_id?: number | string | null | undefined;
+    anthem_song_name?: string | null | undefined;
   }
 ): Promise<CommunityUser> {
   return apiFetch<CommunityUser>(`/api/users/${encodeURIComponent(username)}/profile`, {

@@ -26,7 +26,7 @@ export async function apiFetch<T>(
     timeoutMs?: number;
   } = {}
 ): Promise<T> {
-  const { method = 'GET', body, auth = false, headers: customHeaders, token: explicitToken, timeoutMs = 10000 } = options;
+  const { method = 'GET', body, auth = false, headers: customHeaders, token: explicitToken, timeoutMs = 30000 } = options;
   const headers: Record<string, string> = { Accept: 'application/json', ...customHeaders };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (explicitToken) {

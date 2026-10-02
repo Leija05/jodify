@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Image,
   Alert,
   Switch,
 } from 'react-native';
@@ -24,7 +23,8 @@ import { useEqStore } from '@stores/eq.store';
 import { updateLabel, useUpdateStore } from '@stores/update.store';
 import { useUiStore } from '@stores/ui.store';
 import { UserProfileModal } from '@components/profile/UserProfileModal';
-import { AccountDetailsModal } from '@components/profile/AccountDetailsModal';
+import { EditProfileModal } from '@components/profile/EditProfileModal';
+import { UserAvatar } from '@components/ui/UserAvatar';
 import { colors, typography, radius, gradients } from '@theme';
 
 const QUICK_PRESETS = [
@@ -82,13 +82,6 @@ export default function SettingsScreen() {
     }
   }, [role]);
 
-  const userAvatarUri = useMemo(() => {
-    if (!user) return null;
-    if (user.avatar_source === 'discord' && user.discord_id) {
-      return `https://cdn.discordapp.com/embed/avatars/${parseInt(user.discord_id.slice(-2) || '0', 10) % 5}.png`;
-    }
-    return user.avatar_url || null;
-  }, [user]);
 
   const formattedCreatedAt = useMemo(() => {
     if (!user?.created_at) return 'Miembro fundador';
@@ -136,20 +129,9 @@ export default function SettingsScreen() {
         <DoubleBezelCard style={styles.card} elevated innerPadding={0}>
           {/* Top Hero: Avatar, Names, Role, Edit Pill */}
           <View style={styles.identityHero}>
-            <View style={styles.identityAvatarWrap}>
-              {userAvatarUri ? (
-                <Image source={{ uri: userAvatarUri }} style={styles.identityAvatarImg} />
-              ) : (
-                <LinearGradient colors={gradients.play} style={styles.identityAvatarPlaceholder}>
-                  <Text style={styles.identityAvatarLetter}>
-                    {(user.display_name || user.username).slice(0, 1).toUpperCase()}
-                  </Text>
-                </LinearGradient>
-              )}
-              <View style={[styles.identityRoleBadge, { backgroundColor: roleMeta.bg, borderColor: roleMeta.color }]}>
-                <Ionicons name={roleMeta.icon} size={12} color={roleMeta.color} />
-              </View>
-            </View>
+            <PressableFluid onPress={() => setProfileOpen(true)} haptic="light" style={styles.identityAvatarWrap}>
+              <UserAvatar user={user} size={58} showPresence presence="online" />
+            </PressableFluid>
 
             <View style={styles.identityInfo}>
               <View style={styles.identityNameRow}>
@@ -577,7 +559,7 @@ export default function SettingsScreen() {
       }}
     />
 
-    <AccountDetailsModal
+    <EditProfileModal
       visible={accountDetailsOpen && !!user}
       onClose={() => setAccountDetailsOpen(false)}
     />

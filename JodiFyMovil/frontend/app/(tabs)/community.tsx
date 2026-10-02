@@ -1,17 +1,31 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View, Image, ActivityIndicator } from 'react-native';
+import {
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+  ActivityIndicator,
+} from 'react-native';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import { EmptyState } from '@components/ui/EmptyState';
+import { UserAvatar } from '@components/ui/UserAvatar';
+import { UserProfileModal } from '@components/profile/UserProfileModal';
 import { fetchCommunityUsers, CommunityUser } from '@services/users.service';
 import { usePlayerStore } from '@stores/player.store';
 import { useJamStore } from '@stores/jam.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
-import { colors, typography, gradients, radius, elevation } from '@theme';
-import { resolveArtist } from '@/lib/utils';
+import { resolveArtist } from '@lib/utils';
+import { mmkv } from '@lib/mmkv';
+import { colors, gradients } from '@theme';
+
+const COMMUNITY_CACHE_KEY = 'community.cached_users';
+
+type FilterType = 'all' | 'online' | 'listening';
 
 interface UserCardProps {
   user: CommunityUser;
@@ -24,42 +38,41 @@ function UserCard({ user, onPress }: UserCardProps) {
   const isOnline = presence === 'online';
   const isBackground = presence === 'background';
 
-  const avatarUri = user.avatar_source === 'discord' && user.discord?.avatar_url
-    ? user.discord.avatar_url
-    : user.avatar_url ?? user.discord?.avatar_url;
+  const role = (user.role || 'user').toLowerCase();
+  const displayName = user.display_name || user.username;
 
   return (
     <PressableFluid onPress={onPress} haptic="light" style={styles.userCard} scaleTo={0.98}>
       <View style={styles.userCardContent}>
-        <View style={styles.avatarWrap}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: gradients.primary[0] }]}>
-              <Text style={styles.avatarText}>{user.username.slice(0, 1).toUpperCase()}</Text>
-            </View>
-          )}
-          <View
-            style={[
-              styles.onlineDot,
-              isOnline && { backgroundColor: '#00E676' },
-              isBackground && { backgroundColor: '#7F00FF' },
-              !isOnline && !isBackground && { backgroundColor: colors.textMuted },
-            ]}
-          />
-        </View>
+        <UserAvatar
+          user={user}
+          size={50}
+          showPresence
+          presence={isOnline ? 'online' : isBackground ? 'background' : 'offline'}
+        />
+
         <View style={styles.userInfo}>
           <View style={styles.userHeader}>
-            <Text style={styles.username}>{user.display_name ?? user.username}</Text>
-            <View style={[
-              styles.roleBadge,
-              user.role === 'admin' && styles.roleAdmin,
-              user.role === 'mod' && styles.roleMod,
-              user.role === 'dev' && styles.roleDev,
-            ]}>
-              <Text style={styles.roleText}>{user.role.toUpperCase()}</Text>
+            <Text style={styles.username} numberOfLines={1}>
+              {displayName}
+            </Text>
+            {user.custom_badge ? (
+              <View style={styles.userBadgeWrap}>
+                <Text style={styles.userBadgeText}>{user.custom_badge}</Text>
+              </View>
+            ) : null}
+            <View
+              style={[
+                styles.roleBadge,
+                role === 'admin' && styles.roleAdmin,
+                role === 'mod' && styles.roleMod,
+                role === 'dev' && styles.roleDev,
+              ]}
+            >
+              <Text style={styles.roleText}>{role.toUpperCase()}</Text>
             </View>
           </View>
+
           {nowPlaying ? (
             <View style={styles.nowPlaying}>
               <View style={styles.nowPlayingIcon}>
@@ -69,16 +82,28 @@ function UserCard({ user, onPress }: UserCardProps) {
                 <Text style={styles.nowPlayingLabel}>
                   {isBackground ? 'EN 2DO PLANO · ESCUCHANDO' : 'ESCUCHANDO'}
                 </Text>
-                <Text style={styles.nowPlayingSong} numberOfLines={1}>{nowPlaying.song_name}</Text>
-                {nowPlaying.artist && <Text style={styles.nowPlayingArtist} numberOfLines={1}>{nowPlaying.artist}</Text>}
+                <Text style={styles.nowPlayingSong} numberOfLines={1}>
+                  {nowPlaying.song_name}
+                </Text>
+                {nowPlaying.artist && (
+                  <Text style={styles.nowPlayingArtist} numberOfLines={1}>
+                    {nowPlaying.artist}
+                  </Text>
+                )}
               </View>
             </View>
+          ) : user.vibe ? (
+            <Text style={styles.vibeText} numberOfLines={1}>
+              {user.vibe}
+            </Text>
           ) : (
-            <Text style={[
-              styles.lastSeen,
-              isOnline && { color: '#00E676' },
-              isBackground && { color: '#B388FF' },
-            ]}>
+            <Text
+              style={[
+                styles.lastSeen,
+                isOnline && { color: '#00E676' },
+                isBackground && { color: '#B388FF' },
+              ]}
+            >
               {isOnline
                 ? 'En línea'
                 : isBackground
@@ -89,7 +114,8 @@ function UserCard({ user, onPress }: UserCardProps) {
             </Text>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+
+        <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.25)" />
       </View>
     </PressableFluid>
   );
@@ -103,14 +129,26 @@ function formatRelativeTime(dateString: string): string {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-import { UserProfileModal } from '@components/profile/UserProfileModal';
-
 export default function CommunityScreen() {
-  const [users, setUsers] = useState<CommunityUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<CommunityUser[]>(() => {
+    try {
+      const cached = mmkv.getObject<CommunityUser[]>(COMMUNITY_CACHE_KEY);
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+    } catch {}
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = mmkv.getObject<CommunityUser[]>(COMMUNITY_CACHE_KEY);
+      return !(Array.isArray(cached) && cached.length > 0);
+    } catch {
+      return true;
+    }
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [selectedUser, setSelectedUser] = useState<CommunityUser | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
   const user = useSettingsStore((s) => s.user);
   const currentSong = usePlayerStore((s) => s.currentSong);
@@ -124,9 +162,25 @@ export default function CommunityScreen() {
   const loadUsers = useCallback(async () => {
     try {
       const data = await fetchCommunityUsers();
-      setUsers(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setUsers(data);
+        try {
+          mmkv.setObject(COMMUNITY_CACHE_KEY, data);
+        } catch {}
+      } else if (Array.isArray(data)) {
+        setUsers(data);
+      }
     } catch {
-      setUsers([]);
+      // Retain existing or cached users instead of blanking out
+      setUsers((prev) => {
+        if (prev.length > 0) return prev;
+        try {
+          const cached = mmkv.getObject<CommunityUser[]>(COMMUNITY_CACHE_KEY);
+          return Array.isArray(cached) ? cached : [];
+        } catch {
+          return prev;
+        }
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -135,6 +189,10 @@ export default function CommunityScreen() {
 
   useEffect(() => {
     loadUsers();
+    const interval = setInterval(() => {
+      void loadUsers();
+    }, 20000);
+    return () => clearInterval(interval);
   }, [loadUsers]);
 
   const handleRefresh = useCallback(() => {
@@ -148,13 +206,27 @@ export default function CommunityScreen() {
   }, []);
 
   const onlineUsers = useMemo(
-    () => users.filter(u => u.online || u.is_online === 1 || u.presence === 'online' || u.presence === 'background').length,
+    () =>
+      users.filter(
+        (u) =>
+          u.online ||
+          u.is_online === 1 ||
+          u.presence === 'online' ||
+          u.presence === 'background'
+      ).length,
     [users]
   );
   const totalUsers = users.length;
-  const listeningUsers = useMemo(() => users.filter(u => !!u.now_playing).length, [users]);
+  const listeningUsers = useMemo(
+    () => users.filter((u) => !!u.now_playing || !!u.current_song_name).length,
+    [users]
+  );
 
-  const currentUserData = useMemo(() => users.find(u => u.username.toLowerCase() === user?.username.toLowerCase()), [users, user]);
+  const currentUserData = useMemo(
+    () =>
+      users.find((u) => u.username.toLowerCase() === user?.username.toLowerCase()),
+    [users, user]
+  );
 
   const effectiveUserData = useMemo((): CommunityUser | null => {
     if (!user) return null;
@@ -162,7 +234,10 @@ export default function CommunityScreen() {
     const resolvedArtist = currentSong ? resolveArtist(currentSong) : null;
     const nowPlaying: CommunityUser['now_playing'] = currentSong
       ? {
-          song_id: typeof currentSong.id === 'number' ? currentSong.id : Number(currentSong.id) || 0,
+          song_id:
+            typeof currentSong.id === 'number'
+              ? currentSong.id
+              : Number(currentSong.id) || 0,
           song_name: currentSong.name,
           ...(resolvedArtist ? { artist: resolvedArtist } : {}),
           ...(currentSong.album ? { album: currentSong.album } : {}),
@@ -176,7 +251,13 @@ export default function CommunityScreen() {
       username: user.username,
       display_name: user.display_name ?? user.username,
       avatar_url: user.avatar_url ?? null,
-      ...(user.avatar_source ? { avatar_source: user.avatar_source } : {}),
+      avatar_source: user.avatar_source ?? 'custom',
+      avatar_frame: user.avatar_frame ?? 'none',
+      theme: user.theme ?? 'aurora',
+      accent_color: user.accent_color ?? '#10b981',
+      ...(user.custom_badge ? { custom_badge: user.custom_badge } : {}),
+      ...(user.vibe ? { vibe: user.vibe } : {}),
+      ...(user.bio ? { bio: user.bio } : {}),
       role: user.role ?? 'user',
       ...(user.created_at ? { created_at: user.created_at } : {}),
       ...base,
@@ -186,26 +267,45 @@ export default function CommunityScreen() {
     };
   }, [user, currentUserData, currentSong]);
 
-  const youAvatarUri = effectiveUserData?.avatar_source === 'discord' && effectiveUserData.discord?.avatar_url
-    ? effectiveUserData.discord.avatar_url
-    : effectiveUserData?.avatar_url ?? effectiveUserData?.discord?.avatar_url;
+  // Filtered other users
+  const filteredUsers = useMemo(() => {
+    let list = users;
+    if (user) {
+      list = users.filter((u) => u.username.toLowerCase() !== user.username.toLowerCase());
+    }
 
-  const otherUsers = useMemo(() => {
-    if (!user) return users;
-    return users.filter(u => u.username.toLowerCase() !== user.username.toLowerCase());
-  }, [users, user]);
+    if (activeFilter === 'online') {
+      list = list.filter(
+        (u) =>
+          u.online ||
+          u.is_online === 1 ||
+          u.presence === 'online' ||
+          u.presence === 'background'
+      );
+    } else if (activeFilter === 'listening') {
+      list = list.filter((u) => !!u.now_playing || !!u.current_song_name);
+    }
 
-  return (
-    <View style={styles.container}>
-      <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+    return list;
+  }, [users, user, activeFilter]);
 
-      <View style={styles.header}>
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      {/* Top Header */}
+      <View style={styles.topHeader}>
         <View>
           <Text style={styles.title}>Comunidad</Text>
-          <Text style={styles.subtitle}>{totalUsers} usuarios · {onlineUsers} en línea</Text>
+          <Text style={styles.subtitle}>
+            {totalUsers} usuarios · {onlineUsers} en línea
+          </Text>
         </View>
-        <PressableFluid onPress={handleRefresh} haptic="light" style={styles.refreshBtn} scaleTo={0.95}>
-          <Ionicons name="refresh" size={22} color={colors.secondary} />
+        <PressableFluid
+          onPress={handleRefresh}
+          haptic="light"
+          style={styles.refreshBtn}
+          scaleTo={0.95}
+        >
+          <Ionicons name="refresh" size={20} color={colors.secondary} />
         </PressableFluid>
       </View>
 
@@ -226,7 +326,9 @@ export default function CommunityScreen() {
               {jamActive ? (
                 <View style={styles.jamLiveTag}>
                   <View style={styles.jamLiveDot} />
-                  <Text style={styles.jamLiveText}>{jamCode} · {jamIsHost ? 'HOST' : 'EN VIVO'}</Text>
+                  <Text style={styles.jamLiveText}>
+                    {jamCode} · {jamIsHost ? 'HOST' : 'EN VIVO'}
+                  </Text>
                 </View>
               ) : (
                 <View style={styles.jamSyncTag}>
@@ -236,7 +338,7 @@ export default function CommunityScreen() {
             </View>
             <Text style={styles.jamBannerDesc} numberOfLines={1}>
               {jamActive
-                ? 'Sesión en curso · Toca para ver participantes y código'
+                ? 'Sesión en curso · Toca para ver participantes'
                 : 'Conéctate con JodiFy Escritorio para escuchar juntos'}
             </Text>
           </View>
@@ -244,6 +346,7 @@ export default function CommunityScreen() {
         </View>
       </PressableFluid>
 
+      {/* "Tú" Current User Card */}
       {effectiveUserData && (
         <PressableFluid
           onPress={() => handleUserPress(effectiveUserData)}
@@ -252,58 +355,56 @@ export default function CommunityScreen() {
           scaleTo={0.98}
         >
           <View style={styles.youCardContent}>
-            <View style={styles.youAvatar}>
-              {youAvatarUri ? (
-                <Image source={{ uri: youAvatarUri }} style={styles.youAvatarImage} />
-              ) : (
-                <View style={[styles.youAvatarInner, { backgroundColor: gradients.play[0] }]}>
-                  <Text style={styles.youAvatarText}>{effectiveUserData.username.slice(0, 1).toUpperCase()}</Text>
-                </View>
-              )}
-              <View
-                style={[
-                  styles.onlineDot,
-                  { backgroundColor: '#00E676' },
-                ]}
-              />
-            </View>
+            <UserAvatar
+              user={effectiveUserData}
+              size={54}
+              showPresence
+              presence="online"
+            />
             <View style={styles.youInfo}>
               <View style={styles.youHeader}>
-                <Text style={styles.youName}>{effectiveUserData.display_name ?? effectiveUserData.username}</Text>
+                <Text style={styles.youName}>
+                  {effectiveUserData.display_name ?? effectiveUserData.username}
+                </Text>
+                {effectiveUserData.custom_badge ? (
+                  <View style={styles.userBadgeWrap}>
+                    <Text style={styles.userBadgeText}>{effectiveUserData.custom_badge}</Text>
+                  </View>
+                ) : null}
                 <Text style={styles.youBadge}>TÚ</Text>
               </View>
               {currentSong || effectiveUserData.now_playing ? (
                 <View style={styles.youNowPlaying}>
                   <View style={styles.youNowPlayingIcon}>
-                    <EqualizerBars playing={isPlaying} bars={3} height={12} barWidth={2.5} color={colors.secondary} />
+                    <EqualizerBars
+                      playing={isPlaying}
+                      bars={3}
+                      height={12}
+                      barWidth={2.5}
+                      color={colors.secondary}
+                    />
                   </View>
                   <View style={styles.youNowPlayingTexts}>
                     <Text style={styles.nowPlayingLabel}>ESCUCHANDO AHORA</Text>
                     <Text style={styles.nowPlayingSong} numberOfLines={1}>
                       {currentSong ? currentSong.name : effectiveUserData.now_playing?.song_name}
                     </Text>
-                    {(currentSong ? resolveArtist(currentSong) : effectiveUserData.now_playing?.artist) && (
-                      <Text style={styles.nowPlayingArtist} numberOfLines={1}>
-                        {currentSong ? resolveArtist(currentSong) : effectiveUserData.now_playing?.artist}
-                      </Text>
-                    )}
                   </View>
                 </View>
               ) : (
-                <Text style={styles.youStatus}>
-                  En línea · Listo para escuchar
-                </Text>
+                <Text style={styles.youStatus}>En línea · Listo para escuchar</Text>
               )}
             </View>
             {currentSong && (
               <PressableFluid onPress={openFullscreen} haptic="light" style={styles.youExpandBtn}>
-                <Ionicons name="expand" size={20} color={colors.primary} />
+                <Ionicons name="expand" size={18} color={colors.primary} />
               </PressableFluid>
             )}
           </View>
         </PressableFluid>
       )}
 
+      {/* Stats Bar */}
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{onlineUsers}</Text>
@@ -321,25 +422,79 @@ export default function CommunityScreen() {
         </View>
       </View>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Comunidad en línea</Text>
-        {onlineUsers > 0 && <Text style={styles.sectionCount}>{onlineUsers}</Text>}
+      {/* Filter Tabs */}
+      <View style={styles.filterRow}>
+        <PressableFluid
+          onPress={() => setActiveFilter('all')}
+          style={[styles.filterChip, activeFilter === 'all' && styles.filterChipActive]}
+        >
+          <Text
+            style={[styles.filterChipText, activeFilter === 'all' && styles.filterChipTextActive]}
+          >
+            Todos ({users.length})
+          </Text>
+        </PressableFluid>
+
+        <PressableFluid
+          onPress={() => setActiveFilter('online')}
+          style={[styles.filterChip, activeFilter === 'online' && styles.filterChipActive]}
+        >
+          <View style={[styles.filterDot, { backgroundColor: '#00E676' }]} />
+          <Text
+            style={[styles.filterChipText, activeFilter === 'online' && styles.filterChipTextActive]}
+          >
+            En línea ({onlineUsers})
+          </Text>
+        </PressableFluid>
+
+        <PressableFluid
+          onPress={() => setActiveFilter('listening')}
+          style={[styles.filterChip, activeFilter === 'listening' && styles.filterChipActive]}
+        >
+          <Ionicons
+            name="musical-notes"
+            size={12}
+            color={activeFilter === 'listening' ? colors.white : colors.textMuted}
+          />
+          <Text
+            style={[
+              styles.filterChipText,
+              activeFilter === 'listening' && styles.filterChipTextActive,
+            ]}
+          >
+            Escuchando ({listeningUsers})
+          </Text>
+        </PressableFluid>
       </View>
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Miembros de la Comunidad</Text>
+        <Text style={styles.sectionCount}>{filteredUsers.length}</Text>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={gradients.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
 
       {loading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando comunidad...</Text>
         </View>
-      ) : otherUsers.length === 0 ? (
-        <EmptyState
-          icon="people-outline"
-          title="Nadie más por aquí"
-          subtitle="Invita a tus amigos a JodiFy para escuchar juntos en tiempo real"
-        />
       ) : (
         <FlatList
-          data={otherUsers}
-          keyExtractor={(item) => item.username}
+          data={filteredUsers}
+          keyExtractor={(item) => String(item.username)}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -350,30 +505,27 @@ export default function CommunityScreen() {
             />
           }
           renderItem={({ item }) => (
-            <View style={styles.listItem}>
-              <UserCard user={item} onPress={() => handleUserPress(item)} />
-            </View>
+            <UserCard user={item} onPress={() => handleUserPress(item)} />
           )}
           ListEmptyComponent={
             <EmptyState
               icon="people-outline"
-              title="Sin otros usuarios"
-              subtitle="Sé el primero en invitar a tus amigos"
+              title="No hay usuarios en este filtro"
+              subtitle="Toca 'Todos' o tira hacia abajo para refrescar la lista de usuarios."
+              action={{ label: 'Ver todos', onPress: () => setActiveFilter('all') }}
             />
           }
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
         />
       )}
 
+      {/* User Profile Details Modal */}
       <UserProfileModal
+        visible={showProfile}
+        onClose={() => setShowProfile(false)}
         user={selectedUser}
-        isCurrentUser={selectedUser?.username === user?.username}
-        visible={showProfile && !!selectedUser}
-        onClose={() => {
-          setShowProfile(false);
-          setSelectedUser(null);
-        }}
+        isCurrentUser={
+          selectedUser?.username.toLowerCase() === user?.username.toLowerCase()
+        }
       />
     </View>
   );
@@ -384,510 +536,75 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+  listContent: {
+    paddingBottom: 110,
+  },
+  headerContainer: {
+    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   title: {
+    fontSize: 26,
+    fontWeight: '800',
     color: colors.white,
-    fontFamily: typography.displayMedium.fontFamily,
-    fontSize: typography.displayMedium.fontSize,
-    letterSpacing: typography.displayMedium.letterSpacing,
-    lineHeight: typography.displayMedium.lineHeight,
-    textShadowColor: colors.primary,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 22,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: typography.bodySmall.fontSize,
-    letterSpacing: typography.bodySmall.letterSpacing,
-    lineHeight: typography.bodySmall.lineHeight,
+    fontSize: 13,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   refreshBtn: {
-    padding: 10,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.primaryStrong,
-  },
-  youCard: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 16,
-    borderRadius: radius.xl,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    overflow: 'hidden',
-    ...elevation.level2,
-  },
-  youCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 18,
-    gap: 16,
-  },
-  youAvatar: {
-    position: 'relative',
-  },
-  youAvatarInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
-  },
-  youAvatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  youAvatarText: {
-    color: colors.white,
-    fontFamily: typography.displayMedium.fontFamily,
-    fontSize: typography.displayMedium.fontSize,
-    letterSpacing: typography.displayMedium.letterSpacing,
-  },
-  youInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  youHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  youName: {
-    color: colors.white,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: typography.headlineMedium.fontSize,
-    letterSpacing: typography.headlineMedium.letterSpacing,
-  },
-  youBadge: {
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: typography.labelSmall.fontSize,
-    letterSpacing: typography.labelSmall.letterSpacing,
-    color: colors.secondary,
-    backgroundColor: colors.secondarySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-  },
-  youNowPlaying: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 4,
-  },
-  youNowPlayingIcon: {
-    padding: 2,
-  },
-  youNowPlayingTexts: {
-    minWidth: 0,
-  },
-  nowPlayingLabel: {
-    color: colors.secondary,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: typography.labelSmall.fontSize,
-    letterSpacing: typography.labelSmall.letterSpacing,
-    marginBottom: 2,
-  },
-  nowPlayingSong: {
-    color: colors.white,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: typography.bodyMedium.fontSize,
-    letterSpacing: typography.bodyMedium.letterSpacing,
-  },
-  nowPlayingArtist: {
-    color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: typography.bodySmall.fontSize,
-    letterSpacing: typography.bodySmall.letterSpacing,
-    marginTop: 1,
-  },
-  youStatus: {
-    color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: typography.bodySmall.fontSize,
-    letterSpacing: typography.bodySmall.letterSpacing,
-    marginTop: 4,
-  },
-  youExpandBtn: {
-    padding: 10,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.primaryStrong,
-  },
-  statsBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    marginHorizontal: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  statNumber: {
-    color: colors.white,
-    fontFamily: typography.displayMedium.fontFamily,
-    fontSize: typography.displayMedium.fontSize,
-    letterSpacing: typography.displayMedium.letterSpacing,
-  },
-  statLabel: {
-    color: colors.textMuted,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: typography.labelSmall.fontSize,
-    letterSpacing: typography.labelSmall.letterSpacing,
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: '60%',
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    marginTop: 8,
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: typography.headlineMedium.fontSize,
-    letterSpacing: typography.headlineMedium.letterSpacing,
-  },
-  sectionCount: {
-    color: colors.secondary,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontSize: typography.labelLarge.fontSize,
-    letterSpacing: typography.labelLarge.letterSpacing,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 220,
-    gap: 8,
-  },
-  listItem: {
-    marginHorizontal: -16,
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  userCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: 16,
-    ...elevation.level1,
-  },
-  userCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  avatarWrap: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  avatarText: {
-    color: colors.white,
-    fontFamily: typography.displaySmall.fontFamily,
-    fontSize: typography.displaySmall.fontSize,
-    letterSpacing: typography.displaySmall.letterSpacing,
-  },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.success,
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  userInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  userHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  username: {
-    color: colors.white,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: typography.bodyMedium.fontSize,
-    letterSpacing: typography.bodyMedium.letterSpacing,
-  },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  roleAdmin: {
-    backgroundColor: 'rgba(255,61,92,0.15)',
-    borderColor: 'rgba(255,61,92,0.5)',
-  },
-  roleMod: {
-    backgroundColor: 'rgba(255,179,0,0.15)',
-    borderColor: 'rgba(255,179,0,0.5)',
-  },
-  roleDev: {
-    backgroundColor: 'rgba(127,0,255,0.15)',
-    borderColor: 'rgba(127,0,255,0.5)',
-  },
-  roleText: {
-    color: colors.textMuted,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: typography.labelSmall.fontSize,
-    letterSpacing: typography.labelSmall.letterSpacing,
-  },
-  nowPlaying: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 4,
-  },
-  nowPlayingIcon: {
-    padding: 2,
-  },
-  nowPlayingTexts: {
-    minWidth: 0,
-  },
-  lastSeen: {
-    color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: typography.bodySmall.fontSize,
-    letterSpacing: typography.bodySmall.letterSpacing,
-    marginTop: 4,
-  },
-  // Modal
-  closeBtn: {
-    padding: 4,
-  },
-  modalContent: {
-    paddingTop: 20,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    gap: 22,
-  },
-  profileHeader: {
-    alignItems: 'center',
-    gap: 14,
-  },
-  profileAvatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.5,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
-  },
-  profileAvatarText: {
-    color: colors.white,
-    fontFamily: typography.displayLarge.fontFamily,
-    fontSize: typography.displayLarge.fontSize,
-    letterSpacing: typography.displayLarge.letterSpacing,
-  },
-  profileUsername: {
-    color: colors.white,
-    fontFamily: typography.displaySmall.fontFamily,
-    fontSize: typography.displaySmall.fontSize,
-    letterSpacing: typography.displaySmall.letterSpacing,
-  },
-  roleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  onlineBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(0,230,118,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,230,118,0.3)',
-  },
-  onlineDotSmall: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: colors.success,
-  },
-  onlineText: {
-    color: colors.success,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
-  },
-  nowPlayingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 16,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.primaryStrong,
-  },
-  nowPlayingCardIcon: {
-    padding: 4,
-  },
-  nowPlayingCardTexts: {
-    flex: 1,
-  },
-  nowPlayingCardLabel: {
-    color: colors.secondary,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: typography.labelSmall.fontSize,
-    letterSpacing: typography.labelSmall.letterSpacing,
-    marginBottom: 3,
-  },
-  nowPlayingCardSong: {
-    color: colors.white,
-    fontFamily: typography.bodyMedium.fontFamily,
-    fontSize: typography.bodyMedium.fontSize,
-    letterSpacing: typography.bodyMedium.letterSpacing,
-  },
-  nowPlayingCardArtist: {
-    color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: typography.bodySmall.fontSize,
-    letterSpacing: typography.bodySmall.letterSpacing,
-    marginTop: 1,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginHorizontal: -24,
-    paddingHorizontal: 24,
-  },
-  stat: {
-    alignItems: 'center',
-  },
-  statValue: {
-    color: colors.white,
-    fontFamily: typography.displaySmall.fontFamily,
-    fontSize: typography.displaySmall.fontSize,
-    letterSpacing: typography.displaySmall.letterSpacing,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 6,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actionBtnText: {
-    color: colors.text,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: typography.labelMedium.fontSize,
-    letterSpacing: typography.labelMedium.letterSpacing,
   },
   jamBannerCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    overflow: 'hidden',
+    backgroundColor: 'rgba(127, 0, 255, 0.14)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(127, 0, 255, 0.35)',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 14,
   },
   jamBannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
     gap: 12,
   },
   jamBannerIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(127,0,255,0.15)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(127, 0, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   jamBannerIconActive: {
-    backgroundColor: 'rgba(0,230,118,0.15)',
+    backgroundColor: 'rgba(0, 230, 118, 0.2)',
   },
   jamBannerTitle: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.white,
   },
   jamLiveTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(0,230,118,0.15)',
+    backgroundColor: 'rgba(0, 230, 118, 0.2)',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   jamLiveDot: {
     width: 6,
@@ -896,26 +613,285 @@ const styles = StyleSheet.create({
     backgroundColor: '#00E676',
   },
   jamLiveText: {
-    color: '#00E676',
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontWeight: '700',
+    color: '#00E676',
   },
   jamSyncTag: {
-    backgroundColor: 'rgba(127,0,255,0.15)',
+    backgroundColor: 'rgba(0, 229, 255, 0.15)',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   jamSyncTagText: {
-    color: colors.secondary,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
+    color: colors.secondary,
     letterSpacing: 0.5,
   },
   jamBannerDesc: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 12,
+    fontSize: 11,
+    color: colors.textSecondary,
     marginTop: 2,
+  },
+  youCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 14,
+    marginBottom: 14,
+  },
+  youCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  youInfo: {
+    flex: 1,
+  },
+  youHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  youName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.white,
+  },
+  youBadge: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.secondary,
+    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  userBadgeWrap: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    borderWidth: 0.8,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  userBadgeText: {
+    fontSize: 10,
+    color: colors.secondary,
+    fontWeight: '600',
+  },
+  youNowPlaying: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  youNowPlayingIcon: {
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  youNowPlayingTexts: {
+    flex: 1,
+  },
+  nowPlayingLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.secondary,
+    letterSpacing: 0.5,
+  },
+  nowPlayingSong: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  youStatus: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  youExpandBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  statsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.white,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(127, 0, 255, 0.25)',
+    borderColor: 'rgba(127, 0, 255, 0.6)',
+  },
+  filterDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  filterChipTextActive: {
+    color: colors.white,
+    fontWeight: '700',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.white,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  sectionCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.secondary,
+    backgroundColor: 'rgba(0, 229, 255, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  userCard: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    overflow: 'hidden',
+  },
+  userCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  roleBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  roleAdmin: {
+    backgroundColor: 'rgba(255, 61, 92, 0.2)',
+  },
+  roleMod: {
+    backgroundColor: 'rgba(255, 179, 0, 0.2)',
+  },
+  roleDev: {
+    backgroundColor: 'rgba(127, 0, 255, 0.2)',
+  },
+  roleText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+  },
+  nowPlaying: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  nowPlayingIcon: {
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nowPlayingTexts: {
+    flex: 1,
+  },
+  nowPlayingArtist: {
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  vibeText: {
+    fontSize: 11,
+    color: colors.secondary,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  lastSeen: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    color: colors.textSecondary,
+    fontSize: 14,
   },
 });

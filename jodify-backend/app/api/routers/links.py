@@ -297,16 +297,21 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
 
     configs = [
-        # Estrategia 1: Opciones automáticas de yt-dlp (visionos/tv_embedded/android sin colisión de headers)
+        # Estrategia 1: Cliente iOS / VisionOS nativo de alta fidelidad (sin bloqueo de bot en datacenter)
         {
-            "format": "bestaudio/best",
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 15,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["ios", "visionos", "mweb"],
+                }
+            },
         },
-        # Estrategia 2: Cliente Android nativo como fallback
+        # Estrategia 2: Cliente Android / TV Embedded
         {
             "format": "bestaudio/best",
             "quiet": True,
@@ -316,9 +321,18 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "socket_timeout": 15,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"],
+                    "player_client": ["tv_embedded", "android"],
                 }
             },
+        },
+        # Estrategia 3: Opciones estándar de yt-dlp
+        {
+            "format": "bestaudio/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 15,
         },
     ]
 

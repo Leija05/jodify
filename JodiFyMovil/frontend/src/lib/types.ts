@@ -114,19 +114,38 @@ export interface Playlist {
 export interface UserAccess {
   id: number | string;
   username: string;
-  display_name?: string | null;
-  password?: string;
+  display_name?: string | null | undefined;
+  password?: string | undefined;
   role: Role;
-  is_online?: number;
-  presence?: 'online' | 'background' | 'offline';
-  last_seen?: string;
-  avatar_url?: string | null;
-  avatar_source?: 'custom' | 'discord';
-  discord_id?: string | null;
-  current_song_id?: number | null;
-  current_song_name?: string | null;
-  listening_since?: string | null;
-  created_at?: string;
+  is_online?: number | undefined;
+  online?: boolean | undefined;
+  presence?: 'online' | 'background' | 'offline' | undefined;
+  last_seen?: string | undefined;
+  avatar_url?: string | null | undefined;
+  avatar_source?: 'custom' | 'discord' | 'presets' | 'initials' | undefined;
+  discord_id?: string | null | undefined;
+  current_song_id?: number | null | undefined;
+  current_song_name?: string | null | undefined;
+  listening_since?: string | null | undefined;
+  bio?: string | undefined;
+  theme?: string | undefined;
+  avatar_frame?: string | undefined;
+  accent_color?: string | null | undefined;
+  profile_effect?: string | undefined;
+  profile_bg_mode?: string | undefined;
+  custom_gradient_start?: string | undefined;
+  custom_gradient_end?: string | undefined;
+  show_discord_activity?: boolean | undefined;
+  pet_type?: string | undefined;
+  pet_variant?: string | undefined;
+  pet_name?: string | null | undefined;
+  profile_animation?: string | undefined;
+  anthem_song_id?: number | string | null | undefined;
+  anthem_song_name?: string | null | undefined;
+  custom_badge?: string | null | undefined;
+  vibe?: string | null | undefined;
+  listening_seconds?: number | undefined;
+  created_at?: string | undefined;
 }
 
 export interface LikeRow {

@@ -76,29 +76,58 @@ function resolveSource(song: Song): string | null {
     return song.localUri;
   }
   const base = (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
+  const rawUrl = (song.url || '').trim();
+
+  // 1. If it's already a full http(s) URL
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    // If it's already pointing to our backend link stream or audio endpoint, return directly
+    if (rawUrl.includes('/api/links/stream') || rawUrl.includes('/api/songs/')) {
+      return rawUrl;
+    }
+    // If it's an external YouTube or Spotify or search URL, route through backend link stream
+    if (
+      rawUrl.includes('youtube.com') ||
+      rawUrl.includes('youtu.be') ||
+      rawUrl.includes('spotify.com') ||
+      rawUrl.includes('search_query') ||
+      song.source === 'spotify'
+    ) {
+      return `${base}/api/links/stream?url=${encodeURIComponent(rawUrl)}`;
+    }
+    return rawUrl;
+  }
+
+  // 2. If it's a relative URL from backend
+  if (rawUrl.length > 0) {
+    if (rawUrl.startsWith('/api/')) {
+      return `${base}${rawUrl}`;
+    }
+    if (rawUrl.startsWith('api/')) {
+      return `${base}/${rawUrl}`;
+    }
+    if (rawUrl.startsWith('/songs/') || rawUrl.startsWith('songs/')) {
+      const clean = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+      return `${base}/api${clean}`;
+    }
+    if (rawUrl.startsWith('/links/') || rawUrl.startsWith('links/')) {
+      const clean = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+      return `${base}/api${clean}`;
+    }
+    const cleanUrl = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+    return `${base}${cleanUrl}`;
+  }
+
+  // 3. If song has youtube_id
+  if (song.youtube_id && /^[a-zA-Z0-9_-]{11}$/.test(song.youtube_id)) {
+    return `${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${song.youtube_id}`)}`;
+  }
 
   const ytId = extractYoutubeId(song);
   if (ytId) {
     return `${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`;
   }
 
-  if (song.url) {
-    if (
-      song.url.includes('youtube.com') ||
-      song.url.includes('youtu.be') ||
-      song.url.includes('spotify.com') ||
-      song.url.includes('search_query') ||
-      song.source === 'spotify'
-    ) {
-      return `${base}/api/links/stream?url=${encodeURIComponent(song.url)}`;
-    }
-    if (song.url.startsWith('http')) {
-      return song.url;
-    }
-    const cleanUrl = song.url.startsWith('/') ? song.url : `/${song.url}`;
-    return `${base}${cleanUrl}`;
-  }
-
+  // 4. Default to backend audio endpoint
   if (song.id != null) {
     return `${base}/api/songs/${song.id}/audio`;
   }

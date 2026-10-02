@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -6,21 +6,27 @@ import {
   StyleSheet,
   Dimensions,
   Pressable,
-  Image,
+  ScrollView,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { PressableFluid } from '@components/ui/PressableFluid';
+import { UserAvatar } from '@components/ui/UserAvatar';
+import { EditProfileModal } from './EditProfileModal';
+import { ProfileInspectionAnimation } from './ProfileInspectionAnimation';
 import type { UserAccess, Song } from '@lib/types';
 import type { CommunityUser } from '@services/users.service';
+import { fetchUserStats, fetchUserTopSongs } from '@services/users.service';
+import { getThemeDefinition } from '@lib/avatar';
 import { useLibraryStore } from '@stores/library.store';
 import { usePlayerStore } from '@stores/player.store';
 import { useEqStore } from '@stores/eq.store';
 import { useUiStore } from '@stores/ui.store';
 import { useJamStore } from '@stores/jam.store';
-import { colors, typography, radius } from '@theme';
+import { colors } from '@theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -57,15 +63,54 @@ export function UserProfileModal({
   const playSong = usePlayerStore((s) => s.playSong);
   const openFullscreen = useUiStore((s) => s.openFullscreen);
 
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number } | null>(null);
+  const [topSongs, setTopSongs] = useState<Array<{ song_name: string; count: number }>>([]);
+
+  // Animation values for smooth, premium entry
+  const animValue = useMemo(() => new Animated.Value(0), []);
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(animValue, {
+        toValue: 1,
+        damping: 18,
+        stiffness: 140,
+        mass: 0.9,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      animValue.setValue(0);
+    }
+  }, [visible, animValue]);
+
+  // Fetch stats and top songs when modal opens
+  useEffect(() => {
+    if (!visible || !user?.username) return;
+
+    let alive = true;
+    void fetchUserStats(user.username)
+      .then((res) => {
+        if (alive) setStats(res);
+      })
+      .catch(() => undefined);
+
+    void fetchUserTopSongs(user.username, 3)
+      .then((res) => {
+        if (alive) setTopSongs(res);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      alive = false;
+    };
+  }, [visible, user?.username]);
+
   const communityUser = user as CommunityUser | null;
   const nowPlaying = communityUser?.now_playing;
-
   const role = (user?.role || 'user').toLowerCase();
 
-  const userObj = user as any;
-  const avatarUri = userObj?.avatar_source === 'discord' && userObj?.discord?.avatar_url
-    ? userObj.discord.avatar_url
-    : userObj?.avatar_url ?? userObj?.discord?.avatar_url;
+  const themeDef = useMemo(() => getThemeDefinition(user?.theme), [user?.theme]);
 
   const roleTheme = useMemo(() => {
     switch (role) {
@@ -102,17 +147,16 @@ export function UserProfileModal({
           badgeBg: 'rgba(0, 229, 255, 0.14)',
           badgeBorder: 'rgba(0, 229, 255, 0.45)',
           badgeColor: '#00E5FF',
-          glowColors: ['#00E5FF', '#7F00FF'] as [string, string],
+          glowColors: [themeDef.primaryColor, themeDef.secondaryColor] as [string, string],
           icon: 'musical-notes' as keyof typeof Ionicons.glyphMap,
         };
     }
-  }, [role]);
+  }, [role, themeDef]);
 
   const handlePlayTheirSong = useCallback(() => {
     if (!nowPlaying) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Look for song in our library
     const found = songs.find(
       (s) =>
         String(s.id) === String(nowPlaying.song_id) ||
@@ -138,6 +182,35 @@ export function UserProfileModal({
     }, 150);
   }, [nowPlaying, songs, playSong, onClose, openFullscreen]);
 
+  const handlePlayAnthem = useCallback(() => {
+    if (!user?.anthem_song_name) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const found = songs.find(
+      (s) =>
+        (user.anthem_song_id && String(s.id) === String(user.anthem_song_id)) ||
+        s.name.toLowerCase().trim() === user.anthem_song_name!.toLowerCase().trim()
+    );
+
+    let songToPlay: Song;
+    if (found) {
+      songToPlay = found;
+    } else {
+      songToPlay = {
+        id: user.anthem_song_id ?? 'anthem_' + Date.now(),
+        name: user.anthem_song_name,
+        artist: 'Anthem de ' + (user.display_name || user.username),
+        ...(user.anthem_song_id ? { url: `/api/songs/${user.anthem_song_id}/audio` } : {}),
+      };
+    }
+
+    playSong(songToPlay, songs.length > 0 ? songs : [songToPlay]);
+    onClose();
+    setTimeout(() => {
+      openFullscreen();
+    }, 150);
+  }, [user, songs, playSong, onClose, openFullscreen]);
+
   const handleStartJam = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     useJamStore.getState().maybeRecommendInstead();
@@ -145,128 +218,213 @@ export function UserProfileModal({
     useUiStore.getState().setTab('community');
   }, [onClose]);
 
+  const effectiveAnimation = useMemo(() => {
+    if (user?.profile_animation && user.profile_animation !== 'none') {
+      return user.profile_animation;
+    }
+    return 'astral-pulse';
+  }, [user?.profile_animation]);
+
   if (!visible || !user) return null;
 
   const isOnline = 'online' in user ? user.online : true;
   const username = user.username;
+  const displayName = user.display_name || username;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="fade"
+        onRequestClose={onClose}
+        statusBarTranslucent
+      >
+        <View style={styles.backdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
-        <View style={styles.sheetCard}>
-          {/* Ambient Glowing Header Banner */}
-          <LinearGradient
-            colors={[roleTheme.glowColors[0] + '33', roleTheme.glowColors[1] + '11', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.bannerGradient}
-          />
-
-          {/* Close button */}
-          <PressableFluid
-            onPress={onClose}
-            haptic="light"
-            style={styles.closeBtn}
-            hitSlop={10}
+          <Animated.View
+            style={[
+              styles.sheetCard,
+              {
+                opacity: animValue,
+                transform: [
+                  {
+                    scale: animValue.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.88, 1],
+                    }),
+                  },
+                  {
+                    translateY: animValue.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [30, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
           >
-            <Ionicons name="close" size={20} color={colors.textSecondary} />
-          </PressableFluid>
+            {/* Ambient Glowing Header Banner */}
+            <LinearGradient
+              colors={[
+                user.custom_gradient_start || themeDef.gradient[0] + '40',
+                user.custom_gradient_end || themeDef.gradient[1] + '20',
+                'transparent',
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.bannerGradient}
+            />
 
-          {/* Avatar Section */}
-          <View style={styles.avatarSection}>
-            <View style={styles.avatarGlowContainer}>
-              <LinearGradient
-                colors={roleTheme.glowColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.avatarOuter}
-              >
-                {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-                ) : (
-                  <View style={styles.avatarInner}>
-                    <Text style={styles.avatarText}>{username.slice(0, 1).toUpperCase()}</Text>
+            {/* Inspection Animation Layer (Visual effect when inspecting profile) */}
+            <ProfileInspectionAnimation animationId={effectiveAnimation} showBadge={true} />
+
+            {/* Close button */}
+            <PressableFluid
+              onPress={onClose}
+              haptic="light"
+              style={styles.closeBtn}
+              hitSlop={10}
+            >
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
+            </PressableFluid>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Avatar Section */}
+              <View style={styles.avatarSection}>
+                <View style={styles.avatarGlowContainer}>
+                  <UserAvatar
+                    user={user}
+                    size={84}
+                    showPresence
+                    presence={isOnline ? 'online' : 'offline'}
+                  />
+                </View>
+
+                <View style={styles.nameRow}>
+                  <Text style={styles.profileName} numberOfLines={1}>
+                    {displayName}
+                  </Text>
+                  {user.custom_badge ? (
+                    <View style={styles.badgePill}>
+                      <Text style={styles.badgePillText}>{user.custom_badge}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <Text style={styles.usernameTag}>@{username}</Text>
+
+                <View
+                  style={[
+                    styles.roleBadge,
+                    { backgroundColor: roleTheme.badgeBg, borderColor: roleTheme.badgeBorder },
+                  ]}
+                >
+                  <Ionicons name={roleTheme.icon} size={13} color={roleTheme.badgeColor} />
+                  <Text style={[styles.roleText, { color: roleTheme.badgeColor }]}>
+                    {roleTheme.label}
+                  </Text>
+                </View>
+
+                {user.vibe ? (
+                  <View style={styles.vibeBox}>
+                    <Text style={styles.vibeText}>{user.vibe}</Text>
                   </View>
-                )}
-              </LinearGradient>
+                ) : null}
 
-              {isOnline && (
-                <View style={styles.onlinePill}>
-                  <View style={styles.onlineDot} />
-                  <Text style={styles.onlinePillText}>EN LÍNEA</Text>
-                </View>
-              )}
-            </View>
+                {user.bio ? (
+                  <View style={styles.bioContainer}>
+                    <Text style={styles.bioText}>"{user.bio}"</Text>
+                  </View>
+                ) : null}
 
-            <Text style={styles.profileName}>{username}</Text>
-
-            <View style={[styles.roleBadge, { backgroundColor: roleTheme.badgeBg, borderColor: roleTheme.badgeBorder }]}>
-              <Ionicons name={roleTheme.icon} size={13} color={roleTheme.badgeColor} />
-              <Text style={[styles.roleText, { color: roleTheme.badgeColor }]}>{roleTheme.label}</Text>
-            </View>
-
-            <Text style={styles.statusSubtitle}>
-              {isCurrentUser
-                ? 'Tu perfil en JodiFy'
-                : isOnline
-                ? 'Conectado a la red de música'
-                : `Última conexión ${formatRelativeTime(communityUser?.last_seen)}`}
-            </Text>
-          </View>
-
-          {/* Currently Playing Card for other users */}
-          {!isCurrentUser && nowPlaying && (
-            <View style={styles.nowPlayingBox}>
-              <View style={styles.nowPlayingTop}>
-                <View style={styles.equalizerWrap}>
-                  <EqualizerBars playing bars={3} height={14} barWidth={3} color={colors.secondary} />
-                </View>
-                <View style={styles.nowPlayingInfo}>
-                  <Text style={styles.nowPlayingTag}>ESCUCHANDO AHORA</Text>
-                  <Text style={styles.nowPlayingSongName} numberOfLines={1}>
-                    {nowPlaying.song_name}
-                  </Text>
-                  <Text style={styles.nowPlayingArtistName} numberOfLines={1}>
-                    {nowPlaying.artist || 'Artista'}
-                  </Text>
-                </View>
+                <Text style={styles.statusSubtitle}>
+                  {isCurrentUser
+                    ? 'Tu perfil en JodiFy'
+                    : isOnline
+                    ? 'Conectado a la red de música'
+                    : `Última conexión ${formatRelativeTime(communityUser?.last_seen)}`}
+                </Text>
               </View>
 
-              <PressableFluid
-                onPress={handlePlayTheirSong}
-                haptic="medium"
-                style={styles.listenAlongBtn}
-              >
-                <LinearGradient
-                  colors={['#7F00FF', '#00E5FF']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.listenAlongFill}
+              {/* Anthem Song Banner if present */}
+              {user.anthem_song_name ? (
+                <PressableFluid
+                  onPress={handlePlayAnthem}
+                  haptic="medium"
+                  style={styles.anthemCard}
+                  scaleTo={0.97}
                 >
-                  <Ionicons name="play" size={16} color={colors.white} />
-                  <Text style={styles.listenAlongText}>Escuchar esta canción</Text>
-                </LinearGradient>
-              </PressableFluid>
-            </View>
-          )}
+                  <LinearGradient
+                    colors={['rgba(127, 0, 255, 0.25)', 'rgba(0, 229, 255, 0.15)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.anthemGradient}
+                  />
+                  <View style={styles.anthemIconWrap}>
+                    <Ionicons name="disc-outline" size={24} color="#00E5FF" />
+                  </View>
+                  <View style={styles.anthemInfo}>
+                    <Text style={styles.anthemTag}>HIMNO DEL PERFIL</Text>
+                    <Text style={styles.anthemName} numberOfLines={1}>
+                      {user.anthem_song_name}
+                    </Text>
+                  </View>
+                  <View style={styles.anthemPlayBtn}>
+                    <Ionicons name="play" size={16} color={colors.white} />
+                  </View>
+                </PressableFluid>
+              ) : null}
 
-          {/* Stats Bar */}
-          <View style={styles.statsContainer}>
-            {isCurrentUser ? (
-              <>
+              {/* Currently Playing Card for other users */}
+              {!isCurrentUser && nowPlaying && (
+                <View style={styles.nowPlayingBox}>
+                  <View style={styles.nowPlayingTop}>
+                    <View style={styles.equalizerWrap}>
+                      <EqualizerBars playing bars={3} height={14} barWidth={3} color={colors.secondary} />
+                    </View>
+                    <View style={styles.nowPlayingInfo}>
+                      <Text style={styles.nowPlayingTag}>ESCUCHANDO AHORA</Text>
+                      <Text style={styles.nowPlayingSongName} numberOfLines={1}>
+                        {nowPlaying.song_name}
+                      </Text>
+                      <Text style={styles.nowPlayingArtistName} numberOfLines={1}>
+                        {nowPlaying.artist || 'Artista'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <PressableFluid
+                    onPress={handlePlayTheirSong}
+                    haptic="medium"
+                    style={styles.listenAlongBtn}
+                  >
+                    <LinearGradient
+                      colors={['#7F00FF', '#00E5FF']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.listenAlongFill}
+                    >
+                      <Ionicons name="play" size={16} color={colors.white} />
+                      <Text style={styles.listenAlongText}>Escuchar esta canción</Text>
+                    </LinearGradient>
+                  </PressableFluid>
+                </View>
+              )}
+
+              {/* Stats Bar */}
+              <View style={styles.statsContainer}>
                 <View style={styles.statBox}>
                   <View style={styles.statIconWrap}>
-                    <Ionicons name="heart" size={18} color={colors.accent} />
+                    <Ionicons name="heart" size={16} color={colors.accent} />
                   </View>
-                  <Text style={styles.statValue}>{likedIds.length}</Text>
+                  <Text style={styles.statValue}>
+                    {isCurrentUser ? likedIds.length : stats?.liked ?? 0}
+                  </Text>
                   <Text style={styles.statTitle}>Favoritas</Text>
                 </View>
 
@@ -274,423 +432,483 @@ export function UserProfileModal({
 
                 <View style={styles.statBox}>
                   <View style={styles.statIconWrap}>
-                    <Ionicons name="cloud-done" size={18} color={colors.secondary} />
+                    <Ionicons name="musical-notes" size={16} color={colors.secondary} />
                   </View>
-                  <Text style={styles.statValue}>{downloadedIds.length}</Text>
-                  <Text style={styles.statTitle}>Descargas</Text>
+                  <Text style={styles.statValue}>{stats?.played ?? (isCurrentUser ? downloadedIds.length : 0)}</Text>
+                  <Text style={styles.statTitle}>Reproducidas</Text>
                 </View>
 
                 <View style={styles.statDivider} />
 
                 <View style={styles.statBox}>
                   <View style={styles.statIconWrap}>
-                    <Ionicons name="options" size={18} color={colors.primary} />
+                    <Ionicons name="radio" size={16} color={colors.primary} />
                   </View>
-                  <Text style={styles.statValue}>{eqPreset.toUpperCase()}</Text>
-                  <Text style={styles.statTitle}>Ecualizador</Text>
+                  <Text style={styles.statValue}>
+                    {isCurrentUser ? eqPreset.toUpperCase() : isOnline ? 'En vivo' : 'Offline'}
+                  </Text>
+                  <Text style={styles.statTitle}>{isCurrentUser ? 'Ecualizador' : 'Estado'}</Text>
                 </View>
-              </>
-            ) : (
-              <>
-                <View style={styles.statBox}>
-                  <View style={styles.statIconWrap}>
-                    <Ionicons name="radio" size={18} color={colors.secondary} />
+              </View>
+
+              {/* Top Songs List if present */}
+              {topSongs.length > 0 && (
+                <View style={styles.topSongsSection}>
+                  <Text style={styles.topSongsTitle}>Canciones más escuchadas</Text>
+                  {topSongs.map((ts, idx) => (
+                    <View key={idx} style={styles.topSongRow}>
+                      <Text style={styles.topSongIndex}>#{idx + 1}</Text>
+                      <Text style={styles.topSongName} numberOfLines={1}>
+                        {ts.song_name}
+                      </Text>
+                      <Text style={styles.topSongCount}>{ts.count}x</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Action Buttons */}
+              <View style={styles.bottomActions}>
+                {isCurrentUser ? (
+                  <View style={styles.currentUserActions}>
+                    <PressableFluid
+                      onPress={() => {
+                        if (onOpenAccountDetails) {
+                          onClose();
+                          onOpenAccountDetails();
+                        } else {
+                          setEditModalOpen(true);
+                        }
+                      }}
+                      haptic="medium"
+                      style={styles.editProfileBtn}
+                    >
+                      <Ionicons name="sparkles" size={16} color={colors.white} />
+                      <Text style={styles.editProfileBtnText}>Personalizar Perfil y Decoración</Text>
+                    </PressableFluid>
+
+                    {onLogout && (
+                      <PressableFluid
+                        onPress={() => {
+                          onClose();
+                          onLogout();
+                        }}
+                        haptic="medium"
+                        style={styles.logoutBtn}
+                      >
+                        <Ionicons name="log-out-outline" size={16} color={colors.error} />
+                        <Text style={styles.logoutBtnText}>Cerrar sesión</Text>
+                      </PressableFluid>
+                    )}
                   </View>
-                  <Text style={styles.statValue}>{isOnline ? 'Activo' : 'Offline'}</Text>
-                  <Text style={styles.statTitle}>Estado</Text>
-                </View>
+                ) : (
+                  <View style={styles.communityActionRow}>
+                    <PressableFluid
+                      onPress={handleStartJam}
+                      haptic="light"
+                      style={styles.jamBtn}
+                    >
+                      <Ionicons name="sparkles" size={16} color={colors.secondary} />
+                      <Text style={styles.jamBtnText}>Invitar a Jam</Text>
+                    </PressableFluid>
 
-                <View style={styles.statDivider} />
-
-                <View style={styles.statBox}>
-                  <View style={styles.statIconWrap}>
-                    <Ionicons name="people" size={18} color={colors.accent} />
+                    <PressableFluid
+                      onPress={onClose}
+                      haptic="light"
+                      style={styles.dismissPill}
+                    >
+                      <Text style={styles.dismissPillText}>Cerrar</Text>
+                    </PressableFluid>
                   </View>
-                  <Text style={styles.statValue}>Comunidad</Text>
-                  <Text style={styles.statTitle}>JodiFy Live</Text>
-                </View>
-
-                <View style={styles.statDivider} />
-
-                <View style={styles.statBox}>
-                  <View style={styles.statIconWrap}>
-                    <Ionicons name="musical-note" size={18} color={colors.primary} />
-                  </View>
-                  <Text style={styles.statValue}>{nowPlaying ? 'En vivo' : 'En pausa'}</Text>
-                  <Text style={styles.statTitle}>Música</Text>
-                </View>
-              </>
-            )}
-          </View>
-
-          {/* Action Row */}
-          <View style={styles.bottomActions}>
-            {isCurrentUser ? (
-              <View style={styles.currentUserActions}>
-                {onOpenAccountDetails && (
-                  <PressableFluid
-                    onPress={() => {
-                      onClose();
-                      onOpenAccountDetails();
-                    }}
-                    haptic="medium"
-                    style={styles.editProfileBtn}
-                  >
-                    <Ionicons name="create-outline" size={18} color={colors.white} />
-                    <Text style={styles.editProfileBtnText}>Personalizar Perfil y Avatar</Text>
-                  </PressableFluid>
-                )}
-
-                {onLogout && (
-                  <PressableFluid
-                    onPress={() => {
-                      onClose();
-                      onLogout();
-                    }}
-                    haptic="medium"
-                    style={styles.logoutBtn}
-                  >
-                    <Ionicons name="log-out-outline" size={18} color={colors.error} />
-                    <Text style={styles.logoutBtnText}>Cerrar sesión de {username}</Text>
-                  </PressableFluid>
                 )}
               </View>
-            ) : (
-              <View style={styles.communityActionRow}>
-                <PressableFluid
-                  onPress={handleStartJam}
-                  haptic="light"
-                  style={styles.jamBtn}
-                >
-                  <Ionicons name="sparkles" size={16} color={colors.secondary} />
-                  <Text style={styles.jamBtnText}>Invitar a Jam</Text>
-                </PressableFluid>
-
-                <PressableFluid
-                  onPress={onClose}
-                  haptic="light"
-                  style={styles.dismissPill}
-                >
-                  <Text style={styles.dismissPillText}>Cerrar</Text>
-                </PressableFluid>
-              </View>
-            )}
-          </View>
+            </ScrollView>
+          </Animated.View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      {/* Edit Profile Modal Integration */}
+      <EditProfileModal
+        visible={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(3, 3, 7, 0.82)',
+    backgroundColor: 'rgba(3, 3, 7, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
   },
   sheetCard: {
-    width: Math.min(SCREEN_WIDTH - 36, 420),
+    width: Math.min(SCREEN_WIDTH - 24, 440),
+    maxHeight: '90%',
     backgroundColor: 'rgba(16, 16, 26, 0.98)',
     borderRadius: 28,
     borderWidth: 1.2,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     overflow: 'hidden',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.65,
-    shadowRadius: 32,
-    elevation: 20,
   },
   bannerGradient: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 140,
+    height: 160,
   },
   closeBtn: {
     position: 'absolute',
-    top: 18,
-    right: 18,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: 14,
+    right: 14,
     zIndex: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.10)',
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 20,
   },
   avatarSection: {
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 16,
   },
   avatarGlowContainer: {
-    position: 'relative',
-    alignItems: 'center',
     marginBottom: 12,
   },
-  avatarOuter: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    padding: 3,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    elevation: 10,
-  },
-  avatarInner: {
-    flex: 1,
-    borderRadius: 40,
-    backgroundColor: '#0a0a14',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 39,
-  },
-  avatarText: {
-    color: colors.white,
-    fontFamily: typography.displayMedium.fontFamily,
-    fontSize: 34,
-  },
-  onlinePill: {
-    position: 'absolute',
-    bottom: -6,
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#051b11',
-    borderWidth: 1,
-    borderColor: '#00e676',
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#00e676',
-  },
-  onlinePillText: {
-    color: '#00e676',
-    fontSize: 9,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    justifyContent: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
   },
   profileName: {
+    fontSize: 20,
+    fontWeight: '800',
     color: colors.white,
-    fontFamily: typography.displayMedium.fontFamily,
-    fontSize: 22,
-    letterSpacing: -0.4,
-    marginBottom: 6,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  badgePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  badgePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.secondary,
+  },
+  usernameTag: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
+    gap: 5,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: radius.pill,
+    borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 6,
+    marginTop: 8,
   },
   roleText: {
-    fontSize: 11,
-    fontFamily: typography.labelLarge.fontFamily,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  vibeBox: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 229, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.25)',
+  },
+  vibeText: {
+    fontSize: 12,
+    color: colors.secondary,
+    fontWeight: '600',
+  },
+  bioContainer: {
+    marginTop: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  bioText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
   statusSubtitle: {
+    fontSize: 11,
     color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 12,
+    marginTop: 8,
+  },
+  anthemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.3)',
+    marginBottom: 14,
+  },
+  anthemGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  anthemIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  anthemInfo: {
+    flex: 1,
+  },
+  anthemTag: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#00E5FF',
+    letterSpacing: 0.8,
+  },
+  anthemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.white,
+    marginTop: 1,
+  },
+  anthemPlayBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   nowPlayingBox: {
-    marginTop: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 18,
+    borderRadius: 16,
+    padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(127, 0, 255, 0.28)',
-    padding: 14,
-    gap: 12,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 14,
   },
   nowPlayingTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+    marginBottom: 10,
   },
   equalizerWrap: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 229, 255, 0.1)',
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 229, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   nowPlayingInfo: {
     flex: 1,
-    minWidth: 0,
   },
   nowPlayingTag: {
+    fontSize: 9,
+    fontWeight: '800',
     color: colors.secondary,
-    fontFamily: typography.labelSmall.fontFamily,
-    fontSize: 10,
-    fontWeight: '700',
     letterSpacing: 0.8,
   },
   nowPlayingSongName: {
+    fontSize: 13,
+    fontWeight: '700',
     color: colors.white,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: 14,
-    marginTop: 1,
+    marginTop: 2,
   },
   nowPlayingArtistName: {
-    color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 12,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
   },
   listenAlongBtn: {
-    borderRadius: radius.pill,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   listenAlongFill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     paddingVertical: 10,
   },
   listenAlongText: {
+    fontSize: 12,
+    fontWeight: '700',
     color: colors.white,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: 13,
-    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    marginTop: 20,
+    justifyContent: 'space-between',
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
+    marginBottom: 14,
   },
   statBox: {
     flex: 1,
     alignItems: 'center',
-    gap: 3,
   },
   statIconWrap: {
-    marginBottom: 2,
+    marginBottom: 4,
   },
   statValue: {
+    fontSize: 15,
+    fontWeight: '800',
     color: colors.white,
-    fontFamily: typography.headlineMedium.fontFamily,
-    fontSize: 14,
-    fontWeight: '700',
   },
   statTitle: {
+    fontSize: 10,
     color: colors.textMuted,
-    fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 11,
+    marginTop: 1,
   },
   statDivider: {
     width: 1,
-    height: 32,
+    height: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
+  topSongsSection: {
+    marginBottom: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  topSongsTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  topSongRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  topSongIndex: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.secondary,
+    width: 24,
+  },
+  topSongName: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: '600',
+  },
+  topSongCount: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginLeft: 8,
+  },
   bottomActions: {
-    marginTop: 20,
+    marginTop: 4,
   },
   currentUserActions: {
-    width: '100%',
-    gap: 10,
+    gap: 8,
   },
   editProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(127, 0, 255, 0.25)',
-    borderWidth: 1,
+    backgroundColor: 'rgba(127, 0, 255, 0.3)',
+    borderWidth: 1.2,
     borderColor: 'rgba(127, 0, 255, 0.6)',
+    borderRadius: 16,
+    paddingVertical: 12,
   },
   editProfileBtnText: {
-    color: colors.white,
-    fontFamily: typography.labelMedium.fontFamily,
     fontSize: 13,
     fontWeight: '700',
+    color: colors.white,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255, 61, 92, 0.12)',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 61, 92, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 61, 92, 0.35)',
+    borderColor: 'rgba(255, 61, 92, 0.25)',
   },
   logoutBtnText: {
-    color: colors.error,
-    fontFamily: typography.labelMedium.fontFamily,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
+    color: colors.error,
   },
   communityActionRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   jamBtn: {
-    flex: 1,
+    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
+    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(0, 229, 255, 0.4)',
+    borderRadius: 14,
     paddingVertical: 12,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(127, 0, 255, 0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(127, 0, 255, 0.45)',
   },
   jamBtnText: {
-    color: colors.white,
-    fontFamily: typography.labelMedium.fontFamily,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: colors.secondary,
   },
   dismissPill: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: radius.pill,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 14,
+    paddingVertical: 12,
   },
   dismissPillText: {
-    color: colors.textSecondary,
-    fontFamily: typography.labelMedium.fontFamily,
     fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
 });
