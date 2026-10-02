@@ -277,7 +277,7 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
 
                             item_dur = int(item.get("duration", 0) / 1000) if item.get("duration") else None
                             search_target = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(f'{item_artist} {item_title}')}"
-                            item_thumb = thumbnail if entity_type == "album" else None
+                            item_thumb = thumbnail  # Usa la carátula del álbum o de la playlist como base instantánea
 
                             playlist_items.append({
                                 "id": f"sp-{abs(hash(item_title + item_artist)) % 10000000}",
@@ -290,22 +290,25 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                 "source": "spotify",
                             })
 
-                        # Para playlists: resolver concurrentemente fotos reales y emparejamiento con YouTube
+                        # Para playlists: resolver de forma ultrarrápida solo los primeros 3 temas para preview inmediato.
+                        # El resto se empareja de forma diferida (lazy) en demanda al reproducir en JodiFy Player.
                         if entity_type == "playlist" and playlist_items:
-                            sem = asyncio.Semaphore(15)
+                            sem = asyncio.Semaphore(3)
+                            preview_items = playlist_items[:3]
+                            preview_raw = raw_tracks[:3]
 
                             async def _resolve_track_details(p_item: dict[str, Any], raw_item: dict[str, Any]):
                                 raw_uri = raw_item.get("uri") or ""
                                 tid = raw_uri.split(":")[-1] if raw_uri.startswith("spotify:track:") else None
                                 q = f"{p_item.get('artist', '')} {p_item.get('title', '')}".strip()
 
-                                # 1. Cover de Spotify oEmbed
+                                # 1. Cover individual de Spotify oEmbed
                                 if tid:
                                     async with sem:
                                         try:
                                             res = await client.get(
                                                 f"https://open.spotify.com/oembed?url=https://open.spotify.com/track/{tid}",
-                                                timeout=3.5,
+                                                timeout=2.5,
                                             )
                                             if res.status_code == 200:
                                                 t_url = res.json().get("thumbnail_url")
@@ -314,13 +317,13 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                         except Exception:
                                             pass
 
-                                # 2. Fallback cover de iTunes Search API si no hay carátula
+                                # 2. Fallback cover de iTunes Search API si aún no hay carátula
                                 if not p_item.get("thumbnail") and q:
                                     async with sem:
                                         try:
                                             res = await client.get(
                                                 f"https://itunes.apple.com/search?term={urllib.parse.quote_plus(q)}&media=music&entity=song&limit=1",
-                                                timeout=3.0,
+                                                timeout=2.0,
                                             )
                                             if res.status_code == 200:
                                                 data = res.json().get("results", [])
@@ -346,7 +349,7 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
 
                             track_tasks = [
                                 _resolve_track_details(p_item, raw_item)
-                                for p_item, raw_item in zip(playlist_items, raw_tracks)
+                                for p_item, raw_item in zip(preview_items, preview_raw)
                             ]
                             await asyncio.gather(*track_tasks, return_exceptions=True)
     except Exception as exc:

@@ -162,49 +162,108 @@ async def register_song(body: RegisterSongRequest) -> dict:
 
 @router.post("/register-batch", response_model=None)
 async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
+    if not body.songs:
+        return {
+            "success": True,
+            "added_count": 0,
+            "skipped_count": 0,
+            "added": [],
+            "skipped": [],
+        }
+
     added = []
     skipped = []
+
+    # 1. Consulta masiva de canciones existentes en una sola operación a la base de datos
+    yt_ids = [s.youtube_id.strip() for s in body.songs if s.youtube_id and s.youtube_id.strip()]
+    names = [s.name.strip() for s in body.songs if s.name and s.name.strip()]
+
+    or_clauses = []
+    if yt_ids:
+        or_clauses.append({"youtube_id": {"$in": yt_ids}})
+    if names:
+        or_clauses.append({"name": {"$in": names}})
+
+    existing_docs = []
+    if or_clauses:
+        cursor = col("songs").find({"$or": or_clauses})
+        existing_docs = await cursor.to_list(length=len(body.songs) * 2)
+
+    # 2. Indexación en memoria para búsqueda O(1)
+    existing_by_yt = {d["youtube_id"]: d for d in existing_docs if d.get("youtube_id")}
+    existing_by_name_artist = {
+        (d.get("name", "").strip().lower(), (d.get("artist") or "").strip().lower()): d
+        for d in existing_docs if d.get("name")
+    }
+    existing_by_name = {
+        d.get("name", "").strip().lower(): d
+        for d in existing_docs if d.get("name")
+    }
+
+    seen_in_batch = set()
+    to_insert_docs = []
+    existing_to_bump = []
+    now_iso = datetime.now().isoformat()
 
     for s_req in body.songs:
         name_clean = (s_req.name or "").strip()
         if not name_clean:
             continue
 
-        query: dict = {}
-        if s_req.youtube_id:
-            query = {"youtube_id": s_req.youtube_id}
-        else:
-            query = {"name": name_clean}
-            if s_req.artist:
-                query["artist"] = s_req.artist.strip()
+        yt_id = (s_req.youtube_id or "").strip() or None
+        artist_clean = (s_req.artist or "").strip()
 
-        existing = await col("songs").find_one(query)
+        # Deduplicar dentro del mismo lote
+        batch_key = yt_id if yt_id else f"{name_clean.lower()}|{artist_clean.lower()}"
+        if batch_key in seen_in_batch:
+            continue
+        seen_in_batch.add(batch_key)
+
+        existing = None
+        if yt_id and yt_id in existing_by_yt:
+            existing = existing_by_yt[yt_id]
+        elif (name_clean.lower(), artist_clean.lower()) in existing_by_name_artist:
+            existing = existing_by_name_artist[(name_clean.lower(), artist_clean.lower())]
+        elif not artist_clean and name_clean.lower() in existing_by_name:
+            existing = existing_by_name[name_clean.lower()]
+
         if existing:
             if body.skip_duplicates:
                 skipped.append(song_view(existing))
-                continue
-            await col("songs").update_one({"_id": existing["_id"]}, {"$inc": {"likes": 1}})
-            existing["likes"] = existing.get("likes", 0) + 1
-            added.append(song_view(existing))
+            else:
+                existing_to_bump.append(existing)
             continue
 
-        song_doc = {
+        doc = {
             "name": name_clean,
-            "artist": (s_req.artist or "").strip(),
+            "artist": artist_clean,
             "album": (s_req.album or "Playlist Import").strip(),
             "url": s_req.url or "",
-            "youtube_id": s_req.youtube_id,
+            "youtube_id": yt_id,
             "cover_url": s_req.cover_url,
             "duration": s_req.duration,
             "added_by": s_req.added_by or "Playlist Import",
-            "created_at": datetime.now().isoformat(),
+            "created_at": now_iso,
             "likes": 1,
             "play_count": 0,
-            "source": "youtube" if s_req.youtube_id else "web",
+            "source": "youtube" if yt_id else "web",
         }
-        res = await col("songs").insert_one(song_doc)
-        song_doc["_id"] = res.inserted_id
-        added.append(song_view(song_doc))
+        to_insert_docs.append(doc)
+
+    # 3. Inserción masiva en bloque (insert_many) en MongoDB
+    if to_insert_docs:
+        res = await col("songs").insert_many(to_insert_docs, ordered=False)
+        for doc, inserted_id in zip(to_insert_docs, res.inserted_ids):
+            doc["_id"] = inserted_id
+            added.append(song_view(doc))
+
+    # 4. Actualización masiva de likes si no se omiten duplicados
+    if existing_to_bump:
+        bump_ids = [ex["_id"] for ex in existing_to_bump]
+        await col("songs").update_many({"_id": {"$in": bump_ids}}, {"$inc": {"likes": 1}})
+        for ex in existing_to_bump:
+            ex["likes"] = ex.get("likes", 0) + 1
+            added.append(song_view(ex))
 
     if added:
         invalidate_songs_cache()

@@ -273,7 +273,10 @@ export function LinkMusicModal() {
             duration: v.duration,
             added_by: session.username,
           }));
-          await songsService.registerBatch(batchPayload, true);
+          const CHUNK_SIZE = 100;
+          for (let i = 0; i < batchPayload.length; i += CHUNK_SIZE) {
+            await songsService.registerBatch(batchPayload.slice(i, i + CHUNK_SIZE), true);
+          }
         } catch (e) {
           console.warn('[LinkMusicModal] Error guardando batch para playlist:', e);
         }
@@ -329,7 +332,10 @@ export function LinkMusicModal() {
             added_by: session.username,
             liked_by: session.username,
           }));
-          await songsService.registerBatch(batchPayload, false);
+          const CHUNK_SIZE = 100;
+          for (let i = 0; i < batchPayload.length; i += CHUNK_SIZE) {
+            await songsService.registerBatch(batchPayload.slice(i, i + CHUNK_SIZE), false);
+          }
           for (const s of vSongs) {
             void likesService.addLike(session.username, s.id).catch(() => undefined);
           }
@@ -378,64 +384,50 @@ export function LinkMusicModal() {
     setShowDuplicateAlert(false);
 
     try {
-      if (isAdmin || isDev) {
-        const batchPayload = itemsToImport.map((item) => {
-          const v = toVirtualSong(item);
-          return {
-            name: v.name,
-            artist: v.artist,
-            album: v.album,
-            url: v.url,
-            youtube_id: v.youtube_id,
-            cover_url: v.cover_url,
-            duration: v.duration,
-            added_by: session?.username || 'Admin',
-            liked_by: session?.username,
-          };
-        });
+      const username = session?.username || (isAdmin ? 'Admin' : 'Usuario');
+      const allSongs = itemsToImport.map((item) => toVirtualSong(item));
 
-        const res = await songsService.registerBatch(batchPayload, skipDups);
+      // Guardar de inmediato en la biblioteca local para respuesta reactiva instantánea
+      allSongs.forEach((v) => useLibraryStore.getState().upsertSong(v));
+
+      const batchPayload = allSongs.map((v) => ({
+        name: v.name,
+        artist: v.artist,
+        album: v.album,
+        url: v.url,
+        youtube_id: v.youtube_id,
+        cover_url: v.cover_url,
+        duration: v.duration,
+        added_by: username,
+        liked_by: session?.username,
+      }));
+
+      // Procesar en chunks de 100 para evitar sobrecarga de red y timeouts
+      const CHUNK_SIZE = 100;
+      let totalAdded = 0;
+      let totalSkipped = 0;
+
+      for (let i = 0; i < batchPayload.length; i += CHUNK_SIZE) {
+        const chunk = batchPayload.slice(i, i + CHUNK_SIZE);
+        const res = await songsService.registerBatch(chunk, skipDups);
         if (res.added && res.added.length > 0) {
           for (const song of res.added) {
             useLibraryStore.getState().upsertSong(song);
           }
         }
-        useToastStore
-          .getState()
-          .show(
-            `✅ ¡Éxito! Se agregaron ${res.added_count} canciones a la biblioteca${
-              res.skipped_count > 0 ? ` (${res.skipped_count} duplicadas omitidas)` : ''
-            }.`,
-            'success',
-            4000
-          );
-      } else {
-        let count = 0;
-        for (const item of itemsToImport) {
-          const v = toVirtualSong(item);
-          useLibraryStore.getState().upsertSong(v);
-          if (session?.username) {
-            try {
-              const reg = await songsService.registerSong({
-                name: v.name,
-                artist: v.artist,
-                album: v.album,
-                url: v.url,
-                youtube_id: v.youtube_id,
-                cover_url: v.cover_url,
-                duration: v.duration,
-                added_by: session.username,
-                liked_by: session.username,
-              });
-              useLibraryStore.getState().upsertSong(reg);
-            } catch {
-              // duplicate or local
-            }
-          }
-          count++;
-        }
-        useToastStore.getState().show(`✅ ¡${count} canciones añadidas a tu biblioteca!`, 'success', 3500);
+        totalAdded += res.added_count;
+        totalSkipped += res.skipped_count;
       }
+
+      useToastStore
+        .getState()
+        .show(
+          `✅ ¡Éxito! Se agregaron ${totalAdded} canciones a la biblioteca${
+            totalSkipped > 0 ? ` (${totalSkipped} duplicadas omitidas)` : ''
+          }.`,
+          'success',
+          4000
+        );
     } catch (err: any) {
       useToastStore.getState().show(err.message || 'Error al procesar canciones de la playlist', 'error');
     } finally {
@@ -1071,6 +1063,29 @@ export function LinkMusicModal() {
                     <p className="jf-link-playlist-sub">
                       Canal / Creador: <strong>{resolved.artist || 'Varios Artistas'}</strong>
                     </p>
+
+                    {resolved.source.includes('spotify') && resolved.items.length >= 100 && (
+                      <div
+                        style={{
+                          margin: '8px 0 12px 0',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          background: 'rgba(29, 185, 84, 0.1)',
+                          border: '1px solid rgba(29, 185, 84, 0.3)',
+                          color: '#d1d5db',
+                          fontSize: '12px',
+                          lineHeight: '1.4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <SpotifyLogo size={18} weight="fill" style={{ color: '#1db954', flexShrink: 0 }} />
+                        <span>
+                          <strong>Nota de Spotify:</strong> La vista pública de Spotify muestra las primeras 100 canciones. Para importar playlists masivas de más de 100 temas (ej. 600 canciones), puedes pegar el enlace de la lista equivalente desde <strong>YouTube</strong> o <strong>YouTube Music</strong>.
+                        </span>
+                      </div>
+                    )}
 
                     <div className="jf-link-playlist-actions">
                       <button
