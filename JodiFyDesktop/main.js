@@ -51,6 +51,117 @@ function extractValidYtId(targetOrId) {
   return match ? match[1] : null;
 }
 
+function getYtDlpPath() {
+  const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+
+  // 1. En directorio local bin/ (desarrollo o empaquetado)
+  const localBin = path.join(__dirname, 'bin', binaryName);
+  if (fs.existsSync(localBin)) return localBin;
+
+  // 2. En recursos externos de Electron (extraResources de electron-builder)
+  if (process.resourcesPath) {
+    const resBin = path.join(process.resourcesPath, 'bin', binaryName);
+    if (fs.existsSync(resBin)) return resBin;
+
+    const unpackedBin = path.join(process.resourcesPath, 'app.asar.unpacked', 'bin', binaryName);
+    if (fs.existsSync(unpackedBin)) return unpackedBin;
+  }
+
+  // 3. En carpeta userData de la app (descargado automáticamente en segundo plano para usuarios existentes)
+  try {
+    const userBin = path.join(app.getPath('userData'), 'bin', binaryName);
+    if (fs.existsSync(userBin)) return userBin;
+  } catch {}
+
+  return null;
+}
+
+let isDownloadingYtDlp = false;
+
+function ensureYtDlpBinary() {
+  const existing = getYtDlpPath();
+  if (existing) return Promise.resolve(existing);
+  if (isDownloadingYtDlp) return Promise.resolve(null);
+
+  isDownloadingYtDlp = true;
+  return new Promise((resolve) => {
+    try {
+      const userDataBinDir = path.join(app.getPath('userData'), 'bin');
+      if (!fs.existsSync(userDataBinDir)) {
+        fs.mkdirSync(userDataBinDir, { recursive: true });
+      }
+
+      const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+      const targetPath = path.join(userDataBinDir, binaryName);
+      const tempPath = path.join(userDataBinDir, `${binaryName}.download`);
+
+      const downloadUrl = process.platform === 'win32'
+        ? 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
+        : 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
+
+      console.log(`[main] Descargando motor de audio yt-dlp autónomo en ${targetPath}...`);
+
+      function followRedirects(url, maxRedirects = 5) {
+        if (maxRedirects <= 0) {
+          isDownloadingYtDlp = false;
+          return resolve(null);
+        }
+
+        const client = url.startsWith('https:') ? https : http;
+        client.get(url, (res) => {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            return followRedirects(res.headers.location, maxRedirects - 1);
+          }
+          if (res.statusCode !== 200) {
+            console.warn(`[main] Error descargando yt-dlp: HTTP ${res.statusCode}`);
+            isDownloadingYtDlp = false;
+            return resolve(null);
+          }
+
+          const fileStream = fs.createWriteStream(tempPath);
+          res.pipe(fileStream);
+
+          fileStream.on('finish', () => {
+            fileStream.close(() => {
+              try {
+                if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+                fs.renameSync(tempPath, targetPath);
+                if (process.platform !== 'win32') {
+                  fs.chmodSync(targetPath, 0o755);
+                }
+                console.log(`[main] yt-dlp autónomo instalado exitosamente en ${targetPath}`);
+                isDownloadingYtDlp = false;
+                resolve(targetPath);
+              } catch (err) {
+                console.warn('[main] Error al guardar binario yt-dlp:', err);
+                isDownloadingYtDlp = false;
+                resolve(null);
+              }
+            });
+          });
+
+          fileStream.on('error', (err) => {
+            console.warn('[main] Error escribiendo yt-dlp:', err);
+            try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch {}
+            isDownloadingYtDlp = false;
+            resolve(null);
+          });
+        }).on('error', (err) => {
+          console.warn('[main] Error de red descargando yt-dlp:', err.message);
+          isDownloadingYtDlp = false;
+          resolve(null);
+        });
+      }
+
+      followRedirects(downloadUrl);
+    } catch (err) {
+      console.warn('[main] Error en ensureYtDlpBinary:', err);
+      isDownloadingYtDlp = false;
+      resolve(null);
+    }
+  });
+}
+
 function resolveLocalStreamUrl(targetOrId) {
   if (!targetOrId) return Promise.resolve(null);
   const ytId = extractValidYtId(targetOrId);
@@ -62,39 +173,63 @@ function resolveLocalStreamUrl(targetOrId) {
   }
 
   const target = `https://www.youtube.com/watch?v=${ytId}`;
+  const binPath = getYtDlpPath();
+
+  const ytdlpArgs = [
+    '--get-url',
+    '--extractor-args',
+    'youtube:player_client=visionos,android',
+    '-f',
+    'bestaudio[ext=m4a]/bestaudio/best',
+    '--no-warnings',
+    '--quiet',
+    target,
+  ];
+
   return new Promise((resolve) => {
-    execFile(
-      'python',
-      [
-        '-m',
-        'yt_dlp',
-        '--get-url',
-        '--extractor-args',
-        'youtube:player_client=android,web',
-        '-f',
-        'bestaudio[ext=m4a]/bestaudio/best',
-        '--no-warnings',
-        '--quiet',
-        target,
-      ],
-      { timeout: 14000 },
-      (error, stdout) => {
-        if (error || !stdout) {
-          console.warn('[main] Python local no disponible o yt_dlp falló, usando stream de backend:', error?.message || error);
-          const fallback = `${API_URL}/api/links/stream?url=${encodeURIComponent(target)}`;
-          resolve(fallback);
-          return;
-        }
-        const lines = stdout.trim().split(/\r?\n/).filter((l) => l.startsWith('http'));
-        const direct = lines[0] || null;
-        if (direct) {
-          localStreamCache.set(ytId, { url: direct, expiry: Date.now() + 3600 * 1000 });
-          resolve(direct);
-        } else {
-          resolve(`${API_URL}/api/links/stream?url=${encodeURIComponent(target)}`);
-        }
+    const handleOutput = (stdout) => {
+      const lines = stdout.trim().split(/\r?\n/).filter((l) => l.startsWith('http'));
+      const direct = lines[0] || null;
+      if (direct) {
+        localStreamCache.set(ytId, { url: direct, expiry: Date.now() + 4 * 3600 * 1000 });
+        return direct;
       }
-    );
+      return null;
+    };
+
+    const fallbackToRemote = () => {
+      console.warn('[main] Usando fallback de backend para stream:', target);
+      const fallback = `${API_URL}/api/links/stream?url=${encodeURIComponent(target)}`;
+      resolve(fallback);
+    };
+
+    if (binPath) {
+      execFile(binPath, ytdlpArgs, { timeout: 18000 }, (error, stdout) => {
+        if (!error && stdout) {
+          const direct = handleOutput(stdout);
+          if (direct) return resolve(direct);
+        }
+        console.warn(`[main] Binario yt-dlp (${binPath}) falló (${error?.message || 'salida vacía'}), probando fallback python...`);
+        execFile('python', ['-m', 'yt_dlp', ...ytdlpArgs], { timeout: 16000 }, (pyErr, pyOut) => {
+          if (!pyErr && pyOut) {
+            const pyDirect = handleOutput(pyOut);
+            if (pyDirect) return resolve(pyDirect);
+          }
+          fallbackToRemote();
+        });
+      });
+    } else {
+      // Iniciar descarga autónoma en segundo plano para próximas canciones
+      void ensureYtDlpBinary();
+
+      execFile('python', ['-m', 'yt_dlp', ...ytdlpArgs], { timeout: 16000 }, (pyErr, pyOut) => {
+        if (!pyErr && pyOut) {
+          const pyDirect = handleOutput(pyOut);
+          if (pyDirect) return resolve(pyDirect);
+        }
+        fallbackToRemote();
+      });
+    }
   });
 }
 
@@ -220,10 +355,45 @@ function startAppServer() {
           const scriptPath = path.join(__dirname, 'scripts', 'register_song.py');
           const py = execFile('python', [scriptPath], { timeout: 8000 }, (error, stdout, stderr) => {
             if (error || !stdout) {
-              console.warn('[app-server] Error en register_song.py:', error || stderr);
-              if (!res.headersSent) {
-                res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ error: 'Error registrando canción' }));
+              console.warn('[app-server] Python local no disponible para register_song.py, enviando a backend:', error?.message || stderr);
+              try {
+                const targetUrl = new URL(req.url, API_URL);
+                const reqHeaders = { ...req.headers };
+                reqHeaders.host = targetUrl.host;
+                reqHeaders['content-length'] = Buffer.byteLength(bodyData);
+
+                const clientModule = targetUrl.protocol === 'https:' ? https : http;
+                const proxyReq = clientModule.request({
+                  hostname: targetUrl.hostname,
+                  port: targetUrl.port || (targetUrl.protocol === 'https:' ? 443 : 80),
+                  path: targetUrl.pathname + targetUrl.search,
+                  method: 'POST',
+                  headers: reqHeaders,
+                }, (proxyRes) => {
+                  const resHeaders = {
+                    ...proxyRes.headers,
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': '*',
+                  };
+                  res.writeHead(proxyRes.statusCode || 200, resHeaders);
+                  proxyRes.pipe(res);
+                });
+
+                proxyReq.on('error', (netErr) => {
+                  console.warn('[app-server] Falló proxy de register_song al backend:', netErr.message);
+                  if (!res.headersSent) {
+                    res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ error: 'Error registrando canción' }));
+                  }
+                });
+
+                proxyReq.write(bodyData);
+                proxyReq.end();
+              } catch (e) {
+                if (!res.headersSent) {
+                  res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                  res.end(JSON.stringify({ error: 'Error registrando canción' }));
+                }
               }
               return;
             }
@@ -678,6 +848,7 @@ function registerUpdaterIpc() {
 
 app.whenReady().then(() => {
   createWindow();
+  void ensureYtDlpBinary();
 
   startObsServer();
   registerUpdaterIpc();

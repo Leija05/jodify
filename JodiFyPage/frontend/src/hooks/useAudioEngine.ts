@@ -7,7 +7,7 @@ import { equalizerApi } from '../services/equalizer.service';
 import { obsService } from '../services/obs.service';
 import { useEqStore } from '../store/eq.store';
 import { ytPlayerService } from '../services/yt-player.service';
-import { preloadNextTrack } from '../services/player.service';
+import { preloadNextTrack, isResolvingPlayback } from '../services/player.service';
 
 export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -17,7 +17,9 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
     const getAudio = () => audioRef.current || document.querySelector<HTMLAudioElement>('audio#jodify-audio');
     let boundAudio: HTMLAudioElement | null = null;
 
+    let consecutiveErrors = 0;
     const onPlay = () => {
+      consecutiveErrors = 0;
       hasPreloadedRef.current = false;
       usePlayerStore.getState().setIsPlaying(true);
       equalizerApi.resume();
@@ -79,12 +81,21 @@ export function useAudioEngine(): React.RefObject<HTMLAudioElement | null> {
     const onError = () => {
       const el = boundAudio || getAudio();
       if (!el || !el.src || el.src === window.location.href || !el.getAttribute('src')) return;
-      // Si el reproductor integrado de YouTube está activo o cargando, no saltar la canción
-      if (ytPlayerService.isPlayingVideo()) return;
+      // Si el reproductor integrado de YouTube está activo o resolviendo streams, no saltar la canción
+      if (ytPlayerService.isPlayingVideo() || isResolvingPlayback) return;
 
       const now = Date.now();
-      if (now - lastErrorSkip < 1800) return;
+      if (now - lastErrorSkip < 2000) return;
       lastErrorSkip = now;
+      consecutiveErrors += 1;
+
+      if (consecutiveErrors >= 3) {
+        usePlayerStore.getState().setIsPlaying(false);
+        usePlayerStore.getState().setLastError('Error de reproducción continuo');
+        useToastStore.getState().show('No se pudieron reproducir las canciones seleccionadas. Comprueba tu conexión a internet.', 'error', 4000);
+        consecutiveErrors = 0;
+        return;
+      }
 
       usePlayerStore.getState().setLastError('Error de reproducción');
       useToastStore.getState().show('Error reproduciendo la canción, saltando…', 'warning');

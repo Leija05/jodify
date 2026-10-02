@@ -33,6 +33,8 @@ export function isYouTubeSong(song: Song | null | undefined): boolean {
   return Boolean(extractYoutubeId(song));
 }
 
+export let isResolvingPlayback = false;
+
 let fadeRaf: number | null = null;
 let preloadedSongId: string | number | null = null;
 let preloadedBlobUrl: string | null = null;
@@ -181,6 +183,15 @@ export function pausePlayback(): void {
 }
 
 export async function playSong(song: Song, options: { fades?: boolean } = {}): Promise<boolean> {
+  isResolvingPlayback = true;
+  try {
+    return await executePlaySong(song, options);
+  } finally {
+    isResolvingPlayback = false;
+  }
+}
+
+async function executePlaySong(song: Song, options: { fades?: boolean } = {}): Promise<boolean> {
   const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
   const player = usePlayerStore.getState();
   const settings = useSettingsStore.getState();

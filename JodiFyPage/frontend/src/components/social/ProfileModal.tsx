@@ -133,7 +133,15 @@ export function ProfileModal() {
   const affectionPoints = useAchievementsStore((s) => s.affectionPoints);
   const snackCount = useAchievementsStore((s) => s.snackCount);
   const feedPetSnack = useAchievementsStore((s) => s.feedPetSnack);
-  const achStats = useAchievementsStore((s) => s.getStats());
+  const achStats = useMemo(() => {
+    const total = ACHIEVEMENTS_LIST.length;
+    const unlockedCount = Object.keys(unlockedAchievements).length;
+    const percent = total > 0 ? Math.round((unlockedCount / total) * 100) : 0;
+    const totalXp = ACHIEVEMENTS_LIST.reduce((acc, ach) => {
+      return acc + (unlockedAchievements[ach.id] ? ach.xpReward : 0);
+    }, 0);
+    return { total, unlockedCount, percent, totalXp };
+  }, [unlockedAchievements]);
   const [profile, setProfile] = useState<UserAccess | null>(null);
   const [discord, setDiscord] = useState<DiscordProfile | null>(null);
   const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number } | null>(null);
