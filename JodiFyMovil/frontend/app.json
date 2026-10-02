@@ -65,7 +65,6 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-audio",
       [
         "expo-splash-screen",
         {

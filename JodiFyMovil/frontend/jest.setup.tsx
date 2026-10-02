@@ -1,4 +1,3 @@
-import '@testing-library/jest-native';
 import 'jest-expo';
 
 jest.mock('react-native-reanimated', () => {

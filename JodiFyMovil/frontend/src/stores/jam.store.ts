@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { mmkv, STORAGE_KEYS } from '../lib/mmkv';
 import type { JamPermissions, JamUser, RecommendationRequest } from '../lib/types';
+import { useSettingsStore } from './settings.store';
+import { usePlayerStore } from './player.store';
 
 interface JamState {
   active: boolean;
@@ -54,17 +56,31 @@ export const useJamStore = create<JamState>((set, get) => ({
   start: (code, isHost, sessionId) => {
     mmkv.setObject(STORAGE_KEYS.jamState, { code, isHost, sessionId, active: true });
     set({ active: true, code, isHost, sessionId });
+
+    const username = useSettingsStore.getState().user?.username ?? 'Invitado';
+    import('../services/jam.service').then(({ jamService }) => {
+      jamService.connect(code, username, isHost, sessionId);
+    });
   },
 
   stop: () => {
+    const { sessionId, isHost } = get();
     mmkv.delete(STORAGE_KEYS.jamState);
     set({ active: false, code: '', isHost: false, sessionId: null, users: [], pendingRecommendations: [] });
+
+    import('../services/jam.service').then(({ jamService }) => {
+      jamService.disconnect();
+      if (sessionId && isHost) {
+        void jamService.closeSession(sessionId);
+      }
+    });
   },
 
   setUsers: (users) => set({ users }),
   setPermissions: (permissions) => set({ permissions }),
 
-  addRecommendation: (rec) => set((s) => ({ pendingRecommendations: [rec, ...s.pendingRecommendations].slice(0, 20) })),
+  addRecommendation: (rec) =>
+    set((s) => ({ pendingRecommendations: [rec, ...s.pendingRecommendations].slice(0, 20) })),
   removeRecommendation: (index) =>
     set((s) => ({ pendingRecommendations: s.pendingRecommendations.filter((_, i) => i !== index) })),
 
@@ -74,38 +90,52 @@ export const useJamStore = create<JamState>((set, get) => ({
   broadcastQueueAdd: (songId) => {
     if (!get().active || !get().isHost) return;
     import('../services/jam.service').then(({ emitBroadcast }) =>
-      emitBroadcast(get().code, 'jam-queue-add', { songId, senderId: get().clientId }),
+      emitBroadcast(get().code, 'jam-queue-add', { songId, senderId: get().clientId })
     );
   },
 
   broadcastQueueRemove: (songId) => {
     if (!get().active || !get().isHost) return;
     import('../services/jam.service').then(({ emitBroadcast }) =>
-      emitBroadcast(get().code, 'jam-queue-remove', { songId, senderId: get().clientId }),
+      emitBroadcast(get().code, 'jam-queue-remove', { songId, senderId: get().clientId })
     );
   },
 
   broadcastPlaybackChange: (event, time) => {
     const { active, isHost, clientId, syncInProgress } = get();
     if (!active || !isHost || syncInProgress) return;
-    import('../services/jam.service').then(({ emitBroadcast }) => {
-      const payload: Record<string, unknown> = { senderId: clientId };
-      import('../stores/audio').then(({ getPlayer }) => {
-        const player = getPlayer();
-        if (player) {
-          payload.songId = player.currentTime > 0 ? get().sessionId : null;
+
+    import('../services/jam.service').then(({ emitBroadcast, jamService }) => {
+      const playerState = usePlayerStore.getState();
+      const currentSong = playerState.currentSong;
+      if (!currentSong) return;
+
+      const curTime = time ?? playerState.position ?? 0;
+      const payload: Record<string, unknown> = {
+        senderId: clientId,
+        songId: currentSong.id,
+        time: curTime,
+      };
+
+      if (event === 'play') {
+        payload.isPlaying = true;
+        emitBroadcast(get().code, 'jam-play', payload);
+        if (get().sessionId) {
+          void jamService.persistPlaybackState(get().sessionId!, currentSong.id, curTime, true);
         }
-        if (event === 'play') {
-          payload.time = player?.currentTime ?? 0;
-          emitBroadcast(get().code, 'jam-play', payload);
-        } else if (event === 'pause') {
-          payload.time = player?.currentTime ?? 0;
-          emitBroadcast(get().code, 'jam-pause', payload);
-        } else if (event === 'seek') {
-          payload.time = time ?? player?.currentTime ?? 0;
-          emitBroadcast(get().code, 'jam-seek', payload);
+      } else if (event === 'pause') {
+        payload.isPlaying = false;
+        emitBroadcast(get().code, 'jam-pause', payload);
+        if (get().sessionId) {
+          void jamService.persistPlaybackState(get().sessionId!, currentSong.id, curTime, false);
         }
-      });
+      } else if (event === 'seek') {
+        payload.isPlaying = playerState.isPlaying;
+        emitBroadcast(get().code, 'jam-seek', payload);
+        if (get().sessionId) {
+          void jamService.persistPlaybackState(get().sessionId!, currentSong.id, curTime, playerState.isPlaying);
+        }
+      }
     });
   },
 
@@ -113,21 +143,29 @@ export const useJamStore = create<JamState>((set, get) => ({
     const { active, isHost, clientId, permissions } = get();
     if (!active || !isHost) return;
     import('../services/jam.service').then(({ emitBroadcast }) =>
-      emitBroadcast(get().code, 'jam-config', { ...permissions, senderId: clientId }),
+      emitBroadcast(get().code, 'jam-config', { ...permissions, senderId: clientId })
     );
   },
 
   maybeRecommendInstead: () => {
     const { active, isHost } = get();
     if (!active || isHost) return;
-    import('../stores/ui.store').then(({ useUiStore }) => useUiStore.getState().openSongActions({ id: 'jam-recommend' } as any));
+    import('./ui.store').then(({ useUiStore }) =>
+      useUiStore.getState().openSongActions({ id: 'jam-recommend' } as any)
+    );
   },
 
   restore: () => {
     try {
-      const raw = mmkv.getObject<{ code: string; isHost: boolean; sessionId: number | string; active: boolean }>(STORAGE_KEYS.jamState);
-      if (raw?.active && raw.code) {
+      const raw = mmkv.getObject<{ code: string; isHost: boolean; sessionId: number | string; active: boolean }>(
+        STORAGE_KEYS.jamState
+      );
+      if (raw?.active && raw.code && raw.sessionId) {
         set({ active: true, code: raw.code, isHost: raw.isHost, sessionId: raw.sessionId });
+        const username = useSettingsStore.getState().user?.username ?? 'Invitado';
+        import('../services/jam.service').then(({ jamService }) => {
+          jamService.connect(raw.code, username, raw.isHost, raw.sessionId);
+        });
       }
     } catch {
       // ignore

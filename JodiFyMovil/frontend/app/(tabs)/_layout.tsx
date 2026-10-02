@@ -8,6 +8,7 @@ import { SongActionsSheet } from '@/components/player/SongActionsSheet';
 import AuthScreen from '../auth';
 import { SecretAccessScreen } from '@/screens/SecretAccessScreen';
 import { UpdateModal } from '@/components/update/UpdateModal';
+import { JamModal } from '@/components/jam/JamModal';
 import { TabBar } from '@/navigation/TabBar';
 import { useBootstrap } from '@/hooks/useBootstrap';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
@@ -57,6 +58,7 @@ export default function TabsLayout() {
       <LyricsScreen />
       <EqualizerSheet />
       <SongActionsSheet />
+      <JamModal />
       <SecretAccessScreen />
       <AuthScreen visible={authOpen} onClose={closeAuth} />
       <UpdateModal />

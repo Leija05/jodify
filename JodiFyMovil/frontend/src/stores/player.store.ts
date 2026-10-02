@@ -52,23 +52,58 @@ function sleep(ms: number): Promise<void> {
 
 let historyRecordedForSong: string | null = null;
 
+export function extractYoutubeId(song: Song | null | undefined): string | null {
+  if (!song) return null;
+  if (song.youtube_id && /^[a-zA-Z0-9_-]{11}$/.test(song.youtube_id)) {
+    return song.youtube_id;
+  }
+  const idMatch = String(song.id || '').match(/^yt-([a-zA-Z0-9_-]{11})$/);
+  if (idMatch && idMatch[1]) return idMatch[1];
+
+  const fullText = decodeURIComponent(`${song.url || ''} ${String(song.id || '')}`);
+  if (fullText.includes('spotify.com') || fullText.includes('soundcloud.com')) {
+    return null;
+  }
+  if (!fullText.includes('youtube.com') && !fullText.includes('youtu.be')) {
+    return null;
+  }
+  const match = fullText.match(/(?:watch\?v=|youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
+  return match && match[1] ? match[1] : null;
+}
+
 function resolveSource(song: Song): string | null {
   if (song.localUri) {
     return song.localUri;
   }
-  if (!song.url) {
-    if (song.id != null) {
-      const base = (API_BASE || '').replace(/\/+$/, '');
-      return `${base}/api/songs/${song.id}/audio`;
+  const base = (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
+
+  const ytId = extractYoutubeId(song);
+  if (ytId) {
+    return `${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`;
+  }
+
+  if (song.url) {
+    if (
+      song.url.includes('youtube.com') ||
+      song.url.includes('youtu.be') ||
+      song.url.includes('spotify.com') ||
+      song.url.includes('search_query') ||
+      song.source === 'spotify'
+    ) {
+      return `${base}/api/links/stream?url=${encodeURIComponent(song.url)}`;
     }
-    return null;
+    if (song.url.startsWith('http')) {
+      return song.url;
+    }
+    const cleanUrl = song.url.startsWith('/') ? song.url : `/${song.url}`;
+    return `${base}${cleanUrl}`;
   }
-  if (song.url.startsWith('http')) {
-    return song.url;
+
+  if (song.id != null) {
+    return `${base}/api/songs/${song.id}/audio`;
   }
-  const base = (API_BASE || '').replace(/\/+$/, '');
-  const cleanUrl = song.url.startsWith('/') ? song.url : `/${song.url}`;
-  return `${base}${cleanUrl}`;
+
+  return null;
 }
 
 async function recordPlayIfNeeded(song: Song): Promise<void> {
@@ -101,7 +136,9 @@ import { DeviceEventEmitter } from 'react-native';
 
 export const usePlayerStore = create<PlayerState>()((set, get) => {
   onPlayerStatus(() => {
-    const { currentSong, isPlaying, position, duration } = get();
+    const state = get();
+    if (!state) return;
+    const { currentSong, isPlaying, position, duration } = state;
     syncLockScreen(currentSong, isPlaying, position, duration);
   });
 
@@ -177,6 +214,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
         order,
       }, false);
       void playWithEngine(song);
+      import('./jam.store').then(({ useJamStore }) => {
+        const jam = useJamStore.getState();
+        if (jam.active && jam.isHost && !jam.syncInProgress) {
+          jam.broadcastPlaybackChange('play', 0);
+        }
+      });
     },
 
     playQueue: (queue, startIndex = 0) => {
@@ -193,6 +236,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
         player.pause();
         set({ isPlaying: false }, false);
         syncLockScreen(get().currentSong, false, get().position, get().duration);
+        import('./jam.store').then(({ useJamStore }) => {
+          const jam = useJamStore.getState();
+          if (jam.active && jam.isHost && !jam.syncInProgress) jam.broadcastPlaybackChange('pause');
+        });
       } else {
         if (player.duration > 0 && player.currentTime >= player.duration - 0.5) {
           player.seekTo(0);
@@ -200,6 +247,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
         player.play();
         set({ isPlaying: true }, false);
         syncLockScreen(get().currentSong, true, get().position, get().duration);
+        import('./jam.store').then(({ useJamStore }) => {
+          const jam = useJamStore.getState();
+          if (jam.active && jam.isHost && !jam.syncInProgress) jam.broadcastPlaybackChange('play');
+        });
       }
     },
 
@@ -210,6 +261,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       player.play();
       set({ isPlaying: true }, false);
       syncLockScreen(get().currentSong, true, get().position, get().duration);
+      import('./jam.store').then(({ useJamStore }) => {
+        const jam = useJamStore.getState();
+        if (jam.active && jam.isHost && !jam.syncInProgress) jam.broadcastPlaybackChange('play');
+      });
     },
 
     pause: () => {
@@ -218,6 +273,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       player.pause();
       set({ isPlaying: false }, false);
       syncLockScreen(get().currentSong, false, get().position, get().duration);
+      import('./jam.store').then(({ useJamStore }) => {
+        const jam = useJamStore.getState();
+        if (jam.active && jam.isHost && !jam.syncInProgress) jam.broadcastPlaybackChange('pause');
+      });
     },
 
     next: () => {
@@ -275,6 +334,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       const player = getPlayer();
       if (player) player.seekTo(seconds);
       set({ position: seconds }, false);
+      import('./jam.store').then(({ useJamStore }) => {
+        const jam = useJamStore.getState();
+        if (jam.active && jam.isHost && !jam.syncInProgress) {
+          jam.broadcastPlaybackChange('seek', seconds);
+        }
+      });
     },
 
     setProgress: (position, duration) => set({ position, duration }, false),
@@ -299,6 +364,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       if (queue.some((s) => String(s.id) === String(song.id))) return;
       const nextQueue = [...queue, song];
       set({ queue: nextQueue, order: buildOrder(nextQueue.length, get().shuffle, get().queueIndex) }, false);
+      import('./jam.store').then(({ useJamStore }) => {
+        const jam = useJamStore.getState();
+        if (jam.active && jam.isHost && !jam.syncInProgress) {
+          jam.broadcastQueueAdd(song.id);
+        }
+      });
     },
 
     playNext: (song) => {
@@ -307,6 +378,12 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       const nextQueue = [...queue];
       nextQueue.splice(queueIndex + 1, 0, song);
       set({ queue: nextQueue, order: buildOrder(nextQueue.length, get().shuffle, queueIndex) }, false);
+      import('./jam.store').then(({ useJamStore }) => {
+        const jam = useJamStore.getState();
+        if (jam.active && jam.isHost && !jam.syncInProgress) {
+          jam.broadcastQueueAdd(song.id);
+        }
+      });
     },
 
     removeFromQueue: (songId) => {
@@ -324,10 +401,22 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
         if (!song) return;
         set({ queue: nextQueue, queueIndex: nextIndex, currentSong: song, position: 0, duration: 0 }, false);
         void playWithEngine(song);
+        import('./jam.store').then(({ useJamStore }) => {
+          const jam = useJamStore.getState();
+          if (jam.active && jam.isHost && !jam.syncInProgress) {
+            jam.broadcastQueueRemove(songId);
+          }
+        });
         return;
       }
       if (queueIndex > 0 && nextQueue.length < queue.length) nextIndex = queueIndex - 1;
       set({ queue: nextQueue, queueIndex: nextIndex, order: buildOrder(nextQueue.length, get().shuffle, nextIndex) }, false);
+      import('./jam.store').then(({ useJamStore }) => {
+        const jam = useJamStore.getState();
+        if (jam.active && jam.isHost && !jam.syncInProgress) {
+          jam.broadcastQueueRemove(songId);
+        }
+      });
     },
 
     clearQueue: () => {

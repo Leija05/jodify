@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
   test: {
     environment: 'jsdom',
-    setupFiles: ['./jest.setup.tsx'],
+    setupFiles: ['./vitest.setup.ts'],
     include: ['src/__tests__/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',

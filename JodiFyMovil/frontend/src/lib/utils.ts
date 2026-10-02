@@ -65,16 +65,12 @@ export function resolveArtist(song: Song): string {
     return rawArtist;
   }
 
-  // 2. If song name has "Artist - Title" or "Artist – Title"
-  const delimiterMatch = rawName.match(/^([^-–—]+)\s*[-–—]\s*(.+)$/);
-  if (delimiterMatch && delimiterMatch[1] && delimiterMatch[2]) {
-    const candidate = delimiterMatch[1].trim();
-    if (candidate.length > 0 && !/^(track|pista|\d+)$/i.test(candidate)) {
-      return candidate;
-    }
+  // 3. Fallback to album if present
+  if (song.album && song.album.trim() && !/^(enlace web|playlist import)$/i.test(song.album.trim())) {
+    return song.album.trim();
   }
 
-  return 'Artista Desconocido';
+  return null;
 }
 
 export function formatDuration(seconds: number): string {

@@ -13,6 +13,7 @@ interface UiState {
   equalizerOpen: boolean;
   secretOpen: boolean;
   queueSheetOpen: boolean;
+  jamModalOpen: boolean;
 
   setTab: (tab: TabId) => void;
   openFullscreen: () => void;
@@ -29,6 +30,8 @@ interface UiState {
   closeSecret: () => void;
   openQueueSheet: () => void;
   closeQueueSheet: () => void;
+  openJamModal: () => void;
+  closeJamModal: () => void;
 }
 
 export const useUiStore = create<UiState>((set, get) => ({
@@ -41,6 +44,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   equalizerOpen: false,
   secretOpen: false,
   queueSheetOpen: false,
+  jamModalOpen: false,
 
   setTab: (tab) => {
     if (get().tab !== tab) {
@@ -61,4 +65,6 @@ export const useUiStore = create<UiState>((set, get) => ({
   closeSecret: () => set({ secretOpen: false }),
   openQueueSheet: () => set({ queueSheetOpen: true }),
   closeQueueSheet: () => set({ queueSheetOpen: false }),
+  openJamModal: () => set({ jamModalOpen: true }),
+  closeJamModal: () => set({ jamModalOpen: false }),
 }));

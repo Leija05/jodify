@@ -96,6 +96,9 @@ export interface Song {
   picture?: string;
   play_count?: number;
   localUri?: string;
+  youtube_id?: string;
+  source?: string;
+  stream_url?: string;
 }
 
 export interface Playlist {

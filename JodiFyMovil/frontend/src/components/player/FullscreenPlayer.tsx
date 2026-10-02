@@ -247,9 +247,8 @@ export default function FullscreenPlayer() {
 
   const handleOpenJam = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    useUiStore.getState().setTab('community');
-    closeFullscreen();
-  }, [closeFullscreen]);
+    useUiStore.getState().openJamModal();
+  }, []);
 
   const modalOpacity = translateY.interpolate({
     inputRange: [0, SCREEN.height * 0.7],

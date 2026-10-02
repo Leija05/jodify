@@ -7,6 +7,7 @@ import { PressableFluid } from '@components/ui/PressableFluid';
 import { EmptyState } from '@components/ui/EmptyState';
 import { fetchCommunityUsers, CommunityUser } from '@services/users.service';
 import { usePlayerStore } from '@stores/player.store';
+import { useJamStore } from '@stores/jam.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
 import { colors, typography, gradients, radius, elevation } from '@theme';
@@ -115,6 +116,10 @@ export default function CommunityScreen() {
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const openFullscreen = useUiStore((s) => s.openFullscreen);
+  const openJamModal = useUiStore((s) => s.openJamModal);
+  const jamActive = useJamStore((s) => s.active);
+  const jamCode = useJamStore((s) => s.code);
+  const jamIsHost = useJamStore((s) => s.isHost);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -203,6 +208,41 @@ export default function CommunityScreen() {
           <Ionicons name="refresh" size={22} color={colors.secondary} />
         </PressableFluid>
       </View>
+
+      {/* JodiFy Jam Banner */}
+      <PressableFluid
+        onPress={openJamModal}
+        haptic="light"
+        style={styles.jamBannerCard}
+        scaleTo={0.98}
+      >
+        <View style={styles.jamBannerContent}>
+          <View style={[styles.jamBannerIconWrap, jamActive && styles.jamBannerIconActive]}>
+            <Ionicons name="people" size={20} color={jamActive ? '#00E676' : colors.secondary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.jamBannerTitle}>JodiFy Jam</Text>
+              {jamActive ? (
+                <View style={styles.jamLiveTag}>
+                  <View style={styles.jamLiveDot} />
+                  <Text style={styles.jamLiveText}>{jamCode} · {jamIsHost ? 'HOST' : 'EN VIVO'}</Text>
+                </View>
+              ) : (
+                <View style={styles.jamSyncTag}>
+                  <Text style={styles.jamSyncTagText}>SINCRONIZAR</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.jamBannerDesc} numberOfLines={1}>
+              {jamActive
+                ? 'Sesión en curso · Toca para ver participantes y código'
+                : 'Conéctate con JodiFy Escritorio para escuchar juntos'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
+        </View>
+      </PressableFluid>
 
       {effectiveUserData && (
         <PressableFluid
@@ -808,5 +848,74 @@ const styles = StyleSheet.create({
     fontFamily: typography.labelMedium.fontFamily,
     fontSize: typography.labelMedium.fontSize,
     letterSpacing: typography.labelMedium.letterSpacing,
+  },
+  jamBannerCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  jamBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  jamBannerIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(127,0,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jamBannerIconActive: {
+    backgroundColor: 'rgba(0,230,118,0.15)',
+  },
+  jamBannerTitle: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  jamLiveTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,230,118,0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  jamLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#00E676',
+  },
+  jamLiveText: {
+    color: '#00E676',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  jamSyncTag: {
+    backgroundColor: 'rgba(127,0,255,0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  jamSyncTagText: {
+    color: colors.secondary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  jamBannerDesc: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    marginTop: 2,
   },
 });

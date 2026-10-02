@@ -429,6 +429,21 @@ async def top_songs(limit: int = Query(10, ge=1, le=50)) -> list[dict]:
     return res
 
 
+@router.get("/{song_id}")
+async def get_song_by_id(song_id: str) -> dict:
+    try:
+        oid = ObjectId(song_id)
+        doc = await col("songs").find_one({"_id": oid})
+    except Exception:
+        doc = await col("songs").find_one({"_id": song_id})
+    if not doc:
+        # Fallback por youtube_id si el id proporcionado es un ID de video
+        doc = await col("songs").find_one({"youtube_id": song_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Canción no encontrada")
+    return song_view(doc)
+
+
 @router.patch("/{song_id}", response_model=None)
 async def update_song(
     song_id: str, body: UpdateSongRequest, _admin: Annotated[dict, Depends(require_admin)] = None

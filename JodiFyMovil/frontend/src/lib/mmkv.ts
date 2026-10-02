@@ -1,15 +1,41 @@
-import { MMKV } from 'react-native-mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const memoryStore = new Map<string, string | number | boolean>();
 
-let storage: MMKV | null = null;
+// Pre-fill memoryStore from AsyncStorage asynchronously on startup
+AsyncStorage.getAllKeys()
+  .then((keys) => AsyncStorage.multiGet(keys))
+  .then((pairs) => {
+    for (const [k, v] of pairs) {
+      if (v !== null && !memoryStore.has(k)) {
+        memoryStore.set(k, v);
+      }
+    }
+  })
+  .catch(() => {});
+
+let storage: {
+  getString: (key: string) => string | undefined;
+  set: (key: string, value: string | number | boolean) => void;
+  getNumber: (key: string) => number | undefined;
+  getBoolean: (key: string) => boolean | undefined;
+  delete: (key: string) => void;
+  clearAll: () => void;
+  getAllKeys: () => string[];
+  contains: (key: string) => boolean;
+} | null = null;
+
 try {
-  storage = new MMKV({
-    id: 'jodify-storage',
-    encryptionKey: 'jodify-secure-key-2024',
-  });
+  // Use dynamic require so Expo Go does not crash when bundling
+  const mmkvModule = require('react-native-mmkv');
+  if (mmkvModule && mmkvModule.MMKV) {
+    storage = new mmkvModule.MMKV({
+      id: 'jodify-storage',
+      encryptionKey: 'jodify-secure-key-2024',
+    });
+  }
 } catch (e) {
-  console.warn('[MMKV] Native storage unavailable, using memory fallback:', e);
+  console.warn('[MMKV] Native storage unavailable, using AsyncStorage fallback for Expo Go:', e);
 }
 
 export const mmkv = {
@@ -23,30 +49,40 @@ export const mmkv = {
       storage.set(key, value);
     } else {
       memoryStore.set(key, value);
+      AsyncStorage.setItem(key, value).catch(() => {});
     }
   },
   getNumber: (key: string): number | undefined => {
     if (storage) return storage.getNumber(key);
     const v = memoryStore.get(key);
-    return typeof v === 'number' ? v : undefined;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const parsed = parseFloat(v);
+      return isNaN(parsed) ? undefined : parsed;
+    }
+    return undefined;
   },
   setNumber: (key: string, value: number): void => {
     if (storage) {
       storage.set(key, value);
     } else {
       memoryStore.set(key, value);
+      AsyncStorage.setItem(key, String(value)).catch(() => {});
     }
   },
   getBoolean: (key: string): boolean | undefined => {
     if (storage) return storage.getBoolean(key);
     const v = memoryStore.get(key);
-    return typeof v === 'boolean' ? v : undefined;
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'string') return v === 'true';
+    return undefined;
   },
   setBoolean: (key: string, value: boolean): void => {
     if (storage) {
       storage.set(key, value);
     } else {
       memoryStore.set(key, value);
+      AsyncStorage.setItem(key, String(value)).catch(() => {});
     }
   },
   getObject: <T>(key: string): T | undefined => {
@@ -65,6 +101,7 @@ export const mmkv = {
         storage.set(key, json);
       } else {
         memoryStore.set(key, json);
+        AsyncStorage.setItem(key, json).catch(() => {});
       }
     } catch {
     }
@@ -72,10 +109,12 @@ export const mmkv = {
   delete: (key: string): void => {
     if (storage) storage.delete(key);
     memoryStore.delete(key);
+    AsyncStorage.removeItem(key).catch(() => {});
   },
   clearAll: (): void => {
     if (storage) storage.clearAll();
     memoryStore.clear();
+    AsyncStorage.clear().catch(() => {});
   },
   getAllKeys: (): string[] => {
     if (storage) return storage.getAllKeys();
