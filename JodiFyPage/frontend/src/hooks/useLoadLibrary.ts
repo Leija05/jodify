@@ -5,10 +5,8 @@ import { usePlaylistsStore } from '../store/playlists.store';
 
 export function useLoadLibrary(session: { username: string } | null): void {
   useEffect(() => {
-    if (session) {
-      void loadLibrary(session.username);
-    }
-  }, [session]);
+    void loadLibrary(session ? session.username : null);
+  }, [session?.username]);
 
   useEffect(() => {
     if (!session) return;

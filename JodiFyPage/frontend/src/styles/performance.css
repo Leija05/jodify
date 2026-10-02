@@ -1,0 +1,189 @@
+/* ==========================================================================
+   JODIFY PERFORMANCE & LOW-SPEC ACCELERATION SYSTEM
+   Preserves 100% of aesthetics while eliminating GPU blur & heavy loops
+   ========================================================================== */
+
+/* 1. GLASS BLUR OPTIMIZATION (Eliminates costly backdrop-filter GPU passes) */
+[data-reduce-blur="true"] *,
+[data-performance-mode="true"] * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Fallback solid luxury dark surfaces for zero-lag rendering */
+[data-reduce-blur="true"] .jf-modal-backdrop,
+[data-performance-mode="true"] .jf-modal-backdrop {
+  background: rgba(6, 9, 16, 0.94) !important;
+}
+
+[data-reduce-blur="true"] .jf-modal-card,
+[data-performance-mode="true"] .jf-modal-card {
+  background: #0f1524 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85) !important;
+}
+
+[data-reduce-blur="true"] .jf-player-bar,
+[data-performance-mode="true"] .jf-player-bar {
+  background: #0d121f !important;
+  border-top-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+[data-reduce-blur="true"] .jf-sidebar,
+[data-performance-mode="true"] .jf-sidebar {
+  background: #090d16 !important;
+  border-right-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-reduce-blur="true"] .jf-header,
+[data-performance-mode="true"] .jf-header {
+  background: #080b13 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-reduce-blur="true"] .jf-drawer,
+[data-performance-mode="true"] .jf-drawer {
+  background: #0e1424 !important;
+  border-left-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-reduce-blur="true"] .jf-showcase-card,
+[data-performance-mode="true"] .jf-showcase-card,
+[data-reduce-blur="true"] .jf-card,
+[data-performance-mode="true"] .jf-card {
+  background: #121828 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-reduce-blur="true"] .jf-listening-hero-card,
+[data-performance-mode="true"] .jf-listening-hero-card {
+  background: linear-gradient(135deg, #182035 0%, #0f1525 100%) !important;
+}
+
+[data-reduce-blur="true"] .jf-profile-hero,
+[data-performance-mode="true"] .jf-profile-hero {
+  background: #0f1526 !important;
+}
+
+[data-reduce-blur="true"] .jf-pet-roam-hud,
+[data-performance-mode="true"] .jf-pet-roam-hud,
+[data-reduce-blur="true"] .jf-pet-roam-thought,
+[data-performance-mode="true"] .jf-pet-roam-thought {
+  background: #111827 !important;
+}
+
+[data-reduce-blur="true"] .jf-pet-widget-minimized-btn,
+[data-performance-mode="true"] .jf-pet-widget-minimized-btn {
+  background: #0e1524 !important;
+}
+
+[data-reduce-blur="true"] .jf-context-menu,
+[data-performance-mode="true"] .jf-context-menu,
+[data-reduce-blur="true"] .jf-dropdown,
+[data-performance-mode="true"] .jf-dropdown {
+  background: #131b2e !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 2. CONTINUOUS ANIMATION OPTIMIZATIONS (Eliminates high CPU background paint cycles) */
+[data-reduce-animations="true"] .jf-aurora-orbs,
+[data-performance-mode="true"] .jf-aurora-orbs {
+  display: none !important;
+}
+
+/* Static, elegant ambient gradient substitute when orbs are disabled */
+[data-reduce-animations="true"] .jf-dynamic-bg,
+[data-performance-mode="true"] .jf-dynamic-bg {
+  background: radial-gradient(circle at 10% 10%, rgba(108, 43, 217, 0.15) 0%, transparent 55%),
+              radial-gradient(circle at 90% 90%, rgba(0, 240, 255, 0.1) 0%, transparent 55%),
+              #07070a !important;
+}
+
+[data-reduce-animations="true"] .jf-profile-orb,
+[data-performance-mode="true"] .jf-profile-orb {
+  animation: none !important;
+  display: none !important;
+}
+
+[data-reduce-animations="true"] .jf-ambient-noise,
+[data-performance-mode="true"] .jf-ambient-noise {
+  display: none !important;
+}
+
+[data-reduce-animations="true"] .jf-astral-ring,
+[data-performance-mode="true"] .jf-astral-ring {
+  animation: none !important;
+  opacity: 0.25 !important;
+}
+
+[data-reduce-animations="true"] .jf-astral-burst,
+[data-performance-mode="true"] .jf-astral-burst {
+  display: none !important;
+}
+
+[data-reduce-animations="true"] .jf-cyber-scanlines,
+[data-performance-mode="true"] .jf-cyber-scanlines {
+  animation: none !important;
+  display: none !important;
+}
+
+[data-reduce-animations="true"] .jf-synth-grid-floor,
+[data-performance-mode="true"] .jf-synth-grid-floor {
+  animation: none !important;
+}
+
+[data-reduce-animations="true"] .jf-sakura-petal,
+[data-performance-mode="true"] .jf-sakura-petal {
+  animation: none !important;
+  display: none !important;
+}
+
+/* 3. SETTINGS UI STYLES FOR PERFORMANCE CONTROLS */
+.jf-settings-card--perf {
+  border-color: rgba(0, 240, 255, 0.25) !important;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, rgba(15, 23, 42, 0.7) 100%) !important;
+}
+
+.jf-settings-card--perf.is-active {
+  border-color: rgba(0, 240, 255, 0.5) !important;
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.15) !important;
+}
+
+.jf-perf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(0, 240, 255, 0.15);
+  color: #00f0ff;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+.jf-perf-suboptions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Respect OS-level reduced motion accessibility setting automatically */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .jf-aurora-orbs,
+  .jf-profile-orb,
+  .jf-ambient-noise {
+    display: none !important;
+  }
+}

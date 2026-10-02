@@ -64,6 +64,55 @@ export async function getSongOffline(id: number | string): Promise<OfflineSong |
   }
 }
 
+function parseYtId(target?: string | null): string | null {
+  if (!target) return null;
+  const str = String(target).trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
+  const m = str.match(/(?:watch\?v=|youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+export async function findSongOffline(song: {
+  id?: number | string;
+  youtube_id?: string;
+  url?: string;
+  name?: string;
+  artist?: string;
+}): Promise<OfflineSong | undefined> {
+  try {
+    if (song.id != null) {
+      const direct = await getSongOffline(song.id);
+      if (direct) return direct;
+    }
+
+    const all = await getAllSongsOffline();
+    if (!all || all.length === 0) return undefined;
+
+    const queryYt = song.youtube_id || parseYtId(song.url);
+    const queryName = song.name ? song.name.trim().toLowerCase() : '';
+    const queryArtist = song.artist ? song.artist.trim().toLowerCase() : '';
+
+    for (const item of all) {
+      if (song.id != null && String(item.id) === String(song.id)) return item;
+      const itemYt = item.youtube_id || parseYtId(item.url);
+      if (queryYt && itemYt && queryYt === itemYt) return item;
+      if (song.url && item.url && song.url.trim() === item.url.trim()) return item;
+      if (
+        queryName &&
+        item.name &&
+        item.name.trim().toLowerCase() === queryName &&
+        (!queryArtist || (item.artist && item.artist.trim().toLowerCase() === queryArtist))
+      ) {
+        return item;
+      }
+    }
+    return undefined;
+  } catch (err) {
+    console.warn('[idb] Error en findSongOffline:', err);
+    return undefined;
+  }
+}
+
 export async function getAllSongsOffline(): Promise<OfflineSong[]> {
   try {
     const db = await getDB();

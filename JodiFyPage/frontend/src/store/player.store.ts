@@ -149,14 +149,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     // 3. Canciones de la colección actual (biblioteca / favoritos / descargas)
     const library = useLibraryStore.getState();
-    const pool = library.currentTab === 'downloads'
-      ? library.songs.filter((s) => library.downloadedIds.includes(s.id))
+    const isOffline = (typeof navigator !== 'undefined' && !navigator.onLine) || get().isOfflinePlayback;
+    const pool = (library.currentTab === 'downloads' || isOffline)
+      ? library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)))
       : library.currentTab === 'personal'
-        ? library.songs.filter((s) => library.likedIds.includes(s.id))
+        ? library.songs.filter((s) => library.likedIds.some((id) => String(id) === String(s.id)))
         : library.songs;
     if (pool.length === 0) return;
 
-    let idx = pool.findIndex((s) => s.id === currentSong?.id);
+    let idx = pool.findIndex((s) => String(s.id) === String(currentSong?.id));
     if (isShuffle) {
       idx = randomIndex(pool.length, idx);
     } else {
@@ -186,9 +187,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
     const library = useLibraryStore.getState();
-    const pool = library.songs;
+    const isOffline = (typeof navigator !== 'undefined' && !navigator.onLine) || get().isOfflinePlayback;
+    const pool = (library.currentTab === 'downloads' || isOffline)
+      ? library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)))
+      : library.currentTab === 'personal'
+        ? library.songs.filter((s) => library.likedIds.some((id) => String(id) === String(s.id)))
+        : library.songs;
     if (pool.length === 0) return;
-    const idx = pool.findIndex((s) => s.id === get().currentSong?.id);
+    const idx = pool.findIndex((s) => String(s.id) === String(get().currentSong?.id));
     const prevIdx = (idx - 1 + pool.length) % pool.length;
     const { playSong } = await import('../services/player.service');
     await playSong(pool[prevIdx]);

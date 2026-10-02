@@ -1,5 +1,5 @@
 import { saveSongOffline, getSongOffline, deleteSongOffline } from '../lib/idb';
-import { resolveMediaUrl } from '../lib/utils';
+import { resolveMediaUrl, getSongCoverCandidates } from '../lib/utils';
 import { downloadsService } from './social.service';
 import { useLibraryStore } from '../store/library.store';
 import { useToastStore } from '../store/toast.store';
@@ -59,8 +59,27 @@ async function fetchAudioWithProgress(
   return blob;
 }
 
-export async function downloadSong(song: Song, username: string): Promise<void> {
+async function fetchImageAsDataUrl(url?: string | null): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const resolved = resolveMediaUrl(url);
+    const res = await fetch(resolved, { mode: 'cors' }).catch(() => null);
+    if (!res || !res.ok) return null;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function downloadSong(song: Song, username?: string | null): Promise<void> {
   const dlStore = useDownloadsStore.getState();
+  const effectiveUser = username || localStorage.getItem('currentUserName') || 'local_user';
 
   try {
     const existing = await getSongOffline(song.id);
@@ -113,11 +132,31 @@ export async function downloadSong(song: Song, username: string): Promise<void> 
       if (!blob || blob.size < 1000) throw new Error('Archivo de audio descargado corrupto o vacío');
     }
 
-    await saveSongOffline({ ...song, blob, savedAt: Date.now() });
-    await downloadsService.markDownload(username, song.id);
+    // Guardar carátula como Data URL para que se vea siempre sin conexión
+    let offlineCover: string | null = null;
+    try {
+      const coverCandidates = getSongCoverCandidates(song as unknown as Record<string, unknown>);
+      if (coverCandidates.length > 0) {
+        offlineCover = await fetchImageAsDataUrl(coverCandidates[0]);
+      }
+    } catch {}
+
+    const offlinePayload = {
+      ...song,
+      blob,
+      savedAt: Date.now(),
+      offline_cover: offlineCover || (song as any).offline_cover,
+    };
+
+    await saveSongOffline(offlinePayload);
+    if (effectiveUser && effectiveUser !== 'local_user') {
+      await downloadsService.markDownload(effectiveUser, song.id).catch(() => undefined);
+    }
 
     const library = useLibraryStore.getState();
-    library.setDownloadedIds([...new Set([...library.downloadedIds, song.id])]);
+    const updatedIds = Array.from(new Set([...library.downloadedIds.map(String), String(song.id)]));
+    library.setDownloadedIds(updatedIds);
+    library.upsertSong(offlinePayload);
 
     dlStore.finishDownload(song.id);
     useToastStore.getState().show(`«${song.name}» guardada sin conexión ✓`, 'success', 2200);
@@ -129,11 +168,14 @@ export async function downloadSong(song: Song, username: string): Promise<void> 
   }
 }
 
-export async function removeDownload(songId: number | string, username: string): Promise<void> {
+export async function removeDownload(songId: number | string, username?: string | null): Promise<void> {
+  const effectiveUser = username || localStorage.getItem('currentUserName');
   await deleteSongOffline(songId);
-  await downloadsService.removeDownload(username, songId).catch(() => undefined);
+  if (effectiveUser) {
+    await downloadsService.removeDownload(effectiveUser, songId).catch(() => undefined);
+  }
   const library = useLibraryStore.getState();
-  library.setDownloadedIds(library.downloadedIds.filter((id) => id !== songId));
+  library.setDownloadedIds(library.downloadedIds.filter((id) => String(id) !== String(songId)));
   useToastStore.getState().show('Descarga eliminada', 'info', 1800);
 }
 

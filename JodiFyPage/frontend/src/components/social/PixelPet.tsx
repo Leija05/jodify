@@ -62,11 +62,16 @@ export function PixelPet({
     }, 1200);
 
     const phrases: Record<string, string[]> = {
-      cat: ['¡Miau! ♪', '¡Prrr! ❤️', '¡Nya! 🐾', '¡Vibing! 🎧'],
-      dog: ['¡Guau! ♫', '¡Woof! 🐶', '¡Amo este beat! ❤️', '¡Cola feliz! ✨'],
-      magikarp: ['¡Splash! 💦', '¡Magikarp usó Splash! 🐟', '¡Boing! 🌊', '¡Shiny! ✨'],
-      capybara: ['Chill... ☕', 'Paz interior 🍊', 'Buen tema... 🧘', 'Total relax 🌿'],
+      cat: ['¡Miau! ♪', '¡Prrr! ♥', '¡Nya! 🐾', '¡Vibing! 🎧'],
+      dog: ['¡Guau! ♫', '¡Woof! ✨', '¡Amo este beat! ♥', '¡Cola feliz! ⚡'],
+      axolotl: ['¡Glu glu! 🫧', '¡Bioluminiscencia! ⚡', '¡Sonrisa acuática! ♥', '¡Nadando al ritmo! 🌊'],
+      magikarp: ['¡Splash! 💦', '¡Magikarp usó Splash! 🌊', '¡Boing! ⚡', '¡Shiny! ✨'],
+      frog: ['¡Ribbit! 🌿', '¡Croac lo-fi! ☕', '¡Saltito rítmico! 🎶', '¡Champiñón beat! 🍄'],
+      capybara: ['Chill... ☕', 'Paz interior 🌿', 'Buen tema... 🧘', 'Total relax ✨'],
+      penguin: ['¡Noot noot! ❄️', '¡Deslizando en hielo! 🐧', '¡Suban los graves! 🎧', '¡Waddle beat! 🌊'],
       ghost: ['¡Booo! 👻', '¡Spooky beat! 🎧', '¡8-Bit vibes! 🕹️', '¡Flotando! 🌌'],
+      fox: ['¡Yip yip! 🦊', '¡Fuego sónico! 🔥', '¡Cola esponjosa! ✨', '¡Ritmo astuto! 🎧'],
+      robot: ['BEEP BOOP! ⚡', 'SYSTEM: 100% GROOVE 🤖', 'PROCESSING AUDIO... 🎧', 'DROP THE BASS! 💥'],
       dragon: ['¡Raaawr! 🔥', '¡Fuego sónico! 🐲', '¡Bajos pesados! ⚡', '¡Chispitas! ✨'],
     };
 
@@ -113,7 +118,7 @@ export function PixelPet({
           className="jf-pet-heart-particle"
           style={{ transform: `translate(${h.x}px, ${h.y}px)` }}
         >
-          ❤️
+          ♥
         </span>
       ))}
 
@@ -159,12 +164,22 @@ function PixelPetSvg({
   switch (type) {
     case 'dog':
       return <PixelDog variant={variant} isPlaying={isPlaying} />;
+    case 'axolotl':
+      return <PixelAxolotl variant={variant} isPlaying={isPlaying} />;
     case 'magikarp':
       return <PixelMagikarp variant={variant} isPlaying={isPlaying} />;
+    case 'frog':
+      return <PixelFrog variant={variant} isPlaying={isPlaying} />;
     case 'capybara':
       return <PixelCapybara variant={variant} isPlaying={isPlaying} />;
+    case 'penguin':
+      return <PixelPenguin variant={variant} isPlaying={isPlaying} />;
     case 'ghost':
       return <PixelGhost variant={variant} isPlaying={isPlaying} />;
+    case 'fox':
+      return <PixelFox variant={variant} isPlaying={isPlaying} />;
+    case 'robot':
+      return <PixelRobot variant={variant} isPlaying={isPlaying} />;
     case 'dragon':
       return <PixelDragon variant={variant} isPlaying={isPlaying} />;
     case 'cat':
@@ -576,3 +591,384 @@ function PixelDragon({ variant, isPlaying }: { variant: string; isPlaying: boole
     </svg>
   );
 }
+
+// 7. Ajolote Mágico Pixel Art
+function PixelAxolotl({ variant, isPlaying }: { variant: string; isPlaying: boolean }) {
+  let body = '#f472b6';
+  let gills = '#fb7185';
+  let belly = '#fbcfe8';
+  let eyes = '#0f172a';
+  let sparkles = '#ffffff';
+
+  if (variant === 'neon_cyan') {
+    body = '#06b6d4';
+    gills = '#22d3ee';
+    belly = '#a5f3fc';
+    eyes = '#083344';
+    sparkles = '#cffafe';
+  } else if (variant === 'abyssal') {
+    body = '#4c1d95';
+    gills = '#eab308';
+    belly = '#7c3aed';
+    eyes = '#facc15';
+    sparkles = '#fde047';
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" width="100%" height="100%" shapeRendering="crispEdges" className="jf-svg-pet">
+      {/* Branquias externas - Izquierda */}
+      <rect x="2" y="6" width="3" height="2" fill={gills} />
+      <rect x="1" y="8" width="4" height="2" fill={gills} />
+      <rect x="2" y="10" width="3" height="2" fill={gills} />
+
+      {/* Branquias externas - Derecha */}
+      <rect x="19" y="6" width="3" height="2" fill={gills} />
+      <rect x="19" y="8" width="4" height="2" fill={gills} />
+      <rect x="19" y="10" width="3" height="2" fill={gills} />
+
+      {/* Cabeza ancha y amigable */}
+      <rect x="5" y="7" width="14" height="7" fill={body} />
+      <rect x="6" y="6" width="12" height="9" fill={body} />
+
+      {/* Ojos y mejillas sonrojadas */}
+      {isPlaying ? (
+        <>
+          <rect x="7" y="9" width="3" height="1" fill={eyes} />
+          <rect x="14" y="9" width="3" height="1" fill={eyes} />
+        </>
+      ) : (
+        <>
+          <rect x="7" y="9" width="2" height="2" fill={eyes} />
+          <rect x="8" y="9" width="1" height="1" fill={sparkles} />
+          <rect x="15" y="9" width="2" height="2" fill={eyes} />
+          <rect x="16" y="9" width="1" height="1" fill={sparkles} />
+        </>
+      )}
+      <rect x="6" y="11" width="2" height="1" fill={gills} />
+      <rect x="16" y="11" width="2" height="1" fill={gills} />
+
+      {/* Sonrisa chibi */}
+      <rect x="10" y="11" width="4" height="1" fill={eyes} />
+      <rect x="11" y="12" width="2" height="1" fill={eyes} />
+
+      {/* Cuerpo y panza suave */}
+      <rect x="7" y="14" width="10" height="6" fill={body} />
+      <rect x="9" y="14" width="6" height="5" fill={belly} />
+
+      {/* Patitas delanteras */}
+      <rect x="5" y="17" width="2" height="3" fill={body} />
+      <rect x="17" y="17" width="2" height="3" fill={body} />
+
+      {/* Cola ondulante con aleta transparente */}
+      <rect x="11" y="20" width="2" height="3" fill={gills} opacity="0.9" />
+      <rect x="10" y="21" width="4" height="2" fill={gills} opacity="0.75" />
+
+      {/* Burbujitas bioluminiscentes cuando suena música */}
+      {isPlaying && (
+        <>
+          <rect x="3" y="3" width="1" height="1" fill={sparkles} />
+          <rect x="20" y="4" width="2" height="2" fill={gills} />
+          <rect x="2" y="14" width="1" height="1" fill={gills} />
+        </>
+      )}
+    </svg>
+  );
+}
+
+// 8. Ranita Lo-Fi Pixel Art
+function PixelFrog({ variant, isPlaying }: { variant: string; isPlaying: boolean }) {
+  let body = '#10b981';
+  let shadow = '#059669';
+  let belly = '#a7f3d0';
+  let eyes = '#0f172a';
+  let leaf = '#22c55e';
+
+  if (variant === 'poison_dart') {
+    body = '#3b82f6';
+    shadow = '#1d4ed8';
+    belly = '#1e293b';
+    eyes = '#facc15';
+    leaf = '#06b6d4';
+  } else if (variant === 'golden_frog') {
+    body = '#fbbf24';
+    shadow = '#d97706';
+    belly = '#fef08a';
+    eyes = '#0f172a';
+    leaf = '#f59e0b';
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" width="100%" height="100%" shapeRendering="crispEdges" className="jf-svg-pet">
+      {/* Hojita Lo-Fi en la coronilla */}
+      <rect x="11" y="2" width="2" height="3" fill={leaf} />
+      <rect x="10" y="3" width="4" height="2" fill={leaf} />
+
+      {/* Ojos saltones de sapito en la parte superior */}
+      <rect x="5" y="5" width="4" height="4" fill={body} />
+      <rect x="15" y="5" width="4" height="4" fill={body} />
+      <rect x="6" y="6" width="2" height="2" fill={eyes} />
+      <rect x="7" y="6" width="1" height="1" fill="#ffffff" />
+      <rect x="16" y="6" width="2" height="2" fill={eyes} />
+      <rect x="17" y="6" width="1" height="1" fill="#ffffff" />
+
+      {/* Cabeza ancha */}
+      <rect x="4" y="8" width="16" height="6" fill={body} />
+      <rect x="5" y="9" width="14" height="5" fill={body} />
+
+      {/* Gran boca sonriente de ranita */}
+      {isPlaying ? (
+        <>
+          <rect x="8" y="11" width="8" height="2" fill="#0f172a" />
+          <rect x="9" y="12" width="6" height="2" fill="#f43f5e" />
+        </>
+      ) : (
+        <rect x="8" y="11" width="8" height="1" fill="#064e3b" />
+      )}
+
+      {/* Mejillitas rubor */}
+      <rect x="5" y="11" width="2" height="1" fill="#f472b6" />
+      <rect x="17" y="11" width="2" height="1" fill="#f472b6" />
+
+      {/* Cuerpo y vientre claro */}
+      <rect x="6" y="14" width="12" height="6" fill={body} />
+      <rect x="8" y="14" width="8" height="5" fill={belly} />
+
+      {/* Patitas traseras dobladas (posición de anfibio) */}
+      <rect x="3" y="16" width="3" height="4" fill={shadow} />
+      <rect x="18" y="16" width="3" height="4" fill={shadow} />
+      <rect x="2" y="20" width="4" height="2" fill={body} />
+      <rect x="18" y="20" width="4" height="2" fill={body} />
+
+      {/* Patitas delanteras */}
+      <rect x="8" y="19" width="2" height="3" fill={body} />
+      <rect x="14" y="19" width="2" height="3" fill={body} />
+    </svg>
+  );
+}
+
+// 9. Pingüinito DJ Pixel Art
+function PixelPenguin({ variant, isPlaying }: { variant: string; isPlaying: boolean }) {
+  let coat = '#0f172a';
+  let belly = '#ffffff';
+  let beak = '#f97316';
+  let phoneArch = '#6366f1';
+  let phoneCushion = '#f43f5e';
+  let eye = '#0f172a';
+
+  if (variant === 'gentoo') {
+    coat = '#1e293b';
+    belly = '#fef3c7';
+    beak = '#eab308';
+    phoneArch = '#ffd700';
+    phoneCushion = '#f59e0b';
+  } else if (variant === 'cyber_penguin') {
+    coat = '#0284c7';
+    belly = '#e0f2fe';
+    beak = '#00f0ff';
+    phoneArch = '#38bdf8';
+    phoneCushion = '#a855f7';
+    eye = '#00f0ff';
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" width="100%" height="100%" shapeRendering="crispEdges" className="jf-svg-pet">
+      {/* Auriculares DJ sobre la cabeza */}
+      <rect x="7" y="3" width="10" height="2" fill={phoneArch} />
+      <rect x="4" y="5" width="3" height="5" fill={phoneCushion} />
+      <rect x="17" y="5" width="3" height="5" fill={phoneCushion} />
+
+      {/* Cabeza redonda */}
+      <rect x="6" y="5" width="12" height="8" fill={coat} />
+      <rect x="7" y="6" width="10" height="7" fill={coat} />
+
+      {/* Ojos redondos */}
+      {isPlaying ? (
+        <>
+          <rect x="8" y="7" width="2" height="1" fill={eye} />
+          <rect x="14" y="7" width="2" height="1" fill={eye} />
+        </>
+      ) : (
+        <>
+          <rect x="8" y="7" width="2" height="2" fill="#ffffff" />
+          <rect x="9" y="7" width="1" height="2" fill={eye} />
+          <rect x="14" y="7" width="2" height="2" fill="#ffffff" />
+          <rect x="14" y="7" width="1" height="2" fill={eye} />
+        </>
+      )}
+
+      {/* Pico triangular */}
+      <rect x="11" y="9" width="2" height="2" fill={beak} />
+      <rect x="10" y="10" width="4" height="1" fill={beak} />
+
+      {/* Cuerpo tuxedo */}
+      <rect x="6" y="13" width="12" height="8" fill={coat} />
+      <rect x="8" y="13" width="8" height="7" fill={belly} />
+
+      {/* Alitas / Aletas que se mueven con el ritmo */}
+      {isPlaying ? (
+        <>
+          <rect x="3" y="12" width="3" height="4" fill={coat} />
+          <rect x="18" y="12" width="3" height="4" fill={coat} />
+        </>
+      ) : (
+        <>
+          <rect x="4" y="14" width="2" height="5" fill={coat} />
+          <rect x="18" y="14" width="2" height="5" fill={coat} />
+        </>
+      )}
+
+      {/* Patitas anaranjadas */}
+      <rect x="8" y="21" width="3" height="2" fill={beak} />
+      <rect x="13" y="21" width="3" height="2" fill={beak} />
+    </svg>
+  );
+}
+
+// 10. Zorrito Kitsune Pixel Art
+function PixelFox({ variant, isPlaying }: { variant: string; isPlaying: boolean }) {
+  let main = '#f97316';
+  let shadow = '#ea580c';
+  let white = '#ffffff';
+  let eye = '#10b981';
+  let nose = '#18181b';
+
+  if (variant === 'arctic') {
+    main = '#f1f5f9';
+    shadow = '#cbd5e1';
+    white = '#ffffff';
+    eye = '#0284c7';
+    nose = '#0f172a';
+  } else if (variant === 'spirit') {
+    main = '#c084fc';
+    shadow = '#9333ea';
+    white = '#f3e8ff';
+    eye = '#facc15';
+    nose = '#581c87';
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" width="100%" height="100%" shapeRendering="crispEdges" className="jf-svg-pet">
+      {/* Orejas puntiagudas con puntas oscuras */}
+      <rect x="4" y="3" width="4" height="4" fill={shadow} />
+      <rect x="5" y="4" width="2" height="2" fill={white} />
+      <rect x="16" y="3" width="4" height="4" fill={shadow} />
+      <rect x="17" y="4" width="2" height="2" fill={white} />
+
+      {/* Cabeza astuta */}
+      <rect x="5" y="7" width="14" height="6" fill={main} />
+      <rect x="4" y="8" width="16" height="5" fill={main} />
+
+      {/* Mejillas blancas de zorro */}
+      <rect x="4" y="10" width="3" height="3" fill={white} />
+      <rect x="17" y="10" width="3" height="3" fill={white} />
+
+      {/* Ojos gatunos / zorrunos */}
+      {isPlaying ? (
+        <>
+          <rect x="7" y="9" width="3" height="1" fill="#0f172a" />
+          <rect x="14" y="9" width="3" height="1" fill="#0f172a" />
+        </>
+      ) : (
+        <>
+          <rect x="7" y="8" width="2" height="2" fill={eye} />
+          <rect x="8" y="8" width="1" height="1" fill="#ffffff" />
+          <rect x="15" y="8" width="2" height="2" fill={eye} />
+          <rect x="16" y="8" width="1" height="1" fill="#ffffff" />
+        </>
+      )}
+
+      {/* Hociquito y nariz */}
+      <rect x="11" y="11" width="2" height="2" fill={nose} />
+      <rect x="10" y="12" width="4" height="2" fill={white} />
+
+      {/* Pecho y cuerpo */}
+      <rect x="7" y="13" width="10" height="8" fill={main} />
+      <rect x="9" y="14" width="6" height="5" fill={white} />
+
+      {/* Patitas */}
+      <rect x="7" y="21" width="3" height="2" fill={shadow} />
+      <rect x="14" y="21" width="3" height="2" fill={shadow} />
+
+      {/* Gran cola esponjosa con punta blanca */}
+      <rect x="17" y="14" width="4" height="4" fill={main} />
+      <rect x="19" y="12" width="3" height="4" fill={main} />
+      <rect x="20" y="10" width="3" height="3" fill={white} />
+    </svg>
+  );
+}
+
+// 11. CyberBot 808 Pixel Art
+function PixelRobot({ variant, isPlaying }: { variant: string; isPlaying: boolean }) {
+  let body = '#64748b';
+  let screen = '#0f172a';
+  let matrix = '#38bdf8';
+  let accent = '#f43f5e';
+  let bolts = '#94a3b8';
+
+  if (variant === 'neon_matrix') {
+    body = '#1e293b';
+    screen = '#022c22';
+    matrix = '#22c55e';
+    accent = '#10b981';
+    bolts = '#334155';
+  } else if (variant === 'golden_mech') {
+    body = '#eab308';
+    screen = '#451a03';
+    matrix = '#fef08a';
+    accent = '#f97316';
+    bolts = '#fef08a';
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" width="100%" height="100%" shapeRendering="crispEdges" className="jf-svg-pet">
+      {/* Antena con luz parpadeante */}
+      <rect x="11" y="2" width="2" height="3" fill={bolts} />
+      <rect x="10" y="1" width="4" height="2" fill={isPlaying ? accent : '#94a3b8'} />
+
+      {/* Cabeza Monitor CRT */}
+      <rect x="5" y="5" width="14" height="8" fill={body} />
+      <rect x="6" y="6" width="12" height="6" fill={screen} />
+
+      {/* Expresión en pantalla digital de matriz */}
+      {isPlaying ? (
+        <>
+          {/* Ojos ecualizador musical animado */}
+          <rect x="8" y="8" width="3" height="1" fill={matrix} />
+          <rect x="8" y="7" width="1" height="1" fill={matrix} />
+          <rect x="10" y="7" width="1" height="1" fill={matrix} />
+          <rect x="13" y="8" width="3" height="1" fill={matrix} />
+          <rect x="13" y="7" width="1" height="1" fill={matrix} />
+          <rect x="15" y="7" width="1" height="1" fill={matrix} />
+          <rect x="10" y="10" width="4" height="1" fill={matrix} />
+        </>
+      ) : (
+        <>
+          {/* Ojos digitales [ • • ] */}
+          <rect x="8" y="8" width="2" height="2" fill={matrix} />
+          <rect x="14" y="8" width="2" height="2" fill={matrix} />
+          <rect x="10" y="10" width="4" height="1" fill={matrix} />
+        </>
+      )}
+
+      {/* Tornillitos laterales */}
+      <rect x="4" y="8" width="1" height="2" fill={bolts} />
+      <rect x="19" y="8" width="1" height="2" fill={bolts} />
+
+      {/* Cuello / Junta metálica */}
+      <rect x="10" y="13" width="4" height="1" fill={bolts} />
+
+      {/* Chasis / Cuerpo */}
+      <rect x="6" y="14" width="12" height="7" fill={body} />
+
+      {/* Ecualizador LED en el pecho */}
+      <rect x="8" y="16" width="2" height="3" fill={isPlaying ? accent : bolts} />
+      <rect x="11" y="15" width="2" height="4" fill={isPlaying ? matrix : bolts} />
+      <rect x="14" y="17" width="2" height="2" fill={isPlaying ? accent : bolts} />
+
+      {/* Pies mecánicos */}
+      <rect x="6" y="21" width="4" height="2" fill={bolts} />
+      <rect x="14" y="21" width="4" height="2" fill={bolts} />
+    </svg>
+  );
+}
+

@@ -27,8 +27,8 @@ export function SongRow({ song, index }: SongRowProps) {
   const { session } = useSession();
 
   const isCurrent = String(currentSong?.id) === String(song.id);
-  const isLiked = likedIds.includes(song.id);
-  const isDownloaded = downloadedIds.includes(song.id);
+  const isLiked = likedIds.some((id) => String(id) === String(song.id));
+  const isDownloaded = downloadedIds.some((id) => String(id) === String(song.id));
 
   const handlePlay = async () => {
     if (isCurrent) {
@@ -41,13 +41,16 @@ export function SongRow({ song, index }: SongRowProps) {
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!session) return;
-    if (song.id === currentSong?.id) {
+    if (!session) {
+      useToastStore.getState().show('Inicia sesión para guardar favoritos', 'info', 1800);
+      return;
+    }
+    if (String(song.id) === String(currentSong?.id)) {
       await toggleLikeCurrent();
       return;
     }
     const library = useLibraryStore.getState();
-    const liked = library.likedIds.includes(song.id);
+    const liked = library.likedIds.some((id) => String(id) === String(song.id));
     library.toggleLikeLocal(song.id, !liked);
     library.bumpLikes(song.id, !liked ? 1 : -1);
     try {
@@ -61,11 +64,11 @@ export function SongRow({ song, index }: SongRowProps) {
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!session) return;
+    const user = session?.username || 'local_user';
     if (isDownloaded) {
-      await removeDownload(song.id, session.username);
+      await removeDownload(song.id, user);
     } else {
-      await downloadSong(song, session.username);
+      await downloadSong(song, user);
     }
   };
 

@@ -5,6 +5,10 @@ import type { Language } from '../lib/i18n';
 export interface SettingsState {
   language: Language;
   theme: 'dark' | 'light';
+  performanceMode: boolean;
+  reduceBlur: boolean;
+  reduceAnimations: boolean;
+  petEcoMode: boolean;
   disableVisualizer: boolean;
   disableDynamicBg: boolean;
   focusMode: boolean;
@@ -32,6 +36,10 @@ export interface SettingsState {
 const LS = {
   language: 'language',
   theme: 'theme',
+  performanceMode: 'performanceMode',
+  reduceBlur: 'reduceBlur',
+  reduceAnimations: 'reduceAnimations',
+  petEcoMode: 'petEcoMode',
   visualizer: 'disableVisualizer',
   dynamicBg: 'disableDynamicBg',
   focus: 'focusMode',
@@ -61,9 +69,30 @@ function load<T>(key: string, fallback: T): T {
   }
 }
 
+function syncPerformanceDom(state: { performanceMode?: boolean; reduceBlur?: boolean; reduceAnimations?: boolean }) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  const isPerf = Boolean(state.performanceMode);
+  const isNoBlur = Boolean(state.reduceBlur || state.performanceMode);
+  const isNoAnim = Boolean(state.reduceAnimations || state.performanceMode);
+
+  if (isPerf) root.setAttribute('data-performance-mode', 'true');
+  else root.removeAttribute('data-performance-mode');
+
+  if (isNoBlur) root.setAttribute('data-reduce-blur', 'true');
+  else root.removeAttribute('data-reduce-blur');
+
+  if (isNoAnim) root.setAttribute('data-reduce-animations', 'true');
+  else root.removeAttribute('data-reduce-animations');
+}
+
 const initialState: SettingsState = {
   language: load<Language>(LS.language, 'es'),
   theme: load<'dark' | 'light'>(LS.theme, 'dark'),
+  performanceMode: load(LS.performanceMode, false),
+  reduceBlur: load(LS.reduceBlur, false),
+  reduceAnimations: load(LS.reduceAnimations, false),
+  petEcoMode: load(LS.petEcoMode, false),
   disableVisualizer: load(LS.visualizer, false),
   disableDynamicBg: load(LS.dynamicBg, false),
   focusMode: load(LS.focus, false),
@@ -88,6 +117,9 @@ const initialState: SettingsState = {
   setSleepTimer: () => {},
 };
 
+// Sincronizar atributos de aceleración desde el arranque inicial
+syncPerformanceDom(initialState);
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...initialState,
 
@@ -108,6 +140,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   set: (patch) => {
+    const nextState = { ...get(), ...patch };
+
+    // Si se activa el Modo Alto Rendimiento maestro, activar automáticamente las optimizaciones
+    if (patch.performanceMode !== undefined) {
+      if (patch.performanceMode) {
+        if (patch.reduceBlur === undefined) patch.reduceBlur = true;
+        if (patch.reduceAnimations === undefined) patch.reduceAnimations = true;
+        if (patch.disableDynamicBg === undefined) patch.disableDynamicBg = true;
+        if (patch.disableVisualizer === undefined) patch.disableVisualizer = true;
+        if (patch.petEcoMode === undefined) patch.petEcoMode = true;
+      }
+    }
+
+    syncPerformanceDom({ ...nextState, ...patch });
+
     const { theme, language, ...rest } = patch;
     if (theme !== undefined) localStorage.setItem(LS.theme, JSON.stringify(theme));
     if (language !== undefined) localStorage.setItem(LS.language, JSON.stringify(language));

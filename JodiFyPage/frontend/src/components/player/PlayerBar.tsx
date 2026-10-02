@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, RepeatOnce, Heart, ArrowsOut, Moon, Sun, List, SpeakerHigh, SpeakerSimpleX, TextT } from '@phosphor-icons/react';
+import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, RepeatOnce, Heart, ArrowsOut, Moon, Sun, List, SpeakerHigh, SpeakerSimpleX, TextT, CheckCircle } from '@phosphor-icons/react';
 import { usePlayerStore } from '../../store/player.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useUiStore } from '../../store/ui.store';
@@ -19,7 +19,7 @@ export function PlayerBar() {
   const ui = useUiStore();
 
   const song = player.currentSong;
-  const isLiked = useLibraryStore((s) => (song ? s.likedIds.includes(song.id) : false));
+  const isLiked = useLibraryStore((s) => (song ? s.likedIds.some((id) => String(id) === String(song.id)) : false));
 
   const handlePlayPause = () => {
     if (!song) return;
@@ -73,7 +73,31 @@ export function PlayerBar() {
           )}
         </AnimatePresence>
         <div className="jf-player-meta">
-          <p className={`jf-player-title ${song && song.name.length > 28 ? 'is-long' : ''}`}>{song?.name ?? 'Nada sonando'}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+            <p className={`jf-player-title ${song && song.name.length > 28 ? 'is-long' : ''}`}>{song?.name ?? 'Nada sonando'}</p>
+            {player.isOfflinePlayback && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontSize: '9.5px',
+                  fontWeight: 700,
+                  padding: '1px 6px',
+                  borderRadius: '999px',
+                  background: 'rgba(0, 240, 255, 0.12)',
+                  color: '#00f0ff',
+                  border: '1px solid rgba(0, 240, 255, 0.25)',
+                  flexShrink: 0,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.4px',
+                }}
+                title="Reproduciendo desde almacenamiento local sin conexión"
+              >
+                <CheckCircle size={10} weight="fill" /> Offline
+              </span>
+            )}
+          </div>
           <p className="jf-player-artist">
             {songArtistMeta(song) || (song?.added_by ? `Por ${song.added_by}` : 'JodiFy Studio')}
             {song?.album ? ` · ${song.album}` : ''}

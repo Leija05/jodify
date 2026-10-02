@@ -7,10 +7,12 @@ import {
   WarningCircle,
   SpinnerGap,
   Trash,
+  Play,
 } from '@phosphor-icons/react';
 import { useDownloadsStore } from '../../store/downloads.store';
 import { SongCover } from '../ui/SongCover';
 import { formatDuration } from '../../lib/utils';
+import { playSong } from '../../services/player.service';
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '0 KB';
@@ -162,6 +164,33 @@ export function DownloadsModal() {
                           `${Math.round(task.progress)}%`
                         )}
                       </span>
+                      {task.status === 'completed' && (
+                        <button
+                          type="button"
+                          className="jf-dl-play-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void playSong(task.song);
+                          }}
+                          title="Reproducir ahora sin conexión"
+                          style={{
+                            marginLeft: '8px',
+                            background: 'rgba(0, 240, 255, 0.15)',
+                            border: '1px solid rgba(0, 240, 255, 0.3)',
+                            color: '#00f0ff',
+                            borderRadius: '50%',
+                            width: '24px',
+                            height: '24px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Play size={11} weight="fill" />
+                        </button>
+                      )}
                     </div>
 
                     <div className="jf-dl-item-sub">

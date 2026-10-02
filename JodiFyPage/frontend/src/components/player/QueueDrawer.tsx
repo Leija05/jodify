@@ -44,10 +44,10 @@ export function QueueDrawer() {
   // Pool de la colección actual según la pestaña activa
   const pool = useMemo(() => {
     if (currentTab === 'downloads') {
-      return librarySongs.filter((s) => downloadedIds.includes(s.id));
+      return librarySongs.filter((s) => downloadedIds.some((id) => String(id) === String(s.id)));
     }
     if (currentTab === 'personal') {
-      return librarySongs.filter((s) => likedIds.includes(s.id));
+      return librarySongs.filter((s) => likedIds.some((id) => String(id) === String(s.id)));
     }
     return librarySongs;
   }, [librarySongs, currentTab, downloadedIds, likedIds]);

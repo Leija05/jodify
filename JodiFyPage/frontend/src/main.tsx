@@ -16,6 +16,7 @@ import './styles/auth.css';
 import './styles/updater.css';
 import './styles/responsive.css';
 import './styles/home-showcase.css';
+import './styles/performance.css';
 import App from './App';
 
 const isFileProtocol = window.location.protocol === 'file:';

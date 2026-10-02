@@ -5,11 +5,14 @@ import { useSession } from '../../context/SessionContext';
 import { PixelPet } from './PixelPet';
 import { useUiStore } from '../../store/ui.store';
 import { usePlayerStore } from '../../store/player.store';
+import { useSettingsStore } from '../../store/settings.store';
 
 export function PetCompanionWidget() {
   const { session } = useSession();
   const ui = useUiStore();
   const isMusicPlaying = usePlayerStore((s) => s.isPlaying);
+  const performanceMode = useSettingsStore((s) => s.performanceMode);
+  const petEcoMode = useSettingsStore((s) => s.petEcoMode);
 
   // Estado de minimizado persistido en el almacenamiento local
   const [minimized, setMinimized] = useState(() => {
@@ -35,9 +38,14 @@ export function PetCompanionWidget() {
     if (petName) return petName;
     if (petType === 'cat') return 'Michi';
     if (petType === 'dog') return 'Perrito';
-    if (petType === 'capybara') return 'Capibara';
+    if (petType === 'axolotl') return 'Ajolote';
     if (petType === 'magikarp') return 'Magikarp';
+    if (petType === 'frog') return 'Ranita';
+    if (petType === 'capybara') return 'Capibara';
+    if (petType === 'penguin') return 'Pingüinito';
     if (petType === 'ghost') return 'Fantasmita';
+    if (petType === 'fox') return 'Kitsune';
+    if (petType === 'robot') return 'CyberBot';
     if (petType === 'dragon') return 'Dragoncito';
     return 'Compañero';
   }, [petName, petType]);
@@ -74,18 +82,18 @@ export function PetCompanionWidget() {
     };
   }, []);
 
-  // Pensamientos aleatorios de la mascota
+  // Pensamientos de la mascota
   const popThought = useCallback((custom?: string) => {
     if (thoughtTimeoutRef.current) clearTimeout(thoughtTimeoutRef.current);
     const phrases = [
-      '🐾 Explorando...',
-      '♪ Vibing',
-      '✨ ¡Buen ritmo!',
-      '❤️ Paseando',
-      '🍃 Chill...',
-      '🐾 ¡Aventuras!',
-      '🎵 ¡Me gusta este tema!',
-      '✨ JodiFy vibes',
+      '♪ Explorando...',
+      '♫ Vibing con el beat',
+      '★ ¡Buen ritmo!',
+      '♥ Paseando',
+      '~ Chill out...',
+      '♪ ¡Aventuras!',
+      '♫ ¡Me gusta este tema!',
+      '★ JodiFy vibes',
     ];
     setThought(custom || phrases[Math.floor(Math.random() * phrases.length)]);
     thoughtTimeoutRef.current = setTimeout(() => {
@@ -95,7 +103,8 @@ export function PetCompanionWidget() {
 
   // Bucle autónomo de movimiento por toda la pantalla a su voluntad
   useEffect(() => {
-    if (!session || !petType || petType === 'none' || minimized || isStay) {
+    const isEco = performanceMode || petEcoMode;
+    if (!session || !petType || petType === 'none' || minimized || isStay || isEco) {
       setIsWalking(false);
       return;
     }
@@ -231,7 +240,9 @@ export function PetCompanionWidget() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <span className="jf-pet-roam-name">🐾 {petDisplayName}</span>
+                  <span className="jf-pet-roam-name">
+                    🐾 {petDisplayName} {(performanceMode || petEcoMode) ? '⚡' : ''}
+                  </span>
                   <div className="jf-pet-roam-actions">
                     <button
                       type="button"

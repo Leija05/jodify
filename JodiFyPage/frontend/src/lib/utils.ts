@@ -64,6 +64,8 @@ export function timeAgo(iso: string): string {
 
 export function getSongCoverCandidates(song: Record<string, unknown>): string[] {
   return [
+    song.offline_cover,
+    song.offlineCoverUrl,
     song.cover_url,
     song.coverUrl,
     song.cover,

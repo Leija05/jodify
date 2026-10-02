@@ -11,6 +11,7 @@ interface FullscreenVisualizerProps {
 export function FullscreenVisualizer({ mode = 'bars', className }: FullscreenVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const performanceMode = useSettingsStore((s) => s.performanceMode);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -72,9 +73,13 @@ export function FullscreenVisualizer({ mode = 'bars', className }: FullscreenVis
       grad.addColorStop(0.7, '#00f0ff');
       grad.addColorStop(1, '#ff007a');
 
-      // Draw reflection / glow base
-      ctx.shadowBlur = 18;
-      ctx.shadowColor = 'rgba(0, 240, 255, 0.45)';
+      // Draw reflection / glow base (evitar shadowBlur en modo rendimiento)
+      if (!performanceMode) {
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = 'rgba(0, 240, 255, 0.45)';
+      } else {
+        ctx.shadowBlur = 0;
+      }
 
       for (let i = 0; i < bars; i++) {
         const val = dataArray[i] ?? 0;
@@ -100,6 +105,12 @@ export function FullscreenVisualizer({ mode = 'bars', className }: FullscreenVis
       }
 
       ctx.shadowBlur = 0;
+
+      // Si la música está pausada, no ciclar a 60fps innecesariamente
+      if (!isPlaying) {
+        return;
+      }
+
       rafId = requestAnimationFrame(draw);
     };
 
@@ -110,7 +121,7 @@ export function FullscreenVisualizer({ mode = 'bars', className }: FullscreenVis
       if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener('resize', resize);
     };
-  }, [isPlaying, mode]);
+  }, [isPlaying, mode, performanceMode]);
 
   return <canvas ref={canvasRef} className={`jf-fullscreen-canvas ${className ?? ''}`} aria-hidden="true" />;
 }

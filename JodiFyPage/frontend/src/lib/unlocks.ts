@@ -213,13 +213,34 @@ export interface PetVariant {
   tag: string;
 }
 
+export type PetSpecies =
+  | 'cat'
+  | 'dog'
+  | 'axolotl'
+  | 'magikarp'
+  | 'frog'
+  | 'capybara'
+  | 'penguin'
+  | 'ghost'
+  | 'fox'
+  | 'robot'
+  | 'dragon';
+
+export interface PetVariant {
+  id: string;
+  name: string;
+  requiredLevel: number;
+  previewColor: string;
+  tag: string;
+}
+
 export interface PetUnlockItem {
   id: string;
   name: string;
-  species: 'cat' | 'dog' | 'magikarp' | 'capybara' | 'ghost' | 'dragon';
+  species: PetSpecies;
   requiredLevel: number;
   description: string;
-  emoji: string;
+  badge: string;
   variants: PetVariant[];
 }
 
@@ -230,7 +251,7 @@ export const PET_UNLOCKS: PetUnlockItem[] = [
     species: 'cat',
     requiredLevel: 2,
     description: 'Compañero felino que maúlla y mueve la cabecita al ritmo de tus canciones',
-    emoji: '🐱',
+    badge: 'Felino',
     variants: [
       { id: 'orange', name: 'Michi Naranjoso', requiredLevel: 2, previewColor: '#f97316', tag: 'Tabby' },
       { id: 'black', name: 'Gato Negro Místico', requiredLevel: 3, previewColor: '#27272a', tag: 'Midnight' },
@@ -245,7 +266,7 @@ export const PET_UNLOCKS: PetUnlockItem[] = [
     species: 'dog',
     requiredLevel: 2,
     description: 'Fiel perrito alegre que mueve la colita y se alegra con tus playlists favoritas',
-    emoji: '🐶',
+    badge: 'Canino',
     variants: [
       { id: 'shiba', name: 'Shiba Inu Alegre', requiredLevel: 2, previewColor: '#f59e0b', tag: 'Doge' },
       { id: 'corgi', name: 'Corgi Saltarín', requiredLevel: 3, previewColor: '#d97706', tag: 'Corgi' },
@@ -254,15 +275,41 @@ export const PET_UNLOCKS: PetUnlockItem[] = [
     ],
   },
   {
+    id: 'axolotl',
+    name: 'Ajolote Mágico',
+    species: 'axolotl',
+    requiredLevel: 3,
+    description: 'Criatura anfibia mística con branquias bioluminiscentes que ondean con el beat',
+    badge: 'Místico',
+    variants: [
+      { id: 'bubblegum', name: 'Ajolote Bubblegum', requiredLevel: 3, previewColor: '#f472b6', tag: 'Pink Glow' },
+      { id: 'neon_cyan', name: 'Ajolote Neón Eléctrico', requiredLevel: 6, previewColor: '#06b6d4', tag: 'Cyber' },
+      { id: 'abyssal', name: 'Ajolote Abisal Dorado', requiredLevel: 11, previewColor: '#eab308', tag: 'Abyssal' },
+    ],
+  },
+  {
     id: 'magikarp',
     name: 'Magikarp Saltarín',
     species: 'magikarp',
     requiredLevel: 3,
     description: 'El legendario pececillo pixelado que da brincos acrobáticos Splash con el bajo',
-    emoji: '🐟',
+    badge: 'Acuático',
     variants: [
       { id: 'classic', name: 'Magikarp Carmesí', requiredLevel: 3, previewColor: '#ef4444', tag: 'Splash' },
-      { id: 'golden', name: 'Magikarp Dorado Shiny ✨', requiredLevel: 9, previewColor: '#ffd700', tag: 'Shiny VIP' },
+      { id: 'golden', name: 'Magikarp Dorado Shiny', requiredLevel: 9, previewColor: '#ffd700', tag: 'Shiny VIP' },
+    ],
+  },
+  {
+    id: 'frog',
+    name: 'Ranita Lo-Fi',
+    species: 'frog',
+    requiredLevel: 4,
+    description: 'Ranita chill con hoja de loto en la cabeza que da saltitos rítmicos y relajantes',
+    badge: 'Chillout',
+    variants: [
+      { id: 'mint', name: 'Ranita Menta Lo-Fi', requiredLevel: 4, previewColor: '#10b981', tag: 'Mint' },
+      { id: 'poison_dart', name: 'Ranita Azul Eléctrica', requiredLevel: 8, previewColor: '#3b82f6', tag: 'Electric' },
+      { id: 'golden_frog', name: 'Ranita Dorada Solar', requiredLevel: 12, previewColor: '#fbbf24', tag: 'Golden' },
     ],
   },
   {
@@ -271,10 +318,23 @@ export const PET_UNLOCKS: PetUnlockItem[] = [
     species: 'capybara',
     requiredLevel: 4,
     description: 'El maestro del chill definitivo con su mandarina flotante en la cabeza',
-    emoji: '🍊',
+    badge: 'Zen',
     variants: [
       { id: 'classic', name: 'Capibara Manantial', requiredLevel: 4, previewColor: '#92400e', tag: 'Chill' },
       { id: 'zen', name: 'Capibara Onsen', requiredLevel: 7, previewColor: '#b45309', tag: 'Spa' },
+    ],
+  },
+  {
+    id: 'penguin',
+    name: 'Pingüinito DJ',
+    species: 'penguin',
+    requiredLevel: 5,
+    description: 'Pingüino melómano con auriculares acolchados que bate las alas al compás de la música',
+    badge: 'Antártico',
+    variants: [
+      { id: 'classic', name: 'Pingüino Emperador', requiredLevel: 5, previewColor: '#0f172a', tag: 'DJ Beats' },
+      { id: 'gentoo', name: 'Rey Dorado Polar', requiredLevel: 8, previewColor: '#f59e0b', tag: 'Royal' },
+      { id: 'cyber_penguin', name: 'Pingüino Cyber Glow', requiredLevel: 12, previewColor: '#00f0ff', tag: 'Neon Ice' },
     ],
   },
   {
@@ -283,10 +343,36 @@ export const PET_UNLOCKS: PetUnlockItem[] = [
     species: 'ghost',
     requiredLevel: 6,
     description: 'Espectro sónico flotante con auriculares gamer que brilla en la oscuridad',
-    emoji: '👻',
+    badge: 'Retro',
     variants: [
       { id: 'classic', name: 'Fantasmita Glitch', requiredLevel: 6, previewColor: '#38bdf8', tag: 'Retro' },
       { id: 'neon', name: 'Espectro Neón Violeta', requiredLevel: 10, previewColor: '#a855f7', tag: 'Spectre' },
+    ],
+  },
+  {
+    id: 'fox',
+    name: 'Zorrito Kitsune',
+    species: 'fox',
+    requiredLevel: 7,
+    description: 'Astuto zorro de cola esponjosa y orejitas alertas que baila con ritmos rápidos',
+    badge: 'Espíritu',
+    variants: [
+      { id: 'fire', name: 'Zorro de Fuego Naranja', requiredLevel: 7, previewColor: '#f97316', tag: 'Flame' },
+      { id: 'arctic', name: 'Zorro Ártico Plateado', requiredLevel: 9, previewColor: '#e2e8f0', tag: 'Arctic' },
+      { id: 'spirit', name: 'Kitsune Astral Místico', requiredLevel: 13, previewColor: '#c084fc', tag: 'Spirit' },
+    ],
+  },
+  {
+    id: 'robot',
+    name: 'CyberBot 808',
+    species: 'robot',
+    requiredLevel: 8,
+    description: 'Androide de bolsillo con antena parpadeante de ecualizador y pantalla de expresiones pixel',
+    badge: 'Synth / Mech',
+    variants: [
+      { id: 'arcade', name: 'CyberBot GameBoy Retro', requiredLevel: 8, previewColor: '#64748b', tag: 'Arcade' },
+      { id: 'neon_matrix', name: 'CyberBot Matrix Neón', requiredLevel: 11, previewColor: '#22c55e', tag: 'Matrix' },
+      { id: 'golden_mech', name: 'Mecha Imperial Oro', requiredLevel: 14, previewColor: '#eab308', tag: 'Overdrive' },
     ],
   },
   {
@@ -295,7 +381,7 @@ export const PET_UNLOCKS: PetUnlockItem[] = [
     species: 'dragon',
     requiredLevel: 10,
     description: 'Criatura mítica legendaria que escupe chispitas al compás del ecualizador',
-    emoji: '🐲',
+    badge: 'Legendario',
     variants: [
       { id: 'ruby', name: 'Dragón de Rubí', requiredLevel: 10, previewColor: '#f43f5e', tag: 'Flame' },
       { id: 'astral', name: 'Dragón Cósmico Celestial', requiredLevel: 15, previewColor: '#c084fc', tag: 'Cosmos' },

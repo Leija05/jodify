@@ -138,8 +138,9 @@ export function HomeSideWidget() {
         }
         setFrequencies(sampled);
       } else {
-        // En pausa: reposo sutil
+        // En pausa: reposo sutil (fijar una sola vez sin ciclar en bucle a 60 FPS)
         setFrequencies((prev) => (prev[0] === 8 ? prev : prev.map(() => 8)));
+        return;
       }
       animId = requestAnimationFrame(updateSpectrum);
     };

@@ -1,15 +1,31 @@
 import { useEffect, useRef } from 'react';
 import { equalizerApi } from '../services/equalizer.service';
 import { useSettingsStore } from '../store/settings.store';
+import { usePlayerStore } from '../store/player.store';
 
 export function useVisualizer(canvasRef: React.RefObject<HTMLCanvasElement | null>): void {
   const rafRef = useRef<number | null>(null);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const disableVisualizer = useSettingsStore((s) => s.disableVisualizer);
+  const performanceMode = useSettingsStore((s) => s.performanceMode);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Si está desactivado o en modo rendimiento, limpiar y no gastar GPU en RAF
+    if (disableVisualizer || performanceMode) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    // Si la música está pausada, dejar en silencio sin ciclar 60fps inútilmente
+    if (!isPlaying) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
 
     let running = true;
 
@@ -18,7 +34,6 @@ export function useVisualizer(canvasRef: React.RefObject<HTMLCanvasElement | nul
       const analyser = equalizerApi.getAnalyser();
       if (!analyser || useSettingsStore.getState().disableVisualizer) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        rafRef.current = requestAnimationFrame(draw);
         return;
       }
 
@@ -64,5 +79,5 @@ export function useVisualizer(canvasRef: React.RefObject<HTMLCanvasElement | nul
       running = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [canvasRef]);
+  }, [canvasRef, isPlaying, disableVisualizer, performanceMode]);
 }

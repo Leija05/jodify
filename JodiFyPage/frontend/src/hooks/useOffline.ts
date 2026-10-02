@@ -38,6 +38,12 @@ export function useOffline(): { isOffline: boolean } {
   return { isOffline };
 }
 
+const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
+  Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+
 export async function loadLibrary(username: string | null): Promise<void> {
   const library = useLibraryStore.getState();
   library.setRefreshing(true);
@@ -45,11 +51,34 @@ export async function loadLibrary(username: string | null): Promise<void> {
     const offlineSongs = await getAllSongsOffline();
     const offlineKeys = await getAllOfflineIds();
 
+    // 1. DISPONIBILIDAD OFFLINE INSTANTÁNEA (0ms):
+    // Inyectar inmediatamente lo descargado en la memoria activa para que el usuario nunca espere
+    if (offlineSongs.length > 0) {
+      const existingIds = new Set(library.songs.map((s) => String(s.id)));
+      const initialMerged = [...library.songs];
+      for (const os of offlineSongs) {
+        if (!existingIds.has(String(os.id))) {
+          initialMerged.push(os);
+          existingIds.add(String(os.id));
+        }
+      }
+      library.setSongs(initialMerged);
+      library.setDownloadedIds(offlineKeys);
+      library.setLoaded(true);
+    }
+
+    // 2. Si no hay conexión o estamos en modo offline, no bloquear en llamadas remotas
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      library.setLoaded(true);
+      return;
+    }
+
+    // 3. Sincronización en línea con protección de timeout (máximo 6s para evitar bloqueos)
     if (username) {
       const [fetchedSongs, fetchedLikedIds, downloadedIds] = await Promise.all([
-        songsService.fetchAll().catch((): Song[] => []),
-        likesService.fetchLikedIds(username).catch((): Array<number | string> => []),
-        downloadsService.fetchDownloadedIds(username).catch((): Array<number | string> => []),
+        withTimeout(songsService.fetchAll().catch((): Song[] => []), 6000, []),
+        withTimeout(likesService.fetchLikedIds(username).catch((): Array<number | string> => []), 4000, []),
+        withTimeout(downloadsService.fetchDownloadedIds(username).catch((): Array<number | string> => []), 4000, []),
       ]);
       const songs: Song[] = [...fetchedSongs];
       const likedIds: Array<number | string> = [...fetchedLikedIds];
@@ -86,7 +115,7 @@ export async function loadLibrary(username: string | null): Promise<void> {
       library.setLikedIds(likedIds);
       library.setDownloadedIds(combinedDownloaded);
     } else {
-      const songs = await songsService.fetchAll().catch(() => [] as Song[]);
+      const songs = await withTimeout(songsService.fetchAll().catch(() => [] as Song[]), 6000, []);
       const existingSongIds = new Set(songs.map((s) => String(s.id)));
       for (const os of offlineSongs) {
         if (!existingSongIds.has(String(os.id))) {
@@ -111,14 +140,18 @@ export async function enterOfflineMode(): Promise<void> {
 
   if (offlineSongs.length > 0) {
     const existingIds = new Set(library.songs.map((s) => String(s.id)));
+    const merged = [...library.songs];
     for (const os of offlineSongs) {
       if (!existingIds.has(String(os.id))) {
-        library.upsertSong(os);
+        merged.push(os);
+        existingIds.add(String(os.id));
       }
     }
+    library.setSongs(merged);
   }
 
   library.setDownloadedIds(offlineIds);
   library.setLoaded(true);
   useUiStore.getState().close('offline');
+  useToastStore.getState().show('Modo sin conexión activado', 'info', 2000);
 }

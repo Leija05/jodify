@@ -19,6 +19,7 @@ import {
   UserSwitch,
   Waveform,
   Sparkle,
+  Lightning,
 } from '@phosphor-icons/react';
 import type { DesktopUpdaterInfo, DesktopUpdaterState } from '../../types/electron';
 import { Modal } from '../ui/Modal';
@@ -468,18 +469,113 @@ export function SettingsModal() {
             </div>
           )}
 
-          {/* PESTAÑA 3: APARIENCIA & VISUALES */}
+          {/* PESTAÑA 3: APARIENCIA & RENDIMIENTO */}
           {activeTab === 'visual' && (
             <div className="jf-settings-tab-pane">
               <div className="jf-settings-pane-header">
                 <h3 className="jf-settings-pane-title">
-                  <PaintBrush size={18} /> Apariencia & Efectos Visuales
+                  <PaintBrush size={18} /> Apariencia & Rendimiento
                 </h3>
                 <p className="jf-settings-pane-desc">
-                  Controla la iluminación reactiva, animaciones y texturas analógicas.
+                  Optimiza los efectos visuales para tu computadora, ajusta desenfoques, iluminación y animaciones.
                 </p>
               </div>
 
+              {/* TARJETA MAESTRA: MODO ALTO RENDIMIENTO (PARA PCs DE BAJOS RECURSOS) */}
+              <div className={`jf-settings-card jf-settings-card--perf ${settings.performanceMode ? 'is-active' : ''}`}>
+                <div className="jf-settings-row">
+                  <div className="jf-settings-label-block">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="jf-settings-label-title" style={{ fontSize: '13.5px', fontWeight: 800 }}>
+                        <Lightning size={16} weight="fill" color="#00f0ff" /> Modo Alto Rendimiento (Para PCs lentas o laptops)
+                      </span>
+                      {settings.performanceMode && (
+                        <span className="jf-perf-badge">
+                          <Lightning size={10} weight="fill" /> Activo
+                        </span>
+                      )}
+                    </div>
+                    <span className="jf-settings-label-desc" style={{ marginTop: '3px' }}>
+                      Desactiva desenfoques dinámicos pesados (backdrop-filter) y bucles continuos de animación en segundo plano, maximizando los FPS y reduciendo el consumo de GPU/batería al mínimo sin perder la estética oscura y elegante.
+                    </span>
+                  </div>
+                  <div className="jf-settings-control">
+                    <Switch
+                      checked={settings.performanceMode}
+                      onChange={(v) => {
+                        settings.set({ performanceMode: v });
+                        useToastStore.getState().show(
+                          v ? '⚡ Modo Alto Rendimiento activado' : 'Modo Alto Rendimiento desactivado',
+                          v ? 'success' : 'info',
+                          2000
+                        );
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Sub-opciones granulares de rendimiento */}
+                <div className="jf-perf-suboptions">
+                  {/* Desactivar Glass Blur / Backdrop Filter */}
+                  <div className="jf-settings-row">
+                    <div className="jf-settings-label-block">
+                      <span className="jf-settings-label-title" style={{ fontSize: '12px' }}>
+                        Desactivar desenfoques pesados (Glass Blur)
+                      </span>
+                      <span className="jf-settings-label-desc" style={{ fontSize: '11px' }}>
+                        Reemplaza filtros de desenfoque en tiempo real por superficies oscuras esmeriladas sólidas. Gran aumento de fluidez.
+                      </span>
+                    </div>
+                    <div className="jf-settings-control">
+                      <Switch
+                        checked={settings.reduceBlur || settings.performanceMode}
+                        onChange={(v) => settings.set({ reduceBlur: v })}
+                        disabled={settings.performanceMode}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Reducir animaciones de fondo */}
+                  <div className="jf-settings-row">
+                    <div className="jf-settings-label-block">
+                      <span className="jf-settings-label-title" style={{ fontSize: '12px' }}>
+                        Reducir animaciones continuas de fondo
+                      </span>
+                      <span className="jf-settings-label-desc" style={{ fontSize: '11px' }}>
+                        Pausa las esferas de luz en movimiento y bucles infinitos en segundo plano para ahorrar procesador.
+                      </span>
+                    </div>
+                    <div className="jf-settings-control">
+                      <Switch
+                        checked={settings.reduceAnimations || settings.performanceMode}
+                        onChange={(v) => settings.set({ reduceAnimations: v })}
+                        disabled={settings.performanceMode}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Compañero Pixel Art en Modo Reposo */}
+                  <div className="jf-settings-row">
+                    <div className="jf-settings-label-block">
+                      <span className="jf-settings-label-title" style={{ fontSize: '12px' }}>
+                        🐾 Mascota en Modo Reposo / Eco
+                      </span>
+                      <span className="jf-settings-label-desc" style={{ fontSize: '11px' }}>
+                        Mantiene a tu compañero descansando en su sitio sin consumir ciclos de pantalla continuos.
+                      </span>
+                    </div>
+                    <div className="jf-settings-control">
+                      <Switch
+                        checked={settings.petEcoMode || settings.performanceMode}
+                        onChange={(v) => settings.set({ petEcoMode: v })}
+                        disabled={settings.performanceMode}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* TARJETA DE ESTÉTICA & AMBIENTE */}
               <div className="jf-settings-card">
                 {/* Modo Oscuro / Claro */}
                 <div className="jf-settings-row">
@@ -535,8 +631,9 @@ export function SettingsModal() {
                   </div>
                   <div className="jf-settings-control">
                     <Switch
-                      checked={settings.analogNoise}
+                      checked={settings.analogNoise && !settings.performanceMode}
                       onChange={(v) => settings.set({ analogNoise: v })}
+                      disabled={settings.performanceMode}
                     />
                   </div>
                 </div>

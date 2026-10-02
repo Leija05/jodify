@@ -7,6 +7,8 @@ export function DynamicBackground() {
   const song = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const disableDynamicBg = useSettingsStore((s) => s.disableDynamicBg);
+  const performanceMode = useSettingsStore((s) => s.performanceMode);
+  const reduceAnimations = useSettingsStore((s) => s.reduceAnimations);
   const analogNoise = useSettingsStore((s) => s.analogNoise);
   const ambientIntensity = useSettingsStore((s) => s.ambientIntensity ?? 85);
 
@@ -15,13 +17,15 @@ export function DynamicBackground() {
   if (disableDynamicBg) {
     return (
       <div className="jf-dynamic-bg is-minimal" aria-hidden="true">
-        {analogNoise && <div className="jf-ambient-noise" />}
+        {!performanceMode && analogNoise && <div className="jf-ambient-noise" />}
       </div>
     );
   }
 
+  const isEco = performanceMode || reduceAnimations;
+
   return (
-    <div className={`jf-dynamic-bg ${isPlaying ? 'is-playing' : ''}`} aria-hidden="true">
+    <div className={`jf-dynamic-bg ${isPlaying ? 'is-playing' : ''} ${isEco ? 'is-eco' : ''}`} aria-hidden="true">
       <AnimatePresence mode="popLayout">
         {cover && (
           <motion.img
@@ -37,14 +41,17 @@ export function DynamicBackground() {
         )}
       </AnimatePresence>
 
-      <div className="jf-aurora-orbs" style={{ opacity: (ambientIntensity / 100) * 0.95 }}>
-        <div className="jf-aurora-orb jf-aurora-orb-1" />
-        <div className="jf-aurora-orb jf-aurora-orb-2" />
-        <div className="jf-aurora-orb jf-aurora-orb-3" />
-      </div>
+      {/* Solo renderizar esferas orbs animadas con blur pesado si no está en modo eco */}
+      {!isEco && (
+        <div className="jf-aurora-orbs" style={{ opacity: (ambientIntensity / 100) * 0.95 }}>
+          <div className="jf-aurora-orb jf-aurora-orb-1" />
+          <div className="jf-aurora-orb jf-aurora-orb-2" />
+          <div className="jf-aurora-orb jf-aurora-orb-3" />
+        </div>
+      )}
 
       <div className="jf-dynamic-bg-vignette" />
-      {analogNoise && <div className="jf-ambient-noise" />}
+      {!performanceMode && analogNoise && <div className="jf-ambient-noise" />}
     </div>
   );
 }

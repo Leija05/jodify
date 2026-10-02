@@ -27,6 +27,8 @@ import {
   DeviceMobile,
   Globe,
   GameController,
+  Prohibit,
+  SpeakerHigh,
 } from '@phosphor-icons/react';
 import { DiscordOfficialLogo } from '../ui/DiscordOfficialLogo';
 import { Modal } from '../ui/Modal';
@@ -531,7 +533,7 @@ export function ProfileModal() {
                 className={`jf-profile-mode-btn ${activeTab === 'pet' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('pet')}
               >
-                🐾 Mascota Pixel
+                <GameController size={16} /> Mascota Pixel
               </button>
               <button
                 type="button"
@@ -1626,44 +1628,174 @@ export function ProfileModal() {
               {activeTab === 'pet' && (
                 <motion.div
                   key="pet"
-                  className="jf-profile-editor"
+                  className="jf-profile-editor jf-pet-studio-root"
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.2 }}
                 >
                   {/* Banner de Rango de Melómano */}
-                  <div
-                    style={{
-                      padding: '14px 18px',
-                      borderRadius: 'var(--radius-lg)',
-                      background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.15) 0%, rgba(217, 70, 239, 0.15) 100%)',
-                      border: '1px solid rgba(234, 88, 12, 0.3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                      marginBottom: '16px',
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '14px', color: '#fff' }}>
-                        <span>🐾 Compañero Pixel Art de JodiFy · Tu Nivel: {melomano.level}</span>
+                  <div className="jf-pet-banner">
+                    <div className="jf-pet-banner-header">
+                      <div className="jf-pet-banner-title">
+                        <GameController size={20} weight="duotone" className="jf-pet-banner-icon" />
+                        <span>Compañeros Pixel Art de JodiFy</span>
+                        <span className="jf-pet-level-pill">
+                          Nivel Melómano: {melomano.level}
+                        </span>
                       </div>
-                      <p style={{ margin: '3px 0 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.8)' }}>
-                        ¡Desbloquea mascotas retro 8-bit a medida que subes de nivel escuchando música! Tu mascota reacciona bailando en vivo al compás de tus canciones y viaja contigo en tu perfil y pantalla.
-                      </p>
+                      <div className="jf-pet-banner-stats">
+                        <span>
+                          {PET_UNLOCKS.filter((p) => isStyleUnlocked(p.requiredLevel, melomano.level)).length} de {PET_UNLOCKS.length} Desbloqueados
+                        </span>
+                      </div>
                     </div>
+                    <p className="jf-pet-banner-desc">
+                      Desbloquea compañeros retro interactivos a medida que subes de nivel escuchando música. Tu mascota reacciona bailando en vivo al compás de tus canciones y te acompaña flotando por la pantalla.
+                    </p>
                   </div>
 
-                  {/* Selector de Especie de Mascota */}
-                  <div className="jf-profile-editor-field">
-                    <label className="jf-profile-editor-label">
-                      <span>Elige tu Mascota</span>
-                      <span style={{ fontSize: '11px', color: 'var(--accent)', textTransform: 'none' }}>
-                        Se desbloquean según tu nivel melómano
-                      </span>
-                    </label>
+                  {/* HERO STAGE INTERACTIVO */}
+                  {selectedPetType !== 'none' ? (
+                    (() => {
+                      const curPet = PET_UNLOCKS.find((p) => p.species === selectedPetType);
+                      return (
+                        <div className="jf-pet-hero-stage">
+                          <div className="jf-pet-stage-display">
+                            <div className="jf-pet-pedestal-light" />
+                            <div className="jf-pet-stage-pet">
+                              <PixelPet
+                                type={selectedPetType}
+                                variant={selectedPetVariant}
+                                customName={petCustomName}
+                                scale={3.4}
+                                isMusicPlaying={isPlaying}
+                              />
+                            </div>
+                            <div className="jf-pet-stage-hint">
+                              <Heart size={12} weight="fill" style={{ color: '#f43f5e' }} />
+                              <span>Haz clic para acariciar</span>
+                            </div>
+                          </div>
+
+                          <div className="jf-pet-stage-meta">
+                            <div className="jf-pet-meta-header">
+                              <div className="jf-pet-meta-title-row">
+                                <h4 className="jf-pet-meta-name">
+                                  {petCustomName.trim() || curPet?.name || 'Compañero'}
+                                </h4>
+                                {curPet && (
+                                  <span className="jf-pet-species-badge">{curPet.badge}</span>
+                                )}
+                                <span className={`jf-pet-music-status ${isPlaying ? 'is-dancing' : 'is-idle'}`}>
+                                  {isPlaying ? (
+                                    <>
+                                      <SpeakerHigh size={13} weight="bold" />
+                                      <span>Bailando con tu música</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <MusicNotes size={13} />
+                                      <span>En reposo (Reproduce una canción)</span>
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+                              <p className="jf-pet-meta-desc">{curPet?.description}</p>
+                            </div>
+
+                            {/* Campo de Apodo Personalizado */}
+                            <div className="jf-pet-nickname-box">
+                              <label className="jf-pet-field-label">Nombre o Apodo Personalizado</label>
+                              <div className="jf-pet-input-group">
+                                <input
+                                  type="text"
+                                  className="jf-input jf-pet-input"
+                                  placeholder="Ej: Michi, Firulais, Sparky, Nova..."
+                                  maxLength={20}
+                                  value={petCustomName}
+                                  onChange={(e) => setPetCustomName(e.target.value)}
+                                />
+                                {petCustomName && (
+                                  <button
+                                    type="button"
+                                    className="jf-pet-clear-name-btn"
+                                    onClick={() => setPetCustomName('')}
+                                    title="Restablecer nombre por defecto"
+                                  >
+                                    Restablecer
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Selector de Variantes de Color */}
+                            {curPet && curPet.variants.length > 1 && (
+                              <div className="jf-pet-variant-box">
+                                <label className="jf-pet-field-label">Estilo y Color de {curPet.name}</label>
+                                <div className="jf-pet-variant-deck">
+                                  {curPet.variants.map((v) => {
+                                    const variantUnlocked = isStyleUnlocked(v.requiredLevel, melomano.level);
+                                    const isVarActive = selectedPetVariant === v.id;
+                                    return (
+                                      <button
+                                        key={v.id}
+                                        type="button"
+                                        className={`jf-pet-variant-btn ${isVarActive ? 'is-active' : ''} ${!variantUnlocked ? 'is-locked' : ''}`}
+                                        onClick={() => {
+                                          if (!variantUnlocked) {
+                                            toast.show(
+                                              `Variante bloqueada: ${v.name} requiere Nivel ${v.requiredLevel}.`,
+                                              'warning',
+                                              2500,
+                                            );
+                                            return;
+                                          }
+                                          setSelectedPetVariant(v.id);
+                                        }}
+                                      >
+                                        <span className="jf-pet-color-dot" style={{ background: v.previewColor }} />
+                                        <span className="jf-pet-var-name">{v.name}</span>
+                                        {!variantUnlocked ? (
+                                          <span className="jf-pet-var-lock">
+                                            <Lock size={10} weight="bold" /> Nvl {v.requiredLevel}
+                                          </span>
+                                        ) : (
+                                          <span className="jf-pet-var-tag">{v.tag}</span>
+                                        )}
+                                        {isVarActive && <Check size={12} weight="bold" style={{ color: '#00f0ff' }} />}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="jf-pet-hero-stage is-empty">
+                      <div className="jf-pet-empty-icon-box">
+                        <Prohibit size={34} weight="duotone" />
+                      </div>
+                      <div className="jf-pet-empty-info">
+                        <h4>Sin Compañero Seleccionado</h4>
+                        <p>Selecciona una mascota del catálogo inferior para adoptarla y habilitar sus animaciones y reacciones musicales en vivo.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SELECTOR DE MASCOTAS - CATÁLOGO GRID */}
+                  <div className="jf-profile-editor-field" style={{ marginTop: '20px' }}>
+                    <div className="jf-pet-section-header">
+                      <div>
+                        <span className="jf-pet-section-title">Catálogo de Mascotas</span>
+                        <span className="jf-pet-section-sub">
+                          {PET_UNLOCKS.length} especies pixel art con comportamientos y variantes únicas
+                        </span>
+                      </div>
+                    </div>
 
                     <div className="jf-pet-grid">
                       {/* Opción Sin Mascota */}
@@ -1672,18 +1804,21 @@ export function ProfileModal() {
                         className={`jf-pet-card ${selectedPetType === 'none' ? 'is-active' : ''}`}
                         onClick={() => setSelectedPetType('none')}
                       >
-                        <span className="jf-pet-card-emoji">🚫</span>
-                        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                          <span style={{ display: 'block', fontWeight: 700, fontSize: '12.5px', color: '#fff' }}>
-                            Sin Mascota
-                          </span>
-                          <span style={{ display: 'block', fontSize: '10.5px', color: 'rgba(255,255,255,0.5)' }}>
-                            No mostrar compañero
+                        <div className="jf-pet-card-icon-box is-none">
+                          <Prohibit size={24} weight="bold" />
+                        </div>
+                        <div className="jf-pet-card-content">
+                          <div className="jf-pet-card-top">
+                            <span className="jf-pet-card-name">Sin Mascota</span>
+                          </div>
+                          <span className="jf-pet-card-desc">
+                            Desactivar compañero en pantalla y perfil
                           </span>
                         </div>
-                        {selectedPetType === 'none' && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+                        {selectedPetType === 'none' && <Check size={16} weight="bold" className="jf-pet-card-check" />}
                       </button>
 
+                      {/* Lista de Mascotas */}
                       {PET_UNLOCKS.map((pet) => {
                         const unlocked = isStyleUnlocked(pet.requiredLevel, melomano.level);
                         const isActive = selectedPetType === pet.species;
@@ -1693,11 +1828,11 @@ export function ProfileModal() {
                           <button
                             key={pet.id}
                             type="button"
-                            className={`jf-pet-card jf-unlock-card ${isActive ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
+                            className={`jf-pet-card ${isActive ? 'is-active' : ''} ${!unlocked ? 'is-locked' : ''}`}
                             onClick={() => {
                               if (!unlocked) {
                                 toast.show(
-                                  `🔒 Mascota bloqueada: ${pet.name} requiere Nivel ${pet.requiredLevel}. ¡Escucha más canciones para adoptarlo!`,
+                                  `Mascota bloqueada: ${pet.name} requiere Nivel Melómano ${pet.requiredLevel}. ¡Escucha más canciones para desbloquearla!`,
                                   'warning',
                                   3200,
                                 );
@@ -1709,130 +1844,57 @@ export function ProfileModal() {
                               }
                             }}
                           >
-                            <span className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}>
-                              {unlocked ? `✓ Nvl ${pet.requiredLevel}` : <><Lock size={10} weight="bold" /> Nvl ${pet.requiredLevel}</>}
-                            </span>
-                            <span className="jf-pet-card-emoji">{pet.emoji}</span>
-                            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                              <span style={{ display: 'block', fontWeight: 700, fontSize: '12.5px', color: '#fff' }}>
-                                {pet.name}
-                              </span>
-                              <span style={{ display: 'block', fontSize: '10.5px', color: 'rgba(255,255,255,0.6)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                            <div className="jf-pet-card-icon-box">
+                              <PixelPet
+                                type={pet.species}
+                                variant={pet.variants[0].id}
+                                size={40}
+                                interactive={false}
+                              />
+                            </div>
+                            <div className="jf-pet-card-content">
+                              <div className="jf-pet-card-top">
+                                <span className="jf-pet-card-name">{pet.name}</span>
+                                <span className="jf-pet-card-badge">{pet.badge}</span>
+                              </div>
+                              <span className="jf-pet-card-desc">
                                 {pet.description}
                               </span>
-                              {!unlocked && (
-                                <div className="jf-unlock-progress-bar">
-                                  <div className="jf-unlock-progress-fill" style={{ width: `${progress}%` }} />
+                              {!unlocked ? (
+                                <div className="jf-pet-card-progress-wrap">
+                                  <div className="jf-pet-card-progress-bar">
+                                    <div className="jf-pet-card-progress-fill" style={{ width: `${progress}%` }} />
+                                  </div>
+                                  <span className="jf-pet-card-progress-label">
+                                    {melomano.level}/{pet.requiredLevel} Nvl ({progress}%)
+                                  </span>
                                 </div>
-                              )}
+                              ) : null}
                             </div>
-                            {isActive && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
+
+                            <div className="jf-pet-card-side">
+                              <span className={`jf-lock-badge ${unlocked ? 'is-unlocked' : 'is-locked'}`}>
+                                {unlocked ? (
+                                  <>✓ Nvl {pet.requiredLevel}</>
+                                ) : (
+                                  <>
+                                    <Lock size={10} weight="bold" /> Nvl {pet.requiredLevel}
+                                  </>
+                                )}
+                              </span>
+                              {isActive && <Check size={16} weight="bold" className="jf-pet-card-check" />}
+                            </div>
                           </button>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Variantes y Configuración de Mascota Seleccionada */}
-                  {selectedPetType !== 'none' && (
-                    <>
-                      {/* Selector de Variante / Color */}
-                      {(() => {
-                        const curPet = PET_UNLOCKS.find((p) => p.species === selectedPetType);
-                        if (!curPet) return null;
-                        return (
-                          <div className="jf-profile-editor-field">
-                            <label className="jf-profile-editor-label">
-                              <span>Variante de Color & Estilo de {curPet.name}</span>
-                              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'none' }}>
-                                Variantes especiales desbloqueables
-                              </span>
-                            </label>
-                            <div className="jf-pet-variant-grid">
-                              {curPet.variants.map((v) => {
-                                const variantUnlocked = isStyleUnlocked(v.requiredLevel, melomano.level);
-                                const isVarActive = selectedPetVariant === v.id;
-                                return (
-                                  <button
-                                    key={v.id}
-                                    type="button"
-                                    className={`jf-pet-variant-card ${isVarActive ? 'is-active' : ''} ${!variantUnlocked ? 'is-locked' : ''}`}
-                                    onClick={() => {
-                                      if (!variantUnlocked) {
-                                        toast.show(
-                                          `🔒 Variante bloqueada: ${v.name} requiere Nivel ${v.requiredLevel}.`,
-                                          'warning',
-                                        );
-                                        return;
-                                      }
-                                      setSelectedPetVariant(v.id);
-                                    }}
-                                  >
-                                    <span
-                                      className="jf-pet-color-dot"
-                                      style={{ background: v.previewColor }}
-                                    />
-                                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#fff', display: 'block' }}>
-                                        {v.name}
-                                      </span>
-                                      <span style={{ fontSize: '10px', color: variantUnlocked ? 'var(--accent)' : 'rgba(255,255,255,0.45)' }}>
-                                        {variantUnlocked ? v.tag : `🔒 Nvl ${v.requiredLevel}`}
-                                      </span>
-                                    </div>
-                                    {isVarActive && <Check size={14} weight="bold" style={{ color: '#00f0ff' }} />}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Apodo Personalizado para la Mascota */}
-                      <div className="jf-profile-editor-field">
-                        <label className="jf-profile-editor-label">Nombre o Apodo de tu Compañero</label>
-                        <input
-                          type="text"
-                          className="jf-input"
-                          placeholder="Ej: Michi, Doradito, Firulais, Sparky..."
-                          maxLength={24}
-                          value={petCustomName}
-                          onChange={(e) => setPetCustomName(e.target.value)}
-                        />
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          Aparecerá en el globo de diálogo y en la tarjeta de tu mascota.
-                        </span>
-                      </div>
-
-                      {/* Live Interactive Pet Preview Card */}
-                      <div className="jf-pet-preview-box">
-                        <div className="jf-pet-preview-header">
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>
-                            ✨ Previsualización Interactiva (Haz clic sobre tu mascota para acariciarla)
-                          </span>
-                          <span style={{ fontSize: '11px', color: isPlaying ? '#10b981' : 'rgba(255,255,255,0.6)' }}>
-                            {isPlaying ? '🎵 Música sonando: Bailando' : '💤 En reposo: Dale play a una rola'}
-                          </span>
-                        </div>
-                        <div className="jf-pet-preview-stage">
-                          <PixelPet
-                            type={selectedPetType}
-                            variant={selectedPetVariant}
-                            customName={petCustomName}
-                            scale={3.2}
-                            isMusicPlaying={isPlaying}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
                   {/* Sticky Save Bar */}
                   <div className="jf-studio-sticky-bar">
                     <div className="jf-studio-sticky-info">
                       <Sparkle size={16} weight="fill" style={{ color: '#00f0ff' }} />
-                      <span>Configuración de mascota lista para guardar</span>
+                      <span>Configuración de compañero lista para guardar</span>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <Button variant="glass" size="md" onClick={() => setActiveTab('showcase')}>

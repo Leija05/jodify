@@ -569,7 +569,7 @@ export function PlaylistPanel() {
 async function smartMix(): Promise<void> {
   const { shuffleArray } = await import('../../lib/utils');
   const library = useLibraryStore.getState();
-  const pool = library.songs.filter((s) => library.downloadedIds.includes(s.id));
+  const pool = library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)));
   if (pool.length === 0) return;
   const { playSong } = await import('../../services/player.service');
   await playSong(shuffleArray(pool)[0]);
@@ -577,7 +577,22 @@ async function smartMix(): Promise<void> {
 }
 
 async function enterDownloadsTab(): Promise<void> {
-  const { getAllOfflineIds } = await import('../../lib/idb');
-  const ids = await getAllOfflineIds();
-  useLibraryStore.getState().setDownloadedIds(ids);
+  const { getAllOfflineIds, getAllSongsOffline } = await import('../../lib/idb');
+  const [ids, offlineSongs] = await Promise.all([getAllOfflineIds(), getAllSongsOffline()]);
+  const library = useLibraryStore.getState();
+
+  if (offlineSongs.length > 0) {
+    const existingIds = new Set(library.songs.map((s) => String(s.id)));
+    const merged = [...library.songs];
+    for (const os of offlineSongs) {
+      if (!existingIds.has(String(os.id))) {
+        merged.push(os);
+        existingIds.add(String(os.id));
+      }
+    }
+    library.setSongs(merged);
+  }
+
+  library.setDownloadedIds(ids);
+  library.setLoaded(true);
 }

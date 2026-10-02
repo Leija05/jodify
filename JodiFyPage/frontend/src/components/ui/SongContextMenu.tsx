@@ -71,8 +71,8 @@ export function SongContextMenu() {
   const [showPlaylistSubmenu, setShowPlaylistSubmenu] = useState(false);
 
   const playlists = usePlaylistsStore((s) => s.playlists);
-  const isLiked = song ? useLibraryStore.getState().likedIds.includes(song.id) : false;
-  const isDownloaded = song ? useLibraryStore.getState().downloadedIds.includes(song.id) : false;
+  const isLiked = song ? useLibraryStore.getState().likedIds.some((id) => String(id) === String(song.id)) : false;
+  const isDownloaded = song ? useLibraryStore.getState().downloadedIds.some((id) => String(id) === String(song.id)) : false;
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -181,12 +181,13 @@ export function SongContextMenu() {
   };
 
   const handleOffline = async () => {
-    if (!session || !song) return;
+    if (!song) return;
     hide();
+    const user = session?.username || 'local_user';
     if (isDownloaded) {
-      await removeDownload(song.id, session.username);
+      await removeDownload(song.id, user);
     } else {
-      await downloadSong(song, session.username);
+      await downloadSong(song, user);
     }
   };
 

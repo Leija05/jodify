@@ -235,6 +235,9 @@ export function useSettingsBinding(): void {
   const focusMode = useSettingsStore((s) => s.focusMode);
   const disableVisualizer = useSettingsStore((s) => s.disableVisualizer);
   const disableDynamicBg = useSettingsStore((s) => s.disableDynamicBg);
+  const performanceMode = useSettingsStore((s) => s.performanceMode);
+  const reduceBlur = useSettingsStore((s) => s.reduceBlur);
+  const reduceAnimations = useSettingsStore((s) => s.reduceAnimations);
   const fadeEnabled = useSettingsStore((s) => s.fadeEnabled);
   const fadeDuration = useSettingsStore((s) => s.fadeDuration);
 
@@ -242,7 +245,10 @@ export function useSettingsBinding(): void {
     document.body.classList.toggle('focus-mode', focusMode);
     document.body.classList.toggle('no-visual', disableVisualizer);
     document.body.classList.toggle('no-dynamic-bg', disableDynamicBg);
-  }, [focusMode, disableVisualizer, disableDynamicBg]);
+    document.body.classList.toggle('jf-performance-mode', performanceMode);
+    document.body.classList.toggle('jf-reduce-blur', reduceBlur || performanceMode);
+    document.body.classList.toggle('jf-reduce-animations', reduceAnimations || performanceMode);
+  }, [focusMode, disableVisualizer, disableDynamicBg, performanceMode, reduceBlur, reduceAnimations]);
 
   useEffect(() => {
     localStorage.setItem('fadeEnabled', String(fadeEnabled));

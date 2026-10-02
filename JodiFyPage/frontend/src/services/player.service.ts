@@ -4,7 +4,7 @@ import { useLibraryStore } from '../store/library.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useJamStore } from '../store/jam.store';
 import { useToastStore } from '../store/toast.store';
-import { getSongOffline, getAllOfflineIds } from '../lib/idb';
+import { getSongOffline, findSongOffline } from '../lib/idb';
 import { API_BASE } from '../lib/api';
 import { resolveMediaUrl } from '../lib/utils';
 import { linksService } from './links.service';
@@ -133,7 +133,77 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
     return false;
   }
 
-  // 0. Si la canción no tiene youtube_id pero proviene de Spotify o es un enlace de búsqueda
+  // 1. REPRODUCCIÓN PRIORITARIA SIN CONEXIÓN (MODO OFFLINE)
+  // Si la canción está descargada en el almacén local IndexedDB, reproducir directamente desde el Blob
+  // instantáneamente, con 0 latencia, 0 peticiones a internet y 100% fidelidad sin conexión.
+  let offlineSong = await getSongOffline(song.id);
+  if (!offlineSong) {
+    offlineSong = await findSongOffline(song);
+  }
+
+  if (offlineSong && offlineSong.blob) {
+    ytPlayerService.stop();
+    if (!audio) return false;
+
+    if (options.fades !== false && settings.fadeEnabled && player.currentSong && player.isPlaying) {
+      rampVolume(audio, 0, getFadeMs());
+      await new Promise((r) => setTimeout(r, getFadeMs()));
+    }
+
+    const effectiveSong: Song = {
+      ...song,
+      ...offlineSong,
+      cover_url: (offlineSong as any).offline_cover || offlineSong.cover_url || song.cover_url,
+    };
+
+    player.setCurrentSong(effectiveSong);
+    player.setCurrentTime(0);
+    player.setDuration(offlineSong.duration || song.duration || 0);
+
+    const blobUrl = URL.createObjectURL(offlineSong.blob);
+    if (player.blobUrl && player.blobUrl !== blobUrl) {
+      try {
+        URL.revokeObjectURL(player.blobUrl);
+      } catch {}
+    }
+
+    audio.src = blobUrl;
+    audio.volume = player.volume;
+    audio.muted = player.muted;
+    try {
+      await audio.play();
+    } catch (err) {
+      console.warn('[player.service] Falló reproducción de blob offline:', err);
+      const msg = err instanceof DOMException && err.name === 'NotAllowedError'
+        ? 'Haz clic en reproducir para empezar'
+        : 'Error reproduciendo canción sin conexión';
+      useToastStore.getState().show(msg, 'warning');
+      return false;
+    }
+
+    player.setSourceUrl(blobUrl, blobUrl);
+    player.setOfflinePlayback(true);
+    player.setIsPlaying(!audio.paused);
+
+    if (settings.fadeEnabled && options.fades !== false) {
+      audio.volume = 0;
+      rampVolume(audio, player.volume, getFadeMs());
+    } else {
+      audio.volume = player.volume;
+    }
+
+    useToastStore.getState().show(`Reproduciendo «${song.name}» (Sin conexión) ⚡`, 'success', 2200);
+    logListeningHistory(effectiveSong, true);
+    return true;
+  }
+
+  // 2. Si la canción no está descargada y NO hay conexión a internet activa
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    useToastStore.getState().show('Esta canción no está descargada para escuchar sin conexión', 'warning', 2500);
+    return false;
+  }
+
+  // 3. Si la canción no tiene youtube_id pero proviene de Spotify o es un enlace de búsqueda (en línea)
   if (!extractYoutubeId(song) && (song.source === 'spotify' || (song.url && (song.url.includes('search_query') || song.url.includes('spotify.com'))))) {
     try {
       const match = await linksService.matchTrack(song.artist || '', song.name);
@@ -148,12 +218,10 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
     }
   }
 
-  // 1. Manejo nativo directo en cliente para canciones de YouTube (0 bloqueos, 100% audio completo)
+  // 4. Manejo nativo en cliente para canciones de YouTube (en línea)
   const ytId = extractYoutubeId(song);
-  const offlineSong = await getSongOffline(song.id);
-  const offlineIds = await getAllOfflineIds();
 
-  if (ytId && !offlineSong) {
+  if (ytId) {
     player.setCurrentSong(song);
     player.setCurrentTime(0);
     player.setDuration(song.duration ?? 0);
@@ -222,23 +290,12 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
   player.setDuration(song.duration ?? 0);
 
   let sourceUrl: string | null = null;
-  let blobUrl: string | null = null;
-  let isOffline = false;
 
-  const library = useLibraryStore.getState();
-
-  if (offlineSong) {
-    blobUrl = URL.createObjectURL(offlineSong.blob);
-    sourceUrl = blobUrl;
-    isOffline = true;
-    if (player.blobUrl && player.blobUrl !== blobUrl) URL.revokeObjectURL(player.blobUrl);
+  // Si la URL es una búsqueda o Spotify que no se emparejó, enrutarla al endpoint de stream del backend
+  if (song.url && (song.url.includes('search_query') || song.url.includes('spotify.com') || song.source === 'spotify')) {
+    sourceUrl = `${API_BASE}/links/stream?url=${encodeURIComponent(song.url)}`;
   } else {
-    // Si la URL es una búsqueda o Spotify que no se emparejó, enrutarla al endpoint de stream del backend
-    if (song.url && (song.url.includes('search_query') || song.url.includes('spotify.com') || song.source === 'spotify')) {
-      sourceUrl = `${API_BASE}/links/stream?url=${encodeURIComponent(song.url)}`;
-    } else {
-      sourceUrl = song.url ? resolveMediaUrl(song.url) : null;
-    }
+    sourceUrl = song.url ? resolveMediaUrl(song.url) : null;
   }
 
   if (!sourceUrl) {
@@ -257,8 +314,8 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
     useToastStore.getState().show(msg, 'warning');
   }
 
-  player.setSourceUrl(sourceUrl, blobUrl);
-  player.setOfflinePlayback(isOffline);
+  player.setSourceUrl(sourceUrl);
+  player.setOfflinePlayback(false);
   player.setIsPlaying(!audio.paused);
 
   if (settings.fadeEnabled && options.fades !== false) {
@@ -268,9 +325,7 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
     audio.volume = player.volume;
   }
 
-  useLibraryStore.getState().setDownloadedIds(offlineIds);
-
-  logListeningHistory(song, library.currentTab === 'downloads' || isOffline);
+  logListeningHistory(song, false);
   return true;
 }
 
