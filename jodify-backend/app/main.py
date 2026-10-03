@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .api.routers import auth, dev, jam, links, logs, lyrics, social, songs, updates, users
 from .core import database as dbmod
 from .core.config import CORS_ORIGINS
-from .core.database import connect, create_indexes
+from .core.database import col, connect, create_indexes
 from .services.seeding import seed_audio, seed_users
 
 logging.basicConfig(level=logging.INFO)
@@ -19,8 +19,10 @@ async def lifespan(_app: FastAPI):
     connect()
     await create_indexes()
     await seed_users()
-    await seed_audio()
-    logger.info("JodiFy API lista sobre MongoDB")
+    count = await col("songs").count_documents({})
+    if count == 0:
+        await seed_audio()
+    logger.info("JodiFy API lista sobre MongoDB (total canciones: %d)", count)
     yield
     if dbmod.client is not None:
         dbmod.client.close()

@@ -180,9 +180,22 @@ export default function HomeScreen() {
         {/* Top Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.logo}>
-              Jodi<Text style={styles.logoAccent}>Fy</Text>
-            </Text>
+            <View style={styles.logoRow}>
+              <View style={styles.logoIconContainer}>
+                <Image
+                  source={require('../../assets/images/icon.png')}
+                  style={styles.logoIcon}
+                  resizeMode="cover"
+                />
+              </View>
+              <Text style={styles.logo}>
+                Jodi<Text style={styles.logoAccent}>Fy</Text>
+              </Text>
+              <View style={styles.logoPulseBadge}>
+                <View style={styles.logoPulseDot} />
+                <Text style={styles.logoPulseText}>PRO</Text>
+              </View>
+            </View>
             <Text style={styles.greeting} numberOfLines={1}>
               {greeting}, {user ? user.display_name || user.username : 'melómano'}
             </Text>
@@ -395,6 +408,7 @@ export default function HomeScreen() {
                   {topSongs.map((song) => {
                     const isCurrent = String(currentSong?.id) === String(song.id);
                     const cover = pickCoverUrl(song);
+                    const rank = topSongs.indexOf(song) + 1;
                     return (
                       <PressableFluid
                         key={song.id}
@@ -410,6 +424,23 @@ export default function HomeScreen() {
                             size={124}
                             radiusSize={18}
                           />
+                          <View
+                            style={[
+                              styles.topRankBadge,
+                              rank === 1 && { backgroundColor: '#ffd700', borderColor: '#ffd700' },
+                              rank === 2 && { backgroundColor: '#e2e8f0', borderColor: '#e2e8f0' },
+                              rank === 3 && { backgroundColor: '#f97316', borderColor: '#f97316' },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.topRankText,
+                                rank <= 3 && { color: '#000', fontWeight: '900' },
+                              ]}
+                            >
+                              #{rank}
+                            </Text>
+                          </View>
                           {isCurrent ? (
                             <View style={styles.topPlayingBadge}>
                               <EqualizerBars playing={isPlaying} bars={3} height={14} barWidth={3} color={colors.white} />
@@ -619,6 +650,52 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 229, 255, 0.4)',
+    shadowColor: '#00E5FF',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+    backgroundColor: 'rgba(10, 10, 20, 0.8)',
+  },
+  logoIcon: {
+    width: '100%',
+    height: '100%',
+  },
+  logoPulseBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.4)',
+  },
+  logoPulseDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#00E676',
+  },
+  logoPulseText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#00E676',
+    letterSpacing: 0.8,
+  },
   logo: {
     fontSize: 26,
     fontWeight: '800',
@@ -819,6 +896,23 @@ const styles = StyleSheet.create({
   topCoverWrap: {
     position: 'relative',
     marginBottom: 8,
+  },
+  topRankBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    zIndex: 2,
+  },
+  topRankText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.white,
   },
   topPlayingBadge: {
     position: 'absolute',

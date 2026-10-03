@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import type { RepeatMode, Song } from '../lib/types';
 import { API_BASE } from '../lib/constants';
+import { getActiveApiBase } from '../services/api';
 import { shuffleArray } from '../lib/utils';
 import { activateLockScreenForSong, syncLockScreen } from '../services/lockscreen.service';
 import { ensurePlayerWithSource, getPlayer, onPlayerStatus } from './audio';
@@ -82,7 +83,7 @@ function sanitizeStreamUrl(url: string | null): string | null {
 function resolveSource(song: Song): string | null {
   if (song.localUri) return song.localUri;
   const rawUrl = (song.url || song.stream_url || '').trim();
-  const base = (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
+  const base = (getActiveApiBase() || API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
 
   // 1. If it's already a full http(s) URL
   if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
@@ -215,7 +216,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       // If primary endpoint failed (e.g. 404 from missing GridFS file or audio blob),
       // seamlessly attempt streaming via YouTube search stream match
       if (retryCount === 0 && !source.includes('/results?search_query=')) {
-        const base = (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
+        const base = (getActiveApiBase() || API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
         const artist = song.artist || '';
         const query = artist ? `${artist} - ${song.name}` : song.name;
         const fallbackSource = sanitizeStreamUrl(`${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/results?search_query=${query}`)}`);
