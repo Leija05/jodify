@@ -108,7 +108,7 @@ function createRealAudioPlayer(source: string): AudioPlayer {
         shouldPlay: desiredPlaying,
         volume: status.volume,
         rate: status.rate,
-        progressUpdateIntervalMillis: 100,
+        progressUpdateIntervalMillis: 250,
       };
       const soundObject = new Audio.Sound();
       soundObject.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);

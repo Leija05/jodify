@@ -19,12 +19,27 @@ interface MiniPlayerProps {
   style?: StyleProp<ViewStyle>;
 }
 
+const MiniProgressBar = React.memo(({ primaryColor, secondaryColor }: { primaryColor: string; secondaryColor: string }) => {
+  const position = usePlayerStore((s) => s.position);
+  const duration = usePlayerStore((s) => s.duration);
+  const progressPercent = duration > 0 ? Math.min(Math.max((position / duration) * 100, 0), 100) : 0;
+
+  return (
+    <View style={styles.progressContainer}>
+      <LinearGradient
+        colors={[primaryColor, secondaryColor]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[styles.progressFill, { width: `${progressPercent}%` }]}
+      />
+    </View>
+  );
+});
+
 export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, ref) => {
   const insets = useSafeAreaInsets();
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const position = usePlayerStore((s) => s.position);
-  const duration = usePlayerStore((s) => s.duration);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
   const previous = usePlayerStore((s) => s.previous);
   const next = usePlayerStore((s) => s.next);
@@ -37,7 +52,6 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
   const artist = useMemo(() => (currentSong ? resolveArtist(currentSong) : null), [currentSong]);
   const title = useMemo(() => (currentSong ? resolveSongTitle(currentSong) : ''), [currentSong]);
   const palette = useMemo(() => getSongPalette(currentSong), [currentSong]);
-  const progressPercent = duration > 0 ? Math.min(Math.max((position / duration) * 100, 0), 100) : 0;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -82,14 +96,7 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(14, 14, 20, 0.96)', borderRadius: radius.lg }]} />
         )}
         {/* Progress Bar Hairline */}
-        <View style={styles.progressContainer}>
-          <LinearGradient
-            colors={[palette.primary, palette.secondary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.progressFill, { width: `${progressPercent}%` }]}
-          />
-        </View>
+        <MiniProgressBar primaryColor={palette.primary} secondaryColor={palette.secondary} />
 
         <PressableFluid
           onPress={openFullscreen}

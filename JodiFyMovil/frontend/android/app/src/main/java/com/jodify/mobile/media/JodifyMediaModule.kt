@@ -45,6 +45,12 @@ class JodifyMediaModule(private val reactContext: ReactApplicationContext) :
   private var cachedCoverBitmap: Bitmap? = null
   private var isReceiverRegistered = false
 
+  private var lastNotifTitle: String? = null
+  private var lastNotifArtist: String? = null
+  private var lastNotifPlaying: Boolean? = null
+  private var lastNotifDurationMs: Long = -1L
+  private var lastNotifColor: String? = null
+
   override fun getName(): String = MODULE_NAME
 
   private val mediaActionReceiver = object : BroadcastReceiver() {
@@ -203,6 +209,24 @@ class JodifyMediaModule(private val reactContext: ReactApplicationContext) :
   ) {
     val session = mediaSession ?: return
 
+    val isSameNotification = (
+      lastNotifTitle == title &&
+      lastNotifArtist == artist &&
+      lastNotifPlaying == isPlaying &&
+      lastNotifDurationMs == durationMs &&
+      lastNotifColor == accentColor
+    )
+
+    if (isSameNotification) {
+      return
+    }
+
+    lastNotifTitle = title
+    lastNotifArtist = artist
+    lastNotifPlaying = isPlaying
+    lastNotifDurationMs = durationMs
+    lastNotifColor = accentColor
+
     // Update MediaMetadata
     val metaBuilder = MediaMetadata.Builder()
       .putString(MediaMetadata.METADATA_KEY_TITLE, title)
@@ -302,6 +326,12 @@ class JodifyMediaModule(private val reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun stopPlayback() {
+    lastNotifTitle = null
+    lastNotifArtist = null
+    lastNotifPlaying = null
+    lastNotifDurationMs = -1L
+    lastNotifColor = null
+
     val session = mediaSession ?: return
     val state = PlaybackState.Builder()
       .setState(PlaybackState.STATE_STOPPED, 0, 0f)

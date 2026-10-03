@@ -42,19 +42,44 @@ export async function activateLockScreenForSong(
   }
 }
 
+let lastSyncedSongId: string | number | null = null;
+let lastSyncedPlaying: boolean | null = null;
+let lastSyncTime = 0;
+let lastPositionSent = 0;
+
 export async function syncLockScreen(
   song: Song | null,
   isPlaying: boolean,
   position = 0,
-  duration = 0
+  duration = 0,
+  force = false
 ): Promise<void> {
   try {
     if (!song) {
+      lastSyncedSongId = null;
+      lastSyncedPlaying = null;
       if (Platform.OS === 'android' && JodifyMediaModule?.stopPlayback) {
         JodifyMediaModule.stopPlayback();
       }
       return;
     }
+
+    const now = Date.now();
+    const songId = song.id;
+    const songChanged = songId !== lastSyncedSongId;
+    const playChanged = isPlaying !== lastSyncedPlaying;
+    const posJumped = Math.abs(position - lastPositionSent) > 3.0; // manual seek
+    const timeElapsed = now - lastSyncTime > 4000; // sync state every 4s
+
+    // Skip redundant IPC and bridge calls if neither song, play state nor significant seek occurred
+    if (!force && !songChanged && !playChanged && !posJumped && !timeElapsed) {
+      return;
+    }
+
+    lastSyncedSongId = songId;
+    lastSyncedPlaying = isPlaying;
+    lastSyncTime = now;
+    lastPositionSent = position;
 
     const coverUrl = pickCoverUrl(song);
     const artist = resolveArtist(song) ?? 'Desconocido';

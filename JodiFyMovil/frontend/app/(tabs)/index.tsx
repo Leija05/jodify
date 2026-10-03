@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Image,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -267,7 +268,7 @@ export default function HomeScreen() {
                       source={{ uri: nowPlayingCover }}
                       style={StyleSheet.absoluteFill}
                       resizeMode="cover"
-                      blurRadius={50}
+                      blurRadius={Platform.OS === 'ios' ? 50 : 12}
                     />
                   )}
                   <LinearGradient
@@ -342,7 +343,7 @@ export default function HomeScreen() {
                       source={{ uri: featuredCover }}
                       style={StyleSheet.absoluteFill}
                       resizeMode="cover"
-                      blurRadius={40}
+                      blurRadius={Platform.OS === 'ios' ? 40 : 12}
                     />
                   )}
                   <LinearGradient

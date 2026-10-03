@@ -51,7 +51,7 @@ export const DynamicBackground = React.memo(
                   source={{ uri: coverUrl }}
                   style={[StyleSheet.absoluteFill, { opacity: 0.45 }]}
                   resizeMode="cover"
-                  blurRadius={Platform.OS === 'ios' ? 45 : 30}
+                  blurRadius={Platform.OS === 'ios' ? 45 : 12}
                 />
               )}
 

@@ -97,7 +97,6 @@ export const EqualizerBars = React.forwardRef<View, EqualizerBarsProps>(
                 height,
                 backgroundColor: color,
                 transform: [{ scaleY: animatedValue }],
-                transformOrigin: 'bottom',
               },
             ]}
           />
