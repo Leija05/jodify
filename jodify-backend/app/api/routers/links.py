@@ -266,7 +266,7 @@ def _select_progressive_audio(target_info: dict[str, Any]) -> str | None:
     if audio_only:
         return audio_only[-1]["url"]
 
-    # 2. Pistas combinadas (ej: mp4) sin m3u8
+    # 2. Pistas combinadas (ej: mp4 formato 18) sin m3u8
     any_audio = [
         f for f in formats
         if f.get("acodec") != "none"
@@ -275,6 +275,10 @@ def _select_progressive_audio(target_info: dict[str, Any]) -> str | None:
         and f.get("url")
     ]
     if any_audio:
+        # Preferir formatos específicos de audio/video livianos (ej. formato 18 sobre streams de video pesado)
+        for f in any_audio:
+            if str(f.get("format_id")) in ("18", "139", "140", "251", "250", "249"):
+                return f["url"]
         return any_audio[-1]["url"]
 
     # 3. Fallback a URL directa si no es m3u8
@@ -295,11 +299,22 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
 
     is_search = url.startswith("ytsearch")
     cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
+    if not cookie_path or not os.path.exists(cookie_path):
+        cookie_text = os.environ.get("YOUTUBE_COOKIES_TEXT") or os.environ.get("YOUTUBE_COOKIES")
+        if cookie_text:
+            try:
+                tmp_dir = tempfile.gettempdir()
+                tmp_cookie_file = os.path.join(tmp_dir, "jodify_yt_cookies.txt")
+                with open(tmp_cookie_file, "w", encoding="utf-8") as f:
+                    f.write(cookie_text)
+                cookie_path = tmp_cookie_file
+            except Exception as e:
+                logger.warning(f"No se pudo guardar YOUTUBE_COOKIES_TEXT temporal: {e}")
 
     configs = [
-        # Estrategia 1: Cliente iOS / VisionOS nativo de alta fidelidad (sin bloqueo de bot en datacenter)
+        # Estrategia 1: Cliente Android nativo (formato 18 progressive mp4 con AAC estéreo o audio directo - inmune a bloqueos en datacenter)
         {
-            "format": "bestaudio[ext=m4a]/bestaudio/best",
+            "format": "18/bestaudio[ext=m4a]/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
@@ -307,13 +322,27 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "socket_timeout": 15,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["ios", "visionos", "mweb"],
+                    "player_client": ["android"],
                 }
             },
         },
-        # Estrategia 2: Cliente Android / TV Embedded
+        # Estrategia 2: Cliente Android Music (stream de audio m4a/opus de alta fidelidad)
         {
-            "format": "bestaudio/best",
+            "format": "140/bestaudio[ext=m4a]/bestaudio/18/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 15,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android_music", "android"],
+                }
+            },
+        },
+        # Estrategia 3: TV Embedded con fallback a Android
+        {
+            "format": "18/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
@@ -325,9 +354,9 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 }
             },
         },
-        # Estrategia 3: Opciones estándar de yt-dlp
+        # Estrategia 4: iOS / mweb estándar
         {
-            "format": "bestaudio/best",
+            "format": "18/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
