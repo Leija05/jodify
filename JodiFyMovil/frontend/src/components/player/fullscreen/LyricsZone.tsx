@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Animated, Text, View, StyleSheet, ScrollView } from 'react-native';
 import { colors, typography } from '@theme';
 import { PressableFluid } from '@components/ui/PressableFluid';
@@ -26,43 +26,66 @@ export const LyricsZone = React.memo(
       onSeek,
       onLyricsToggle,
     }, ref) => {
-      const storePosition = usePlayerStore((s) => (showLyrics ? s.position : 0));
-      const position = propPosition ?? storePosition;
+      const [activeLineIndex, setActiveLineIndex] = useState(-1);
       const containerHeight = useRef(new Animated.Value(0)).current;
       const activeIndex = useRef(-1);
       const scrollRef = useRef<ScrollView>(null);
 
-      if (!showLyrics) return null;
-
-    const activeLineIndex = useMemo(() => {
-      if (!lyrics || !lyrics.length) return -1;
-      let low = 0;
-      let high = lyrics.length - 1;
-      let result = -1;
-      while (low <= high) {
-        const mid = Math.floor((low + high) / 2);
-        const midLine = lyrics[mid];
-        if (midLine && midLine.time <= position) {
-          result = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
+      // Targeted subscription: Only re-renders when active lyric line actually changes
+      // Applies 250ms vocal anticipation offset for natural singing sync
+      useEffect(() => {
+        if (!showLyrics || !lyrics || lyrics.length === 0) {
+          setActiveLineIndex(-1);
+          activeIndex.current = -1;
+          return;
         }
-      }
-      return result;
-    }, [lyrics, position]);
 
-    useEffect(() => {
-      if (activeLineIndex !== activeIndex.current) {
-        activeIndex.current = activeLineIndex;
+        const computeLineIndex = (pos: number) => {
+          const vocalPos = pos + 0.25;
+          let low = 0;
+          let high = lyrics.length - 1;
+          let res = -1;
+          while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const midLine = lyrics[mid];
+            if (midLine && midLine.time <= vocalPos) {
+              res = mid;
+              low = mid + 1;
+            } else {
+              high = mid - 1;
+            }
+          }
+          return res;
+        };
+
+        const initialPos = propPosition ?? usePlayerStore.getState().position;
+        const initialIdx = computeLineIndex(initialPos);
+        activeIndex.current = initialIdx;
+        setActiveLineIndex(initialIdx);
+
+        if (propPosition !== undefined) return;
+
+        const unsub = usePlayerStore.subscribe((state) => {
+          const nextIdx = computeLineIndex(state.position);
+          if (nextIdx !== activeIndex.current) {
+            activeIndex.current = nextIdx;
+            setActiveLineIndex(nextIdx);
+          }
+        });
+
+        return unsub;
+      }, [showLyrics, lyrics, propPosition]);
+
+      useEffect(() => {
         if (activeLineIndex >= 0 && scrollRef.current) {
           scrollRef.current.scrollTo({
             y: Math.max(0, activeLineIndex * 46 - 80),
             animated: true,
           });
         }
-      }
-    }, [activeLineIndex]);
+      }, [activeLineIndex]);
+
+      if (!showLyrics) return null;
 
     if (lyricsLoading) {
       return (
@@ -115,6 +138,7 @@ export const LyricsZone = React.memo(
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
+          nestedScrollEnabled={true}
         >
           {lyrics.map((line, index) => {
             const isActive = index === activeLineIndex;

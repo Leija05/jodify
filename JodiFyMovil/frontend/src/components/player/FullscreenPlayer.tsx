@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
+import { Animated, BackHandler, Dimensions, Easing, Modal, ScrollView, StyleSheet, Text, View, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LyricsLine } from '@lib/types';
 import { fetchLyrics, lyricsFromSong, getPreloadedLyrics } from '@services/lyrics.service';
@@ -153,7 +153,21 @@ export default function FullscreenPlayer() {
     if (open) {
       animateIn();
     }
-  }, [open]);
+  }, [open, animateIn]);
+
+  // Handle Android hardware back press
+  useEffect(() => {
+    if (!open) return;
+    const backSub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (queueOpen) {
+        setQueueOpen(false);
+        return true;
+      }
+      dismiss();
+      return true;
+    });
+    return () => backSub.remove();
+  }, [open, queueOpen, dismiss]);
 
   const dismissRef = useRef(dismiss);
   dismissRef.current = dismiss;
@@ -279,17 +293,6 @@ export default function FullscreenPlayer() {
         >
           <DynamicBackground song={currentSong} />
 
-          <View {...panResponder.panHandlers}>
-            <FullscreenHeader
-              opacity={topBarOpacity}
-              onDismiss={dismiss}
-              onQueuePress={() => setQueueOpen(true)}
-              displayMode={displayMode}
-              onToggleDisplayMode={() => setDisplayMode((m) => (m === 'cover' ? 'vinyl' : 'cover'))}
-              insets={insets}
-            />
-          </View>
-
           {currentSong ? (
             <ScrollView
               ref={scrollRef}
@@ -371,6 +374,16 @@ export default function FullscreenPlayer() {
               <Text style={styles.emptyText}>Elige una canción para empezar</Text>
             </View>
           )}
+
+          {/* Top navigation header rendered with high zIndex so chevron and queue buttons receive taps directly */}
+          <FullscreenHeader
+            opacity={topBarOpacity}
+            onDismiss={dismiss}
+            onQueuePress={() => setQueueOpen(true)}
+            displayMode={displayMode}
+            onToggleDisplayMode={() => setDisplayMode((m) => (m === 'cover' ? 'vinyl' : 'cover'))}
+            insets={insets}
+          />
 
           <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} />
         </Animated.View>

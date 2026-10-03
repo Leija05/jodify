@@ -51,6 +51,7 @@ function createRealAudioPlayer(source: string): AudioPlayer {
     volume: 1,
     rate: 1,
     playbackState: 1, // 1: idle, 2: paused, 3: playing, 4: buffering, 5: error, 6: finished
+    error: null as string | null,
   };
   const listeners = new Set<(s: any) => void>();
 
@@ -107,7 +108,7 @@ function createRealAudioPlayer(source: string): AudioPlayer {
         shouldPlay: desiredPlaying,
         volume: status.volume,
         rate: status.rate,
-        progressUpdateIntervalMillis: 250,
+        progressUpdateIntervalMillis: 100,
       };
       const soundObject = new Audio.Sound();
       soundObject.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
@@ -158,7 +159,10 @@ function createRealAudioPlayer(source: string): AudioPlayer {
           await sound.playAsync();
         } catch (e) {
           console.warn('[Audio] Play error:', e);
+          throw e;
         }
+      } else if (!sound && desiredPlaying) {
+        throw new Error(status.error || 'No se pudo cargar la fuente de audio');
       }
     },
     pause: async () => {

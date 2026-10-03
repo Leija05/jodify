@@ -1,0 +1,68 @@
+diff --git a/node_modules/expo-av/android/src/main/java/expo/modules/av/player/SimpleExoPlayerData.java b/node_modules/expo-av/android/src/main/java/expo/modules/av/player/SimpleExoPlayerData.java
+index 8835a39..eaad1c3 100644
+--- a/node_modules/expo-av/android/src/main/java/expo/modules/av/player/SimpleExoPlayerData.java
++++ b/node_modules/expo-av/android/src/main/java/expo/modules/av/player/SimpleExoPlayerData.java
+@@ -78,6 +78,20 @@ class SimpleExoPlayerData extends PlayerData
+ 
+   // Lifecycle
+ 
++  private void sendAudioSessionBroadcast(int audioSessionId, boolean open) {
++    if (audioSessionId > 0 && mReactContext != null) {
++      try {
++        String action = open
++          ? android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION
++          : android.media.audiofx.AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION;
++        android.content.Intent intent = new android.content.Intent(action);
++        intent.putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId);
++        intent.putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, mReactContext.getPackageName());
++        mReactContext.sendBroadcast(intent);
++      } catch (Throwable ignored) {}
++    }
++  }
++
+   @Override
+   public void load(final Bundle status, final LoadCompletionListener loadCompletionListener) {
+     mLoadCompletionListener = loadCompletionListener;
+@@ -110,6 +124,7 @@ class SimpleExoPlayerData extends PlayerData
+ 
+       // Prepare the player with the source.
+       mSimpleExoPlayer.prepare(source);
++      sendAudioSessionBroadcast(mSimpleExoPlayer.getAudioSessionId(), true);
+       setStatus(status, null);
+     } catch (IllegalStateException e) {
+       onFatalError(e);
+@@ -121,6 +136,7 @@ class SimpleExoPlayerData extends PlayerData
+     super.release();
+     stopUpdatingProgressIfNecessary();
+     if (mSimpleExoPlayer != null) {
++      sendAudioSessionBroadcast(mSimpleExoPlayer.getAudioSessionId(), false);
+       mSimpleExoPlayer.release();
+       mSimpleExoPlayer = null;
+     }
+@@ -285,12 +301,22 @@ class SimpleExoPlayerData extends PlayerData
+ 
+   }
+ 
++  @Override
++  public void onAudioSessionIdChanged(int audioSessionId) {
++    sendAudioSessionBroadcast(audioSessionId, true);
++  }
++
+   @Override
+   public void onPlayerStateChanged(final boolean playWhenReady, final int playbackState) {
+-    if (playbackState == Player.STATE_READY && mLoadCompletionListener != null) {
+-      final LoadCompletionListener listener = mLoadCompletionListener;
+-      mLoadCompletionListener = null;
+-      listener.onLoadSuccess(getStatus());
++    if (playbackState == Player.STATE_READY) {
++      if (mSimpleExoPlayer != null) {
++        sendAudioSessionBroadcast(mSimpleExoPlayer.getAudioSessionId(), true);
++      }
++      if (mLoadCompletionListener != null) {
++        final LoadCompletionListener listener = mLoadCompletionListener;
++        mLoadCompletionListener = null;
++        listener.onLoadSuccess(getStatus());
++      }
+     }
+ 
+     if (mLastPlaybackState != null

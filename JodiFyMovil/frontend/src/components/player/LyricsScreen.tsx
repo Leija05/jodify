@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder, Easing } from 'react-native';
+import { Animated, BackHandler, Dimensions, Modal, ScrollView, StyleSheet, Text, View, PanResponder, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LyricsLine } from '@lib/types';
 import { fetchLyrics, lyricsFromSong, getPreloadedLyrics } from '@services/lyrics.service';
@@ -65,7 +65,6 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
     const open = useUiStore((s) => s.lyricsModalOpen);
     const closeLyricsModal = useUiStore((s) => s.closeLyricsModal);
     const currentSong = usePlayerStore((s) => s.currentSong);
-    const position = usePlayerStore((s) => s.position);
     const seek = usePlayerStore((s) => s.seek);
     const insets = useSafeAreaInsets();
 
@@ -73,6 +72,8 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
     const [lyricsLoading, setLyricsLoading] = useState(false);
     const [singMode, setSingMode] = useState(false);
     const [vocalLevel, setVocalLevel] = useState(1.0); // 1.0: Full voice, 0.2: Sing karaoke
+    const [activeLineIndex, setActiveLineIndex] = useState(-1);
+    const activeLineIndexRef = useRef(-1);
 
     const translateY = useRef(new Animated.Value(SCREEN.height)).current;
     const isAnimatingOutRef = useRef(false);
@@ -184,20 +185,57 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
       extrapolate: 'clamp',
     });
 
-    // Calculate active line index based on current playback position
-    const activeLineIndex = useMemo(() => {
-      if (!lyrics || lyrics.length === 0) return -1;
-      let active = -1;
-      for (let i = 0; i < lyrics.length; i++) {
-        const item = lyrics[i];
-        if (item && item.time <= position) {
-          active = i;
-        } else {
-          break;
-        }
+    // Hardware back press listener for Android
+    useEffect(() => {
+      if (!open) return;
+      const backSub = BackHandler.addEventListener('hardwareBackPress', () => {
+        dismiss();
+        return true;
+      });
+      return () => backSub.remove();
+    }, [open, dismiss]);
+
+    // High performance sync: Only re-render when active line index actually changes
+    // Incorporates 250ms vocal onset anticipation for natural singing sync
+    useEffect(() => {
+      if (!open || !lyrics || lyrics.length === 0) {
+        setActiveLineIndex(-1);
+        activeLineIndexRef.current = -1;
+        return;
       }
-      return active;
-    }, [lyrics, position]);
+
+      const computeLineIndex = (pos: number) => {
+        const vocalPos = pos + 0.25;
+        let low = 0;
+        let high = lyrics.length - 1;
+        let res = -1;
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          const midLine = lyrics[mid];
+          if (midLine && midLine.time <= vocalPos) {
+            res = mid;
+            low = mid + 1;
+          } else {
+            high = mid - 1;
+          }
+        }
+        return res;
+      };
+
+      const initialIdx = computeLineIndex(usePlayerStore.getState().position);
+      activeLineIndexRef.current = initialIdx;
+      setActiveLineIndex(initialIdx);
+
+      const unsub = usePlayerStore.subscribe((state) => {
+        const nextIdx = computeLineIndex(state.position);
+        if (nextIdx !== activeLineIndexRef.current) {
+          activeLineIndexRef.current = nextIdx;
+          setActiveLineIndex(nextIdx);
+        }
+      });
+
+      return unsub;
+    }, [open, lyrics]);
 
     const scrollToLine = useCallback((index: number, animated = true) => {
       if (index < 0 || lineLayouts.current[index] === undefined) return;
@@ -212,14 +250,14 @@ export const LyricsScreen = React.forwardRef<{ open: () => void; close: () => vo
     const handleLineLayout = useCallback(
       (index: number, y: number) => {
         lineLayouts.current[index] = y;
-        if (!hasInitiallyScrolledRef.current && index === activeLineIndex) {
+        if (!hasInitiallyScrolledRef.current && index === activeLineIndexRef.current) {
           hasInitiallyScrolledRef.current = true;
           requestAnimationFrame(() => {
             scrollToLine(index, false);
           });
         }
       },
-      [activeLineIndex, scrollToLine]
+      [scrollToLine]
     );
 
     // Auto-scroll when active line changes smoothly

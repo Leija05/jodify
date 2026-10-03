@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import type { RepeatMode, Song } from '../lib/types';
 import { API_BASE } from '../lib/constants';
-import { getActiveApiBase } from '../services/api';
+import { getActiveApiBase, getCandidateBases, setActiveApiBase } from '../services/api';
 import { shuffleArray } from '../lib/utils';
 import { activateLockScreenForSong, syncLockScreen } from '../services/lockscreen.service';
 import { ensurePlayerWithSource, getPlayer, onPlayerStatus } from './audio';
@@ -80,15 +80,66 @@ function sanitizeStreamUrl(url: string | null): string | null {
   return url;
 }
 
-function resolveSource(song: Song): string | null {
+async function matchTrackToYoutubeId(artist: string, title: string): Promise<string | null> {
+  const bases = getCandidateBases();
+  for (const base of bases) {
+    try {
+      const url = `${base}/api/links/match-track?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4000);
+      const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = (await res.json()) as { youtube_id?: string };
+        if (data?.youtube_id) return data.youtube_id;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function resolveSource(song: Song, baseOverride?: string): string | null {
   if (song.localUri) return song.localUri;
   const rawUrl = (song.url || song.stream_url || '').trim();
-  const base = (getActiveApiBase() || API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
+  const base = (baseOverride || getActiveApiBase() || API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
 
-  // 1. If it's already a full http(s) URL
+  // 1. If song explicitly points to backend audio (/songs/... or /api/songs/...)
+  if (
+    rawUrl.startsWith('/songs/') ||
+    rawUrl.startsWith('songs/') ||
+    rawUrl.startsWith('/api/songs/') ||
+    rawUrl.startsWith('api/songs/') ||
+    (rawUrl.includes('/api/songs/') && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')))
+  ) {
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      if (baseOverride) {
+        return sanitizeStreamUrl(rawUrl.replace(/^https?:\/\/[^\/]+/, baseOverride));
+      }
+      return sanitizeStreamUrl(rawUrl);
+    }
+    const clean = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+    const pathWithApi = clean.startsWith('/api/') ? clean : `/api${clean}`;
+    return sanitizeStreamUrl(`${base}${pathWithApi}`);
+  }
+
+  // 2. If song has youtube_id, prefer direct YouTube stream via backend link stream
+  if (song.youtube_id && /^[a-zA-Z0-9_-]{11}$/.test(song.youtube_id)) {
+    return sanitizeStreamUrl(`${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${song.youtube_id}`)}`);
+  }
+
+  const ytId = extractYoutubeId(song);
+  if (ytId) {
+    return sanitizeStreamUrl(`${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`);
+  }
+
+  // 3. If it's already a full http(s) URL
   if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-    // If it's already pointing to our backend link stream or audio endpoint, return directly
     if (rawUrl.includes('/api/links/stream') || rawUrl.includes('/api/songs/')) {
+      if (baseOverride) {
+        return sanitizeStreamUrl(rawUrl.replace(/^https?:\/\/[^\/]+/, baseOverride));
+      }
       return sanitizeStreamUrl(rawUrl);
     }
     // If it's an external YouTube or Spotify or search URL, route through backend link stream
@@ -104,7 +155,7 @@ function resolveSource(song: Song): string | null {
     return sanitizeStreamUrl(rawUrl);
   }
 
-  // 2. If it's a relative URL from backend
+  // 4. If it's a relative URL from backend
   if (rawUrl.length > 0) {
     if (rawUrl.startsWith('/api/')) {
       return sanitizeStreamUrl(`${base}${rawUrl}`);
@@ -124,17 +175,7 @@ function resolveSource(song: Song): string | null {
     return sanitizeStreamUrl(`${base}${cleanUrl}`);
   }
 
-  // 3. If song has youtube_id
-  if (song.youtube_id && /^[a-zA-Z0-9_-]{11}$/.test(song.youtube_id)) {
-    return sanitizeStreamUrl(`${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${song.youtube_id}`)}`);
-  }
-
-  const ytId = extractYoutubeId(song);
-  if (ytId) {
-    return sanitizeStreamUrl(`${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`);
-  }
-
-  // 4. Default to backend audio endpoint
+  // 5. Default to backend audio endpoint
   if (song.id != null) {
     return sanitizeStreamUrl(`${base}/api/songs/${song.id}/audio`);
   }
@@ -194,58 +235,72 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
   });
 
   async function playWithEngine(song: Song, retryCount = 0): Promise<void> {
-    const source = resolveSource(song);
-    if (!source) {
-      set({ error: 'No se pudo encontrar la fuente de audio para esta canción.' });
-      return;
-    }
-    try {
-      const player = ensurePlayerWithSource(source);
-      player.play();
-
-      const { values, enabled } = useEqStore.getState();
-      if (enabled && values.length > 0) applyNative(values);
-
-      activateLockScreenForSong(song);
-      void recordPlayIfNeeded(song);
-      set({ error: null });
-    } catch (e) {
-      console.error('[Player] playWithEngine error (attempt', retryCount + 1, '):', e);
-
-      // Intelligent Audio Fallback:
-      // If primary endpoint failed (e.g. 404 from missing GridFS file or audio blob),
-      // seamlessly attempt streaming via YouTube search stream match
-      if (retryCount === 0 && !source.includes('/results?search_query=')) {
-        const base = (getActiveApiBase() || API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
+    // Pre-resolve youtube_id if it's a search URL or missing on youtube/spotify songs
+    const raw = (song.url || song.stream_url || '');
+    if (!song.youtube_id && !song.localUri) {
+      if (raw.includes('search_query=') || raw.includes('spotify') || song.source === 'spotify') {
+        const match = raw.match(/search_query=([^&]+)/);
+        const q = (match && match[1]) ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : `${song.artist || ''} ${song.name}`.trim();
         const artist = song.artist || '';
-        const query = artist ? `${artist} - ${song.name}` : song.name;
-        const fallbackSource = sanitizeStreamUrl(`${base}/api/links/stream?url=${encodeURIComponent(`https://www.youtube.com/results?search_query=${query}`)}`);
-        if (fallbackSource) {
-          try {
-            const fallbackPlayer = ensurePlayerWithSource(fallbackSource);
-            fallbackPlayer.play();
-
-            const { values, enabled } = useEqStore.getState();
-            if (enabled && values.length > 0) applyNative(values);
-
-            activateLockScreenForSong(song);
-            void recordPlayIfNeeded(song);
-            set({ error: null });
-            return;
-          } catch (fallbackErr) {
-            console.warn('[Player] Secondary YouTube fallback also failed:', fallbackErr);
+        const title = song.name || q;
+        try {
+          const matchedId = await matchTrackToYoutubeId(artist, title);
+          if (matchedId) {
+            song.youtube_id = matchedId;
           }
+        } catch {
+          // ignore
         }
       }
-
-      if (retryCount < MAX_RETRIES) {
-        await sleep(RETRY_DELAY_MS * (retryCount + 1));
-        return playWithEngine(song, retryCount + 1);
-      }
-
-      const msg = e instanceof Error ? e.message : 'Error al reproducir canción';
-      set({ error: `No se pudo reproducir "${song.name}". ${msg}` });
     }
+
+    const candidateBases = getCandidateBases();
+    let lastError: any = null;
+
+    for (const base of candidateBases) {
+      const source = resolveSource(song, base);
+      if (!source) continue;
+
+      try {
+        const player = ensurePlayerWithSource(source);
+        await player.play();
+
+        const { values, enabled } = useEqStore.getState();
+        if (enabled && values.length > 0) applyNative(values);
+
+        activateLockScreenForSong(song);
+        void recordPlayIfNeeded(song);
+        setActiveApiBase(base);
+        set({ error: null });
+        return;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[Player] playWithEngine failed on base ${base}:`, err);
+      }
+    }
+
+    // Secondary YouTube match fallback if initial endpoints failed
+    if (retryCount === 0) {
+      const artist = song.artist || '';
+      const query = artist ? `${artist} - ${song.name}` : song.name;
+      try {
+        const matchedId = await matchTrackToYoutubeId(artist, song.name || query);
+        if (matchedId) {
+          song.youtube_id = matchedId;
+          return playWithEngine(song, 1);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (retryCount < MAX_RETRIES) {
+      await sleep(RETRY_DELAY_MS * (retryCount + 1));
+      return playWithEngine(song, retryCount + 1);
+    }
+
+    const msg = lastError instanceof Error ? lastError.message : 'Error al reproducir canción';
+    set({ error: `No se pudo reproducir "${song.name}". ${msg}` });
   }
 
   return {

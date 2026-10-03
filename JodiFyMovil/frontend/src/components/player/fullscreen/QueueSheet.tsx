@@ -1,5 +1,14 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, Animated, Platform } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Animated,
+  Platform,
+  Pressable,
+  Dimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { PressableFluid } from '@components/ui/PressableFluid';
@@ -7,6 +16,9 @@ import { SongRow } from '@components/player/SongRow';
 import { colors, typography, elevation } from '@theme';
 import type { Song } from '@lib/types';
 import { usePlayerStore } from '@stores/player.store';
+
+const SCREEN = Dimensions.get('window');
+const SHEET_WIDTH = Math.min(360, SCREEN.width * 0.88);
 
 interface QueueSheetProps {
   open: boolean;
@@ -21,6 +33,45 @@ export const QueueSheet = React.forwardRef<View, QueueSheetProps>(
     const isPlaying = usePlayerStore((s) => s.isPlaying);
     const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
     const playSong = usePlayerStore((s) => s.playSong);
+
+    const [rendered, setRendered] = useState(open);
+    const slideAnim = useRef(new Animated.Value(SHEET_WIDTH)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      if (open) {
+        setRendered(true);
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            damping: 24,
+            stiffness: 260,
+            mass: 0.8,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: SHEET_WIDTH,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start(({ finished }) => {
+          if (finished) setRendered(false);
+        });
+      }
+    }, [open, slideAnim, fadeAnim]);
 
     const handlePlaySong = (song: Song) => {
       playSong(song, queue);
@@ -52,56 +103,63 @@ export const QueueSheet = React.forwardRef<View, QueueSheetProps>(
       );
     }, [queue, queueIndex, isPlaying, removeFromQueue]);
 
-    if (!open) return null;
+    if (!rendered && !open) return null;
 
     return (
-      <Animated.View
-        ref={ref}
-        style={[
-          styles.sheet,
-          { opacity: open ? 1 : 0 },
-          { transform: [{ translateX: open ? 0 : 300 }] },
-        ]}
-        pointerEvents={open ? 'auto' : 'none'}
-      >
-        {Platform.OS === 'ios' ? (
-          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 16, 0.97)' }]} />
-        )}
-        <View style={styles.header}>
-          <View style={styles.titleWrap}>
-            <Text style={styles.title}>Cola de reproducción</Text>
-            <Text style={styles.subtitle}>{queue.length} canciones</Text>
-          </View>
-          <View style={styles.headerActions}>
-            {queue.length > 1 && (
-              <PressableFluid onPress={handleClearQueue} haptic="medium" style={styles.clearBtn}>
-                <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
-                <Text style={styles.clearText}>Vaciar</Text>
-              </PressableFluid>
-            )}
-            <PressableFluid onPress={onClose} haptic="light" hitSlop={12} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={colors.textSecondary} />
-            </PressableFluid>
-          </View>
-        </View>
+      <View style={styles.overlayRoot} pointerEvents={open ? 'auto' : 'none'}>
+        {/* Semi-transparent Backdrop for outside taps */}
+        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        </Animated.View>
 
-        {queue.length === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="list-outline" size={44} color={colors.textMuted} />
-            <Text style={styles.emptyText}>La cola está vacía</Text>
+        {/* Sliding Queue Sheet Drawer */}
+        <Animated.View
+          ref={ref}
+          style={[
+            styles.sheet,
+            { transform: [{ translateX: slideAnim }] },
+          ]}
+        >
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 16, 0.96)' }]} />
+          )}
+
+          <View style={styles.header}>
+            <View style={styles.titleWrap}>
+              <Text style={styles.title}>Cola de reproducción</Text>
+              <Text style={styles.subtitle}>{queue.length} canciones</Text>
+            </View>
+            <View style={styles.headerActions}>
+              {queue.length > 1 && (
+                <PressableFluid onPress={handleClearQueue} haptic="medium" style={styles.clearBtn}>
+                  <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+                  <Text style={styles.clearText}>Vaciar</Text>
+                </PressableFluid>
+              )}
+              <PressableFluid onPress={onClose} haptic="light" hitSlop={12} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </PressableFluid>
+            </View>
           </View>
-        ) : (
-          <FlatList
-            data={queue}
-            keyExtractor={(item, idx) => `${item.id}-${idx}`}
-            renderItem={renderItem}
-            contentContainerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </Animated.View>
+
+          {queue.length === 0 ? (
+            <View style={styles.empty}>
+              <Ionicons name="list-outline" size={44} color={colors.textMuted} />
+              <Text style={styles.emptyText}>La cola está vacía</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={queue}
+              keyExtractor={(item, idx) => `${item.id}-${idx}`}
+              renderItem={renderItem}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </Animated.View>
+      </View>
     );
   }
 );
@@ -109,19 +167,27 @@ export const QueueSheet = React.forwardRef<View, QueueSheetProps>(
 QueueSheet.displayName = 'QueueSheet';
 
 const styles = StyleSheet.create({
+  overlayRoot: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 200,
+    elevation: 25,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  },
   sheet: {
     position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
-    width: 340,
+    width: SHEET_WIDTH,
     maxWidth: '90%',
-    backgroundColor: 'rgba(16, 16, 24, 0.85)',
+    backgroundColor: 'rgba(16, 16, 24, 0.94)',
     borderLeftWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    zIndex: 100,
-    ...elevation.level4,
     overflow: 'hidden',
+    ...elevation.level4,
   },
   header: {
     flexDirection: 'row',

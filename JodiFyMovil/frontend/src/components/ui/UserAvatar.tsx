@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, StyleProp, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { UserAccess, CommunityUser } from '@lib/types';
 import { resolveAvatarUrl, getFrameDefinition } from '@lib/avatar';
+import { mmkv } from '@lib/mmkv';
 import { colors } from '@theme';
 
 interface UserAvatarProps {
@@ -26,15 +27,38 @@ export const UserAvatar = React.memo(function UserAvatar({
   presence,
   style,
 }: UserAvatarProps) {
+  const [loadError, setLoadError] = useState(false);
+
+  const cachedCommunityMatch = useMemo(() => {
+    const targetName = username || user?.username;
+    if (!targetName) return null;
+    try {
+      const cached = mmkv.getObject<CommunityUser[]>('community.cached_users');
+      if (Array.isArray(cached)) {
+        return cached.find((c) => c.username?.toLowerCase() === targetName.toLowerCase()) ?? null;
+      }
+    } catch {}
+    return null;
+  }, [username, user?.username]);
+
   const resolvedUrl = useMemo(() => {
     if (avatarUrl) return avatarUrl;
-    return resolveAvatarUrl(user);
-  }, [avatarUrl, user]);
+    const directUrl = resolveAvatarUrl(user);
+    if (directUrl) return directUrl;
+    if (cachedCommunityMatch) {
+      return resolveAvatarUrl(cachedCommunityMatch);
+    }
+    return null;
+  }, [avatarUrl, user, cachedCommunityMatch]);
 
-  const activeUsername = username || user?.username || 'JodiFy';
-  const initial = (user?.display_name || activeUsername).slice(0, 1).toUpperCase();
+  useEffect(() => {
+    setLoadError(false);
+  }, [resolvedUrl]);
 
-  const activeFrameId = frameId ?? user?.avatar_frame ?? 'none';
+  const activeUsername = username || user?.username || cachedCommunityMatch?.username || 'JodiFy';
+  const initial = (user?.display_name || cachedCommunityMatch?.display_name || activeUsername).slice(0, 1).toUpperCase();
+
+  const activeFrameId = frameId ?? user?.avatar_frame ?? cachedCommunityMatch?.avatar_frame ?? 'none';
   const frameDef = useMemo(() => getFrameDefinition(activeFrameId), [activeFrameId]);
   const hasFrame = frameDef.id !== 'none';
 
@@ -82,11 +106,12 @@ export const UserAvatar = React.memo(function UserAvatar({
               },
             ]}
           >
-            {resolvedUrl ? (
+            {resolvedUrl && !loadError ? (
               <Image
                 source={{ uri: resolvedUrl }}
                 style={[styles.image, { width: innerSize, height: innerSize, borderRadius: innerSize / 2 }]}
                 resizeMode="cover"
+                onError={() => setLoadError(true)}
               />
             ) : (
               <LinearGradient
@@ -114,11 +139,12 @@ export const UserAvatar = React.memo(function UserAvatar({
             },
           ]}
         >
-          {resolvedUrl ? (
+          {resolvedUrl && !loadError ? (
             <Image
               source={{ uri: resolvedUrl }}
               style={[styles.image, { width: size, height: size, borderRadius: size / 2 }]}
               resizeMode="cover"
+              onError={() => setLoadError(true)}
             />
           ) : (
             <LinearGradient

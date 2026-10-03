@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Animated, StyleSheet, Text, View, Pressable, Platform, type LayoutChangeEvent } from 'react-native';
@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { usePlayerStore } from '@stores/player.store';
 import { useUiStore, type TabId } from '@stores/ui.store';
+import { getSongPalette } from '@lib/palette';
 import { colors, typography, motion, radius } from '@theme';
 
 const TABS: Array<{ id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = [
@@ -31,6 +32,8 @@ export function TabBar() {
   const tab = useUiStore((s) => s.tab);
   const setTab = useUiStore((s) => s.setTab);
   const queueLength = usePlayerStore((s) => s.queue.length);
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const palette = useMemo(() => getSongPalette(currentSong), [currentSong]);
   const insets = useSafeAreaInsets();
 
   const [tabWidth, setTabWidth] = useState(0);
@@ -95,6 +98,9 @@ export function TabBar() {
               {
                 width: tabWidth,
                 transform: [{ translateX: indicatorTranslate }],
+                backgroundColor: palette.primary + '38',
+                borderColor: palette.secondary + '75',
+                shadowColor: palette.primary,
               },
             ]}
           />

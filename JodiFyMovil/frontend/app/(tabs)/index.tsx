@@ -21,6 +21,7 @@ import { UserProfileModal } from '@components/profile/UserProfileModal';
 import { EditProfileModal } from '@components/profile/EditProfileModal';
 import type { Song } from '@lib/types';
 import { pickCoverUrl, resolveArtist } from '@lib/utils';
+import { getSongPalette } from '@lib/palette';
 import { fetchTopSongs } from '@services/songs.service';
 import { useLibraryStore } from '@stores/library.store';
 import { usePlayerStore } from '@stores/player.store';
@@ -30,16 +31,18 @@ import { colors, gradients } from '@theme';
 
 type HomeTab = 'foryou' | 'top' | 'recent' | 'all';
 
-const HeroProgressBar = React.memo(() => {
+const HeroProgressBar = React.memo(({ primaryColor, secondaryColor }: { primaryColor?: string; secondaryColor?: string }) => {
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
+  const col1 = primaryColor || gradients.primary[0];
+  const col2 = secondaryColor || gradients.primary[1];
 
   return (
     <View style={styles.heroProgressWrap}>
       <View style={styles.heroProgress}>
         <LinearGradient
-          colors={[gradients.primary[0], gradients.primary[1]]}
+          colors={[col1, col2]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.heroProgressFill, { width: `${progress * 100}%` }]}
@@ -57,6 +60,7 @@ export default function HomeScreen() {
 
   const user = useSettingsStore((s) => s.user);
   const logout = useSettingsStore((s) => s.logout);
+  const refreshProfile = useSettingsStore((s) => s.refreshProfile);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -79,6 +83,7 @@ export default function HomeScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
+      void refreshProfile();
       await refreshLibrary();
       const rows = await fetchTopSongs(10);
       setTopIds(rows.map((r) => r.song_id));
@@ -87,10 +92,11 @@ export default function HomeScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [refreshLibrary]);
+  }, [refreshLibrary, refreshProfile]);
 
   useEffect(() => {
     let alive = true;
+    void refreshProfile();
     void fetchTopSongs(10)
       .then((rows) => {
         if (!alive) return;
@@ -100,7 +106,7 @@ export default function HomeScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [refreshProfile]);
 
   const topSongs = useMemo(() => {
     if (topIds.length === 0) return songs.slice(0, 6);
@@ -141,6 +147,7 @@ export default function HomeScreen() {
 
   const MemoizedSongRow = useMemo(() => React.memo(SongRow), []);
   const nowPlaying = currentSong;
+  const nowPlayingPalette = useMemo(() => getSongPalette(nowPlaying), [nowPlaying]);
   const nowPlayingCover = useMemo(() => (nowPlaying ? pickCoverUrl(nowPlaying) : null), [nowPlaying]);
   const featuredCover = useMemo(() => (featuredSong ? pickCoverUrl(featuredSong) : null), [featuredSong]);
 
@@ -264,7 +271,7 @@ export default function HomeScreen() {
                     />
                   )}
                   <LinearGradient
-                    colors={gradients.hero}
+                    colors={[nowPlayingPalette.primary + '55', nowPlayingPalette.secondary + '20', 'rgba(10, 10, 18, 0.94)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFill}
@@ -272,7 +279,7 @@ export default function HomeScreen() {
                 </View>
 
                 <LinearGradient
-                  colors={[gradients.primary[0], gradients.primary[1]]}
+                  colors={[nowPlayingPalette.primary, nowPlayingPalette.secondary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.heroGlowLine}
@@ -300,13 +307,13 @@ export default function HomeScreen() {
                   </View>
 
                   <View style={styles.heroControls}>
-                    <HeroProgressBar />
+                    <HeroProgressBar primaryColor={nowPlayingPalette.primary} secondaryColor={nowPlayingPalette.secondary} />
                     <PressableFluid onPress={previous} haptic="light" style={styles.heroControlBtn}>
                       <Ionicons name="play-skip-back" size={22} color={colors.text} />
                     </PressableFluid>
                     <PressableFluid onPress={togglePlay} haptic="medium" style={styles.heroControlBtnMain}>
                       <LinearGradient
-                        colors={[gradients.play[0], gradients.play[1]]}
+                        colors={[nowPlayingPalette.primary, nowPlayingPalette.secondary]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={styles.heroPlayFill}
@@ -472,7 +479,13 @@ export default function HomeScreen() {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveTab('foryou');
                   }}
-                  style={[styles.tabChip, activeTab === 'foryou' && styles.tabChipActive]}
+                  style={[
+                    styles.tabChip,
+                    activeTab === 'foryou' && [
+                      styles.tabChipActive,
+                      { backgroundColor: nowPlayingPalette.primary, shadowColor: nowPlayingPalette.primary },
+                    ],
+                  ]}
                 >
                   <Ionicons
                     name="sparkles"
@@ -489,7 +502,13 @@ export default function HomeScreen() {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveTab('top');
                   }}
-                  style={[styles.tabChip, activeTab === 'top' && styles.tabChipActive]}
+                  style={[
+                    styles.tabChip,
+                    activeTab === 'top' && [
+                      styles.tabChipActive,
+                      { backgroundColor: nowPlayingPalette.primary, shadowColor: nowPlayingPalette.primary },
+                    ],
+                  ]}
                 >
                   <Ionicons
                     name="flame"
@@ -506,7 +525,13 @@ export default function HomeScreen() {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveTab('recent');
                   }}
-                  style={[styles.tabChip, activeTab === 'recent' && styles.tabChipActive]}
+                  style={[
+                    styles.tabChip,
+                    activeTab === 'recent' && [
+                      styles.tabChipActive,
+                      { backgroundColor: nowPlayingPalette.primary, shadowColor: nowPlayingPalette.primary },
+                    ],
+                  ]}
                 >
                   <Ionicons
                     name="time"
@@ -523,7 +548,13 @@ export default function HomeScreen() {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveTab('all');
                   }}
-                  style={[styles.tabChip, activeTab === 'all' && styles.tabChipActive]}
+                  style={[
+                    styles.tabChip,
+                    activeTab === 'all' && [
+                      styles.tabChipActive,
+                      { backgroundColor: nowPlayingPalette.primary, shadowColor: nowPlayingPalette.primary },
+                    ],
+                  ]}
                 >
                   <Ionicons
                     name="musical-notes"
@@ -540,7 +571,7 @@ export default function HomeScreen() {
             {/* CANCIONES LIST */}
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleWrap}>
-                <View style={[styles.sectionDot, { backgroundColor: colors.secondary }]} />
+                <View style={[styles.sectionDot, { backgroundColor: nowPlayingPalette.secondary }]} />
                 <Text style={styles.sectionTitle}>
                   {activeTab === 'all'
                     ? 'Todas las canciones'
@@ -634,7 +665,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   content: {
     paddingHorizontal: 16,

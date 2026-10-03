@@ -9,16 +9,28 @@ async function getToken(): Promise<string | null> {
   return token ?? null;
 }
 
-const CANDIDATE_BASES = [
-  (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, ''),
-  'http://127.0.0.1:8000',
-  'http://10.0.2.2:8000',
-];
+const CANDIDATE_BASES = __DEV__
+  ? [
+      'http://127.0.0.1:8000',
+      'http://192.168.1.11:8000',
+      (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, ''),
+      'http://10.0.2.2:8000',
+    ]
+  : [
+      (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, ''),
+      'http://127.0.0.1:8000',
+      'http://192.168.1.11:8000',
+      'http://10.0.2.2:8000',
+    ];
 
 let currentBase = CANDIDATE_BASES[0]!;
 
 export function getActiveApiBase(): string {
   return currentBase;
+}
+
+export function getCandidateBases(): string[] {
+  return [currentBase, ...CANDIDATE_BASES.filter((b) => b !== currentBase)];
 }
 
 export function setActiveApiBase(base: string): void {
