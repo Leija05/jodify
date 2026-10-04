@@ -82,6 +82,14 @@ function smoothValues(values: number[]): number[] {
 
 const initialPersisted = loadPersistedState();
 
+// Hydrate native equalizer effect on app initialization
+if (initialPersisted.enabled) {
+  void enableEqualizer(true);
+  void applyNative(initialPersisted.values);
+  if (initialPersisted.bassBoost > 0) void applyBassBoost(initialPersisted.bassBoost);
+  if (initialPersisted.virtualizer > 0) void applyVirtualizer(initialPersisted.virtualizer);
+}
+
 export const useEqStore = create<EqState>()((set, get) => ({
   enabled: initialPersisted.enabled,
   preset: initialPersisted.preset,

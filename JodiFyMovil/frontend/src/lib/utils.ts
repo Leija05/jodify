@@ -288,3 +288,80 @@ export function getDominantColor(_uri: string): Promise<string> {
 
 export function hapticFeedback(_type: 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'warning' | 'error' = 'light'): void {
 }
+
+export interface MelomanoRank {
+  level: number;
+  title: string;
+  badgeEmoji: string;
+  badgeColor: string;
+  currentXp: number;
+  nextLevelXp: number;
+  progressPercent: number;
+  listenedMinutes: number;
+  listenedHours: number;
+}
+
+export function calculateMelomanoLevel(
+  stats: { liked?: number; played?: number; downloaded?: number; listening_seconds?: number } | null | undefined
+): MelomanoRank {
+  const liked = stats?.liked ?? 0;
+  const played = stats?.played ?? 0;
+  const downloaded = stats?.downloaded ?? 0;
+  const sec = stats?.listening_seconds ?? 0;
+
+  const realMinutes = Math.floor(sec / 60);
+  const estimatedPlayedMinutes = Math.round(played * 3.2);
+  const listenedMinutes = Math.max(realMinutes, estimatedPlayedMinutes);
+  const listenedHours = Math.round((listenedMinutes / 60) * 10) / 10;
+
+  const currentXp = liked * 12 + played * 4 + downloaded * 16 + Math.round(listenedMinutes * 2.5);
+  const level = Math.max(1, Math.floor(Math.sqrt(currentXp / 30)) + 1);
+
+  const prevLevelXp = Math.pow(level - 1, 2) * 30;
+  const nextLevelXp = Math.pow(level, 2) * 30;
+  const span = Math.max(1, nextLevelXp - prevLevelXp);
+  const progressInLevel = Math.max(0, currentXp - prevLevelXp);
+  const progressPercent = Math.min(100, Math.round((progressInLevel / span) * 100));
+
+  let title = 'Iniciado del Ritmo';
+  let badgeEmoji = '🎵';
+  let badgeColor = '#94a3b8';
+
+  if (level >= 30) {
+    title = 'Deidad Sonora Omnipresente';
+    badgeEmoji = '👑';
+    badgeColor = '#ffd700';
+  } else if (level >= 20) {
+    title = 'Maestro de la Sinfonía';
+    badgeEmoji = '⚡';
+    badgeColor = '#f43f5e';
+  } else if (level >= 15) {
+    title = 'Leyenda del Vinilo';
+    badgeEmoji = '💎';
+    badgeColor = '#a855f7';
+  } else if (level >= 10) {
+    title = 'Audiófilo Experto';
+    badgeEmoji = '🎧';
+    badgeColor = '#00f0ff';
+  } else if (level >= 5) {
+    title = 'Explorador de Frecuencias';
+    badgeEmoji = '🌊';
+    badgeColor = '#10b981';
+  } else if (level >= 2) {
+    title = 'Melómano Curioso';
+    badgeEmoji = '📻';
+    badgeColor = '#3b82f6';
+  }
+
+  return {
+    level,
+    title,
+    badgeEmoji,
+    badgeColor,
+    currentXp,
+    nextLevelXp,
+    progressPercent,
+    listenedMinutes,
+    listenedHours,
+  };
+}

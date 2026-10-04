@@ -33,6 +33,8 @@ import {
 } from '@lib/avatar';
 import { colors } from '@theme';
 
+import { PixelPet } from '../social/PixelPet';
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface EditProfileModalProps {
@@ -40,7 +42,150 @@ interface EditProfileModalProps {
   onClose: () => void;
 }
 
-type TabKey = 'identity' | 'avatar' | 'frame' | 'theme' | 'animation';
+type TabKey = 'identity' | 'avatar' | 'pet' | 'frame' | 'theme' | 'animation';
+
+const BANNER_GRADIENT_PRESETS = [
+  { id: 'none', name: 'Original', start: '', end: '' },
+  { id: 'cyberpunk', name: 'Cyberpunk Neon', start: '#00f0ff', end: '#ff007f' },
+  { id: 'synth_sunset', name: 'Atardecer Synth', start: '#ff5e62', end: '#ff9966' },
+  { id: 'midnight_violet', name: 'Violeta Medianoche', start: '#6366f1', end: '#a855f7' },
+  { id: 'emerald_wave', name: 'Onda Esmeralda', start: '#0575e6', end: '#00f260' },
+  { id: 'royal_gold', name: 'Oro Real', start: '#f7971e', end: '#ffd200' },
+  { id: 'crimson_dark', name: 'Rubí Carmesí', start: '#ed213a', end: '#93291e' },
+  { id: 'electric_lime', name: 'Lima Eléctrica', start: '#11998e', end: '#38ef7d' },
+  { id: 'deep_space', name: 'Espacio Profundo', start: '#0f0c29', end: '#302b63' },
+  { id: 'supernova_fire', name: 'Fuego Supernova', start: '#ff0844', end: '#ffb199' },
+];
+
+const PET_SPECIES_PRESETS = [
+  {
+    id: 'none',
+    name: 'Sin Mascota',
+    emoji: '🚫',
+    description: 'No mostrar mascota compañera en tu perfil',
+    variants: [],
+  },
+  {
+    id: 'cat',
+    name: 'Gatito Pixel Art',
+    emoji: '🐱',
+    description: 'Compañero felino que ronronea y baila al compás de cada beat',
+    variants: [
+      { id: 'orange', name: 'Naranja Callejero', previewColor: '#f97316' },
+      { id: 'black', name: 'Pantera Negra', previewColor: '#18181b' },
+      { id: 'white', name: 'Blanco Nieve', previewColor: '#ffffff' },
+      { id: 'siamese', name: 'Siamés Místico', previewColor: '#fde68a' },
+      { id: 'calico', name: 'Calicó Alegre', previewColor: '#ea580c' },
+    ],
+  },
+  {
+    id: 'dog',
+    name: 'Perrito Fiel',
+    emoji: '🐶',
+    description: 'Compañero canino leal con cola alegre y sonrisa rítmica',
+    variants: [
+      { id: 'shiba', name: 'Shiba Inu', previewColor: '#f59e0b' },
+      { id: 'corgi', name: 'Corgi Glotón', previewColor: '#ea580c' },
+      { id: 'husky', name: 'Husky Siberiano', previewColor: '#334155' },
+      { id: 'dalmatian', name: 'Dálmata Melómano', previewColor: '#f8fafc' },
+    ],
+  },
+  {
+    id: 'axolotl',
+    name: 'Ajolote Mágico',
+    emoji: '🫧',
+    description: 'Espíritu de agua dulce con bioluminiscencia y carisma eterno',
+    variants: [
+      { id: 'pink', name: 'Rosa Melocotón', previewColor: '#f472b6' },
+      { id: 'neon_cyan', name: 'Cian Neón Hi-Fi', previewColor: '#06b6d4' },
+      { id: 'abyssal', name: 'Abisal Místico', previewColor: '#4c1d95' },
+    ],
+  },
+  {
+    id: 'magikarp',
+    name: 'Magikarp Festivo',
+    emoji: '🐟',
+    description: '¡Usa Splash cada vez que cambia el drop de la canción!',
+    variants: [
+      { id: 'classic', name: 'Rojo Carmesí', previewColor: '#ef4444' },
+      { id: 'golden', name: 'Shiny Dorado VIP', previewColor: '#fbbf24' },
+    ],
+  },
+  {
+    id: 'frog',
+    name: 'Ranita Lo-Fi',
+    emoji: '🐸',
+    description: 'Relájate con beats de lluvia y una hojita de loto en su cabeza',
+    variants: [
+      { id: 'classic', name: 'Verde Bosque', previewColor: '#10b981' },
+      { id: 'poison_dart', name: 'Azul Dardo Neón', previewColor: '#3b82f6' },
+      { id: 'golden_frog', name: 'Rana Dorada', previewColor: '#fbbf24' },
+    ],
+  },
+  {
+    id: 'capybara',
+    name: 'Capibara Zen',
+    emoji: '🍊',
+    description: 'La máxima encarnación de la paz mental, con una naranja zen',
+    variants: [
+      { id: 'classic', name: 'Marrón Tropical', previewColor: '#92400e' },
+      { id: 'zen', name: 'Maestro Zen', previewColor: '#b45309' },
+    ],
+  },
+  {
+    id: 'penguin',
+    name: 'Pingüino DJ',
+    emoji: '🐧',
+    description: 'Desliza sobre el hielo con audífonos puestos para pinchar música',
+    variants: [
+      { id: 'classic', name: 'Tuxedo Imperial', previewColor: '#0f172a' },
+      { id: 'gentoo', name: 'Gentoo Ártico', previewColor: '#1e293b' },
+      { id: 'cyber_penguin', name: 'Cyber Glaciar', previewColor: '#0284c7' },
+    ],
+  },
+  {
+    id: 'ghost',
+    name: 'Fantasmita 8-Bit',
+    emoji: '👻',
+    description: 'Entidad espectral flotante amante de los sintetizadores retro',
+    variants: [
+      { id: 'classic', name: 'Vaporwave Celeste', previewColor: '#e0f2fe' },
+      { id: 'neon', name: 'Neón Espectral', previewColor: '#c084fc' },
+    ],
+  },
+  {
+    id: 'fox',
+    name: 'Kitsune Astuto',
+    emoji: '🦊',
+    description: 'Zorrito mítico con cola esponjosa y gran agilidad sonora',
+    variants: [
+      { id: 'classic', name: 'Fuego Carmesí', previewColor: '#f97316' },
+      { id: 'arctic', name: 'Zorro Ártico', previewColor: '#f1f5f9' },
+      { id: 'spirit', name: 'Espíritu Astral', previewColor: '#c084fc' },
+    ],
+  },
+  {
+    id: 'robot',
+    name: 'CyberBot 808',
+    emoji: '🤖',
+    description: 'Chasis sintético con pantalla CRT y ecualizador LED incorporado',
+    variants: [
+      { id: 'classic', name: 'Titanio Retro 80s', previewColor: '#64748b' },
+      { id: 'neon_matrix', name: 'Matrix Verde', previewColor: '#1e293b' },
+      { id: 'golden_mech', name: 'Mecha Dorado VIP', previewColor: '#eab308' },
+    ],
+  },
+  {
+    id: 'dragon',
+    name: 'Dragoncito Chibi',
+    emoji: '🐲',
+    description: 'Criatura legendaria que escupe chispitas al ritmo del bajo',
+    variants: [
+      { id: 'ruby', name: 'Dragón de Rubí', previewColor: '#e11d48' },
+      { id: 'astral', name: 'Dragón Celestial', previewColor: '#818cf8' },
+    ],
+  },
+];
 
 export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
   const user = useSettingsStore((s) => s.user);
@@ -61,6 +206,11 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
   const [theme, setTheme] = useState('aurora');
   const [accentColor, setAccentColor] = useState('#10b981');
   const [profileAnimation, setProfileAnimation] = useState('astral-pulse');
+  const [petType, setPetType] = useState('none');
+  const [petVariant, setPetVariant] = useState('orange');
+  const [petName, setPetName] = useState('');
+  const [customGradientStart, setCustomGradientStart] = useState('');
+  const [customGradientEnd, setCustomGradientEnd] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Entrance animation
@@ -92,6 +242,11 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
       setTheme(user.theme ?? 'aurora');
       setAccentColor(user.accent_color ?? '#10b981');
       setProfileAnimation(user.profile_animation || 'astral-pulse');
+      setPetType(user.pet_type ?? 'none');
+      setPetVariant(user.pet_variant ?? 'orange');
+      setPetName(user.pet_name ?? '');
+      setCustomGradientStart(user.custom_gradient_start ?? '');
+      setCustomGradientEnd(user.custom_gradient_end ?? '');
     }
   }, [visible, user]);
 
@@ -139,6 +294,11 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
         theme: theme,
         accent_color: accentColor,
         profile_animation: profileAnimation,
+        pet_type: petType,
+        pet_variant: petVariant,
+        pet_name: petName.trim() || undefined,
+        custom_gradient_start: customGradientStart.trim() || undefined,
+        custom_gradient_end: customGradientEnd.trim() || undefined,
       });
 
       updateUser({
@@ -153,9 +313,14 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
         theme: theme,
         accent_color: accentColor,
         profile_animation: profileAnimation,
+        pet_type: petType,
+        pet_variant: petVariant,
+        pet_name: petName.trim() || undefined,
+        custom_gradient_start: customGradientStart.trim() || undefined,
+        custom_gradient_end: customGradientEnd.trim() || undefined,
       });
 
-      showToast('Perfil y decoración actualizados', 'success');
+      showToast('Perfil, diseño y mascota actualizados', 'success');
       onClose();
     } catch (err: any) {
       showToast(err?.message || 'Error al guardar cambios', 'error');
@@ -199,7 +364,10 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
           {/* Live Preview Card */}
           <View style={styles.previewCard}>
             <LinearGradient
-              colors={[accentColor + '25', '#0c0c18']}
+              colors={[
+                customGradientStart || accentColor + '30',
+                customGradientEnd || 'rgba(12, 12, 24, 0.95)',
+              ]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.previewGradient}
@@ -209,7 +377,7 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
                 avatarUrl={effectiveAvatarUrl}
                 username={displayName || user?.username}
                 frameId={avatarFrame}
-                size={68}
+                size={66}
                 showPresence
                 presence="online"
               />
@@ -231,6 +399,19 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
                   </Text>
                 ) : null}
               </View>
+
+              {/* Live Pet Preview in header if active */}
+              {petType && petType !== 'none' && (
+                <View style={styles.previewPetWrap}>
+                  <PixelPet
+                    petType={petType}
+                    variant={petVariant}
+                    petName={petName}
+                    size={46}
+                    interactive={true}
+                  />
+                </View>
+              )}
             </View>
           </View>
 
@@ -243,7 +424,7 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
             >
               <Ionicons
                 name="person-outline"
-                size={16}
+                size={15}
                 color={activeTab === 'identity' ? colors.white : colors.textMuted}
               />
               <Text style={[styles.tabText, activeTab === 'identity' && styles.tabTextActive]}>
@@ -258,11 +439,26 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
             >
               <Ionicons
                 name="image-outline"
-                size={16}
+                size={15}
                 color={activeTab === 'avatar' ? colors.white : colors.textMuted}
               />
               <Text style={[styles.tabText, activeTab === 'avatar' && styles.tabTextActive]}>
                 Avatar
+              </Text>
+            </PressableFluid>
+
+            <PressableFluid
+              onPress={() => setActiveTab('pet')}
+              haptic="light"
+              style={[styles.tabBtn, activeTab === 'pet' && styles.tabBtnActive]}
+            >
+              <Ionicons
+                name="paw-outline"
+                size={15}
+                color={activeTab === 'pet' ? colors.white : colors.textMuted}
+              />
+              <Text style={[styles.tabText, activeTab === 'pet' && styles.tabTextActive]}>
+                Mascota
               </Text>
             </PressableFluid>
 
@@ -273,7 +469,7 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
             >
               <Ionicons
                 name="sparkles-outline"
-                size={16}
+                size={15}
                 color={activeTab === 'frame' ? colors.white : colors.textMuted}
               />
               <Text style={[styles.tabText, activeTab === 'frame' && styles.tabTextActive]}>
@@ -288,7 +484,7 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
             >
               <Ionicons
                 name="color-palette-outline"
-                size={16}
+                size={15}
                 color={activeTab === 'theme' ? colors.white : colors.textMuted}
               />
               <Text style={[styles.tabText, activeTab === 'theme' && styles.tabTextActive]}>
@@ -303,7 +499,7 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
             >
               <Ionicons
                 name="flash-outline"
-                size={16}
+                size={15}
                 color={activeTab === 'animation' ? colors.white : colors.textMuted}
               />
               <Text style={[styles.tabText, activeTab === 'animation' && styles.tabTextActive]}>
@@ -458,6 +654,134 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
               </View>
             )}
 
+            {activeTab === 'pet' && (
+              <View style={styles.sectionWrap}>
+                <Text style={styles.sectionTitle}>Mascota Virtual Compañera</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Elige a tu fiel amigo sonoro. Reaccionará al ritmo de tus canciones y hablará contigo.
+                </Text>
+
+                {/* Interactive Pet Playground Card */}
+                {petType !== 'none' && (
+                  <View style={styles.petPlaygroundCard}>
+                    <LinearGradient
+                      colors={['rgba(0, 229, 255, 0.15)', 'rgba(127, 0, 255, 0.1)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <View style={styles.petPlaygroundCenter}>
+                      <PixelPet
+                        petType={petType}
+                        variant={petVariant}
+                        petName={petName}
+                        size={64}
+                        interactive={true}
+                      />
+                      <Text style={styles.petPlaygroundHint}>¡Toca a tu mascota para interactuar!</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Pet Name input */}
+                {petType !== 'none' && (
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Nombre de tu mascota</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={petName}
+                      onChangeText={setPetName}
+                      placeholder="Ej. Michi, Shiba, Karp, etc."
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      maxLength={20}
+                    />
+                  </View>
+                )}
+
+                {/* Variant Selector for currently selected pet */}
+                {(() => {
+                  const currentSpec = PET_SPECIES_PRESETS.find((p) => p.id === petType);
+                  if (!currentSpec || currentSpec.variants.length === 0) return null;
+                  return (
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Pelaje / Variante de Color</Text>
+                      <View style={styles.variantsRow}>
+                        {currentSpec.variants.map((v) => {
+                          const isSelected = petVariant === v.id;
+                          return (
+                            <PressableFluid
+                              key={v.id}
+                              onPress={() => {
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setPetVariant(v.id);
+                              }}
+                              style={[
+                                styles.variantChip,
+                                isSelected && { borderColor: v.previewColor, backgroundColor: v.previewColor + '25' },
+                              ]}
+                            >
+                              <View style={[styles.variantDot, { backgroundColor: v.previewColor }]} />
+                              <Text style={[styles.variantName, isSelected && { color: colors.white }]}>
+                                {v.name}
+                              </Text>
+                            </PressableFluid>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                })()}
+
+                {/* Species List */}
+                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Especies Disponibles</Text>
+                <View style={styles.speciesList}>
+                  {PET_SPECIES_PRESETS.map((spec) => {
+                    const isSelected = petType === spec.id;
+                    return (
+                      <PressableFluid
+                        key={spec.id}
+                        onPress={() => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setPetType(spec.id);
+                          if (spec.variants.length > 0 && !spec.variants.some((v) => v.id === petVariant)) {
+                            setPetVariant(spec.variants[0]!.id);
+                          }
+                        }}
+                        style={[styles.speciesCard, isSelected && styles.speciesCardActive]}
+                        scaleTo={0.97}
+                      >
+                        <View style={styles.speciesLeft}>
+                          {spec.id === 'none' ? (
+                            <View style={styles.noneIconBox}>
+                              <Ionicons name="close-circle-outline" size={24} color={colors.textMuted} />
+                            </View>
+                          ) : (
+                            <View style={styles.speciesIconBox}>
+                              <PixelPet petType={spec.id} variant={spec.variants[0]?.id || 'orange'} size={40} interactive={false} />
+                            </View>
+                          )}
+                          <View style={styles.speciesInfo}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={[styles.speciesTitle, isSelected && { color: colors.white }]}>
+                                {spec.name}
+                              </Text>
+                              <Text>{spec.emoji}</Text>
+                            </View>
+                            <Text style={styles.speciesDesc} numberOfLines={2}>
+                              {spec.description}
+                            </Text>
+                          </View>
+                        </View>
+                        {isSelected && (
+                          <Ionicons name="checkmark-circle" size={20} color="#00E5FF" />
+                        )}
+                      </PressableFluid>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
             {activeTab === 'frame' && (
               <View style={styles.sectionWrap}>
                 <Text style={styles.sectionTitle}>Marcos de Avatar Dinámicos</Text>
@@ -528,6 +852,51 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
                         </View>
                         {isSelected && (
                           <Ionicons name="checkmark-circle" size={20} color={th.primaryColor} />
+                        )}
+                      </PressableFluid>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.divider} />
+
+                <Text style={styles.sectionTitle}>Banner & Degradado Personalizado</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Elige un degradado de fondo para la cabecera de tu perfil
+                </Text>
+
+                <View style={styles.bannerGrid}>
+                  {BANNER_GRADIENT_PRESETS.map((bp) => {
+                    const isSelected =
+                      (bp.id === 'none' && !customGradientStart) ||
+                      (customGradientStart === bp.start && customGradientEnd === bp.end);
+
+                    return (
+                      <PressableFluid
+                        key={bp.id}
+                        onPress={() => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setCustomGradientStart(bp.start);
+                          setCustomGradientEnd(bp.end);
+                        }}
+                        style={[styles.bannerCard, isSelected && styles.bannerCardActive]}
+                        scaleTo={0.96}
+                      >
+                        {bp.start ? (
+                          <LinearGradient
+                            colors={[bp.start, bp.end]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.bannerGradientThumb}
+                          />
+                        ) : (
+                          <View style={[styles.bannerGradientThumb, { backgroundColor: '#1a1a2e' }]} />
+                        )}
+                        <Text style={[styles.bannerName, isSelected && { color: colors.white }]}>
+                          {bp.name}
+                        </Text>
+                        {isSelected && (
+                          <Ionicons name="checkmark-circle" size={16} color="#00E5FF" style={{ marginLeft: 'auto' }} />
                         )}
                       </PressableFluid>
                     );
@@ -1112,5 +1481,141 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 15,
     fontWeight: '700',
+  },
+  previewPetWrap: {
+    marginLeft: 'auto',
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  petPlaygroundCard: {
+    height: 120,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1.2,
+    borderColor: 'rgba(0, 229, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+    position: 'relative',
+  },
+  petPlaygroundCenter: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  petPlaygroundHint: {
+    color: '#00E5FF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    marginTop: 2,
+  },
+  variantsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  variantChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  variantDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  variantName: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  speciesList: {
+    gap: 8,
+    marginTop: 6,
+  },
+  speciesCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  speciesCardActive: {
+    borderColor: '#00E5FF',
+    backgroundColor: 'rgba(0, 229, 255, 0.12)',
+  },
+  speciesLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  speciesIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noneIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  speciesInfo: {
+    flex: 1,
+  },
+  speciesTitle: {
+    color: colors.textSecondary,
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  speciesDesc: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  bannerGrid: {
+    gap: 8,
+    marginTop: 4,
+  },
+  bannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 12,
+  },
+  bannerCardActive: {
+    borderColor: '#00E5FF',
+    backgroundColor: 'rgba(0, 229, 255, 0.12)',
+  },
+  bannerGradientThumb: {
+    width: 40,
+    height: 24,
+    borderRadius: 8,
+  },
+  bannerName: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

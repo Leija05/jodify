@@ -6,6 +6,7 @@ import { PressableFluid } from '@components/ui/PressableFluid';
 import { colors } from '@theme';
 import { resolveArtist, resolveSongTitle } from '@lib/utils';
 import type { Song } from '@lib/types';
+import { useUiStore } from '@stores/ui.store';
 
 interface SongInfoProps {
   song: Song;
@@ -23,6 +24,7 @@ export const SongInfo = React.memo(
     ({ song, titleOpacity, isBuffering, sleepRemaining, cancelSleepTimer, error, liked = false, onLike }, ref) => {
     const artist = useMemo(() => resolveArtist(song), [song]);
     const title = useMemo(() => resolveSongTitle(song), [song]);
+    const openSongActions = useUiStore((s) => s.openSongActions);
 
     return (
       <Animated.View
@@ -33,30 +35,45 @@ export const SongInfo = React.memo(
         ]}
       >
         <View style={styles.mainRow}>
-          <View style={styles.texts}>
+          <PressableFluid
+            onLongPress={() => openSongActions(song)}
+            haptic="medium"
+            style={styles.texts}
+          >
             <Text style={styles.title} numberOfLines={1}>
               {title}
             </Text>
             <Text style={styles.artist} numberOfLines={1}>
               {artist}
             </Text>
-          </View>
+          </PressableFluid>
 
-          {onLike && (
+          <View style={styles.actionsRight}>
+            {onLike && (
+              <PressableFluid
+                onPress={onLike}
+                haptic={liked ? 'medium' : 'light'}
+                style={styles.likeBtn}
+                hitSlop={10}
+                testID="fullscreen-like-btn"
+              >
+                <Ionicons
+                  name={liked ? 'heart' : 'heart-outline'}
+                  size={26}
+                  color={liked ? colors.accent : 'rgba(255,255,255,0.7)'}
+                />
+              </PressableFluid>
+            )}
+
             <PressableFluid
-              onPress={onLike}
-              haptic={liked ? 'medium' : 'light'}
-              style={styles.likeBtn}
-              hitSlop={12}
-              testID="fullscreen-like-btn"
+              onPress={() => openSongActions(song)}
+              haptic="light"
+              style={styles.moreBtn}
+              hitSlop={10}
             >
-              <Ionicons
-                name={liked ? 'heart' : 'heart-outline'}
-                size={28}
-                color={liked ? colors.accent : 'rgba(255,255,255,0.7)'}
-              />
+              <Ionicons name="ellipsis-vertical" size={20} color="rgba(255, 255, 255, 0.75)" />
             </PressableFluid>
-          )}
+          </View>
         </View>
 
         {/* Studio Audio Quality Badges (Apple Music Master / Hi-Res & Spatial Audio) */}
@@ -133,12 +150,25 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     marginTop: 3,
   },
+  actionsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   likeBtn: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  moreBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   badgesRow: {

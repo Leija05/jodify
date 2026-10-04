@@ -11,8 +11,8 @@ export async function fetchUserProfile(username: string): Promise<CommunityUser>
   return apiFetch<CommunityUser>(`/api/users/${encodeURIComponent(username)}`);
 }
 
-export async function fetchUserStats(username: string): Promise<{ liked: number; played: number; downloaded: number }> {
-  return apiFetch<{ liked: number; played: number; downloaded: number }>(`/api/users/${encodeURIComponent(username)}/stats`);
+export async function fetchUserStats(username: string): Promise<{ liked: number; played: number; downloaded: number; listening_seconds?: number }> {
+  return apiFetch<{ liked: number; played: number; downloaded: number; listening_seconds?: number }>(`/api/users/${encodeURIComponent(username)}/stats`);
 }
 
 export async function fetchUserTopSongs(username: string, limit = 5): Promise<Array<{ song_name: string; count: number }>> {
@@ -64,6 +64,9 @@ export async function updateUserProfile(
     custom_badge?: string | null | undefined;
     anthem_song_id?: number | string | null | undefined;
     anthem_song_name?: string | null | undefined;
+    pet_type?: string | null | undefined;
+    pet_variant?: string | null | undefined;
+    pet_name?: string | null | undefined;
   }
 ): Promise<CommunityUser> {
   return apiFetch<CommunityUser>(`/api/users/${encodeURIComponent(username)}/profile`, {
@@ -77,6 +80,14 @@ export async function updateNowPlaying(username: string, songId: number | string
   await apiFetch<void>(`/api/users/${encodeURIComponent(username)}/now-playing`, {
     method: 'PUT',
     body: { song_id: songId, song_name: songName },
+    auth: true,
+  });
+}
+
+export async function recordListeningTime(username: string, seconds = 15): Promise<void> {
+  await apiFetch<void>(`/api/users/${encodeURIComponent(username)}/listening-time`, {
+    method: 'POST',
+    body: { seconds },
     auth: true,
   });
 }

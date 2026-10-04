@@ -8,12 +8,14 @@ export function useBootstrap() {
   const loadLibrary = useLibraryStore((s) => s.load);
   const loadEq = useEqStore((s) => s.loadPersisted);
   const loadSettings = useSettingsStore((s) => s.loadPersisted);
+  const refreshProfile = useSettingsStore((s) => s.refreshProfile);
   const restoreJam = useJamStore((s) => s.restore);
 
   useEffect(() => {
     loadLibrary();
     loadEq();
     loadSettings();
+    void refreshProfile();
     restoreJam();
-  }, []);
+  }, [loadEq, loadLibrary, loadSettings, refreshProfile, restoreJam]);
 }

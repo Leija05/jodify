@@ -16,6 +16,7 @@ import { SongRow } from '@components/player/SongRow';
 import { colors, typography, elevation } from '@theme';
 import type { Song } from '@lib/types';
 import { usePlayerStore } from '@stores/player.store';
+import { useUiStore } from '@stores/ui.store';
 
 const SCREEN = Dimensions.get('window');
 const SHEET_WIDTH = Math.min(360, SCREEN.width * 0.88);
@@ -94,6 +95,7 @@ export const QueueSheet = React.forwardRef<View, QueueSheetProps>(
           isCurrent={isCurrent}
           isPlaying={isPlaying && isCurrent}
           onPress={() => handlePlaySong(item)}
+          onLongPress={() => useUiStore.getState().openSongActions(item)}
           right={
             <PressableFluid onPress={() => removeFromQueue(item.id)} haptic="light" hitSlop={8} style={styles.removeBtn}>
               <Ionicons name="close-circle-outline" size={20} color={colors.textMuted} />

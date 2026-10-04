@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   FlatList,
@@ -14,6 +13,8 @@ import { PressableFluid } from '@components/ui/PressableFluid';
 import { EmptyState } from '@components/ui/EmptyState';
 import { UserAvatar } from '@components/ui/UserAvatar';
 import { UserProfileModal } from '@components/profile/UserProfileModal';
+import { DynamicBackground } from '@components/player/DynamicBackground';
+import { PixelPet } from '@components/social/PixelPet';
 import { fetchCommunityUsers, CommunityUser } from '@services/users.service';
 import { usePlayerStore } from '@stores/player.store';
 import { useJamStore } from '@stores/jam.store';
@@ -21,7 +22,7 @@ import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
 import { resolveArtist } from '@lib/utils';
 import { mmkv } from '@lib/mmkv';
-import { colors, gradients } from '@theme';
+import { colors } from '@theme';
 
 const COMMUNITY_CACHE_KEY = 'community.cached_users';
 
@@ -114,6 +115,18 @@ function UserCard({ user, onPress }: UserCardProps) {
             </Text>
           )}
         </View>
+
+        {user.pet_type && user.pet_type !== 'none' && (
+          <View style={{ marginRight: 6, alignSelf: 'center' }}>
+            <PixelPet
+              petType={user.pet_type}
+              variant={user.pet_variant}
+              petName={user.pet_name}
+              size={34}
+              interactive={false}
+            />
+          </View>
+        )}
 
         <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.25)" />
       </View>
@@ -476,12 +489,7 @@ export default function CommunityScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={gradients.hero}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <DynamicBackground song={currentSong} intensity={0.8} />
 
       {loading ? (
         <View style={styles.loading}>
@@ -534,7 +542,7 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#05050A',
   },
   listContent: {
     paddingBottom: 110,

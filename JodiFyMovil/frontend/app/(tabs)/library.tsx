@@ -4,11 +4,13 @@ import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, FlatList, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SongRow } from '@components/player/SongRow';
+import { DynamicBackground } from '@components/player/DynamicBackground';
 import { EmptyState } from '@components/ui/EmptyState';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import type { LibraryTab, Song } from '@lib/types';
 import { resolveArtist } from '@lib/utils';
-import { downloadSong, deleteDownloadedSong } from '@services/downloads.service';
+import { deleteDownloadedSong } from '@services/downloads.service';
+import { useDownloadStore } from '@stores/download.store';
 import { useLibraryStore } from '@stores/library.store';
 import { usePlayerStore } from '@stores/player.store';
 import { useSettingsStore } from '@stores/settings.store';
@@ -33,7 +35,6 @@ export default function LibraryScreen() {
   const setTab = useLibraryStore((s) => s.setTab);
   const setSearch = useLibraryStore((s) => s.setSearch);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
-  const markDownloaded = useLibraryStore((s) => s.markDownloaded);
   const unmarkDownloaded = useLibraryStore((s) => s.unmarkDownloaded);
   const refresh = useLibraryStore((s) => s.refresh);
   const refreshing = useLibraryStore((s) => s.refreshing);
@@ -47,8 +48,10 @@ export default function LibraryScreen() {
   const openFullscreen = useUiStore((s) => s.openFullscreen);
   const openAuth = useUiStore((s) => s.openAuth);
   const openSongActions = useUiStore((s) => s.openSongActions);
-  const [downloading, setDownloading] = useState<Record<string, boolean>>({});
-  const downloadingRef = useRef<Record<string, boolean>>({});
+  const openDownloadsModal = useUiStore((s) => s.openDownloadsModal);
+  const activeDownloadsCount = useDownloadStore(
+    (s) => Object.values(s.tasks).filter((t) => t.status === 'downloading' || t.status === 'pending').length
+  );
   const [searchFocused, setSearchFocused] = useState(false);
   const searchGlowAnim = useRef(new Animated.Value(0)).current;
   const staggerAnim = useRef(new Animated.Value(0)).current;
@@ -75,6 +78,8 @@ export default function LibraryScreen() {
     }
   }, [tab, tabUnderlineAnim]);
 
+  const [sortMode, setSortMode] = useState<'recent' | 'alpha' | 'artist'>('recent');
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list: Song[];
@@ -94,12 +99,20 @@ export default function LibraryScreen() {
           (resolveArtist(s) ?? '').toLowerCase().includes(q),
       );
     }
-    return list.sort((a, b) => {
-      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return bTime - aTime;
-    });
-  }, [songs, likedIds, downloadedIds, tab, search]);
+    const sorted = [...list];
+    if (sortMode === 'alpha') {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortMode === 'artist') {
+      sorted.sort((a, b) => (resolveArtist(a) || '').localeCompare(resolveArtist(b) || ''));
+    } else {
+      sorted.sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bTime - aTime;
+      });
+    }
+    return sorted;
+  }, [songs, likedIds, downloadedIds, tab, search, sortMode]);
 
   const handlePlay = useCallback(
     (song: Song) => {
@@ -112,32 +125,16 @@ export default function LibraryScreen() {
   const handleDownload = useCallback(
     async (song: Song) => {
       const id = String(song.id);
-      if (downloadingRef.current[id]) return;
-      downloadingRef.current[id] = true;
-      try {
-        const isDownloaded = downloadedIds.some((d) => String(d) === id);
-        if (isDownloaded) {
-          await deleteDownloadedSong(song.id);
-          unmarkDownloaded(song.id);
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          return;
-        }
-        setDownloading((p) => ({ ...p, [id]: true }));
-        const record = await downloadSong(song);
-        markDownloaded(record.id, record.localUri);
+      const isDownloaded = downloadedIds.some((d) => String(d) === id);
+      if (isDownloaded) {
+        await deleteDownloadedSong(song.id);
+        unmarkDownloaded(song.id);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      } finally {
-        downloadingRef.current[id] = false;
-        setDownloading((p) => {
-          const next = { ...p };
-          delete next[id];
-          return next;
-        });
+        return;
       }
+      void useDownloadStore.getState().startDownload(song);
     },
-    [downloadedIds, markDownloaded, unmarkDownloaded],
+    [downloadedIds, unmarkDownloaded],
   );
 
   const handleLike = useCallback(
@@ -198,7 +195,7 @@ export default function LibraryScreen() {
 
   const renderItem = useCallback(({ item }: { item: Song }) => {
     const id = String(item.id);
-    const isDownloading = downloading[id];
+    const isDownloading = useDownloadStore.getState().isDownloading(item.id);
     const isCurrent = String(currentSong?.id) === id;
     const liked = isLiked(item.id);
     return (
@@ -227,7 +224,6 @@ export default function LibraryScreen() {
   }, [
     currentSong?.id,
     isPlaying,
-    downloading,
     downloadedIds,
     likedIds,
     user,
@@ -242,6 +238,7 @@ export default function LibraryScreen() {
 
   return (
     <View style={styles.container}>
+      <DynamicBackground song={currentSong} intensity={0.8} />
       <View style={styles.fixedHeader}>
         <View style={styles.topBarRow}>
           <View>
@@ -342,6 +339,85 @@ export default function LibraryScreen() {
           })}
         </View>
 
+        {tab === 'downloads' && (
+          <PressableFluid
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              openDownloadsModal();
+            }}
+            haptic="light"
+            style={styles.manageDownloadsBtn}
+          >
+            <View style={styles.manageDownloadsLeft}>
+              <Ionicons name="cloud-download" size={16} color={colors.secondary} />
+              <Text style={styles.manageDownloadsText}>
+                {activeDownloadsCount > 0
+                  ? `Descargando (${activeDownloadsCount}) · Ver progreso real`
+                  : 'Ver gestor de descargas y reintentos'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={15} color={colors.secondary} />
+          </PressableFluid>
+        )}
+
+        {/* Quick Sorting Pills */}
+        <View style={styles.sortRow}>
+          <Text style={styles.sortLabel}>ORDEN:</Text>
+          <PressableFluid
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSortMode('recent');
+            }}
+            haptic="light"
+            style={[styles.sortPill, sortMode === 'recent' && styles.sortPillActive]}
+          >
+            <Ionicons
+              name="sparkles"
+              size={12}
+              color={sortMode === 'recent' ? colors.secondary : colors.textMuted}
+            />
+            <Text style={[styles.sortPillText, sortMode === 'recent' && styles.sortPillTextActive]}>
+              Recientes
+            </Text>
+          </PressableFluid>
+
+          <PressableFluid
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSortMode('alpha');
+            }}
+            haptic="light"
+            style={[styles.sortPill, sortMode === 'alpha' && styles.sortPillActive]}
+          >
+            <Ionicons
+              name="text"
+              size={12}
+              color={sortMode === 'alpha' ? colors.secondary : colors.textMuted}
+            />
+            <Text style={[styles.sortPillText, sortMode === 'alpha' && styles.sortPillTextActive]}>
+              A-Z
+            </Text>
+          </PressableFluid>
+
+          <PressableFluid
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSortMode('artist');
+            }}
+            haptic="light"
+            style={[styles.sortPill, sortMode === 'artist' && styles.sortPillActive]}
+          >
+            <Ionicons
+              name="person"
+              size={12}
+              color={sortMode === 'artist' ? colors.secondary : colors.textMuted}
+            />
+            <Text style={[styles.sortPillText, sortMode === 'artist' && styles.sortPillTextActive]}>
+              Artista
+            </Text>
+          </PressableFluid>
+        </View>
+
         <View style={styles.hintRow}>
           <Ionicons name="arrow-forward" size={12} color={colors.secondary} />
           <Text style={styles.hintText}>Desliza a la derecha para favorita · Mantén pulsado para acciones</Text>
@@ -397,12 +473,52 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#05050A',
   },
   fixedHeader: {
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
     zIndex: 10,
     paddingTop: 12,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  sortLabel: {
+    color: colors.textMuted,
+    fontFamily: typography.monoSmall.fontFamily,
+    fontSize: 9.5,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  sortPillActive: {
+    backgroundColor: 'rgba(0, 229, 255, 0.14)',
+    borderColor: 'rgba(0, 229, 255, 0.4)',
+  },
+  sortPillText: {
+    color: colors.textMuted,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  sortPillTextActive: {
+    color: colors.secondary,
+    fontWeight: '700',
   },
   topBarRow: {
     flexDirection: 'row',
@@ -548,5 +664,29 @@ const styles = StyleSheet.create({
   listItem: {
     marginHorizontal: 12,
     alignSelf: 'stretch',
+  },
+  manageDownloadsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0, 229, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  manageDownloadsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  manageDownloadsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.secondary,
   },
 });

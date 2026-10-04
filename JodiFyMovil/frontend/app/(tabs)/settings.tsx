@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   View,
   Alert,
   Switch,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,16 +16,23 @@ import { EmptyState } from '@components/ui/EmptyState';
 import { DoubleBezelCard } from '@components/ui/DoubleBezelCard';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import { Slider } from '@components/ui/Slider';
+import { DynamicBackground } from '@components/player/DynamicBackground';
+import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { currentAppVersion } from '@services/update.service';
 import { clearAllDownloads } from '@services/downloads.service';
 import { useLibraryStore } from '@stores/library.store';
 import { useSettingsStore } from '@stores/settings.store';
+import { usePlayerStore } from '@stores/player.store';
 import { useEqStore } from '@stores/eq.store';
 import { updateLabel, useUpdateStore } from '@stores/update.store';
 import { useUiStore } from '@stores/ui.store';
 import { UserProfileModal } from '@components/profile/UserProfileModal';
 import { EditProfileModal } from '@components/profile/EditProfileModal';
 import { UserAvatar } from '@components/ui/UserAvatar';
+import { getSongPalette } from '@lib/palette';
+import { pickCoverUrl, resolveSongTitle, calculateMelomanoLevel } from '@lib/utils';
+import { PetCompanionCard } from '@components/social/PetCompanionCard';
+import { PixelPet } from '@components/social/PixelPet';
 import { colors, typography, radius, gradients } from '@theme';
 
 const QUICK_PRESETS = [
@@ -41,10 +49,15 @@ export default function SettingsScreen() {
   const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
 
   const user = useSettingsStore((s) => s.user);
+  const refreshProfile = useSettingsStore((s) => s.refreshProfile);
   const logout = useSettingsStore((s) => s.logout);
   const sleepTimer = useSettingsStore((s) => s.sleepTimer);
   const startSleepTimer = useSettingsStore((s) => s.startSleepTimer);
   const cancelSleepTimer = useSettingsStore((s) => s.cancelSleepTimer);
+
+  useEffect(() => {
+    void refreshProfile();
+  }, [refreshProfile]);
 
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
   const likedIds = useLibraryStore((s) => s.likedIds);
@@ -82,6 +95,15 @@ export default function SettingsScreen() {
     }
   }, [role]);
 
+  const melomano = useMemo(() => {
+    return calculateMelomanoLevel({
+      liked: likedIds.length,
+      played: downloadedIds.length,
+      downloaded: downloadedIds.length,
+      listening_seconds: user?.listening_seconds ?? 0,
+    });
+  }, [user?.listening_seconds, likedIds.length, downloadedIds.length]);
+
 
   const formattedCreatedAt = useMemo(() => {
     if (!user?.created_at) return 'Miembro fundador';
@@ -114,8 +136,17 @@ export default function SettingsScreen() {
     );
   };
 
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const songPalette = useMemo(() => getSongPalette(currentSong), [currentSong]);
+  const currentCover = useMemo(() => (currentSong ? pickCoverUrl(currentSong) : null), [currentSong]);
+  const currentSongTitle = useMemo(() => (currentSong ? resolveSongTitle(currentSong) : ''), [currentSong]);
+
   return (
     <View style={styles.screenWrapper}>
+      {/* Dynamic Background adapting to current song cover art */}
+      <DynamicBackground song={currentSong} intensity={0.85} />
+
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {/* Screen Header */}
       <View style={styles.header}>
@@ -124,9 +155,49 @@ export default function SettingsScreen() {
       </View>
 
       {/* SECTION 1: CUENTA & IDENTIDAD */}
-      <Text style={styles.sectionTitle}>Cuenta & Identidad</Text>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Cuenta & Identidad</Text>
+        {currentSong && (
+          <View style={[styles.adaptiveThemeBadge, { borderColor: songPalette.secondary + '50' }]}>
+            <View style={[styles.adaptiveThemeDot, { backgroundColor: songPalette.secondary }]} />
+            <Text style={[styles.adaptiveThemeText, { color: songPalette.secondary }]}>FONDO DINÁMICO ACTIVO</Text>
+          </View>
+        )}
+      </View>
+
       {user ? (
-        <DoubleBezelCard style={styles.card} elevated innerPadding={0}>
+        <DoubleBezelCard
+          style={[
+            styles.card,
+            styles.identityCardOuter,
+            currentSong && {
+              borderColor: songPalette.primary + '55',
+            },
+          ]}
+          innerStyle={[
+            styles.identityCardInner,
+            currentSong && {
+              backgroundColor: 'rgba(12, 12, 22, 0.72)',
+            },
+          ]}
+          elevated
+          innerPadding={0}
+        >
+          {/* Ambient Glowing Header Banner inside the card derived from the current song */}
+          {currentSong && (
+            <LinearGradient
+              colors={[
+                songPalette.primary + '35',
+                songPalette.secondary + '15',
+                'transparent',
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardCoverGlow}
+              pointerEvents="none"
+            />
+          )}
+
           {/* Top Hero: Avatar, Names, Role, Edit Pill */}
           <View style={styles.identityHero}>
             <PressableFluid onPress={() => setProfileOpen(true)} haptic="light" style={styles.identityAvatarWrap}>
@@ -159,6 +230,18 @@ export default function SettingsScreen() {
               </View>
             </View>
 
+            {user?.pet_type && user?.pet_type !== 'none' && (
+              <View style={styles.heroPetWrap}>
+                <PixelPet
+                  petType={user.pet_type}
+                  variant={user.pet_variant}
+                  petName={user.pet_name}
+                  size={46}
+                  interactive={true}
+                />
+              </View>
+            )}
+
             {/* Quick Edit Button */}
             <PressableFluid
               onPress={() => setAccountDetailsOpen(true)}
@@ -171,8 +254,73 @@ export default function SettingsScreen() {
             </PressableFluid>
           </View>
 
-          {/* Metrics Shelf: Favoritas, Descargas, Estado */}
+          {/* Virtual Pet Companion Card */}
+          <View style={{ paddingHorizontal: 16 }}>
+            <PetCompanionCard
+              petType={user.pet_type}
+              petVariant={user.pet_variant}
+              petName={user.pet_name}
+              isCurrentUser={true}
+              onCustomize={() => setAccountDetailsOpen(true)}
+            />
+          </View>
+
+          {/* Now Playing Identity Live Bar (when listening to a song) */}
+          {currentSong && (
+            <PressableFluid
+              onPress={() => useUiStore.getState().openFullscreen()}
+              haptic="light"
+              style={styles.identityListeningBar}
+            >
+              <View style={styles.listeningBarLeft}>
+                <View style={styles.listeningCoverWrap}>
+                  {currentCover ? (
+                    <Image source={{ uri: currentCover }} style={styles.listeningCover} resizeMode="cover" />
+                  ) : (
+                    <View style={[styles.listeningCover, { backgroundColor: songPalette.primary }]} />
+                  )}
+                  {isPlaying && (
+                    <View style={styles.listeningEqualizerOverlay}>
+                      <EqualizerBars playing bars={3} height={9} barWidth={2} color="#00FF88" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.listeningTexts}>
+                  <Text style={styles.listeningTag}>SINTONIZANDO EN ESTE PERFIL</Text>
+                  <Text style={styles.listeningSongTitle} numberOfLines={1}>
+                    {currentSongTitle}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.listeningActionPill, { borderColor: songPalette.secondary + '50' }]}>
+                <Text style={[styles.listeningActionText, { color: songPalette.secondary }]}>Reproductor</Text>
+                <Ionicons name="chevron-forward" size={12} color={songPalette.secondary} />
+              </View>
+            </PressableFluid>
+          )}
+
+          {/* Metrics Shelf: Nivel Melómano, Horas, Favoritas, Descargas */}
           <View style={styles.metricsShelf}>
+            <View style={styles.metricCell}>
+              <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(255, 215, 0, 0.14)' }]}>
+                <Text style={{ fontSize: 13 }}>{melomano.badgeEmoji}</Text>
+              </View>
+              <Text style={[styles.metricNumber, { color: '#FFD700' }]}>Nv. {melomano.level}</Text>
+              <Text style={styles.metricLabel}>{melomano.title}</Text>
+            </View>
+
+            <View style={styles.metricDivider} />
+
+            <View style={styles.metricCell}>
+              <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(0, 229, 255, 0.14)' }]}>
+                <Ionicons name="time" size={14} color="#00E5FF" />
+              </View>
+              <Text style={[styles.metricNumber, { color: '#00E5FF' }]}>{melomano.listenedHours}h</Text>
+              <Text style={styles.metricLabel}>Escuchadas</Text>
+            </View>
+
+            <View style={styles.metricDivider} />
+
             <View style={styles.metricCell}>
               <View style={styles.metricIconWrap}>
                 <Ionicons name="heart" size={14} color={colors.accent} />
@@ -190,15 +338,21 @@ export default function SettingsScreen() {
               <Text style={styles.metricNumber}>{downloadedIds.length}</Text>
               <Text style={styles.metricLabel}>Descargas</Text>
             </View>
+          </View>
 
-            <View style={styles.metricDivider} />
-
-            <View style={styles.metricCell}>
-              <View style={styles.metricIconWrap}>
-                <Ionicons name="radio" size={14} color="#00FF88" />
-              </View>
-              <Text style={[styles.metricNumber, { color: '#00FF88' }]}>Online</Text>
-              <Text style={styles.metricLabel}>Estado</Text>
+          {/* Melomano XP Micro Bar */}
+          <View style={styles.xpMicroBarWrap}>
+            <View style={styles.xpMicroLabels}>
+              <Text style={styles.xpMicroTitle}>Progreso a Nivel {melomano.level + 1}</Text>
+              <Text style={styles.xpMicroValue}>{melomano.progressPercent}% XP</Text>
+            </View>
+            <View style={styles.xpMicroTrack}>
+              <LinearGradient
+                colors={['#FFD700', '#00E5FF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.xpMicroFill, { width: `${melomano.progressPercent}%` }]}
+              />
             </View>
           </View>
 
@@ -273,7 +427,36 @@ export default function SettingsScreen() {
           </View>
         </DoubleBezelCard>
       ) : (
-        <DoubleBezelCard style={styles.card} elevated innerPadding={0}>
+        <DoubleBezelCard
+          style={[
+            styles.card,
+            styles.identityCardOuter,
+            currentSong && {
+              borderColor: songPalette.primary + '55',
+            },
+          ]}
+          innerStyle={[
+            styles.identityCardInner,
+            currentSong && {
+              backgroundColor: 'rgba(12, 12, 22, 0.72)',
+            },
+          ]}
+          elevated
+          innerPadding={0}
+        >
+          {currentSong && (
+            <LinearGradient
+              colors={[
+                songPalette.primary + '28',
+                songPalette.secondary + '14',
+                'transparent',
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardCoverGlow}
+              pointerEvents="none"
+            />
+          )}
           <View style={styles.guestHero}>
             <View style={styles.guestIconCircle}>
               <Ionicons name="musical-notes" size={26} color={colors.secondary} />
@@ -571,11 +754,11 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#05050A',
   },
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   content: {
     padding: 16,
@@ -605,6 +788,35 @@ const styles = StyleSheet.create({
     fontSize: typography.bodySmall.fontSize,
     marginTop: 3,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  adaptiveThemeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+  },
+  adaptiveThemeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  adaptiveThemeText: {
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
   sectionTitle: {
     color: colors.secondary,
     fontFamily: typography.labelSmall.fontFamily,
@@ -619,6 +831,88 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 14,
     padding: 16,
+    backgroundColor: 'rgba(16, 16, 26, 0.82)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  identityCardOuter: {
+    borderRadius: radius.cardOuter,
+    overflow: 'hidden',
+  },
+  identityCardInner: {
+    overflow: 'hidden',
+  },
+  cardCoverGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+  },
+  identityListeningBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  listeningBarLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginRight: 10,
+  },
+  listeningCoverWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#0a0a14',
+    position: 'relative',
+  },
+  listeningCover: {
+    width: '100%',
+    height: '100%',
+  },
+  listeningEqualizerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listeningTexts: {
+    flex: 1,
+  },
+  listeningTag: {
+    color: colors.textMuted,
+    fontFamily: typography.monoSmall.fontFamily,
+    fontSize: 8.5,
+    fontWeight: '700',
+    letterSpacing: 0.7,
+  },
+  listeningSongTitle: {
+    color: colors.white,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  listeningActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  listeningActionText: {
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10,
+    fontWeight: '700',
   },
   /* --- Unified Cuenta & Identidad Card --- */
   identityHero: {
@@ -768,6 +1062,47 @@ const styles = StyleSheet.create({
     width: 1,
     height: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  heroPetWrap: {
+    padding: 2,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  xpMicroBarWrap: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    gap: 5,
+  },
+  xpMicroLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  xpMicroTitle: {
+    color: colors.textSecondary,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  xpMicroValue: {
+    color: '#FFD700',
+    fontFamily: typography.monoSmall.fontFamily,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  xpMicroTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  xpMicroFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   accountActionList: {
     paddingHorizontal: 8,

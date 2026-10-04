@@ -7,7 +7,7 @@ import { shuffleArray } from '../lib/utils';
 import { activateLockScreenForSong, syncLockScreen } from '../services/lockscreen.service';
 import { ensurePlayerWithSource, getPlayer, onPlayerStatus } from './audio';
 import { useEqStore } from './eq.store';
-import { applyNative } from '../services/equalizer.service';
+import { applyNative, enableEqualizer, applyBassBoost, applyVirtualizer } from '../services/equalizer.service';
 import { recordHistory } from '../services/history.service';
 import { useSettingsStore } from './settings.store';
 
@@ -100,8 +100,8 @@ async function matchTrackToYoutubeId(artist: string, title: string): Promise<str
   return null;
 }
 
-function resolveSource(song: Song, baseOverride?: string): string | null {
-  if (song.localUri) return song.localUri;
+function resolveSource(song: Song, baseOverride?: string, ignoreLocal = false): string | null {
+  if (!ignoreLocal && song.localUri) return song.localUri;
   const rawUrl = (song.url || song.stream_url || '').trim();
   const base = (baseOverride || getActiveApiBase() || API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
 
@@ -189,7 +189,7 @@ async function recordPlayIfNeeded(song: Song): Promise<void> {
   const user = useSettingsStore.getState().user;
   if (!user) return;
   try {
-    await recordHistory(songId, user.username);
+    await recordHistory(songId, user.username, song.name);
     historyRecordedForSong = songId;
   } catch {
     // best-effort
@@ -254,19 +254,52 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       }
     }
 
+    // 1. Try local offline audio if available
+    if (song.localUri) {
+      try {
+        const player = ensurePlayerWithSource(song.localUri);
+        await player.play();
+
+        const { values, enabled, bassBoost, virtualizer } = useEqStore.getState();
+        if (enabled) {
+          void enableEqualizer(true);
+          if (values.length > 0) void applyNative(values);
+          if (bassBoost > 0) void applyBassBoost(bassBoost);
+          if (virtualizer > 0) void applyVirtualizer(virtualizer);
+        }
+
+        activateLockScreenForSong(song);
+        void recordPlayIfNeeded(song);
+        set({ error: null });
+        return;
+      } catch (localErr) {
+        console.warn(`[Player] Local audio playback failed for "${song.name}", falling back to network:`, localErr);
+        try {
+          const { deleteDownloadedSong } = await import('../services/downloads.service');
+          await deleteDownloadedSong(song.id);
+        } catch {}
+        delete (song as any).localUri;
+      }
+    }
+
     const candidateBases = getCandidateBases();
     let lastError: any = null;
 
     for (const base of candidateBases) {
-      const source = resolveSource(song, base);
+      const source = resolveSource(song, base, true);
       if (!source) continue;
 
       try {
         const player = ensurePlayerWithSource(source);
         await player.play();
 
-        const { values, enabled } = useEqStore.getState();
-        if (enabled && values.length > 0) applyNative(values);
+        const { values, enabled, bassBoost, virtualizer } = useEqStore.getState();
+        if (enabled) {
+          void enableEqualizer(true);
+          if (values.length > 0) void applyNative(values);
+          if (bassBoost > 0) void applyBassBoost(bassBoost);
+          if (virtualizer > 0) void applyVirtualizer(virtualizer);
+        }
 
         activateLockScreenForSong(song);
         void recordPlayIfNeeded(song);

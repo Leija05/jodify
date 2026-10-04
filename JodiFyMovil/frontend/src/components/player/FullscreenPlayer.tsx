@@ -5,7 +5,8 @@ import { Animated, BackHandler, Dimensions, Easing, Modal, ScrollView, StyleShee
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LyricsLine } from '@lib/types';
 import { fetchLyrics, lyricsFromSong, getPreloadedLyrics } from '@services/lyrics.service';
-import { downloadSong, deleteDownloadedSong } from '@services/downloads.service';
+import { deleteDownloadedSong } from '@services/downloads.service';
+import { useDownloadStore } from '@stores/download.store';
 import { useLibraryStore } from '@stores/library.store';
 import { usePlayerStore } from '@stores/player.store';
 import { useSettingsStore } from '@stores/settings.store';
@@ -44,7 +45,6 @@ export default function FullscreenPlayer() {
   const likedIds = useLibraryStore((s) => s.likedIds);
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
-  const markDownloaded = useLibraryStore((s) => s.markDownloaded);
   const unmarkDownloaded = useLibraryStore((s) => s.unmarkDownloaded);
   const user = useSettingsStore((s) => s.user);
   const sleepTimer = useSettingsStore((s) => s.sleepTimer);
@@ -59,7 +59,7 @@ export default function FullscreenPlayer() {
   const [lyrics, setLyrics] = useState<LyricsLine[] | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const isDownloadingStore = useDownloadStore((s) => (currentSong ? s.isDownloading(currentSong.id) : false));
 
   const liked = !!currentSong && likedIds.some((id) => String(id) === String(currentSong.id));
   const downloaded = !!currentSong && downloadedIds.some((id) => String(id) === String(currentSong.id));
@@ -239,17 +239,8 @@ export default function FullscreenPlayer() {
       unmarkDownloaded(currentSong.id);
       return;
     }
-    setDownloading(true);
-    try {
-      const record = await downloadSong(currentSong);
-      markDownloaded(record.id, record.localUri);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setDownloading(false);
-    }
-  }, [currentSong, downloaded, markDownloaded, unmarkDownloaded]);
+    void useDownloadStore.getState().startDownload(currentSong);
+  }, [currentSong, downloaded, unmarkDownloaded]);
 
   const handleStartRadio = useCallback(() => {
     if (!currentSong) return;
@@ -347,7 +338,7 @@ export default function FullscreenPlayer() {
 
               <UtilityRow
                 downloaded={downloaded}
-                downloading={downloading}
+                downloading={isDownloadingStore}
                 onDownload={handleDownload}
                 onEqualizer={openEqualizer}
                 onLyricsToggle={() => setShowLyrics((v) => !v)}

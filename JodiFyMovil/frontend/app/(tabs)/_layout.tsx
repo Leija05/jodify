@@ -9,6 +9,7 @@ import AuthScreen from '../auth';
 import { SecretAccessScreen } from '@/screens/SecretAccessScreen';
 import { UpdateModal } from '@/components/update/UpdateModal';
 import { JamModal } from '@/components/jam/JamModal';
+import { DownloadsModal } from '@/components/downloads/DownloadsModal';
 import { TabBar } from '@/navigation/TabBar';
 import { useBootstrap } from '@/hooks/useBootstrap';
 import { useHeartbeat } from '@/hooks/useHeartbeat';
@@ -62,6 +63,7 @@ export default function TabsLayout() {
       <SecretAccessScreen />
       <AuthScreen visible={authOpen} onClose={closeAuth} />
       <UpdateModal />
+      <DownloadsModal />
     </SafeAreaView>
   );
 }

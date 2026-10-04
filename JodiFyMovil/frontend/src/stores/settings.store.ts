@@ -69,10 +69,24 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           ...fresh,
           display_name: fresh.display_name ?? current.display_name,
           avatar_url: fresh.avatar_url ?? current.avatar_url,
+          avatar_source: fresh.avatar_source ?? current.avatar_source,
+          discord_id: fresh.discord_id ?? current.discord_id,
           avatar_frame: fresh.avatar_frame ?? current.avatar_frame,
           profile_animation: fresh.profile_animation ?? current.profile_animation,
           theme: fresh.theme ?? current.theme,
-          custom_badge: (fresh as any).custom_badge ?? current.custom_badge,
+          accent_color: fresh.accent_color ?? current.accent_color,
+          profile_effect: fresh.profile_effect ?? current.profile_effect,
+          custom_badge: fresh.custom_badge ?? current.custom_badge,
+          vibe: fresh.vibe ?? current.vibe,
+          pet_type: fresh.pet_type ?? current.pet_type,
+          pet_variant: fresh.pet_variant ?? current.pet_variant,
+          pet_name: fresh.pet_name ?? current.pet_name,
+          custom_gradient_start: fresh.custom_gradient_start ?? current.custom_gradient_start,
+          custom_gradient_end: fresh.custom_gradient_end ?? current.custom_gradient_end,
+          listening_seconds: fresh.listening_seconds !== undefined ? fresh.listening_seconds : current.listening_seconds,
+          anthem_song_id: fresh.anthem_song_id ?? current.anthem_song_id,
+          anthem_song_name: fresh.anthem_song_name ?? current.anthem_song_name,
+          bio: fresh.bio ?? current.bio,
         };
         set({ user: merged });
         mmkv.setObject(STORAGE_KEYS.authUser, merged);
@@ -86,12 +100,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         if (match) {
           const merged: UserAccess = {
             ...current,
+            ...match,
             display_name: match.display_name ?? current.display_name,
             avatar_url: match.avatar_url ?? current.avatar_url,
             avatar_frame: match.avatar_frame ?? current.avatar_frame,
             profile_animation: match.profile_animation ?? current.profile_animation,
             theme: match.theme ?? current.theme,
             custom_badge: match.custom_badge ?? current.custom_badge,
+            vibe: match.vibe ?? current.vibe,
+            pet_type: match.pet_type ?? current.pet_type,
+            pet_variant: match.pet_variant ?? current.pet_variant,
+            pet_name: match.pet_name ?? current.pet_name,
+            listening_seconds: match.listening_seconds ?? current.listening_seconds,
           };
           set({ user: merged });
           mmkv.setObject(STORAGE_KEYS.authUser, merged);

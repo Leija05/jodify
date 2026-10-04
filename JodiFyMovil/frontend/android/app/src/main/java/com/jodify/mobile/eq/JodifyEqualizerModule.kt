@@ -23,6 +23,25 @@ class JodifyEqualizerModule(
   private val reactCtx: ReactApplicationContext
 ) : ReactContextBaseJavaModule(reactCtx), LifecycleEventListener {
 
+  companion object {
+    private const val TAG = "JodifyEqualizer"
+    private var instance: JodifyEqualizerModule? = null
+    private val activeSessions = java.util.Collections.synchronizedSet(mutableSetOf<Int>())
+
+    @JvmStatic
+    fun onAudioSession(sessionId: Int, open: Boolean) {
+      Log.i(TAG, "onAudioSession directly invoked: sessionId=$sessionId, open=$open")
+      if (sessionId <= 0) return
+      if (open) {
+        activeSessions.add(sessionId)
+        instance?.attachSession(sessionId)
+      } else {
+        activeSessions.remove(sessionId)
+        instance?.detachSession(sessionId)
+      }
+    }
+  }
+
   private data class EffectBundle(
     var equalizer: Equalizer? = null,
     var bassBoost: BassBoost? = null,
@@ -38,10 +57,10 @@ class JodifyEqualizerModule(
     }
   }
 
-  private val sessionBundles = mutableMapOf<Int, EffectBundle>()
+  private val sessionBundles = java.util.concurrent.ConcurrentHashMap<Int, EffectBundle>()
 
   private var available = false
-  private var enabled = false
+  private var enabled = true
   private var lastGains: DoubleArray? = null
   private var bassStrength: Short = 0
   private var virtualizerStrength: Short = 0
@@ -56,16 +75,19 @@ class JodifyEqualizerModule(
       if (sessionId <= 0) return
 
       if (action == AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION) {
-        Log.d(tag, "Audio session opened: $sessionId, attaching effects")
+        Log.i(tag, "Audio session opened via broadcast: $sessionId, attaching effects")
+        activeSessions.add(sessionId)
         attachSession(sessionId)
       } else if (action == AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION) {
-        Log.d(tag, "Audio session closed: $sessionId, releasing effects")
+        Log.i(tag, "Audio session closed via broadcast: $sessionId, releasing effects")
+        activeSessions.remove(sessionId)
         detachSession(sessionId)
       }
     }
   }
 
   init {
+    instance = this
     reactCtx.addLifecycleEventListener(this)
     val filter = IntentFilter().apply {
       addAction(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION)
@@ -77,9 +99,14 @@ class JodifyEqualizerModule(
       } else {
         reactCtx.registerReceiver(sessionReceiver, filter)
       }
-      Log.d(tag, "sessionReceiver registrado exitosamente")
+      Log.i(tag, "sessionReceiver registrado exitosamente")
     } catch (e: Throwable) {
       Log.w(tag, "No se pudo registrar sessionReceiver: ${e.message}")
+    }
+
+    // Attach any sessions that were registered before module initialized
+    for (sid in activeSessions) {
+      attachSession(sid)
     }
   }
 
@@ -89,14 +116,15 @@ class JodifyEqualizerModule(
     val bundle = EffectBundle()
     try {
       val eq = try {
-        Equalizer(1000, sessionId)
-      } catch (_: Throwable) {
         Equalizer(0, sessionId)
+      } catch (e: Throwable) {
+        Log.w(tag, "Equalizer(0, $sessionId) fallo, probando con prioridad 1000: ${e.message}")
+        Equalizer(1000, sessionId)
       }
       eq.enabled = enabled
       bundle.equalizer = eq
       available = true
-      Log.d(tag, "Equalizer creado en sesión $sessionId (${eq.numberOfBands} bandas)")
+      Log.i(tag, "Equalizer creado en sesión $sessionId (${eq.numberOfBands} bandas), enabled=$enabled")
       lastGains?.let { applyGainsToEqualizer(eq, it) }
     } catch (e: Throwable) {
       Log.w(tag, "No se pudo crear Equalizer en sesión $sessionId: ${e.message}")
@@ -104,30 +132,32 @@ class JodifyEqualizerModule(
 
     try {
       val bb = try {
-        BassBoost(1000, sessionId)
-      } catch (_: Throwable) {
         BassBoost(0, sessionId)
+      } catch (_: Throwable) {
+        BassBoost(1000, sessionId)
       }
       if (bb.strengthSupported) {
         bb.setStrength(bassStrength)
       }
       bb.enabled = enabled && bassStrength > 0
       bundle.bassBoost = bb
+      Log.i(tag, "BassBoost creado en sesión $sessionId, strength=$bassStrength, enabled=${bb.enabled}")
     } catch (e: Throwable) {
       Log.w(tag, "BassBoost no soportado en sesión $sessionId: ${e.message}")
     }
 
     try {
       val virt = try {
-        Virtualizer(1000, sessionId)
-      } catch (_: Throwable) {
         Virtualizer(0, sessionId)
+      } catch (_: Throwable) {
+        Virtualizer(1000, sessionId)
       }
       if (virt.strengthSupported) {
         virt.setStrength(virtualizerStrength)
       }
       virt.enabled = enabled && virtualizerStrength > 0
       bundle.virtualizer = virt
+      Log.i(tag, "Virtualizer creado en sesión $sessionId, strength=$virtualizerStrength, enabled=${virt.enabled}")
     } catch (e: Throwable) {
       Log.w(tag, "Virtualizer no soportado en sesión $sessionId: ${e.message}")
     }
@@ -135,13 +165,21 @@ class JodifyEqualizerModule(
     return bundle
   }
 
-  private fun attachSession(sessionId: Int) {
-    if (sessionBundles.containsKey(sessionId)) return
+  fun attachSession(sessionId: Int) {
+    if (sessionId <= 0) return
+    val existing = sessionBundles[sessionId]
+    if (existing?.equalizer != null) {
+      existing.equalizer?.enabled = enabled
+      lastGains?.let { applyGainsToEqualizer(existing.equalizer!!, it) }
+      return
+    }
     val bundle = createBundleForSession(sessionId)
-    sessionBundles[sessionId] = bundle
+    if (bundle.equalizer != null || bundle.bassBoost != null || bundle.virtualizer != null) {
+      sessionBundles[sessionId] = bundle
+    }
   }
 
-  private fun detachSession(sessionId: Int) {
+  fun detachSession(sessionId: Int) {
     sessionBundles.remove(sessionId)?.release()
   }
 
@@ -154,6 +192,7 @@ class JodifyEqualizerModule(
 
   private fun applyGainsToEqualizer(eq: Equalizer, gains: DoubleArray) {
     try {
+      eq.enabled = enabled
       val bands = eq.numberOfBands.toInt()
       val targets = intArrayOf(32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
       val levelRange = try { eq.bandLevelRange } catch (_: Throwable) { shortArrayOf(-1500, 1500) }
@@ -184,6 +223,7 @@ class JodifyEqualizerModule(
         val db = gains.getOrElse(bestIdx) { 0.0 }.toFloat()
         val millibels = (db * 100).roundToInt().coerceIn(minLevel, maxLevel).toShort()
         eq.setBandLevel(bandShort, millibels)
+        Log.i(tag, "Band $bandShort ($centerHz Hz) set to $millibels mB (target: $db dB)")
       }
     } catch (e: Throwable) {
       Log.w(tag, "No se pudieron aplicar las bandas al Equalizer: ${e.message}")
@@ -191,29 +231,40 @@ class JodifyEqualizerModule(
   }
 
   private fun applyGainsInternal(gains: DoubleArray) {
-    ensureGlobalBundle()
     lastGains = gains
-    for ((_, bundle) in sessionBundles) {
-      bundle.equalizer?.let { applyGainsToEqualizer(it, gains) }
+    for (sid in activeSessions) {
+      attachSession(sid)
+    }
+    for ((sid, bundle) in sessionBundles) {
+      bundle.equalizer?.let {
+        it.enabled = enabled
+        applyGainsToEqualizer(it, gains)
+      }
     }
   }
 
   @ReactMethod
   fun isAvailable(callback: Callback) {
-    val ok = ensureGlobalBundle()
+    val ok = sessionBundles.isNotEmpty() || available
     val bands = sessionBundles.values.firstOrNull()?.equalizer?.numberOfBands?.toInt() ?: 10
-    callback.invoke(ok, bands)
+    callback.invoke(true, bands)
   }
 
   @ReactMethod
   fun setEnabled(flag: Boolean) {
     enabled = flag
-    ensureGlobalBundle()
+    Log.i(tag, "setEnabled: $flag across ${sessionBundles.size} sessions")
+    for (sid in activeSessions) {
+      attachSession(sid)
+    }
     for ((_, bundle) in sessionBundles) {
       try {
         bundle.equalizer?.enabled = flag
         bundle.bassBoost?.enabled = flag && bassStrength > 0
         bundle.virtualizer?.enabled = flag && virtualizerStrength > 0
+        if (flag && lastGains != null && bundle.equalizer != null) {
+          applyGainsToEqualizer(bundle.equalizer!!, lastGains!!)
+        }
       } catch (e: Throwable) {
         Log.w(tag, "Error al cambiar estado del bundle: ${e.message}")
       }
@@ -231,6 +282,9 @@ class JodifyEqualizerModule(
   fun setBassBoost(strength: Double) {
     val s = (strength * 10).roundToInt().coerceIn(0, 1000).toShort()
     bassStrength = s
+    for (sid in activeSessions) {
+      attachSession(sid)
+    }
     ensureGlobalBundle()
     for ((_, bundle) in sessionBundles) {
       try {
@@ -250,6 +304,9 @@ class JodifyEqualizerModule(
   fun setVirtualizer(strength: Double) {
     val s = (strength * 10).roundToInt().coerceIn(0, 1000).toShort()
     virtualizerStrength = s
+    for (sid in activeSessions) {
+      attachSession(sid)
+    }
     ensureGlobalBundle()
     for ((_, bundle) in sessionBundles) {
       try {

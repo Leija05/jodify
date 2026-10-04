@@ -21,6 +21,9 @@ import type { UserAccess, Song } from '@lib/types';
 import type { CommunityUser } from '@services/users.service';
 import { fetchUserStats, fetchUserTopSongs } from '@services/users.service';
 import { getThemeDefinition } from '@lib/avatar';
+import { calculateMelomanoLevel } from '@lib/utils';
+import { PetCompanionCard } from '../social/PetCompanionCard';
+import { PixelPet } from '../social/PixelPet';
 import { useLibraryStore } from '@stores/library.store';
 import { usePlayerStore } from '@stores/player.store';
 import { useEqStore } from '@stores/eq.store';
@@ -64,7 +67,7 @@ export function UserProfileModal({
   const openFullscreen = useUiStore((s) => s.openFullscreen);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number } | null>(null);
+  const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number; listening_seconds?: number } | null>(null);
   const [topSongs, setTopSongs] = useState<Array<{ song_name: string; count: number }>>([]);
 
   // Animation values for smooth, premium entry
@@ -111,6 +114,15 @@ export function UserProfileModal({
   const role = (user?.role || 'user').toLowerCase();
 
   const themeDef = useMemo(() => getThemeDefinition(user?.theme), [user?.theme]);
+
+  const melomano = useMemo(() => {
+    return calculateMelomanoLevel({
+      liked: isCurrentUser ? likedIds.length : stats?.liked ?? 0,
+      played: stats?.played ?? (isCurrentUser ? downloadedIds.length : 0),
+      downloaded: isCurrentUser ? downloadedIds.length : stats?.downloaded ?? 0,
+      listening_seconds: user?.listening_seconds ?? stats?.listening_seconds ?? 0,
+    });
+  }, [user?.listening_seconds, likedIds.length, downloadedIds.length, stats, isCurrentUser]);
 
   const roleTheme = useMemo(() => {
     switch (role) {
@@ -303,6 +315,17 @@ export function UserProfileModal({
                     showPresence
                     presence={isOnline ? 'online' : 'offline'}
                   />
+                  {user.pet_type && user.pet_type !== 'none' && (
+                    <View style={styles.avatarPetFloat}>
+                      <PixelPet
+                        petType={user.pet_type}
+                        variant={user.pet_variant}
+                        petName={user.pet_name}
+                        size={40}
+                        interactive={true}
+                      />
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.nameRow}>
@@ -350,6 +373,17 @@ export function UserProfileModal({
                     : `Última conexión ${formatRelativeTime(communityUser?.last_seen)}`}
                 </Text>
               </View>
+
+              {/* Pet Companion Card */}
+              <PetCompanionCard
+                petType={user.pet_type}
+                petVariant={user.pet_variant}
+                petName={user.pet_name}
+                isCurrentUser={isCurrentUser}
+                onCustomize={() => {
+                  setEditModalOpen(true);
+                }}
+              />
 
               {/* Anthem Song Banner if present */}
               {user.anthem_song_name ? (
@@ -448,6 +482,48 @@ export function UserProfileModal({
                     {isCurrentUser ? eqPreset.toUpperCase() : isOnline ? 'En vivo' : 'Offline'}
                   </Text>
                   <Text style={styles.statTitle}>{isCurrentUser ? 'Ecualizador' : 'Estado'}</Text>
+                </View>
+              </View>
+
+              {/* Melómano Rank & Listening Time Card */}
+              <View style={styles.melomanoCard}>
+                <LinearGradient
+                  colors={['rgba(255, 215, 0, 0.12)', 'rgba(127, 0, 255, 0.08)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={styles.melomanoTop}>
+                  <View style={styles.melomanoBadgeWrap}>
+                    <Text style={styles.melomanoEmoji}>{melomano.badgeEmoji}</Text>
+                    <View>
+                      <Text style={styles.melomanoRankTitle}>{melomano.title}</Text>
+                      <Text style={styles.melomanoLevelText}>NIVEL {melomano.level}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.melomanoHoursBadge}>
+                    <Ionicons name="time-outline" size={13} color="#FFD700" />
+                    <Text style={styles.melomanoHoursText}>{melomano.listenedHours} h escuchadas</Text>
+                  </View>
+                </View>
+
+                {/* XP Progress Bar */}
+                <View style={styles.xpBarContainer}>
+                  <View style={styles.xpBarLabels}>
+                    <Text style={styles.xpLabel}>Progreso a Nivel {melomano.level + 1}</Text>
+                    <Text style={styles.xpValue}>
+                      {melomano.currentXp} / {melomano.nextLevelXp} XP ({melomano.progressPercent}%)
+                    </Text>
+                  </View>
+                  <View style={styles.xpTrack}>
+                    <LinearGradient
+                      colors={['#FFD700', '#FF8800']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.xpFill, { width: `${melomano.progressPercent}%` }]}
+                    />
+                  </View>
                 </View>
               </View>
 
@@ -581,6 +657,17 @@ const styles = StyleSheet.create({
   },
   avatarGlowContainer: {
     marginBottom: 12,
+    position: 'relative',
+  },
+  avatarPetFloat: {
+    position: 'absolute',
+    bottom: -4,
+    right: -12,
+    backgroundColor: 'rgba(16, 16, 28, 0.95)',
+    borderRadius: 14,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   nameRow: {
     flexDirection: 'row',
@@ -910,5 +997,84 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
+  },
+  melomanoCard: {
+    borderRadius: 18,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    overflow: 'hidden',
+    padding: 14,
+    marginVertical: 6,
+    position: 'relative',
+  },
+  melomanoTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  melomanoBadgeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  melomanoEmoji: {
+    fontSize: 22,
+  },
+  melomanoRankTitle: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  melomanoLevelText: {
+    color: '#FFD700',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  melomanoHoursBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 215, 0, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  melomanoHoursText: {
+    color: '#FFD700',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  xpBarContainer: {
+    gap: 5,
+  },
+  xpBarLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  xpLabel: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  xpValue: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  xpTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  xpFill: {
+    height: '100%',
+    borderRadius: 3,
   },
 });

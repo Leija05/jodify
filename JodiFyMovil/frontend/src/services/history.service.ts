@@ -1,10 +1,10 @@
 import { apiFetch } from './api';
 import type { ListeningHistoryRow } from '../lib/types';
 
-export async function recordHistory(songId: string | number, username: string): Promise<void> {
+export async function recordHistory(songId: string | number, username: string, songName?: string): Promise<void> {
   await apiFetch<void>('/api/history', {
     method: 'POST',
-    body: { song_id: songId, username, song_name: '' },
+    body: { song_id: songId, username, song_name: songName ?? null },
   });
 }
 

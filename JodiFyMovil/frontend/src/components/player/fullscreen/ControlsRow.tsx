@@ -1,6 +1,7 @@
 import React from 'react';
 import { Animated, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import { colors } from '@theme';
 
@@ -51,17 +52,22 @@ export const ControlsRow = React.memo(
           </PressableFluid>
 
           <PressableFluid onPress={onPrevious} haptic="light" style={styles.controlBtn} hitSlop={8}>
-            <Ionicons name="play-skip-back" size={30} color={colors.text} />
+            <Ionicons name="play-skip-back" size={28} color={colors.text} />
           </PressableFluid>
 
           <PressableFluid onPress={onTogglePlay} haptic="medium" style={styles.playBtn}>
-            <View style={styles.playBtnFill}>
-              <Ionicons name={isPlaying ? 'pause' : 'play'} size={36} color={colors.white} />
-            </View>
+            <LinearGradient
+              colors={['#7F00FF', '#00E5FF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.playBtnFill}
+            >
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={34} color={colors.white} />
+            </LinearGradient>
           </PressableFluid>
 
           <PressableFluid onPress={onNext} haptic="light" style={styles.controlBtn} hitSlop={8}>
-            <Ionicons name="play-skip-forward" size={30} color={colors.text} />
+            <Ionicons name="play-skip-forward" size={28} color={colors.text} />
           </PressableFluid>
 
           <PressableFluid
@@ -98,23 +104,22 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   controlBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(127,0,255,0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(127,0,255,0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     position: 'relative',
   },
   controlBtnActive: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primaryStrong,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: 'rgba(0, 229, 255, 0.16)',
+    borderColor: 'rgba(0, 229, 255, 0.45)',
+    shadowColor: '#00E5FF',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 6,
   },
   repeatOneBadge: {
@@ -140,11 +145,11 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
+    shadowColor: '#7F00FF',
+    shadowOpacity: 0.55,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 12,
   },
   playBtnFill: {
     width: '100%',
@@ -152,7 +157,6 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
   },
 });
 

@@ -1,21 +1,45 @@
 diff --git a/node_modules/expo-av/android/src/main/java/expo/modules/av/player/SimpleExoPlayerData.java b/node_modules/expo-av/android/src/main/java/expo/modules/av/player/SimpleExoPlayerData.java
-index 8835a39..eaad1c3 100644
+index 8835a39..b16ae00 100644
 --- a/node_modules/expo-av/android/src/main/java/expo/modules/av/player/SimpleExoPlayerData.java
 +++ b/node_modules/expo-av/android/src/main/java/expo/modules/av/player/SimpleExoPlayerData.java
-@@ -78,6 +78,20 @@ class SimpleExoPlayerData extends PlayerData
+@@ -78,6 +78,44 @@ class SimpleExoPlayerData extends PlayerData
  
    // Lifecycle
  
 +  private void sendAudioSessionBroadcast(int audioSessionId, boolean open) {
 +    if (audioSessionId > 0 && mReactContext != null) {
++      android.util.Log.i(TAG, "sendAudioSessionBroadcast triggered: sessionId=" + audioSessionId + ", open=" + open);
++      // 1. Direct in-memory invocation to JodifyEqualizerModule (fast, 100% reliable)
++      try {
++        Class<?> clazz = Class.forName("com.jodify.mobile.eq.JodifyEqualizerModule");
++        java.lang.reflect.Method method = clazz.getMethod("onAudioSession", int.class, boolean.class);
++        method.invoke(null, audioSessionId, open);
++        android.util.Log.i(TAG, "Direct invocation onAudioSession succeeded for sessionId=" + audioSessionId);
++      } catch (Throwable t) {
++        android.util.Log.w(TAG, "Direct invocation onAudioSession failed: " + t.getMessage());
++      }
++
++      // 2. Explicit broadcast targeted to this app's package
 +      try {
 +        String action = open
 +          ? android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION
 +          : android.media.audiofx.AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION;
-+        android.content.Intent intent = new android.content.Intent(action);
-+        intent.putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId);
-+        intent.putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, mReactContext.getPackageName());
-+        mReactContext.sendBroadcast(intent);
++        android.content.Intent appIntent = new android.content.Intent(action);
++        appIntent.setPackage(mReactContext.getPackageName());
++        appIntent.putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId);
++        appIntent.putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, mReactContext.getPackageName());
++        mReactContext.sendBroadcast(appIntent);
++      } catch (Throwable ignored) {}
++
++      // 3. System-wide broadcast for MIUI / Dolby / system musicfx
++      try {
++        String action = open
++          ? android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION
++          : android.media.audiofx.AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION;
++        android.content.Intent sysIntent = new android.content.Intent(action);
++        sysIntent.putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId);
++        sysIntent.putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, mReactContext.getPackageName());
++        mReactContext.sendBroadcast(sysIntent);
 +      } catch (Throwable ignored) {}
 +    }
 +  }
@@ -23,7 +47,7 @@ index 8835a39..eaad1c3 100644
    @Override
    public void load(final Bundle status, final LoadCompletionListener loadCompletionListener) {
      mLoadCompletionListener = loadCompletionListener;
-@@ -110,6 +124,7 @@ class SimpleExoPlayerData extends PlayerData
+@@ -110,6 +148,7 @@ class SimpleExoPlayerData extends PlayerData
  
        // Prepare the player with the source.
        mSimpleExoPlayer.prepare(source);
@@ -31,7 +55,7 @@ index 8835a39..eaad1c3 100644
        setStatus(status, null);
      } catch (IllegalStateException e) {
        onFatalError(e);
-@@ -121,6 +136,7 @@ class SimpleExoPlayerData extends PlayerData
+@@ -121,6 +160,7 @@ class SimpleExoPlayerData extends PlayerData
      super.release();
      stopUpdatingProgressIfNecessary();
      if (mSimpleExoPlayer != null) {
@@ -39,7 +63,16 @@ index 8835a39..eaad1c3 100644
        mSimpleExoPlayer.release();
        mSimpleExoPlayer = null;
      }
-@@ -285,12 +301,22 @@ class SimpleExoPlayerData extends PlayerData
+@@ -155,6 +195,8 @@ class SimpleExoPlayerData extends PlayerData
+ 
+     mSimpleExoPlayer.setPlaybackParameters(new PlaybackParameters(mRate, mShouldCorrectPitch ? 1.0f : mRate));
+ 
++    sendAudioSessionBroadcast(mSimpleExoPlayer.getAudioSessionId(), true);
++
+     mSimpleExoPlayer.setPlayWhenReady(mShouldPlay);
+   }
+ 
+@@ -285,12 +327,22 @@ class SimpleExoPlayerData extends PlayerData
  
    }
  

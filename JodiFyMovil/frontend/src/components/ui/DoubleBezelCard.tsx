@@ -5,13 +5,14 @@ import { colors, radius, elevation } from '@theme';
 interface DoubleBezelCardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  innerStyle?: StyleProp<ViewStyle>;
   elevated?: boolean;
   innerPadding?: number;
   outerPadding?: number;
 }
 
 export const DoubleBezelCard = React.forwardRef<View, DoubleBezelCardProps>(
-  ({ children, style, elevated = false, innerPadding = 16, outerPadding = 2, ...props }, ref) => {
+  ({ children, style, innerStyle, elevated = false, innerPadding = 16, outerPadding = 2, ...props }, ref) => {
     return (
       <View
         ref={ref}
@@ -23,7 +24,7 @@ export const DoubleBezelCard = React.forwardRef<View, DoubleBezelCardProps>(
         ]}
         {...props}
       >
-        <View style={[styles.inner, { padding: innerPadding, borderRadius: radius.cardInner }]}>{children}</View>
+        <View style={[styles.inner, { padding: innerPadding, borderRadius: radius.cardInner }, innerStyle]}>{children}</View>
       </View>
     );
   }

@@ -23,6 +23,9 @@ vi.mock('../../services/lockscreen.service', () => ({
 
 vi.mock('../../services/equalizer.service', () => ({
   applyNative: vi.fn(),
+  enableEqualizer: vi.fn(),
+  applyBassBoost: vi.fn(),
+  applyVirtualizer: vi.fn(),
 }));
 
 vi.mock('../../services/history.service', () => ({

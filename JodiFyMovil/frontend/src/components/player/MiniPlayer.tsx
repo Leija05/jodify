@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '@stores/player.store';
 import { useUiStore } from '@stores/ui.store';
 import { useSettingsStore } from '@stores/settings.store';
+import * as Haptics from 'expo-haptics';
 
 const MINI_PLAYER_HEIGHT = 68;
 
@@ -46,6 +47,7 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
   const openFullscreen = useUiStore((s) => s.openFullscreen);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
 
+  const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
 
   const coverUrl = useMemo(() => (currentSong ? pickCoverUrl(currentSong) : null), [currentSong]);
@@ -56,20 +58,73 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_event, gestureState) => Math.abs(gestureState.dy) > 5,
+      onMoveShouldSetPanResponder: (_event, gestureState) =>
+        Math.abs(gestureState.dy) > 7 || Math.abs(gestureState.dx) > 10,
       onPanResponderMove: (_event, gestureState) => {
-        if (gestureState.dy < 0) {
-          translateY.setValue(gestureState.dy);
+        if (Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.2) {
+          if (gestureState.dy < 0) {
+            translateY.setValue(gestureState.dy);
+          }
+        } else {
+          translateX.setValue(gestureState.dx * 0.7);
         }
       },
       onPanResponderRelease: (_event, gestureState) => {
         if (gestureState.dy < -35 || gestureState.vy < -0.4) {
           openFullscreen();
+          Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }).start();
+          Animated.spring(translateX, { toValue: 0, ...motion.springQuick, useNativeDriver: true }).start();
+          return;
         }
-        Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }).start();
+
+        if (gestureState.dx < -50 || gestureState.vx < -0.5) {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Animated.timing(translateX, {
+            toValue: -110,
+            duration: 100,
+            useNativeDriver: true,
+          }).start(() => {
+            next();
+            translateX.setValue(90);
+            Animated.spring(translateX, {
+              toValue: 0,
+              damping: 20,
+              stiffness: 240,
+              useNativeDriver: true,
+            }).start();
+          });
+          Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }).start();
+          return;
+        } else if (gestureState.dx > 50 || gestureState.vx > 0.5) {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Animated.timing(translateX, {
+            toValue: 110,
+            duration: 100,
+            useNativeDriver: true,
+          }).start(() => {
+            previous();
+            translateX.setValue(-90);
+            Animated.spring(translateX, {
+              toValue: 0,
+              damping: 20,
+              stiffness: 240,
+              useNativeDriver: true,
+            }).start();
+          });
+          Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }).start();
+          return;
+        }
+
+        Animated.parallel([
+          Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }),
+          Animated.spring(translateX, { toValue: 0, ...motion.springQuick, useNativeDriver: true }),
+        ]).start();
       },
       onPanResponderTerminate: () => {
-        Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }).start();
+        Animated.parallel([
+          Animated.spring(translateY, { toValue: 0, ...motion.springQuick, useNativeDriver: true }),
+          Animated.spring(translateX, { toValue: 0, ...motion.springQuick, useNativeDriver: true }),
+        ]).start();
       },
     })
   ).current;
@@ -84,7 +139,7 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
         styles.container,
         {
           bottom: Math.max(insets.bottom, 8) + 76,
-          transform: [{ translateY }],
+          transform: [{ translateY }, { translateX }],
         },
         style,
       ]}
@@ -100,6 +155,11 @@ export const MiniPlayer = React.forwardRef<View, MiniPlayerProps>(({ style }, re
 
         <PressableFluid
           onPress={openFullscreen}
+          onLongPress={() => {
+            if (currentSong) {
+              useUiStore.getState().openSongActions(currentSong);
+            }
+          }}
           haptic={false}
           style={styles.clickableZone}
           contentStyle={styles.clickableInner}
