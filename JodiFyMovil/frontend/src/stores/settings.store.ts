@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { mmkv, STORAGE_KEYS } from '../lib/mmkv';
+import { mmkv, mmkvReady, STORAGE_KEYS } from '../lib/mmkv';
 import type { UserAccess, SleepTimerState } from '../lib/types';
 import { apiFetch } from '../services/api';
 
@@ -45,8 +45,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ user });
     if (user) {
       mmkv.setObject(STORAGE_KEYS.authUser, user);
+      try {
+        const { useLibraryStore } = require('./library.store');
+        void useLibraryStore.getState().refreshLikes();
+      } catch {}
     } else {
       mmkv.delete(STORAGE_KEYS.authUser);
+      try {
+        const { useLibraryStore } = require('./library.store');
+        useLibraryStore.setState({ likedIds: [] });
+      } catch {}
     }
   },
 
@@ -165,9 +173,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     mmkv.delete(STORAGE_KEYS.sleepTimer);
   },
 
-  loadPersisted: () => {
+  loadPersisted: async () => {
     try {
+      await mmkvReady;
       let user = mmkv.getObject<UserAccess>(STORAGE_KEYS.authUser);
+      if (!user) {
+        try {
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const raw = await AsyncStorage.getItem(STORAGE_KEYS.authUser);
+          if (raw) user = JSON.parse(raw);
+        } catch {}
+      }
       const volume = mmkv.getNumber(STORAGE_KEYS.userVolume) ?? 1;
       const muted = mmkv.getBoolean(STORAGE_KEYS.userMuted) ?? false;
       const hapticsEnabled = mmkv.getBoolean(STORAGE_KEYS.hapticsEnabled) ?? true;
@@ -202,6 +218,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({ user: user ?? null, volume, muted, hapticsEnabled, theme });
       if (user?.username) {
         void get().refreshProfile();
+        try {
+          const { useLibraryStore } = require('./library.store');
+          void useLibraryStore.getState().refreshLikes();
+        } catch {}
       }
     } catch {
     }

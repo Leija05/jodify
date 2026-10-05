@@ -11,25 +11,70 @@ router = APIRouter(prefix="/api", tags=["social"])
 @router.get("/likes")
 async def list_likes(username: str) -> list:
     cursor = col("likes").find({"username": username}, {"song_id": 1, "_id": 0})
-    return [doc["song_id"] for doc in await cursor.to_list(1000)]
+    raw_ids = [doc["song_id"] for doc in await cursor.to_list(1000)]
+    return list(dict.fromkeys(raw_ids))
 
 
 @router.post("/likes", status_code=201)
 async def add_like(body: LikeRequest) -> None:
+    raw_id = str(body.song_id).strip()
     try:
         await col("likes").insert_one(
-            {"username": body.username, "song_id": str(body.song_id), "created_at": datetime.now().isoformat()}
+            {"username": body.username, "song_id": raw_id, "created_at": datetime.now().isoformat()}
         )
     except Exception as exc:
-        if "E11000" in str(exc):
-            # Idempotente: si ya está en favoritos, se considera exitoso y previene rollback
-            return
-        raise
+        if "E11000" not in str(exc):
+            raise
+
+    # Sincronización cruzada: vincular tanto ObjectId como YouTube ID
+    try:
+        from bson import ObjectId
+        if len(raw_id) == 24:
+            try:
+                song = await col("songs").find_one({"_id": ObjectId(raw_id)})
+                if song and song.get("youtube_id"):
+                    yt_id = str(song["youtube_id"])
+                    await col("likes").insert_one({
+                        "username": body.username,
+                        "song_id": yt_id,
+                        "created_at": datetime.now().isoformat()
+                    })
+            except Exception:
+                pass
+        elif len(raw_id.replace("yt-", "")) == 11:
+            clean_yt = raw_id.replace("yt-", "")
+            song = await col("songs").find_one({"youtube_id": clean_yt})
+            if song:
+                await col("likes").insert_one({
+                    "username": body.username,
+                    "song_id": str(song["_id"]),
+                    "created_at": datetime.now().isoformat()
+                })
+    except Exception:
+        pass
 
 
 @router.delete("/likes", status_code=204)
 async def remove_like(username: str, song_id: str) -> None:
-    await col("likes").delete_one({"username": username, "song_id": song_id})
+    raw_id = str(song_id).strip()
+    clean_yt = raw_id.replace("yt-", "")
+    target_ids = {raw_id, clean_yt, f"yt-{clean_yt}"}
+
+    try:
+        from bson import ObjectId
+        if len(raw_id) == 24:
+            song = await col("songs").find_one({"_id": ObjectId(raw_id)})
+            if song and song.get("youtube_id"):
+                target_ids.add(str(song["youtube_id"]))
+                target_ids.add(f"yt-{song['youtube_id']}")
+        elif len(clean_yt) == 11:
+            song = await col("songs").find_one({"youtube_id": clean_yt})
+            if song:
+                target_ids.add(str(song["_id"]))
+    except Exception:
+        pass
+
+    await col("likes").delete_many({"username": username, "song_id": {"$in": list(target_ids)}})
 
 
 @router.get("/likes/has")

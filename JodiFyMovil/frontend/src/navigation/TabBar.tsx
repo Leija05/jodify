@@ -8,7 +8,7 @@ import { BlurView } from 'expo-blur';
 import { usePlayerStore } from '@stores/player.store';
 import { useUiStore, type TabId } from '@stores/ui.store';
 import { getSongPalette } from '@lib/palette';
-import { colors, typography, motion, radius } from '@theme';
+import { colors, typography, motion } from '@theme';
 
 const TABS: Array<{ id: TabId; label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = [
   { id: 'home', label: 'Inicio', icon: 'home-outline', iconActive: 'home' },
@@ -84,53 +84,71 @@ export function TabBar() {
 
   return (
     <View style={[styles.wrap, { bottom: Math.max(insets.bottom, 8) }]}>
-      <View style={styles.bar} onLayout={onBarLayout}>
-        {Platform.OS === 'ios' ? (
-          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(14, 14, 20, 0.95)', borderRadius: radius.pill }]} />
-        )}
-        {tabWidth > 0 && (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.indicator,
-              {
-                width: tabWidth,
-                transform: [{ translateX: indicatorTranslate }],
-                backgroundColor: palette.primary + '38',
-                borderColor: palette.secondary + '75',
-                shadowColor: palette.primary,
-              },
-            ]}
-          />
-        )}
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          return (
-            <Pressable
-              key={t.id}
-              onPress={() => handleTabPress(t.id)}
-              style={styles.item}
-              hitSlop={6}
-              testID={`tab-${t.id}`}
+      {/* Outer Machined Shell with Hairline Glow */}
+      <View style={[styles.outerShell, { shadowColor: palette.primary }]}>
+        {/* Inner Glass Core */}
+        <View style={styles.innerCore} onLayout={onBarLayout}>
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(8, 8, 14, 0.96)', borderRadius: 26 }]} />
+          )}
+
+          {/* Top Hairline Specular Highlight */}
+          <View style={styles.specularHighlight} />
+
+          {tabWidth > 0 && (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.indicator,
+                {
+                  width: tabWidth,
+                  transform: [{ translateX: indicatorTranslate }],
+                  backgroundColor: palette.primary + '28',
+                  borderColor: palette.secondary + '60',
+                  shadowColor: palette.primary,
+                },
+              ]}
             >
-              <View style={styles.itemInner}>
-                {t.id === 'library' && queueLength > 0 ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{Math.min(queueLength, 99)}</Text>
-                  </View>
-                ) : null}
-                <Ionicons
-                  name={active ? t.iconActive : t.icon}
-                  size={22}
-                  color={active ? colors.white : colors.textMuted}
-                />
-                <Text style={[styles.label, active && styles.labelActive]}>{t.label}</Text>
-              </View>
-            </Pressable>
-          );
-        })}
+              <View
+                style={[
+                  styles.activeGlowDot,
+                  { backgroundColor: palette.secondary, shadowColor: palette.secondary },
+                ]}
+              />
+            </Animated.View>
+          )}
+
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <Pressable
+                key={t.id}
+                onPress={() => handleTabPress(t.id)}
+                style={styles.item}
+                hitSlop={6}
+                testID={`tab-${t.id}`}
+              >
+                <View style={styles.itemInner}>
+                  {t.id === 'library' && queueLength > 0 ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{Math.min(queueLength, 99)}</Text>
+                    </View>
+                  ) : null}
+                  <Ionicons
+                    name={active ? t.iconActive : t.icon}
+                    size={22}
+                    color={active ? colors.white : colors.textMuted}
+                  />
+                  <Text style={[styles.label, active && [styles.labelActive, { color: colors.white }]]}>
+                    {t.label}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -143,30 +161,61 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 100,
   },
-  bar: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(18, 18, 28, 0.97)',
-    borderWidth: 1.2,
+  outerShell: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 30,
+    padding: 2.5,
+    borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: 26,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    elevation: 18,
+  },
+  innerCore: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(10, 10, 18, 0.94)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 27.5,
     height: TAB_BAR_HEIGHT,
     paddingHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.55,
-    shadowRadius: 24,
-    elevation: 16,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  specularHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    pointerEvents: 'none',
   },
   indicator: {
     position: 'absolute',
     top: 6,
     bottom: 6,
     left: 4,
-    borderRadius: 20,
+    borderRadius: 22,
     backgroundColor: 'rgba(127, 0, 255, 0.28)',
     borderWidth: 1,
     borderColor: 'rgba(127, 0, 255, 0.55)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
+    elevation: 4,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 4,
+  },
+  activeGlowDot: {
+    width: 14,
+    height: 2.5,
+    borderRadius: 1.5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
   },
   item: {
     flex: 1,
@@ -207,8 +256,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   labelActive: {
-    color: colors.white,
     fontFamily: typography.labelLarge.fontFamily,
     fontSize: 11,
+    letterSpacing: 0.3,
   },
 });

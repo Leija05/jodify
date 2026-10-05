@@ -1,6 +1,7 @@
 import { apiFetch } from './api';
-import { mmkv, STORAGE_KEYS } from '../lib/mmkv';
+import { mmkv, mmkvReady, STORAGE_KEYS } from '../lib/mmkv';
 import { secureStorage, AUTH_KEYS } from '../lib/secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { UserAccess } from '../lib/types';
 
 export interface LoginResponse {
@@ -70,8 +71,14 @@ export async function refreshToken(): Promise<{ token: string }> {
 }
 
 export async function getAuthUser(): Promise<UserAccess | null> {
+  await mmkvReady;
   const user = mmkv.getObject<UserAccess>(STORAGE_KEYS.authUser);
-  return user ?? null;
+  if (user) return user;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.authUser);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
 }
 
 export async function setAuthUser(user: UserAccess): Promise<void> {
@@ -97,8 +104,16 @@ export async function saveRefreshToken(refreshToken: string): Promise<void> {
 }
 
 export async function getToken(): Promise<string | null> {
+  await mmkvReady;
   const token = await secureStorage.getItem(AUTH_KEYS.accessToken);
-  return token ?? mmkv.getString(STORAGE_KEYS.authToken) ?? null;
+  if (token) return token;
+  const mmkvTok = mmkv.getString(STORAGE_KEYS.authToken) ?? mmkv.getString(STORAGE_KEYS.token);
+  if (mmkvTok) return mmkvTok;
+  try {
+    return await AsyncStorage.getItem(STORAGE_KEYS.authToken);
+  } catch {
+    return null;
+  }
 }
 
 export async function getStoredRefreshToken(): Promise<string | null> {

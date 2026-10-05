@@ -2,17 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const memoryStore = new Map<string, string | number | boolean>();
 
-// Pre-fill memoryStore from AsyncStorage asynchronously on startup
-AsyncStorage.getAllKeys()
-  .then((keys) => AsyncStorage.multiGet(keys))
-  .then((pairs) => {
+export const mmkvReady: Promise<void> = (async () => {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const pairs = await AsyncStorage.multiGet(keys);
     for (const [k, v] of pairs) {
       if (v !== null && !memoryStore.has(k)) {
         memoryStore.set(k, v);
       }
     }
-  })
-  .catch(() => {});
+  } catch {}
+})();
 
 let storage: {
   getString: (key: string) => string | undefined;

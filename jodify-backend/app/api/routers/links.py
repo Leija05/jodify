@@ -312,9 +312,9 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 logger.warning(f"No se pudo guardar YOUTUBE_COOKIES_TEXT temporal: {e}")
 
     configs = [
-        # Estrategia 1: Cliente Android nativo (formato 18 progressive mp4 con AAC estéreo o audio directo - inmune a bloqueos en datacenter)
+        # Estrategia 1: Cliente TV + VisionOS (inmune a bloqueos antibot en datacenters de Render/AWS, audio puro AAC 140 / Opus 251)
         {
-            "format": "18/bestaudio[ext=m4a]/bestaudio/best",
+            "format": "140/251/bestaudio[ext=m4a]/bestaudio/18/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
@@ -322,11 +322,53 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "socket_timeout": 15,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"],
+                    "player_client": ["tv", "visionos"],
                 }
             },
         },
-        # Estrategia 2: Cliente Android Music (stream de audio m4a/opus de alta fidelidad)
+        # Estrategia 2: Cliente TV individual
+        {
+            "format": "140/251/bestaudio/18/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 15,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["tv"],
+                }
+            },
+        },
+        # Estrategia 3: Cliente VisionOS
+        {
+            "format": "140/251/bestaudio/18/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 15,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["visionos"],
+                }
+            },
+        },
+        # Estrategia 4: Cliente Web Creator + Android Creator
+        {
+            "format": "140/bestaudio/18/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 15,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["web_creator", "android_creator"],
+                }
+            },
+        },
+        # Estrategia 5: Cliente Android Music / Android
         {
             "format": "140/bestaudio[ext=m4a]/bestaudio/18/best",
             "quiet": True,
@@ -340,21 +382,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 }
             },
         },
-        # Estrategia 3: TV Embedded con fallback a Android
-        {
-            "format": "18/bestaudio/best",
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 15,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["tv_embedded", "android"],
-                }
-            },
-        },
-        # Estrategia 4: iOS / mweb estándar
+        # Estrategia 6: iOS / mweb estándar
         {
             "format": "18/bestaudio/best",
             "quiet": True,
@@ -394,6 +422,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
 async def match_track(
     artist: str = Query(""),
     title: str = Query(...),
+    exclude_id: str | None = Query(None),
 ) -> dict[str, Any]:
     """Busca en YouTube por Artista y Título en ~100ms y devuelve el youtube_id y url para reproducción instantánea."""
     from ...services.link_resolver import _search_youtube_video_id
@@ -401,10 +430,10 @@ async def match_track(
     if not query:
         raise HTTPException(status_code=400, detail="Query vacía")
 
-    yt_id = await _search_youtube_video_id(query)
+    yt_id = await _search_youtube_video_id(query, exclude_id=exclude_id)
     if not yt_id:
         clean_title = re.sub(r"[\(\[\{].*?[\)\]\}]", "", title).strip()
-        yt_id = await _search_youtube_video_id(f"{artist.strip()} {clean_title}".strip())
+        yt_id = await _search_youtube_video_id(f"{artist.strip()} {clean_title}".strip(), exclude_id=exclude_id)
 
     if not yt_id:
         raise HTTPException(status_code=404, detail="No se encontró video en YouTube para este tema")

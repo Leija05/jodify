@@ -8,6 +8,8 @@ import {
   Pressable,
   ScrollView,
   Animated,
+  Image,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,7 +23,7 @@ import type { UserAccess, Song } from '@lib/types';
 import type { CommunityUser } from '@services/users.service';
 import { fetchUserStats, fetchUserTopSongs } from '@services/users.service';
 import { getThemeDefinition } from '@lib/avatar';
-import { calculateMelomanoLevel } from '@lib/utils';
+import { calculateMelomanoLevel, pickCoverUrl } from '@lib/utils';
 import { PetCompanionCard } from '../social/PetCompanionCard';
 import { PixelPet } from '../social/PixelPet';
 import { useLibraryStore } from '@stores/library.store';
@@ -29,6 +31,7 @@ import { usePlayerStore } from '@stores/player.store';
 import { useEqStore } from '@stores/eq.store';
 import { useUiStore } from '@stores/ui.store';
 import { useJamStore } from '@stores/jam.store';
+import { useSettingsStore } from '@stores/settings.store';
 import { colors } from '@theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -54,19 +57,35 @@ function formatRelativeTime(dateString?: string | null): string {
 export function UserProfileModal({
   visible,
   onClose,
-  user,
+  user: userProp,
   isCurrentUser = false,
   onLogout,
   onOpenAccountDetails,
 }: UserProfileModalProps) {
+  const authUser = useSettingsStore((s) => s.user);
+  const user = useMemo(() => {
+    if (isCurrentUser && authUser) {
+      return {
+        ...userProp,
+        ...authUser,
+      };
+    }
+    return userProp;
+  }, [isCurrentUser, authUser, userProp]);
+
   const songs = useLibraryStore((s) => s.songs);
   const likedIds = useLibraryStore((s) => s.likedIds);
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
   const eqPreset = useEqStore((s) => s.preset);
   const playSong = usePlayerStore((s) => s.playSong);
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlayerPlaying = usePlayerStore((s) => s.isPlaying);
+  const pauseSong = usePlayerStore((s) => s.pause);
+  const resumeSong = usePlayerStore((s) => s.play);
   const openFullscreen = useUiStore((s) => s.openFullscreen);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editModalTab, setEditModalTab] = useState<'identity' | 'anthem' | 'avatar' | 'pet' | 'frame' | 'theme' | 'animation'>('identity');
   const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number; listening_seconds?: number } | null>(null);
   const [topSongs, setTopSongs] = useState<Array<{ song_name: string; count: number }>>([]);
 
@@ -194,6 +213,59 @@ export function UserProfileModal({
     }, 150);
   }, [nowPlaying, songs, playSong, onClose, openFullscreen]);
 
+  const anthemSong = useMemo(() => {
+    if (!user?.anthem_song_name && !user?.anthem_song_id) return null;
+    return (
+      songs.find(
+        (s) =>
+          (user.anthem_song_id && String(s.id) === String(user.anthem_song_id)) ||
+          (user.anthem_song_name && s.name.toLowerCase().trim() === user.anthem_song_name.toLowerCase().trim())
+      ) || null
+    );
+  }, [songs, user?.anthem_song_id, user?.anthem_song_name]);
+
+  const anthemCoverUrl = useMemo(() => {
+    if (!anthemSong) return null;
+    const picked = pickCoverUrl(anthemSong);
+    if (picked) return picked;
+    if (anthemSong.youtube_id) {
+      return `https://i.ytimg.com/vi/${anthemSong.youtube_id}/hqdefault.jpg`;
+    }
+    return null;
+  }, [anthemSong]);
+
+  const isAnthemPlaying = useMemo(() => {
+    if (!isPlayerPlaying || !currentSong || !user?.anthem_song_name) return false;
+    if (user.anthem_song_id && String(currentSong.id) === String(user.anthem_song_id)) return true;
+    return currentSong.name.toLowerCase().trim() === user.anthem_song_name.toLowerCase().trim();
+  }, [isPlayerPlaying, currentSong, user?.anthem_song_id, user?.anthem_song_name]);
+
+  const vinylSpinAnim = useMemo(() => new Animated.Value(0), []);
+
+  useEffect(() => {
+    if (isAnthemPlaying) {
+      const loop = Animated.loop(
+        Animated.timing(vinylSpinAnim, {
+          toValue: 1,
+          duration: 3200,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      loop.start();
+      return () => {
+        loop.stop();
+      };
+    }
+    vinylSpinAnim.setValue(0);
+    return undefined;
+  }, [isAnthemPlaying, vinylSpinAnim]);
+
+  const vinylSpin = vinylSpinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   const handlePlayAnthem = useCallback(() => {
     if (!user?.anthem_song_name) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -217,11 +289,24 @@ export function UserProfileModal({
     }
 
     playSong(songToPlay, songs.length > 0 ? songs : [songToPlay]);
-    onClose();
-    setTimeout(() => {
-      openFullscreen();
-    }, 150);
-  }, [user, songs, playSong, onClose, openFullscreen]);
+  }, [user, songs, playSong]);
+
+  const handleToggleAnthemPlay = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isAnthemPlaying) {
+      pauseSong();
+      return;
+    }
+    if (
+      currentSong &&
+      ((user?.anthem_song_id && String(currentSong.id) === String(user.anthem_song_id)) ||
+        (user?.anthem_song_name && currentSong.name.toLowerCase().trim() === user.anthem_song_name.toLowerCase().trim()))
+    ) {
+      resumeSong();
+      return;
+    }
+    handlePlayAnthem();
+  }, [isAnthemPlaying, currentSong, user, pauseSong, resumeSong, handlePlayAnthem]);
 
   const handleStartJam = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -385,31 +470,152 @@ export function UserProfileModal({
                 }}
               />
 
-              {/* Anthem Song Banner if present */}
+              {/* Anthem Song Showcase */}
               {user.anthem_song_name ? (
+                <View style={styles.anthemCardWrapper}>
+                  <PressableFluid
+                    onPress={handleToggleAnthemPlay}
+                    haptic="medium"
+                    style={styles.anthemCard}
+                    scaleTo={0.98}
+                  >
+                    <LinearGradient
+                      colors={['rgba(127, 0, 255, 0.25)', 'rgba(0, 229, 255, 0.15)', 'rgba(15, 15, 26, 0.75)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.anthemGradient}
+                    />
+
+                    {/* Header bar inside Anthem Card */}
+                    <View style={styles.anthemHeaderRow}>
+                      <View style={styles.anthemBadgeRow}>
+                        <Ionicons name="sparkles" size={13} color="#FFD700" />
+                        <Text style={styles.anthemTag}>
+                          {isCurrentUser ? 'HIMNO PERSONAL' : `HIMNO DE ${displayName.toUpperCase()}`}
+                        </Text>
+                      </View>
+
+                      {isAnthemPlaying ? (
+                        <View style={styles.anthemPlayingIndicator}>
+                          <EqualizerBars playing bars={3} height={12} barWidth={2.5} color="#00E5FF" />
+                          <Text style={styles.anthemPlayingText}>Sonando</Text>
+                        </View>
+                      ) : (
+                        isCurrentUser && (
+                          <PressableFluid
+                            onPress={() => {
+                              setEditModalTab('anthem');
+                              setEditModalOpen(true);
+                            }}
+                            haptic="light"
+                            style={styles.anthemChangeBtn}
+                            hitSlop={8}
+                          >
+                            <Ionicons name="swap-horizontal" size={12} color={colors.secondary} />
+                            <Text style={styles.anthemChangeText}>Cambiar</Text>
+                          </PressableFluid>
+                        )
+                      )}
+                    </View>
+
+                    {/* Body with Cover + Vinyl + Info */}
+                    <View style={styles.anthemBodyRow}>
+                      {/* Cover with Vinyl Peeking */}
+                      <View style={styles.anthemCoverContainer}>
+                        {/* Peeking Vinyl Disk */}
+                        <Animated.View
+                          style={[
+                            styles.anthemVinylDisk,
+                            {
+                              transform: [{ rotate: vinylSpin }],
+                            },
+                          ]}
+                        >
+                          <Ionicons name="disc" size={42} color="#0a0a14" />
+                          <View style={styles.anthemVinylCenter} />
+                        </Animated.View>
+
+                        {/* Song Cover / Thumbnail */}
+                        <View style={styles.anthemCoverWrap}>
+                          {anthemCoverUrl ? (
+                            <Image source={{ uri: anthemCoverUrl }} style={styles.anthemCoverImg} />
+                          ) : (
+                            <LinearGradient
+                              colors={['#7F00FF', '#00E5FF']}
+                              style={styles.anthemCoverPlaceholder}
+                            >
+                              <Ionicons name="musical-note" size={20} color={colors.white} />
+                            </LinearGradient>
+                          )}
+
+                          {/* Play/Pause Overlay Icon */}
+                          <View style={styles.anthemPlayOverlay}>
+                            <Ionicons
+                              name={isAnthemPlaying ? 'pause' : 'play'}
+                              size={14}
+                              color={colors.white}
+                            />
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Song Info */}
+                      <View style={styles.anthemMetaWrap}>
+                        <Text style={styles.anthemSongTitle} numberOfLines={1}>
+                          {user.anthem_song_name}
+                        </Text>
+                        <Text style={styles.anthemArtistName} numberOfLines={1}>
+                          {anthemSong?.artist || 'Rolón Insignia'}
+                        </Text>
+                        <View style={styles.anthemVibePill}>
+                          <View style={styles.anthemDot} />
+                          <Text style={styles.anthemVibePillText}>Rolón Insignia</Text>
+                        </View>
+                      </View>
+
+                      {/* Action Play Button */}
+                      <View style={styles.anthemActionBtnWrap}>
+                        <LinearGradient
+                          colors={isAnthemPlaying ? ['#00E5FF', '#7F00FF'] : ['#7F00FF', '#00E5FF']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.anthemActionBtn}
+                        >
+                          <Ionicons
+                            name={isAnthemPlaying ? 'pause' : 'play'}
+                            size={18}
+                            color={colors.white}
+                          />
+                        </LinearGradient>
+                      </View>
+                    </View>
+                  </PressableFluid>
+                </View>
+              ) : isCurrentUser ? (
+                /* Empty state for Anthem if user hasn't chosen one */
                 <PressableFluid
-                  onPress={handlePlayAnthem}
+                  onPress={() => {
+                    setEditModalTab('anthem');
+                    setEditModalOpen(true);
+                  }}
                   haptic="medium"
-                  style={styles.anthemCard}
-                  scaleTo={0.97}
+                  style={styles.emptyAnthemCard}
                 >
                   <LinearGradient
-                    colors={['rgba(127, 0, 255, 0.25)', 'rgba(0, 229, 255, 0.15)']}
+                    colors={['rgba(255, 215, 0, 0.12)', 'rgba(127, 0, 255, 0.08)']}
                     start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.anthemGradient}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
                   />
-                  <View style={styles.anthemIconWrap}>
-                    <Ionicons name="disc-outline" size={24} color="#00E5FF" />
+                  <View style={styles.emptyAnthemIcon}>
+                    <Ionicons name="musical-notes" size={20} color="#FFD700" />
                   </View>
-                  <View style={styles.anthemInfo}>
-                    <Text style={styles.anthemTag}>HIMNO DEL PERFIL</Text>
-                    <Text style={styles.anthemName} numberOfLines={1}>
-                      {user.anthem_song_name}
-                    </Text>
+                  <View style={styles.emptyAnthemInfo}>
+                    <Text style={styles.emptyAnthemTitle}>Elige tu Himno Personal</Text>
+                    <Text style={styles.emptyAnthemSubtitle}>Muestra tu rolón insignia en tu perfil</Text>
                   </View>
-                  <View style={styles.anthemPlayBtn}>
-                    <Ionicons name="play" size={16} color={colors.white} />
+                  <View style={styles.emptyAnthemAddBtn}>
+                    <Ionicons name="add" size={16} color={colors.white} />
                   </View>
                 </PressableFluid>
               ) : null}
@@ -496,8 +702,10 @@ export function UserProfileModal({
                 <View style={styles.melomanoTop}>
                   <View style={styles.melomanoBadgeWrap}>
                     <Text style={styles.melomanoEmoji}>{melomano.badgeEmoji}</Text>
-                    <View>
-                      <Text style={styles.melomanoRankTitle}>{melomano.title}</Text>
+                    <View style={styles.melomanoTitlesWrap}>
+                      <Text style={styles.melomanoRankTitle} numberOfLines={1}>
+                        {melomano.title}
+                      </Text>
                       <Text style={styles.melomanoLevelText}>NIVEL {melomano.level}</Text>
                     </View>
                   </View>
@@ -553,6 +761,7 @@ export function UserProfileModal({
                           onClose();
                           onOpenAccountDetails();
                         } else {
+                          setEditModalTab('identity');
                           setEditModalOpen(true);
                         }
                       }}
@@ -607,6 +816,7 @@ export function UserProfileModal({
       <EditProfileModal
         visible={editModalOpen}
         onClose={() => setEditModalOpen(false)}
+        initialTab={editModalTab}
       />
     </>
   );
@@ -648,8 +858,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 20,
+    paddingTop: 54,
+    paddingBottom: 24,
   },
   avatarSection: {
     alignItems: 'center',
@@ -682,6 +892,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     textAlign: 'center',
     letterSpacing: -0.3,
+    flexShrink: 1,
   },
   badgePill: {
     paddingHorizontal: 8,
@@ -751,47 +962,227 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 8,
   },
-  anthemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 229, 255, 0.3)',
+  anthemCardWrapper: {
+    width: '100%',
     marginBottom: 14,
+  },
+  anthemCard: {
+    width: '100%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1.2,
+    borderColor: 'rgba(0, 229, 255, 0.35)',
+    padding: 14,
+    backgroundColor: 'rgba(16, 16, 28, 0.85)',
+    shadowColor: '#7F00FF',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   anthemGradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  anthemIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+  anthemHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  anthemInfo: {
-    flex: 1,
+  anthemBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   anthemTag: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
-    color: '#00E5FF',
+    color: '#FFD700',
     letterSpacing: 0.8,
   },
-  anthemName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.white,
-    marginTop: 1,
+  anthemPlayingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 229, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.3)',
   },
-  anthemPlayBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  anthemPlayingText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#00E5FF',
+  },
+  anthemChangeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  anthemChangeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.secondary,
+  },
+  anthemBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  anthemCoverContainer: {
+    position: 'relative',
+    width: 58,
+    height: 52,
+    justifyContent: 'center',
+  },
+  anthemVinylDisk: {
+    position: 'absolute',
+    left: 12,
+    top: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#0a0a14',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  anthemVinylCenter: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#7F00FF',
+    borderWidth: 2,
+    borderColor: '#00E5FF',
+  },
+  anthemCoverWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#16162a',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  anthemCoverImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+  },
+  anthemCoverPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anthemPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anthemMetaWrap: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  anthemSongTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.white,
+    letterSpacing: -0.2,
+  },
+  anthemArtistName: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  anthemVibePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  anthemDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#00E5FF',
+  },
+  anthemVibePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.secondary,
+  },
+  anthemActionBtnWrap: {
+    marginLeft: 4,
+  },
+  anthemActionBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#00E5FF',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  emptyAnthemCard: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1.2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255, 215, 0, 0.4)',
+    backgroundColor: 'rgba(255, 215, 0, 0.03)',
+    marginBottom: 14,
+  },
+  emptyAnthemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  emptyAnthemInfo: {
+    flex: 1,
+  },
+  emptyAnthemTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.white,
+  },
+  emptyAnthemSubtitle: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  emptyAnthemAddBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1014,9 +1405,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   melomanoBadgeWrap: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  melomanoTitlesWrap: {
+    flex: 1,
   },
   melomanoEmoji: {
     fontSize: 22,
@@ -1026,6 +1421,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: -0.2,
+    flexShrink: 1,
   },
   melomanoLevelText: {
     color: '#FFD700',
@@ -1043,6 +1439,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 215, 0, 0.3)',
+    flexShrink: 0,
   },
   melomanoHoursText: {
     color: '#FFD700',

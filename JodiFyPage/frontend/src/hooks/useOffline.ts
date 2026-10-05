@@ -73,12 +73,14 @@ export async function loadLibrary(username: string | null): Promise<void> {
       return;
     }
 
-    // 3. Sincronización en línea con protección de timeout (máximo 6s para evitar bloqueos)
-    if (username) {
+    const effectiveUser = username || (typeof localStorage !== 'undefined' ? localStorage.getItem('currentUserName') : null);
+
+    // 3. Sincronización en línea con protección de timeout (18s para soportar arranque en frío de Render)
+    if (effectiveUser) {
       const [fetchedSongs, fetchedLikedIds, downloadedIds] = await Promise.all([
-        withTimeout(songsService.fetchAll().catch((): Song[] => []), 6000, []),
-        withTimeout(likesService.fetchLikedIds(username).catch((): Array<number | string> => []), 4000, []),
-        withTimeout(downloadsService.fetchDownloadedIds(username).catch((): Array<number | string> => []), 4000, []),
+        withTimeout(songsService.fetchAll().catch((): Song[] => []), 18000, []),
+        withTimeout(likesService.fetchLikedIds(effectiveUser).catch((): Array<number | string> => []), 10000, []),
+        withTimeout(downloadsService.fetchDownloadedIds(effectiveUser).catch((): Array<number | string> => []), 10000, []),
       ]);
       const songs: Song[] = [...fetchedSongs];
       const likedIds: Array<number | string> = [...fetchedLikedIds];
@@ -115,7 +117,7 @@ export async function loadLibrary(username: string | null): Promise<void> {
       library.setLikedIds(likedIds);
       library.setDownloadedIds(combinedDownloaded);
     } else {
-      const songs = await withTimeout(songsService.fetchAll().catch(() => [] as Song[]), 6000, []);
+      const songs = await withTimeout(songsService.fetchAll().catch(() => [] as Song[]), 18000, []);
       const existingSongIds = new Set(songs.map((s) => String(s.id)));
       for (const os of offlineSongs) {
         if (!existingSongIds.has(String(os.id))) {

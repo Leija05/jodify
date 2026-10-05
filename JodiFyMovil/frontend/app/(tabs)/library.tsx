@@ -8,7 +8,7 @@ import { DynamicBackground } from '@components/player/DynamicBackground';
 import { EmptyState } from '@components/ui/EmptyState';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import type { LibraryTab, Song } from '@lib/types';
-import { resolveArtist } from '@lib/utils';
+import { resolveArtist, isSongLiked } from '@lib/utils';
 import { deleteDownloadedSong } from '@services/downloads.service';
 import { useDownloadStore } from '@stores/download.store';
 import { useLibraryStore } from '@stores/library.store';
@@ -84,8 +84,8 @@ export default function LibraryScreen() {
     const q = search.trim().toLowerCase();
     let list: Song[];
     if (tab === 'liked') {
-      const ids = new Set(likedIds.map((id) => String(id)));
-      list = songs.filter((s) => ids.has(String(s.id)));
+      const ids = new Set(likedIds.map(String));
+      list = songs.filter((s) => isSongLiked(s, ids));
     } else if (tab === 'downloads') {
       const ids = new Set(downloadedIds.map((id) => String(id)));
       list = songs.filter((s) => ids.has(String(s.id)));
@@ -113,6 +113,11 @@ export default function LibraryScreen() {
     }
     return sorted;
   }, [songs, likedIds, downloadedIds, tab, search, sortMode]);
+
+  const likedSongsCount = useMemo(() => {
+    const ids = new Set(likedIds.map(String));
+    return songs.filter((s) => isSongLiked(s, ids)).length;
+  }, [songs, likedIds]);
 
   const handlePlay = useCallback(
     (song: Song) => {
@@ -171,7 +176,10 @@ export default function LibraryScreen() {
   }, [openFullscreen]);
 
   const isLiked = useCallback(
-    (songId: number | string) => likedIds.some((l) => String(l) === String(songId)),
+    (item: Song) => {
+      const ids = new Set(likedIds.map(String));
+      return isSongLiked(item, ids);
+    },
     [likedIds],
   );
 
@@ -197,7 +205,7 @@ export default function LibraryScreen() {
     const id = String(item.id);
     const isDownloading = useDownloadStore.getState().isDownloading(item.id);
     const isCurrent = String(currentSong?.id) === id;
-    const liked = isLiked(item.id);
+    const liked = isLiked(item);
     return (
       <Animated.View style={[styles.listItem, { opacity: staggerAnim }]}>
         <SongRow
@@ -302,7 +310,7 @@ export default function LibraryScreen() {
         <View style={styles.tabs}>
           {TABS.map((t) => {
             const active = tab === t.id;
-            const count = t.id === 'liked' ? likedIds.length : t.id === 'downloads' ? downloadedIds.length : songs.length;
+            const count = t.id === 'liked' ? likedSongsCount : t.id === 'downloads' ? downloadedIds.length : songs.length;
             return (
               <PressableFluid
                 key={t.id}

@@ -12,6 +12,7 @@ import { usePlayerStore } from '@stores/player.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
 import { useJamStore } from '@stores/jam.store';
+import { isSongLiked } from '@lib/utils';
 import { colors, typography, motion } from '@theme';
 import { DynamicBackground } from '@components/player/DynamicBackground';
 import { FullscreenHeader } from './fullscreen/FullscreenHeader';
@@ -61,7 +62,9 @@ export default function FullscreenPlayer() {
   const [queueOpen, setQueueOpen] = useState(false);
   const isDownloadingStore = useDownloadStore((s) => (currentSong ? s.isDownloading(currentSong.id) : false));
 
-  const liked = !!currentSong && likedIds.some((id) => String(id) === String(currentSong.id));
+  const liked =
+    !!currentSong &&
+    isSongLiked(currentSong, new Set(likedIds.map(String)));
   const downloaded = !!currentSong && downloadedIds.some((id) => String(id) === String(currentSong.id));
   const openLyricsModal = useUiStore((s) => s.openLyricsModal);
 

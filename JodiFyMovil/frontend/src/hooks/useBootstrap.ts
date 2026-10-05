@@ -12,10 +12,18 @@ export function useBootstrap() {
   const restoreJam = useJamStore((s) => s.restore);
 
   useEffect(() => {
-    loadLibrary();
-    loadEq();
-    loadSettings();
-    void refreshProfile();
-    restoreJam();
+    let cancelled = false;
+    (async () => {
+      await loadSettings();
+      if (!cancelled) {
+        await loadLibrary();
+        loadEq();
+        void refreshProfile();
+        restoreJam();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadEq, loadLibrary, loadSettings, refreshProfile, restoreJam]);
 }

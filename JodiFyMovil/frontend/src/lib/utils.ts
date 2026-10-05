@@ -125,6 +125,22 @@ export function sortSongs(songs: Song[], mode: SortMode): Song[] {
   }
 }
 
+export function isSongLiked(song: Song, likedSet: Set<string>): boolean {
+  if (!song) return false;
+  const sId = String(song.id);
+  if (likedSet.has(sId)) return true;
+  if (sId.startsWith('yt-') && likedSet.has(sId.slice(3))) return true;
+  if (likedSet.has(`yt-${sId}`)) return true;
+
+  if (song.youtube_id) {
+    const ytId = String(song.youtube_id);
+    if (likedSet.has(ytId)) return true;
+    if (likedSet.has(`yt-${ytId}`)) return true;
+    if (ytId.startsWith('yt-') && likedSet.has(ytId.slice(3))) return true;
+  }
+  return false;
+}
+
 export function filterSongsByTab(
   songs: Song[],
   tab: LibraryTab,
@@ -136,7 +152,7 @@ export function filterSongsByTab(
 
   switch (tab) {
     case 'liked':
-      return songs.filter((s) => likedSet.has(String(s.id)));
+      return songs.filter((s) => isSongLiked(s, likedSet));
     case 'downloads':
       return songs.filter((s) => downloadedSet.has(String(s.id)));
     default:

@@ -51,15 +51,15 @@ export async function updateUserProfile(
     avatar_url?: string | null | undefined;
     avatar_source?: ('custom' | 'discord' | 'presets' | 'initials') | undefined;
     discord_id?: string | null | undefined;
-    bio?: string | undefined;
+    bio?: string | null | undefined;
     theme?: string | undefined;
     avatar_frame?: string | undefined;
     accent_color?: string | null | undefined;
     profile_effect?: string | undefined;
     profile_animation?: string | undefined;
     profile_bg_mode?: string | undefined;
-    custom_gradient_start?: string | undefined;
-    custom_gradient_end?: string | undefined;
+    custom_gradient_start?: string | null | undefined;
+    custom_gradient_end?: string | null | undefined;
     vibe?: string | null | undefined;
     custom_badge?: string | null | undefined;
     anthem_song_id?: number | string | null | undefined;

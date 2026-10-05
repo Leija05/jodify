@@ -142,7 +142,7 @@ async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str,
     }
 
 
-async def _search_youtube_video_id(query: str) -> str | None:
+async def _search_youtube_video_id(query: str, exclude_id: str | None = None) -> str | None:
     """Busca en YouTube Music / YouTube por HTTP ligero y devuelve el primer video_id en ~100ms."""
     if not query or not query.strip():
         return None
@@ -167,8 +167,9 @@ async def _search_youtube_video_id(query: str) -> str | None:
             resp = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
             if resp.status_code == 200:
                 matches = re.findall(r'"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"', resp.text)
-                if matches:
-                    return matches[0]
+                for m in matches:
+                    if not exclude_id or m != exclude_id:
+                        return m
     except Exception as exc:
         logger.warning(f"Error en InnerTube search para '{clean_q}': {exc}")
 
@@ -184,22 +185,28 @@ async def _search_youtube_video_id(query: str) -> str | None:
             resp = await client.get(search_url)
             if resp.status_code == 200:
                 matches = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})"', resp.text)
-                if matches:
-                    return matches[0]
+                for m in matches:
+                    if not exclude_id or m != exclude_id:
+                        return m
                 href_matches = re.findall(r'/watch\?v=([a-zA-Z0-9_-]{11})', resp.text)
-                if href_matches:
-                    return href_matches[0]
+                for m in href_matches:
+                    if not exclude_id or m != exclude_id:
+                        return m
     except Exception as exc:
         logger.warning(f"Error en búsqueda HTML de YouTube para '{clean_q}': {exc}")
 
-    # 3. Estrategia de Fallback: yt-dlp ytsearch1
+    # 3. Estrategia de Fallback: yt-dlp ytsearch
     try:
         loop = asyncio.get_running_loop()
         def _ytsearch():
             with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True, "extract_flat": True}) as ydl:
-                res = ydl.extract_info(f"ytsearch1:{clean_q}", download=False)
+                res = ydl.extract_info(f"ytsearch3:{clean_q}", download=False)
                 if res and "entries" in res and res["entries"]:
-                    return res["entries"][0].get("id")
+                    for entry in res["entries"]:
+                        if entry and entry.get("id"):
+                            eid = entry["id"]
+                            if not exclude_id or eid != exclude_id:
+                                return eid
             return None
         yt_id = await loop.run_in_executor(None, _ytsearch)
         if yt_id:

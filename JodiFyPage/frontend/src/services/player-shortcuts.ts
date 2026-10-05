@@ -32,14 +32,19 @@ export async function toggleLikeCurrent(): Promise<void> {
   if (!song || !username) return;
 
   const library = useLibraryStore.getState();
-  const liked = library.likedIds.includes(song.id);
+  const sId = String(song.id);
+  const ytId = song.youtube_id || extractYoutubeId(song);
+  const liked = library.likedIds.some((id) => {
+    const idStr = String(id);
+    return idStr === sId || (ytId && idStr === ytId);
+  });
   const nextLiked = !liked;
 
   // Si es una canción externa/virtual o buscada que aún no está persistida en la BD
   const isVirtual =
-    String(song.id).startsWith('link-') ||
-    String(song.id).startsWith('yt-') ||
-    !library.songs.some((s) => String(s.id) === String(song.id));
+    sId.startsWith('link-') ||
+    sId.startsWith('yt-') ||
+    !library.songs.some((s) => String(s.id) === sId);
 
   if (isVirtual && nextLiked) {
     try {
@@ -48,7 +53,7 @@ export async function toggleLikeCurrent(): Promise<void> {
         artist: song.artist,
         album: song.album || 'Enlace Web',
         url: song.url,
-        youtube_id: song.youtube_id || extractYoutubeId(song) || undefined,
+        youtube_id: ytId || undefined,
         cover_url: song.cover_url,
         duration: song.duration,
         added_by: username,
@@ -59,7 +64,7 @@ export async function toggleLikeCurrent(): Promise<void> {
       library.toggleLikeLocal(registered.id, true);
       cacheExternalLikedSong(registered);
 
-      if (String(registered.id) !== String(song.id)) {
+      if (String(registered.id) !== sId) {
         library.toggleLikeLocal(song.id, false);
         player.setCurrentSong(registered);
       }
@@ -87,6 +92,9 @@ export async function toggleLikeCurrent(): Promise<void> {
       await likesService.addLike(username, song.id);
     } else {
       await likesService.removeLike(username, song.id);
+      if (ytId) {
+        await likesService.removeLike(username, ytId).catch(() => {});
+      }
     }
     await songsService.updateLikes(song.id, nextLiked ? 1 : -1).catch(() => 0);
     library.bumpLikes(song.id, 0);

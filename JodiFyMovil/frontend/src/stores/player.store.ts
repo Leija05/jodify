@@ -80,18 +80,19 @@ function sanitizeStreamUrl(url: string | null): string | null {
   return url;
 }
 
-async function matchTrackToYoutubeId(artist: string, title: string): Promise<string | null> {
+async function matchTrackToYoutubeId(artist: string, title: string, excludeId?: string | null): Promise<string | null> {
   const bases = getCandidateBases();
   for (const base of bases) {
     try {
-      const url = `${base}/api/links/match-track?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`;
+      const excludeParam = excludeId ? `&exclude_id=${encodeURIComponent(excludeId)}` : '';
+      const url = `${base}/api/links/match-track?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}${excludeParam}`;
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 4000);
       const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: ctrl.signal });
       clearTimeout(timer);
       if (res.ok) {
         const data = (await res.json()) as { youtube_id?: string };
-        if (data?.youtube_id) return data.youtube_id;
+        if (data?.youtube_id && data.youtube_id !== excludeId) return data.youtube_id;
       }
     } catch {
       continue;
@@ -316,9 +317,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
     if (retryCount === 0) {
       const artist = song.artist || '';
       const query = artist ? `${artist} - ${song.name}` : song.name;
+      const currentId = song.youtube_id || extractYoutubeId(song);
       try {
-        const matchedId = await matchTrackToYoutubeId(artist, song.name || query);
-        if (matchedId) {
+        const matchedId = await matchTrackToYoutubeId(artist, song.name || query, currentId);
+        if (matchedId && matchedId !== currentId) {
           song.youtube_id = matchedId;
           return playWithEngine(song, 1);
         }

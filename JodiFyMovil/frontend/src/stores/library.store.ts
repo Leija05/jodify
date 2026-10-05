@@ -28,13 +28,31 @@ interface LibraryState {
   clearDownloads: () => void;
 }
 
+import { mmkv, mmkvReady } from '../lib/mmkv';
+
+const CACHED_SONGS_KEY = 'library.cached_songs';
+const CACHED_LIKES_KEY = 'library.cached_likes';
+
 async function loadLikesForUser(): Promise<Array<number | string>> {
-  const user = await getAuthUser();
-  if (!user) return [];
+  await mmkvReady;
+  let user = await getAuthUser();
+  if (!user?.username) {
+    try {
+      const { useSettingsStore } = require('./settings.store');
+      user = useSettingsStore.getState().user;
+    } catch {}
+  }
+  if (!user?.username) {
+    return getCachedLibrary().likedIds;
+  }
   try {
-    return await fetchLikedIds(user.username);
+    const ids = await fetchLikedIds(user.username);
+    if (Array.isArray(ids) && ids.length > 0) {
+      return ids;
+    }
+    return ids || [];
   } catch {
-    return [];
+    return getCachedLibrary().likedIds;
   }
 }
 
@@ -50,11 +68,6 @@ async function mergeDownloadedLocalUris(songs: Song[]): Promise<Song[]> {
     return songs;
   }
 }
-
-import { mmkv } from '../lib/mmkv';
-
-const CACHED_SONGS_KEY = 'library.cached_songs';
-const CACHED_LIKES_KEY = 'library.cached_likes';
 
 function getCachedLibrary(): { songs: Song[]; likedIds: Array<number | string> } {
   try {
@@ -81,14 +94,20 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   lastUserId: null,
 
   load: async () => {
-    const user = await getAuthUser();
+    await mmkvReady;
+    let user = await getAuthUser();
+    if (!user?.username) {
+      try {
+        const { useSettingsStore } = require('./settings.store');
+        user = useSettingsStore.getState().user;
+      } catch {}
+    }
     const userId = user?.username ?? null;
-
-    if (get().lastUserId === userId && get().songs.length > 0 && userId) return;
 
     if (get().songs.length === 0) {
       set({ loading: true, error: null });
     }
+
     try {
       const [songs, likedIds, downloadedIds] = await Promise.all([
         fetchSongs(),
@@ -135,34 +154,79 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   refreshLikes: async () => {
     try {
-      const user = await getAuthUser();
-      const likedIds = user ? await fetchLikedIds(user.username) : [];
-      set({ likedIds });
-      try {
-        mmkv.setObject(CACHED_LIKES_KEY, likedIds);
-      } catch {}
+      await mmkvReady;
+      let user = await getAuthUser();
+      if (!user?.username) {
+        try {
+          const { useSettingsStore } = require('./settings.store');
+          user = useSettingsStore.getState().user;
+        } catch {}
+      }
+      if (!user?.username) return;
+      const likedIds = await fetchLikedIds(user.username);
+      if (Array.isArray(likedIds)) {
+        set({ likedIds });
+        try {
+          mmkv.setObject(CACHED_LIKES_KEY, likedIds);
+        } catch {}
+      }
     } catch {
-      set({ likedIds: [] });
+      // Keep existing likes on network error
     }
   },
 
   toggleLike: async (song) => {
-    const user = await getAuthUser();
+    await mmkvReady;
+    let user = await getAuthUser();
+    if (!user?.username) {
+      try {
+        const { useSettingsStore } = require('./settings.store');
+        user = useSettingsStore.getState().user;
+      } catch {}
+    }
     if (!user) return false;
-    const liked = get().likedIds.some((id) => String(id) === String(song.id));
+
+    const sId = String(song.id);
+    const ytId = song.youtube_id ? String(song.youtube_id) : null;
+    const cleanYt = ytId?.replace(/^yt-/, '');
+    const cleanSId = sId.replace(/^yt-/, '');
+
+    const liked = get().likedIds.some((id) => {
+      const idStr = String(id);
+      const cleanId = idStr.replace(/^yt-/, '');
+      return (
+        idStr === sId ||
+        cleanId === cleanSId ||
+        (ytId && (idStr === ytId || cleanId === cleanYt))
+      );
+    });
+
     const next = !liked;
     const delta = next ? 1 : -1;
+
+    const filterOut = (id: number | string) => {
+      const str = String(id);
+      const cStr = str.replace(/^yt-/, '');
+      if (str === sId || cStr === cleanSId) return false;
+      if (ytId && (str === ytId || cStr === cleanYt)) return false;
+      return true;
+    };
+
     const nextLikedIds = next
-      ? [...get().likedIds, song.id]
-      : get().likedIds.filter((id) => String(id) !== String(song.id));
+      ? [...get().likedIds.filter(filterOut), song.id]
+      : get().likedIds.filter(filterOut);
 
     set({
       likedIds: nextLikedIds,
-      songs: get().songs.map((s) =>
-        String(s.id) === String(song.id)
-          ? { ...s, likes: Math.max(0, (s.likes ?? 0) + delta) }
-          : s,
-      ),
+      songs: get().songs.map((s) => {
+        const currentSId = String(s.id);
+        const currentYt = s.youtube_id ? String(s.youtube_id) : null;
+        const matches =
+          currentSId === sId ||
+          currentSId.replace(/^yt-/, '') === cleanSId ||
+          (ytId && (currentYt === ytId || currentYt?.replace(/^yt-/, '') === cleanYt));
+        return matches ? { ...s, likes: Math.max(0, (s.likes ?? 0) + delta) } : s;
+      }),
     });
     try {
       mmkv.setObject(CACHED_LIKES_KEY, nextLikedIds);
@@ -171,8 +235,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     try {
       if (next) {
         await addLike(song.id, user.username);
+        if (cleanYt && cleanYt !== sId) {
+          await addLike(cleanYt, user.username).catch(() => {});
+        }
       } else {
         await removeLike(song.id, user.username);
+        if (cleanYt) {
+          await removeLike(cleanYt, user.username).catch(() => {});
+          await removeLike(`yt-${cleanYt}`, user.username).catch(() => {});
+        }
       }
       void updateLikeCount(song.id, user.username, delta).catch(() => {});
     } catch (e: any) {

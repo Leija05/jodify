@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Animated, View, Image, StyleSheet, Dimensions } from 'react-native';
 import { PressableFluid } from '@components/ui/PressableFluid';
-import { VinylDisc } from '@components/player/VinylDisc';
+import { AudiophileTurntable } from './AudiophileTurntable';
 import { pickCoverUrl } from '@lib/utils';
 import { getSongPalette } from '@lib/palette';
 import type { Song } from '@lib/types';
@@ -27,11 +27,12 @@ export const ShowcaseHero = React.memo(
     return (
       <View ref={ref} style={styles.container}>
         {displayMode === 'vinyl' ? (
-          <PressableFluid onPress={onToggleMode} haptic="medium" style={styles.pressable}>
-            <Animated.View style={{ transform: [{ scale: vinylScale }] }}>
-              <VinylDisc song={song} size={HERO_SIZE} isPlaying={isPlaying} />
-            </Animated.View>
-          </PressableFluid>
+          <AudiophileTurntable
+            song={song}
+            isPlaying={isPlaying}
+            vinylScale={vinylScale}
+            onToggleMode={onToggleMode}
+          />
         ) : (
           <PressableFluid onPress={onToggleMode} haptic="medium" style={styles.pressable}>
             <Animated.View

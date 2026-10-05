@@ -21,7 +21,9 @@ import { UserAvatar } from '@components/ui/UserAvatar';
 import { ProfileInspectionAnimation } from './ProfileInspectionAnimation';
 import { useSettingsStore } from '@stores/settings.store';
 import { useToastStore } from '@stores/toast.store';
+import { useLibraryStore } from '@stores/library.store';
 import { updateUserProfile } from '@services/users.service';
+import { pickCoverUrl } from '@lib/utils';
 import {
   AVATAR_PRESETS,
   AVATAR_FRAMES,
@@ -40,9 +42,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 interface EditProfileModalProps {
   visible: boolean;
   onClose: () => void;
+  initialTab?: TabKey;
 }
 
-type TabKey = 'identity' | 'avatar' | 'pet' | 'frame' | 'theme' | 'animation';
+type TabKey = 'identity' | 'anthem' | 'avatar' | 'pet' | 'frame' | 'theme' | 'animation';
 
 const BANNER_GRADIENT_PRESETS = [
   { id: 'none', name: 'Original', start: '', end: '' },
@@ -187,18 +190,28 @@ const PET_SPECIES_PRESETS = [
   },
 ];
 
-export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
+export function EditProfileModal({ visible, onClose, initialTab }: EditProfileModalProps) {
   const user = useSettingsStore((s) => s.user);
   const updateUser = useSettingsStore((s) => s.updateUser);
   const showToast = useToastStore((s) => s.show);
+  const librarySongs = useLibraryStore((s) => s.songs);
 
-  const [activeTab, setActiveTab] = useState<TabKey>('identity');
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab || 'identity');
+
+  useEffect(() => {
+    if (visible && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [visible, initialTab]);
 
   // Form State
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [vibe, setVibe] = useState('');
   const [customBadge, setCustomBadge] = useState('');
+  const [anthemSongId, setAnthemSongId] = useState<string | number | null>(null);
+  const [anthemSongName, setAnthemSongName] = useState<string | null>(null);
+  const [anthemSearch, setAnthemSearch] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [discordId, setDiscordId] = useState('');
   const [useDiscordAvatar, setUseDiscordAvatar] = useState(false);
@@ -235,6 +248,9 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
       setBio(user.bio ?? '');
       setVibe(user.vibe ?? '');
       setCustomBadge(user.custom_badge ?? '');
+      setAnthemSongId(user.anthem_song_id ?? null);
+      setAnthemSongName(user.anthem_song_name ?? null);
+      setAnthemSearch('');
       setAvatarUrl(user.avatar_url ?? '');
       setDiscordId(user.discord_id ?? '');
       setUseDiscordAvatar(user.avatar_source === 'discord');
@@ -249,6 +265,14 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
       setCustomGradientEnd(user.custom_gradient_end ?? '');
     }
   }, [visible, user]);
+
+  const filteredAnthemSongs = useMemo(() => {
+    if (!anthemSearch.trim()) return librarySongs;
+    const q = anthemSearch.toLowerCase().trim();
+    return librarySongs.filter(
+      (s) => s.name.toLowerCase().includes(q) || (s.artist && s.artist.toLowerCase().includes(q))
+    );
+  }, [librarySongs, anthemSearch]);
 
   const effectiveAvatarUrl = useMemo(() => {
     if (useDiscordAvatar && discordId.trim().length > 10) {
@@ -282,45 +306,54 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
     Keyboard.dismiss();
 
     try {
-      await updateUserProfile(user.username, {
+      const payload = {
         display_name: displayName.trim() || user.username,
-        bio: bio.trim() || undefined,
-        vibe: vibe.trim() || undefined,
-        custom_badge: customBadge.trim() || undefined,
-        avatar_source: useDiscordAvatar ? 'discord' : 'custom',
-        avatar_url: avatarUrl.trim() || undefined,
-        discord_id: discordId.trim() || undefined,
-        avatar_frame: avatarFrame,
-        theme: theme,
-        accent_color: accentColor,
-        profile_animation: profileAnimation,
-        pet_type: petType,
-        pet_variant: petVariant,
-        pet_name: petName.trim() || undefined,
-        custom_gradient_start: customGradientStart.trim() || undefined,
-        custom_gradient_end: customGradientEnd.trim() || undefined,
-      });
+        bio: bio.trim(),
+        vibe: vibe.trim() || null,
+        custom_badge: customBadge.trim() || null,
+        anthem_song_id: anthemSongId || null,
+        anthem_song_name: anthemSongName ? anthemSongName.trim() : null,
+        avatar_source: useDiscordAvatar ? ('discord' as const) : ('custom' as const),
+        avatar_url: avatarUrl.trim() || null,
+        discord_id: discordId.trim() || null,
+        avatar_frame: avatarFrame || 'none',
+        theme: theme || 'aurora',
+        accent_color: accentColor || '#10b981',
+        profile_animation: profileAnimation || 'astral-pulse',
+        pet_type: petType || 'none',
+        pet_variant: petVariant || 'orange',
+        pet_name: petName.trim() || null,
+        custom_gradient_start: customGradientStart.trim() || null,
+        custom_gradient_end: customGradientEnd.trim() || null,
+      };
+
+      await updateUserProfile(user.username, payload);
 
       updateUser({
-        display_name: displayName.trim() || user.username,
-        bio: bio.trim() || undefined,
-        vibe: vibe.trim() || undefined,
-        custom_badge: customBadge.trim() || undefined,
-        avatar_source: useDiscordAvatar ? 'discord' : 'custom',
-        avatar_url: avatarUrl.trim() || undefined,
-        discord_id: discordId.trim() || undefined,
-        avatar_frame: avatarFrame,
-        theme: theme,
-        accent_color: accentColor,
-        profile_animation: profileAnimation,
-        pet_type: petType,
-        pet_variant: petVariant,
-        pet_name: petName.trim() || undefined,
-        custom_gradient_start: customGradientStart.trim() || undefined,
-        custom_gradient_end: customGradientEnd.trim() || undefined,
+        display_name: payload.display_name,
+        bio: payload.bio,
+        vibe: payload.vibe || undefined,
+        custom_badge: payload.custom_badge || undefined,
+        anthem_song_id: payload.anthem_song_id ?? undefined,
+        anthem_song_name: payload.anthem_song_name ?? undefined,
+        avatar_source: payload.avatar_source,
+        avatar_url: payload.avatar_url || undefined,
+        discord_id: payload.discord_id || undefined,
+        avatar_frame: payload.avatar_frame,
+        theme: payload.theme,
+        accent_color: payload.accent_color,
+        profile_animation: payload.profile_animation,
+        pet_type: payload.pet_type,
+        pet_variant: payload.pet_variant,
+        pet_name: payload.pet_name || undefined,
+        custom_gradient_start: payload.custom_gradient_start || undefined,
+        custom_gradient_end: payload.custom_gradient_end || undefined,
       });
 
-      showToast('Perfil, diseño y mascota actualizados', 'success');
+      // Synchronize in background with fresh database state
+      void useSettingsStore.getState().refreshProfile();
+
+      showToast('Perfil, himno y decoración guardados', 'success');
       onClose();
     } catch (err: any) {
       showToast(err?.message || 'Error al guardar cambios', 'error');
@@ -398,6 +431,14 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
                     {vibe}
                   </Text>
                 ) : null}
+                {anthemSongName ? (
+                  <View style={styles.previewAnthemPill}>
+                    <Ionicons name="disc" size={11} color="#00E5FF" />
+                    <Text style={styles.previewAnthemText} numberOfLines={1}>
+                      {anthemSongName}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
               {/* Live Pet Preview in header if active */}
@@ -415,97 +456,118 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
             </View>
           </View>
 
-          {/* Tab Selector */}
-          <View style={styles.tabBar}>
-            <PressableFluid
-              onPress={() => setActiveTab('identity')}
-              haptic="light"
-              style={[styles.tabBtn, activeTab === 'identity' && styles.tabBtnActive]}
+          {/* Tab Selector (Smooth Horizontal Scroll - No Overlapping) */}
+          <View style={styles.tabBarContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabBarScroll}
             >
-              <Ionicons
-                name="person-outline"
-                size={15}
-                color={activeTab === 'identity' ? colors.white : colors.textMuted}
-              />
-              <Text style={[styles.tabText, activeTab === 'identity' && styles.tabTextActive]}>
-                Identidad
-              </Text>
-            </PressableFluid>
+              <PressableFluid
+                onPress={() => setActiveTab('identity')}
+                haptic="light"
+                style={[styles.tabBtn, activeTab === 'identity' && styles.tabBtnActive]}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={15}
+                  color={activeTab === 'identity' ? colors.white : colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'identity' && styles.tabTextActive]}>
+                  Identidad
+                </Text>
+              </PressableFluid>
 
-            <PressableFluid
-              onPress={() => setActiveTab('avatar')}
-              haptic="light"
-              style={[styles.tabBtn, activeTab === 'avatar' && styles.tabBtnActive]}
-            >
-              <Ionicons
-                name="image-outline"
-                size={15}
-                color={activeTab === 'avatar' ? colors.white : colors.textMuted}
-              />
-              <Text style={[styles.tabText, activeTab === 'avatar' && styles.tabTextActive]}>
-                Avatar
-              </Text>
-            </PressableFluid>
+              <PressableFluid
+                onPress={() => setActiveTab('anthem')}
+                haptic="light"
+                style={[styles.tabBtn, activeTab === 'anthem' && styles.tabBtnActive]}
+              >
+                <Ionicons
+                  name="disc-outline"
+                  size={15}
+                  color={activeTab === 'anthem' ? '#00E5FF' : colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'anthem' && styles.tabTextActive]}>
+                  Himno
+                </Text>
+              </PressableFluid>
 
-            <PressableFluid
-              onPress={() => setActiveTab('pet')}
-              haptic="light"
-              style={[styles.tabBtn, activeTab === 'pet' && styles.tabBtnActive]}
-            >
-              <Ionicons
-                name="paw-outline"
-                size={15}
-                color={activeTab === 'pet' ? colors.white : colors.textMuted}
-              />
-              <Text style={[styles.tabText, activeTab === 'pet' && styles.tabTextActive]}>
-                Mascota
-              </Text>
-            </PressableFluid>
+              <PressableFluid
+                onPress={() => setActiveTab('avatar')}
+                haptic="light"
+                style={[styles.tabBtn, activeTab === 'avatar' && styles.tabBtnActive]}
+              >
+                <Ionicons
+                  name="image-outline"
+                  size={15}
+                  color={activeTab === 'avatar' ? colors.white : colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'avatar' && styles.tabTextActive]}>
+                  Avatar
+                </Text>
+              </PressableFluid>
 
-            <PressableFluid
-              onPress={() => setActiveTab('frame')}
-              haptic="light"
-              style={[styles.tabBtn, activeTab === 'frame' && styles.tabBtnActive]}
-            >
-              <Ionicons
-                name="sparkles-outline"
-                size={15}
-                color={activeTab === 'frame' ? colors.white : colors.textMuted}
-              />
-              <Text style={[styles.tabText, activeTab === 'frame' && styles.tabTextActive]}>
-                Marcos
-              </Text>
-            </PressableFluid>
+              <PressableFluid
+                onPress={() => setActiveTab('pet')}
+                haptic="light"
+                style={[styles.tabBtn, activeTab === 'pet' && styles.tabBtnActive]}
+              >
+                <Ionicons
+                  name="paw-outline"
+                  size={15}
+                  color={activeTab === 'pet' ? colors.white : colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'pet' && styles.tabTextActive]}>
+                  Mascota
+                </Text>
+              </PressableFluid>
 
-            <PressableFluid
-              onPress={() => setActiveTab('theme')}
-              haptic="light"
-              style={[styles.tabBtn, activeTab === 'theme' && styles.tabBtnActive]}
-            >
-              <Ionicons
-                name="color-palette-outline"
-                size={15}
-                color={activeTab === 'theme' ? colors.white : colors.textMuted}
-              />
-              <Text style={[styles.tabText, activeTab === 'theme' && styles.tabTextActive]}>
-                Tema
-              </Text>
-            </PressableFluid>
+              <PressableFluid
+                onPress={() => setActiveTab('frame')}
+                haptic="light"
+                style={[styles.tabBtn, activeTab === 'frame' && styles.tabBtnActive]}
+              >
+                <Ionicons
+                  name="sparkles-outline"
+                  size={15}
+                  color={activeTab === 'frame' ? colors.white : colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'frame' && styles.tabTextActive]}>
+                  Marcos
+                </Text>
+              </PressableFluid>
 
-            <PressableFluid
-              onPress={() => setActiveTab('animation')}
-              haptic="light"
-              style={[styles.tabBtn, activeTab === 'animation' && styles.tabBtnActive]}
-            >
-              <Ionicons
-                name="flash-outline"
-                size={15}
-                color={activeTab === 'animation' ? colors.white : colors.textMuted}
-              />
-              <Text style={[styles.tabText, activeTab === 'animation' && styles.tabTextActive]}>
-                Efecto
-              </Text>
-            </PressableFluid>
+              <PressableFluid
+                onPress={() => setActiveTab('theme')}
+                haptic="light"
+                style={[styles.tabBtn, activeTab === 'theme' && styles.tabBtnActive]}
+              >
+                <Ionicons
+                  name="color-palette-outline"
+                  size={15}
+                  color={activeTab === 'theme' ? colors.white : colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'theme' && styles.tabTextActive]}>
+                  Tema
+                </Text>
+              </PressableFluid>
+
+              <PressableFluid
+                onPress={() => setActiveTab('animation')}
+                haptic="light"
+                style={[styles.tabBtn, activeTab === 'animation' && styles.tabBtnActive]}
+              >
+                <Ionicons
+                  name="flash-outline"
+                  size={15}
+                  color={activeTab === 'animation' ? colors.white : colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'animation' && styles.tabTextActive]}>
+                  Efecto
+                </Text>
+              </PressableFluid>
+            </ScrollView>
           </View>
 
           {/* Tab Content */}
@@ -585,6 +647,139 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
                       </PressableFluid>
                     ))}
                   </ScrollView>
+                </View>
+              </View>
+            )}
+
+            {activeTab === 'anthem' && (
+              <View style={styles.sectionWrap}>
+                <View>
+                  <Text style={styles.sectionTitle}>Himno Musical del Perfil</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Tu rolón insignia se exhibirá con vitrina exclusiva y reproducción en tu perfil.
+                  </Text>
+                </View>
+
+                {/* Currently selected anthem card */}
+                {anthemSongName ? (
+                  <View style={styles.anthemSelectedBox}>
+                    <LinearGradient
+                      colors={['rgba(0, 229, 255, 0.15)', 'rgba(127, 0, 255, 0.15)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <View style={styles.anthemSelectedLeft}>
+                      <View style={styles.anthemSelectedDiscWrap}>
+                        <Ionicons name="disc" size={24} color="#00E5FF" />
+                      </View>
+                      <View style={styles.anthemSelectedMeta}>
+                        <Text style={styles.anthemSelectedTag}>HIMNO SELECCIONADO</Text>
+                        <Text style={styles.anthemSelectedTitle} numberOfLines={1}>
+                          {anthemSongName}
+                        </Text>
+                      </View>
+                    </View>
+                    <PressableFluid
+                      onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setAnthemSongId(null);
+                        setAnthemSongName(null);
+                      }}
+                      haptic="light"
+                      style={styles.anthemRemoveBtn}
+                    >
+                      <Ionicons name="trash-outline" size={15} color="#ff4d4f" />
+                      <Text style={styles.anthemRemoveText}>Quitar</Text>
+                    </PressableFluid>
+                  </View>
+                ) : (
+                  <View style={styles.anthemNoneBox}>
+                    <Ionicons name="disc-outline" size={24} color="rgba(255,255,255,0.3)" />
+                    <Text style={styles.anthemNoneText}>
+                      Aún no tienes un himno activo. Elige una canción de tu biblioteca a continuación:
+                    </Text>
+                  </View>
+                )}
+
+                {/* Search bar */}
+                <View style={styles.anthemSearchBox}>
+                  <Ionicons name="search" size={16} color={colors.textMuted} style={styles.anthemSearchIcon} />
+                  <TextInput
+                    style={styles.anthemSearchInput}
+                    value={anthemSearch}
+                    onChangeText={setAnthemSearch}
+                    placeholder="Buscar en tu biblioteca..."
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                  {anthemSearch.length > 0 && (
+                    <PressableFluid
+                      onPress={() => setAnthemSearch('')}
+                      haptic="light"
+                      style={styles.anthemSearchClear}
+                    >
+                      <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                    </PressableFluid>
+                  )}
+                </View>
+
+                {/* Song list */}
+                <View style={styles.anthemSongListWrap}>
+                  {filteredAnthemSongs.length === 0 ? (
+                    <View style={styles.emptySearchWrap}>
+                      <Ionicons name="musical-notes-outline" size={30} color="rgba(255,255,255,0.2)" />
+                      <Text style={styles.emptySearchText}>
+                        {anthemSearch.trim()
+                          ? 'No se encontraron canciones que coincidan'
+                          : 'No tienes canciones disponibles en tu biblioteca'}
+                      </Text>
+                    </View>
+                  ) : (
+                    filteredAnthemSongs.slice(0, 35).map((song) => {
+                      const isSelected =
+                        (anthemSongId && String(song.id) === String(anthemSongId)) ||
+                        anthemSongName?.toLowerCase().trim() === song.name.toLowerCase().trim();
+                      const cover = pickCoverUrl(song);
+
+                      return (
+                        <PressableFluid
+                          key={String(song.id)}
+                          onPress={() => {
+                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setAnthemSongId(song.id);
+                            setAnthemSongName(song.name);
+                          }}
+                          haptic="light"
+                          style={[styles.anthemSongRow, isSelected && styles.anthemSongRowSelected]}
+                        >
+                          <View style={styles.anthemRowLeft}>
+                            {cover ? (
+                              <Image source={{ uri: cover }} style={styles.anthemRowCover} />
+                            ) : (
+                              <View style={styles.anthemRowPlaceholder}>
+                                <Ionicons name="musical-note" size={16} color={colors.textMuted} />
+                              </View>
+                            )}
+                            <View style={styles.anthemRowTexts}>
+                              <Text
+                                style={[styles.anthemRowTitle, isSelected && styles.anthemRowTitleSelected]}
+                                numberOfLines={1}
+                              >
+                                {song.name}
+                              </Text>
+                              <Text style={styles.anthemRowArtist} numberOfLines={1}>
+                                {song.artist || 'Artista desconocido'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={[styles.anthemRadio, isSelected && styles.anthemRadioSelected]}>
+                            {isSelected && <View style={styles.anthemRadioInner} />}
+                          </View>
+                        </PressableFluid>
+                      );
+                    })
+                  )}
                 </View>
               </View>
             )}
@@ -1151,30 +1346,52 @@ const styles = StyleSheet.create({
   previewVibe: {
     fontSize: 11,
     color: colors.secondary,
-    marginTop: 4,
+    marginTop: 3,
     fontStyle: 'italic',
   },
-  tabBar: {
+  previewAnthemPill: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 6,
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 229, 255, 0.12)',
+    alignSelf: 'flex-start',
+    maxWidth: '96%',
+  },
+  previewAnthemText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#00E5FF',
+    flexShrink: 1,
+  },
+  tabBarContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  tabBarScroll: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   tabBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 6,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   tabBtnActive: {
     backgroundColor: 'rgba(127, 0, 255, 0.25)',
-    borderWidth: 1,
     borderColor: 'rgba(127, 0, 255, 0.6)',
   },
   tabText: {
@@ -1617,5 +1834,187 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
+  },
+  anthemSelectedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: '#00E5FF',
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: 'rgba(0, 229, 255, 0.05)',
+  },
+  anthemSelectedLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    marginRight: 8,
+  },
+  anthemSelectedDiscWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anthemSelectedMeta: {
+    flex: 1,
+  },
+  anthemSelectedTag: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#00E5FF',
+    letterSpacing: 0.5,
+  },
+  anthemSelectedTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: colors.white,
+    marginTop: 1,
+  },
+  anthemRemoveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 77, 79, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 77, 79, 0.3)',
+  },
+  anthemRemoveText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ff4d4f',
+  },
+  anthemNoneBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  anthemNoneText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 17,
+  },
+  anthemSearchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 42,
+  },
+  anthemSearchIcon: {
+    marginRight: 8,
+  },
+  anthemSearchInput: {
+    flex: 1,
+    color: colors.white,
+    fontSize: 13,
+    paddingVertical: 8,
+  },
+  anthemSearchClear: {
+    padding: 4,
+  },
+  anthemSongListWrap: {
+    gap: 8,
+    marginTop: 4,
+  },
+  anthemSongRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  anthemSongRowSelected: {
+    borderColor: '#00E5FF',
+    backgroundColor: 'rgba(0, 229, 255, 0.08)',
+  },
+  anthemRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    marginRight: 10,
+  },
+  anthemRowCover: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: '#111',
+  },
+  anthemRowPlaceholder: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anthemRowTexts: {
+    flex: 1,
+  },
+  anthemRowTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  anthemRowTitleSelected: {
+    color: '#00E5FF',
+    fontWeight: '700',
+  },
+  anthemRowArtist: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  anthemRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anthemRadioSelected: {
+    borderColor: '#00E5FF',
+    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+  },
+  anthemRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#00E5FF',
+  },
+  emptySearchWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  emptySearchText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
 import * as Haptics from 'expo-haptics';
 import { colors, typography, radius } from '@theme';
-import { pickCoverUrl, resolveArtist, resolveSongTitle } from '@lib/utils';
+import { pickCoverUrl, resolveArtist, resolveSongTitle, isSongLiked } from '@lib/utils';
 import { getSongPalette } from '@lib/palette';
 import { API_HOST } from '@lib/constants';
 import { usePlayerStore } from '@stores/player.store';
@@ -99,7 +99,7 @@ export function SongActionsSheet() {
 
   const isLiked = useMemo(() => {
     if (!song) return false;
-    return likedIds.some((id) => String(id) === String(song.id));
+    return isSongLiked(song, new Set(likedIds.map(String)));
   }, [song, likedIds]);
 
   const isDownloaded = useMemo(() => {

@@ -551,7 +551,8 @@ export function LinkMusicModal() {
     useLibraryStore.getState().upsertSong(virtualSong);
     useLibraryStore.getState().toggleLikeLocal(virtualSong.id, nextLiked);
 
-    if (session?.username) {
+    const effectiveUsername = session?.username || localStorage.getItem('currentUserName');
+    if (effectiveUsername) {
       try {
         if (nextLiked) {
           const registered = await songsService.registerSong({
@@ -562,14 +563,20 @@ export function LinkMusicModal() {
             youtube_id: virtualSong.youtube_id,
             cover_url: virtualSong.cover_url,
             duration: virtualSong.duration,
-            added_by: session.username,
-            liked_by: session.username,
+            added_by: effectiveUsername,
+            liked_by: effectiveUsername,
           });
           useLibraryStore.getState().upsertSong(registered);
           useLibraryStore.getState().toggleLikeLocal(registered.id, true);
+          if (String(registered.id) !== String(virtualSong.id)) {
+            useLibraryStore.getState().toggleLikeLocal(virtualSong.id, false);
+          }
           cacheExternalLikedSong(registered);
         } else {
-          await likesService.removeLike(session.username, virtualSong.id);
+          await likesService.removeLike(effectiveUsername, virtualSong.id);
+          if (virtualSong.youtube_id) {
+            await likesService.removeLike(effectiveUsername, virtualSong.youtube_id).catch(() => {});
+          }
           removeExternalLikedSong(virtualSong.id);
         }
       } catch (err) {
