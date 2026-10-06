@@ -1297,6 +1297,7 @@ export function LinkMusicModal() {
                 <div className="jf-link-playlist-items">
                   {resolved.items.map((item, idx) => {
                     const isSelected = selectedIndices.has(idx);
+                    const isDup = checkDuplicate(item);
                     const vSong = toVirtualSong(item, resolved.thumbnail);
                     const liked = isTrackLiked(vSong.id);
                     const itemThumb =
