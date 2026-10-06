@@ -5,7 +5,7 @@ import { API_BASE } from '../lib/constants';
 import { getActiveApiBase, getCandidateBases, setActiveApiBase } from '../services/api';
 import { shuffleArray } from '../lib/utils';
 import { activateLockScreenForSong, syncLockScreen } from '../services/lockscreen.service';
-import { ensurePlayerWithSource, getPlayer, onPlayerStatus } from './audio';
+import { ensurePlayerWithSource, getPlayer, onPlayerStatus, releasePlayer } from './audio';
 import { useEqStore } from './eq.store';
 import { applyNative, enableEqualizer, applyBassBoost, applyVirtualizer } from '../services/equalizer.service';
 import { recordHistory } from '../services/history.service';
@@ -310,6 +310,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       } catch (err: any) {
         lastError = err;
         console.warn(`[Player] playWithEngine failed on base ${base}:`, err);
+        releasePlayer(source);
       }
     }
 
