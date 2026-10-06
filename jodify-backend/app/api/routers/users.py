@@ -1,8 +1,10 @@
+import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
+import httpx
 
 from ...core.database import col, sid
 from ...models.schemas import (
@@ -15,7 +17,40 @@ from ...models.schemas import (
 )
 from ..dependencies import require_admin
 
+logger = logging.getLogger("jodify.users")
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+
+async def _resolve_discord_profile(discord_id: str) -> dict | None:
+    clean_id = (discord_id or "").strip()
+    if not clean_id or not clean_id.isdigit():
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=4.5) as client:
+            res = await client.get(
+                f"https://api.lanyard.rest/v1/users/{clean_id}",
+                headers={"User-Agent": "JodiFy/2.0"},
+            )
+            if res.status_code == 200:
+                payload = res.json()
+                if payload.get("success") and "data" in payload:
+                    user_data = payload["data"].get("discord_user", {})
+                    avatar_hash = user_data.get("avatar")
+                    avatar_url = None
+                    if avatar_hash:
+                        ext = "gif" if avatar_hash.startswith("a_") else "png"
+                        avatar_url = f"https://cdn.discordapp.com/avatars/{clean_id}/{avatar_hash}.{ext}?size=256"
+                    return {
+                        "found": True,
+                        "discord_id": clean_id,
+                        "username": user_data.get("username"),
+                        "display_name": user_data.get("display_name") or user_data.get("global_name"),
+                        "avatar_url": avatar_url,
+                        "status": payload["data"].get("discord_status", "offline"),
+                    }
+    except Exception as e:
+        logger.debug(f"Error resolving Discord profile for {clean_id}: {e}")
+    return None
 
 
 def is_recent(last_seen_iso: str | None, max_seconds: int = 150) -> bool:
@@ -48,10 +83,14 @@ def user_view(doc: dict) -> dict:
         "is_online": is_online,
         "online": is_online == 1,
         "presence": presence,
-        "last_seen": last_seen,
-        "avatar_url": doc.get("avatar_url"),
+        "avatar_url": (doc.get("discord_avatar_url") if (doc.get("avatar_source") == "discord" and doc.get("discord_avatar_url")) else doc.get("avatar_url")),
         "avatar_source": doc.get("avatar_source", "custom"),
         "discord_id": doc.get("discord_id"),
+        "discord_avatar_url": doc.get("discord_avatar_url"),
+        "discord": {
+            "discord_id": doc.get("discord_id"),
+            "avatar_url": doc.get("discord_avatar_url"),
+        } if doc.get("discord_id") else None,
         "current_song_id": doc.get("current_song_id") if actually_online else None,
         "current_song_name": doc.get("current_song_name") if actually_online else None,
         "listening_since": doc.get("listening_since") if actually_online else None,
@@ -208,6 +247,25 @@ async def update_profile(username: str, body: UpdateProfileRequest) -> dict:
     if "discord_id" in fields_set:
         clean = body.discord_id.strip() if body.discord_id else None
         updates["discord_id"] = clean or None
+        if clean and clean.isdigit():
+            discord_prof = await _resolve_discord_profile(clean)
+            if discord_prof and discord_prof.get("avatar_url"):
+                updates["discord_avatar_url"] = discord_prof["avatar_url"]
+                if updates.get("avatar_source") == "discord" or doc.get("avatar_source") == "discord":
+                    updates["avatar_url"] = discord_prof["avatar_url"]
+
+    if updates.get("avatar_source") == "discord":
+        target_did = updates.get("discord_id") or doc.get("discord_id")
+        if target_did and str(target_did).isdigit():
+            current_discord_avatar = updates.get("discord_avatar_url") or doc.get("discord_avatar_url")
+            if not current_discord_avatar:
+                discord_prof = await _resolve_discord_profile(str(target_did))
+                if discord_prof and discord_prof.get("avatar_url"):
+                    updates["discord_avatar_url"] = discord_prof["avatar_url"]
+                    updates["avatar_url"] = discord_prof["avatar_url"]
+            elif current_discord_avatar:
+                updates["avatar_url"] = current_discord_avatar
+
     if "bio" in fields_set:
         updates["bio"] = (body.bio.strip()[:160]) if body.bio else ""
     if "theme" in fields_set:
@@ -270,9 +328,34 @@ async def update_profile(username: str, body: UpdateProfileRequest) -> dict:
     return user_view(updated_doc or doc)
 
 
+@router.get("/discord/lookup/{discord_id}")
+async def lookup_discord(discord_id: str) -> dict:
+    clean = discord_id.strip()
+    if not clean or not clean.isdigit():
+        raise HTTPException(status_code=400, detail="El ID de Discord debe ser numérico")
+    prof = await _resolve_discord_profile(clean)
+    if prof:
+        return prof
+    return {
+        "found": False,
+        "discord_id": clean,
+        "avatar_url": f"https://cdn.discordapp.com/embed/avatars/{abs(hash(clean)) % 5}.png",
+    }
+
+
 @router.put("/{username}/discord")
-async def set_discord(username: str, body: DiscordRequest) -> None:
-    await col("users").update_one({"username": username}, {"$set": {"discord_id": body.discord_id}})
+async def set_discord(username: str, body: DiscordRequest) -> dict:
+    clean_id = body.discord_id.strip() if body.discord_id else None
+    upd: dict = {"discord_id": clean_id}
+    if clean_id and clean_id.isdigit():
+        prof = await _resolve_discord_profile(clean_id)
+        if prof and prof.get("avatar_url"):
+            upd["discord_avatar_url"] = prof["avatar_url"]
+            doc = await col("users").find_one({"username": username})
+            if doc and doc.get("avatar_source") == "discord":
+                upd["avatar_url"] = prof["avatar_url"]
+    await col("users").update_one({"username": username}, {"$set": upd})
+    return {"ok": True, "discord_id": clean_id, "avatar_url": upd.get("discord_avatar_url")}
 
 
 @router.put("/{username}/now-playing")

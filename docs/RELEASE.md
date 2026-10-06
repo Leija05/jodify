@@ -122,8 +122,8 @@ cd JodiFyMovil/frontend
 npx expo prebuild -p android
 cd android
 ./gradlew assembleRelease
-# El APK queda en: android/app/build/outputs/apk/release/app-release.apk
-cp android/app/build/outputs/apk/release/app-release.apk \
+# El APK queda en: android/app/build/outputs/apk/release/Jodify-Release.apk
+cp android/app/build/outputs/apk/release/Jodify-Release.apk \
   "JodiFyMobile-v$(grep -o '"version": *"[^"]*"' app.json | head -1 | grep -o '[0-9.]*').apk"
 gh release upload v2.1.0 "JodiFyMobile-v1.0.1.apk" --repo Leija05/jodify
 ```

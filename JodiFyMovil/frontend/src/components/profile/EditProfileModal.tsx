@@ -12,7 +12,9 @@ import {
   Keyboard,
   Dimensions,
   Animated,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -45,7 +47,7 @@ interface EditProfileModalProps {
   initialTab?: TabKey;
 }
 
-type TabKey = 'identity' | 'anthem' | 'avatar' | 'pet' | 'frame' | 'theme' | 'animation';
+type TabKey = 'identity' | 'anthem' | 'avatar' | 'discord' | 'pet' | 'frame' | 'theme' | 'animation';
 
 const BANNER_GRADIENT_PRESETS = [
   { id: 'none', name: 'Original', start: '', end: '' },
@@ -215,6 +217,16 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
   const [avatarUrl, setAvatarUrl] = useState('');
   const [discordId, setDiscordId] = useState('');
   const [useDiscordAvatar, setUseDiscordAvatar] = useState(false);
+  const [showDiscordActivity, setShowDiscordActivity] = useState(true);
+  const [discordProfile, setDiscordProfile] = useState<{
+    username?: string;
+    display_name?: string;
+    avatar_url?: string;
+    found?: boolean;
+    status?: string;
+  } | null>(null);
+  const [discordLoading, setDiscordLoading] = useState(false);
+
   const [avatarFrame, setAvatarFrame] = useState('none');
   const [theme, setTheme] = useState('aurora');
   const [accentColor, setAccentColor] = useState('#10b981');
@@ -228,6 +240,104 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
 
   // Entrance animation
   const animValue = useMemo(() => new Animated.Value(0), []);
+
+  const fetchDiscordInfo = useCallback(async (id: string) => {
+    const clean = id.trim();
+    if (!clean || !/^\d+$/.test(clean) || clean.length < 15) {
+      setDiscordProfile(null);
+      return;
+    }
+    setDiscordLoading(true);
+    try {
+      // 1. Try direct Lanyard API
+      const res = await fetch(`https://api.lanyard.rest/v1/users/${clean}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && json?.data?.discord_user) {
+          const u = json.data.discord_user;
+          const ext = u.avatar?.startsWith('a_') ? 'gif' : 'png';
+          const avatar = u.avatar
+            ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.${ext}?size=256`
+            : `https://cdn.discordapp.com/embed/avatars/${Math.abs(parseInt(clean.slice(-4), 10) || 0) % 5}.png`;
+          setDiscordProfile({
+            found: true,
+            username: u.username,
+            display_name: u.display_name || u.global_name,
+            avatar_url: avatar,
+            status: json.data.discord_status || 'offline',
+          });
+          return;
+        }
+      }
+
+      // 2. Try backend resolver endpoint
+      const apiBase = (process.env.EXPO_PUBLIC_API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
+      const bRes = await fetch(`${apiBase}/api/users/discord/lookup/${clean}`);
+      if (bRes.ok) {
+        const bJson = await bRes.json();
+        if (bJson.found) {
+          setDiscordProfile({
+            found: true,
+            username: bJson.username,
+            display_name: bJson.display_name,
+            avatar_url: bJson.avatar_url,
+            status: bJson.status || 'offline',
+          });
+          return;
+        }
+      }
+
+      // 3. Fallback when user is not present on Lanyard
+      const lastDigits = parseInt(clean.slice(-4), 10) || 0;
+      setDiscordProfile({
+        found: false,
+        username: `Discord (${clean.slice(-4)})`,
+        avatar_url: `https://cdn.discordapp.com/embed/avatars/${Math.abs(lastDigits) % 5}.png`,
+      });
+    } catch {
+      setDiscordProfile(null);
+    } finally {
+      setDiscordLoading(false);
+    }
+  }, []);
+
+  const handlePickFromGallery = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Permiso necesario',
+          'Se necesita permiso de acceso a fotos para seleccionar tu foto de perfil.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.75,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (!asset) return;
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        let finalUrl = asset.uri;
+        if (asset.base64) {
+          const mime = asset.mimeType || 'image/jpeg';
+          finalUrl = `data:${mime};base64,${asset.base64}`;
+        }
+        setAvatarUrl(finalUrl);
+        setUseDiscordAvatar(false);
+        showToast('Foto cargada desde galería', 'success');
+      }
+    } catch (err: any) {
+      console.warn('[EditProfileModal] Error picking image:', err);
+      Alert.alert('Error', 'No se pudo cargar la imagen de la galería.');
+    }
+  };
 
   useEffect(() => {
     if (visible) {
@@ -254,6 +364,7 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
       setAvatarUrl(user.avatar_url ?? '');
       setDiscordId(user.discord_id ?? '');
       setUseDiscordAvatar(user.avatar_source === 'discord');
+      setShowDiscordActivity(user.show_discord_activity ?? true);
       setAvatarFrame(user.avatar_frame ?? 'none');
       setTheme(user.theme ?? 'aurora');
       setAccentColor(user.accent_color ?? '#10b981');
@@ -263,8 +374,14 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
       setPetName(user.pet_name ?? '');
       setCustomGradientStart(user.custom_gradient_start ?? '');
       setCustomGradientEnd(user.custom_gradient_end ?? '');
+
+      if (user.discord_id) {
+        void fetchDiscordInfo(user.discord_id);
+      } else {
+        setDiscordProfile(null);
+      }
     }
-  }, [visible, user]);
+  }, [visible, user, fetchDiscordInfo]);
 
   const filteredAnthemSongs = useMemo(() => {
     if (!anthemSearch.trim()) return librarySongs;
@@ -275,12 +392,17 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
   }, [librarySongs, anthemSearch]);
 
   const effectiveAvatarUrl = useMemo(() => {
-    if (useDiscordAvatar && discordId.trim().length > 10) {
-      const lastDigits = parseInt(discordId.slice(-4), 10) || 0;
-      return `https://cdn.discordapp.com/embed/avatars/${Math.abs(lastDigits) % 5}.png`;
+    if (useDiscordAvatar) {
+      if (discordProfile?.avatar_url) return discordProfile.avatar_url;
+      const cachedDiscord = (user as any)?.discord_avatar_url;
+      if (cachedDiscord) return cachedDiscord;
+      if (discordId.trim().length > 10) {
+        const lastDigits = parseInt(discordId.slice(-4), 10) || 0;
+        return `https://cdn.discordapp.com/embed/avatars/${Math.abs(lastDigits) % 5}.png`;
+      }
     }
     return avatarUrl.trim() || null;
-  }, [useDiscordAvatar, discordId, avatarUrl]);
+  }, [useDiscordAvatar, discordId, discordProfile, avatarUrl, user]);
 
   const handleSelectPreset = useCallback((url: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -306,6 +428,10 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
     Keyboard.dismiss();
 
     try {
+      const resolvedAvatarUrl = (useDiscordAvatar && discordProfile?.avatar_url)
+        ? discordProfile.avatar_url
+        : (avatarUrl.trim() || null);
+
       const payload = {
         display_name: displayName.trim() || user.username,
         bio: bio.trim(),
@@ -314,8 +440,9 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
         anthem_song_id: anthemSongId || null,
         anthem_song_name: anthemSongName ? anthemSongName.trim() : null,
         avatar_source: useDiscordAvatar ? ('discord' as const) : ('custom' as const),
-        avatar_url: avatarUrl.trim() || null,
+        avatar_url: resolvedAvatarUrl,
         discord_id: discordId.trim() || null,
+        show_discord_activity: showDiscordActivity,
         avatar_frame: avatarFrame || 'none',
         theme: theme || 'aurora',
         accent_color: accentColor || '#10b981',
@@ -339,6 +466,7 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
         avatar_source: payload.avatar_source,
         avatar_url: payload.avatar_url || undefined,
         discord_id: payload.discord_id || undefined,
+        show_discord_activity: payload.show_discord_activity,
         avatar_frame: payload.avatar_frame,
         theme: payload.theme,
         accent_color: payload.accent_color,
@@ -353,7 +481,7 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
       // Synchronize in background with fresh database state
       void useSettingsStore.getState().refreshProfile();
 
-      showToast('Perfil, himno y decoración guardados', 'success');
+      showToast('Perfil guardado con éxito', 'success');
       onClose();
     } catch (err: any) {
       showToast(err?.message || 'Error al guardar cambios', 'error');
@@ -505,6 +633,21 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
                 />
                 <Text style={[styles.tabText, activeTab === 'avatar' && styles.tabTextActive]}>
                   Avatar
+                </Text>
+              </PressableFluid>
+
+              <PressableFluid
+                onPress={() => setActiveTab('discord')}
+                haptic="light"
+                style={[styles.tabBtn, activeTab === 'discord' && styles.tabBtnActive]}
+              >
+                <Ionicons
+                  name="logo-discord"
+                  size={15}
+                  color={activeTab === 'discord' ? '#5865F2' : colors.textMuted}
+                />
+                <Text style={[styles.tabText, activeTab === 'discord' && styles.tabTextActive]}>
+                  Discord
                 </Text>
               </PressableFluid>
 
@@ -786,7 +929,62 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
 
             {activeTab === 'avatar' && (
               <View style={styles.sectionWrap}>
-                <Text style={styles.sectionTitle}>1. Colección Exclusiva JodiFy</Text>
+                {/* 1. Galería del teléfono */}
+                <Text style={styles.sectionTitle}>1. Foto desde tu Galería</Text>
+                <Text style={styles.sectionSubtitle}>Sube cualquier foto de tu dispositivo móvil</Text>
+
+                {(avatarUrl.startsWith('data:') || avatarUrl.startsWith('file:') || avatarUrl.startsWith('content:')) && !useDiscordAvatar ? (
+                  <View style={styles.galleryPreviewCard}>
+                    <Image source={{ uri: avatarUrl }} style={styles.galleryPreviewImg} />
+                    <View style={styles.galleryPreviewMeta}>
+                      <View style={styles.galleryBadge}>
+                        <Ionicons name="checkmark-circle" size={14} color="#10b981" />
+                        <Text style={styles.galleryBadgeText}>Foto personalizada activa</Text>
+                      </View>
+                      <View style={styles.galleryBtnRow}>
+                        <PressableFluid
+                          onPress={handlePickFromGallery}
+                          style={styles.galleryChangeBtn}
+                          haptic="light"
+                        >
+                          <Ionicons name="camera-outline" size={14} color={colors.white} />
+                          <Text style={styles.galleryBtnText}>Cambiar</Text>
+                        </PressableFluid>
+                        <PressableFluid
+                          onPress={() => {
+                            setAvatarUrl('');
+                            useToastStore.getState().show('Foto personalizada removida', 'info');
+                          }}
+                          style={styles.galleryRemoveBtn}
+                          haptic="light"
+                        >
+                          <Ionicons name="trash-outline" size={14} color="#ff3366" />
+                          <Text style={[styles.galleryBtnText, { color: '#ff3366' }]}>Quitar</Text>
+                        </PressableFluid>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <PressableFluid
+                    onPress={handlePickFromGallery}
+                    style={styles.galleryUploadBtn}
+                    haptic="medium"
+                  >
+                    <View style={styles.galleryUploadIconWrap}>
+                      <Ionicons name="images" size={24} color="#00E5FF" />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={styles.galleryUploadTitle}>Elegir foto de la galería</Text>
+                      <Text style={styles.galleryUploadSub}>Selecciona una imagen de tu dispositivo (JPG, PNG)</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
+                  </PressableFluid>
+                )}
+
+                <View style={styles.divider} />
+
+                {/* 2. Colección Exclusiva JodiFy */}
+                <Text style={styles.sectionTitle}>2. Colección Exclusiva JodiFy</Text>
                 <Text style={styles.sectionSubtitle}>Selecciona un avatar oficial en alta resolución</Text>
                 <View style={styles.presetsGrid}>
                   {AVATAR_PRESETS.map((preset) => {
@@ -809,10 +1007,11 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
 
                 <View style={styles.divider} />
 
-                <Text style={styles.sectionTitle}>2. Pegar URL Directa de Imagen</Text>
+                {/* 3. Pegar URL Directa */}
+                <Text style={styles.sectionTitle}>3. Pegar URL Directa de Imagen</Text>
                 <TextInput
                   style={styles.input}
-                  value={avatarUrl}
+                  value={avatarUrl.startsWith('data:') ? 'Foto personalizada (base64)' : avatarUrl}
                   onChangeText={(val) => {
                     setAvatarUrl(val);
                     setUseDiscordAvatar(false);
@@ -821,30 +1020,170 @@ export function EditProfileModal({ visible, onClose, initialTab }: EditProfileMo
                   placeholderTextColor="rgba(255,255,255,0.3)"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  editable={!avatarUrl.startsWith('data:')}
                 />
 
                 <View style={styles.divider} />
 
-                <Text style={styles.sectionTitle}>3. Vincular con Discord</Text>
-                <TextInput
-                  style={styles.input}
-                  value={discordId}
-                  onChangeText={setDiscordId}
-                  placeholder="Tu Discord ID (ej. 433384948984971264)"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  keyboardType="numeric"
-                />
+                {/* 4. Acceso directo a Discord */}
+                <PressableFluid
+                  onPress={() => setActiveTab('discord')}
+                  style={styles.discordBannerBtn}
+                  haptic="light"
+                >
+                  <View style={styles.discordIconWrap}>
+                    <Ionicons name="logo-discord" size={22} color="#5865F2" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.discordBannerTitle}>¿Quieres usar tu foto de Discord?</Text>
+                    <Text style={styles.discordBannerSub}>
+                      {discordProfile?.found
+                        ? `Conectado como @${discordProfile.username}`
+                        : 'Configura tu Discord ID en la pestaña Discord'}
+                    </Text>
+                  </View>
+                  <Ionicons name="arrow-forward" size={16} color="#5865F2" />
+                </PressableFluid>
+              </View>
+            )}
+
+            {activeTab === 'discord' && (
+              <View style={styles.sectionWrap}>
+                <View style={styles.discordHeaderCard}>
+                  <View style={styles.discordLogoCircle}>
+                    <Ionicons name="logo-discord" size={28} color="#5865F2" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.discordHeaderTitle}>Vinculación con Discord</Text>
+                    <Text style={styles.discordHeaderSub}>
+                      Sincroniza tu foto de perfil real y tu actividad musical directamente en tu perfil.
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.sectionTitle, { marginTop: 16 }]}>1. Tu Discord ID</Text>
+                <Text style={styles.sectionSubtitle}>Introduce tu ID numérico de Discord (17-19 dígitos)</Text>
+                <View style={styles.discordInputRow}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    value={discordId}
+                    onChangeText={(val) => {
+                      setDiscordId(val);
+                      if (val.trim().length >= 17) {
+                        void fetchDiscordInfo(val);
+                      }
+                    }}
+                    placeholder="Ej. 768431429313888266"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    keyboardType="numeric"
+                  />
+                  <PressableFluid
+                    onPress={() => void fetchDiscordInfo(discordId)}
+                    style={styles.discordVerifyBtn}
+                    haptic="medium"
+                    disabled={discordLoading || !discordId.trim()}
+                  >
+                    {discordLoading ? (
+                      <ActivityIndicator size="small" color={colors.white} />
+                    ) : (
+                      <>
+                        <Ionicons name="search" size={15} color={colors.white} />
+                        <Text style={styles.discordVerifyText}>Buscar</Text>
+                      </>
+                    )}
+                  </PressableFluid>
+                </View>
+
+                {/* Live Discord User Preview */}
+                {discordProfile && (
+                  <View style={[styles.discordProfileCard, discordProfile.found && styles.discordProfileCardFound]}>
+                    <View style={styles.discordProfileTop}>
+                      {discordProfile.avatar_url ? (
+                        <Image source={{ uri: discordProfile.avatar_url }} style={styles.discordAvatarImg} />
+                      ) : (
+                        <View style={styles.discordAvatarPlaceholder}>
+                          <Ionicons name="logo-discord" size={24} color="#5865F2" />
+                        </View>
+                      )}
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.discordProfileName} numberOfLines={1}>
+                          {discordProfile.display_name || discordProfile.username || 'Usuario Discord'}
+                        </Text>
+                        <Text style={styles.discordProfileTag}>@{discordProfile.username}</Text>
+                        <View style={[styles.discordStatusBadge, discordProfile.found ? styles.discordStatusBadgeSuccess : styles.discordStatusBadgeWarn]}>
+                          <Ionicons
+                            name={discordProfile.found ? 'checkmark-circle' : 'alert-circle'}
+                            size={12}
+                            color={discordProfile.found ? '#10b981' : '#f59e0b'}
+                          />
+                          <Text style={[styles.discordStatusText, { color: discordProfile.found ? '#10b981' : '#f59e0b' }]}>
+                            {discordProfile.found ? 'Avatar oficial encontrado en HD' : 'Avatar básico (no detectado en Lanyard)'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.switchRow}>
+                      <View style={{ flex: 1, marginRight: 10 }}>
+                        <Text style={styles.switchLabel}>Usar foto de perfil de Discord</Text>
+                        <Text style={styles.switchSublabel}>
+                          Se mostrará tu avatar real de Discord como foto de tu cuenta en JodiFy.
+                        </Text>
+                      </View>
+                      <Switch
+                        value={useDiscordAvatar}
+                        onValueChange={(val) => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setUseDiscordAvatar(val);
+                          if (val && discordProfile?.avatar_url) {
+                            setAvatarUrl(discordProfile.avatar_url);
+                          }
+                        }}
+                        trackColor={{ false: '#222', true: '#5865F2' }}
+                        thumbColor={colors.white}
+                      />
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.divider} />
+
+                {/* Show activity switch */}
                 <View style={styles.switchRow}>
-                  <Text style={styles.switchLabel}>Usar foto de perfil de Discord</Text>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={styles.switchLabel}>Mostrar actividad de Discord</Text>
+                    <Text style={styles.switchSublabel}>
+                      Permite que otros usuarios vean tu presencia y estado de Discord en tu perfil social.
+                    </Text>
+                  </View>
                   <Switch
-                    value={useDiscordAvatar}
+                    value={showDiscordActivity}
                     onValueChange={(val) => {
                       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setUseDiscordAvatar(val);
+                      setShowDiscordActivity(val);
                     }}
-                    trackColor={{ false: '#222', true: colors.primary }}
+                    trackColor={{ false: '#222', true: '#10b981' }}
                     thumbColor={colors.white}
                   />
+                </View>
+
+                {/* Help and troubleshooting box */}
+                <View style={styles.discordHelpBox}>
+                  <Text style={styles.discordHelpTitle}>💡 ¿Por qué no carga mi foto de Discord?</Text>
+                  <Text style={styles.discordHelpText}>
+                    Discord protege la privacidad de sus usuarios y no comparte fotos fuera de su plataforma por defecto. Para que tu foto y estado se sincronicen en vivo:
+                  </Text>
+                  <Text style={styles.discordHelpStep}>
+                    1. Únete una sola vez al servidor público de la API: <Text style={{ color: '#00E5FF', fontWeight: 'bold' }}>discord.gg/lanyard</Text>
+                  </Text>
+                  <Text style={styles.discordHelpStep}>
+                    2. Vuelve aquí e introduce tu Discord ID; tu foto y estado aparecerán de inmediato.
+                  </Text>
+                  <Text style={styles.discordHelpStep}>
+                    3. Si no deseas unirte a ningún servidor, puedes subir cualquier foto directamente desde la pestaña <Text style={{ color: colors.white, fontWeight: 'bold' }}>Avatar &gt; Galería</Text>.
+                  </Text>
                 </View>
               </View>
             )}
@@ -2016,5 +2355,260 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     textAlign: 'center',
+  },
+
+  // Gallery upload & preview
+  galleryUploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 229, 255, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 229, 255, 0.35)',
+    borderStyle: 'dashed',
+  },
+  galleryUploadIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  galleryUploadTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  galleryUploadSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  galleryPreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+    gap: 12,
+  },
+  galleryPreviewImg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: '#10b981',
+  },
+  galleryPreviewMeta: {
+    flex: 1,
+    gap: 6,
+  },
+  galleryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  galleryBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#10b981',
+  },
+  galleryBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  galleryChangeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  galleryRemoveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 51, 102, 0.12)',
+  },
+  galleryBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.white,
+  },
+
+  // Discord button in Avatar tab
+  discordBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(88, 101, 242, 0.12)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(88, 101, 242, 0.35)',
+  },
+  discordIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(88, 101, 242, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discordBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  discordBannerSub: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.65)',
+    marginTop: 2,
+  },
+
+  // Discord tab styles
+  discordHeaderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: 'rgba(88, 101, 242, 0.15)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(88, 101, 242, 0.35)',
+  },
+  discordLogoCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(88, 101, 242, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discordHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.white,
+  },
+  discordHeaderSub: {
+    fontSize: 11.5,
+    color: colors.textMuted,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  discordInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  discordVerifyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#5865F2',
+    paddingHorizontal: 16,
+    height: 44,
+    borderRadius: 14,
+  },
+  discordVerifyText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  discordProfileCard: {
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginTop: 6,
+  },
+  discordProfileCardFound: {
+    backgroundColor: 'rgba(88, 101, 242, 0.08)',
+    borderColor: 'rgba(88, 101, 242, 0.4)',
+  },
+  discordProfileTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  discordAvatarImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: '#5865F2',
+    backgroundColor: '#111',
+  },
+  discordAvatarPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(88, 101, 242, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discordProfileName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  discordProfileTag: {
+    fontSize: 11.5,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  discordStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  discordStatusBadgeSuccess: {},
+  discordStatusBadgeWarn: {},
+  discordStatusText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
+  switchSublabel: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  discordHelpBox: {
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 6,
+    marginTop: 8,
+  },
+  discordHelpTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#00E5FF',
+    marginBottom: 2,
+  },
+  discordHelpText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  discordHelpStep: {
+    fontSize: 11,
+    color: colors.textMuted,
+    lineHeight: 16,
+    paddingLeft: 4,
   },
 });

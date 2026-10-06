@@ -15,6 +15,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
@@ -41,6 +42,7 @@ class JodifyMediaModule(private val reactContext: ReactApplicationContext) :
   }
 
   private var mediaSession: MediaSession? = null
+  private var wakeLock: PowerManager.WakeLock? = null
   private var lastCoverUrl: String? = null
   private var cachedCoverBitmap: Bitmap? = null
   private var isReceiverRegistered = false
@@ -50,6 +52,35 @@ class JodifyMediaModule(private val reactContext: ReactApplicationContext) :
   private var lastNotifPlaying: Boolean? = null
   private var lastNotifDurationMs: Long = -1L
   private var lastNotifColor: String? = null
+
+  @Synchronized
+  private fun acquireWakeLock() {
+    try {
+      if (wakeLock == null) {
+        val powerManager = reactContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        wakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Jodify::PlaybackWakeLock")
+        wakeLock?.setReferenceCounted(false)
+      }
+      if (wakeLock?.isHeld == false) {
+        wakeLock?.acquire(3 * 60 * 60 * 1000L) // Safety timeout: 3 hours
+        Log.d(TAG, "Partial WakeLock acquired for continuous background playback")
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "Could not acquire WakeLock: ${e.message}")
+    }
+  }
+
+  @Synchronized
+  private fun releaseWakeLock() {
+    try {
+      if (wakeLock?.isHeld == true) {
+        wakeLock?.release()
+        Log.d(TAG, "Partial WakeLock released")
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "Could not release WakeLock: ${e.message}")
+    }
+  }
 
   override fun getName(): String = MODULE_NAME
 
@@ -173,6 +204,12 @@ class JodifyMediaModule(private val reactContext: ReactApplicationContext) :
       .setState(state, posMs, if (isPlaying) 1.0f else 0.0f)
       .build()
     session.setPlaybackState(playbackState)
+
+    if (isPlaying) {
+      acquireWakeLock()
+    } else {
+      releaseWakeLock()
+    }
 
     // Load cover art asynchronously or use cache
     if (coverUrl != null && coverUrl != lastCoverUrl) {
@@ -326,6 +363,7 @@ class JodifyMediaModule(private val reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun stopPlayback() {
+    releaseWakeLock()
     lastNotifTitle = null
     lastNotifArtist = null
     lastNotifPlaying = null
@@ -348,6 +386,7 @@ class JodifyMediaModule(private val reactContext: ReactApplicationContext) :
 
   override fun onCatalystInstanceDestroy() {
     super.onCatalystInstanceDestroy()
+    releaseWakeLock()
     if (isReceiverRegistered) {
       try {
         reactContext.unregisterReceiver(mediaActionReceiver)

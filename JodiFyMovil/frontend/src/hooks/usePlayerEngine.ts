@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { configureAudioMode, onPlayerStatus } from '../stores/audio';
 import { usePlayerStore } from '../stores/player.store';
 
 export function usePlayerEngine() {
+  const lastFinishedRef = useRef(0);
+  const autoSkipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     void configureAudioMode();
 
@@ -13,7 +16,15 @@ export function usePlayerEngine() {
       const store = usePlayerStore.getState();
 
       if (playbackState === 6) {
-        store.next();
+        const now = Date.now();
+        if (now - lastFinishedRef.current > 1200) {
+          lastFinishedRef.current = now;
+          if (autoSkipTimerRef.current) {
+            clearTimeout(autoSkipTimerRef.current);
+            autoSkipTimerRef.current = null;
+          }
+          store.next();
+        }
         return;
       }
 
@@ -27,6 +38,10 @@ export function usePlayerEngine() {
       if (playbackState === 3) {
         if (!store.isPlaying) updates.isPlaying = true;
         if (store.isBuffering) updates.isBuffering = false;
+        if (autoSkipTimerRef.current) {
+          clearTimeout(autoSkipTimerRef.current);
+          autoSkipTimerRef.current = null;
+        }
       } else if (playbackState === 2) {
         if (store.isPlaying) updates.isPlaying = false;
       } else if (playbackState === 4) {
@@ -34,6 +49,15 @@ export function usePlayerEngine() {
       } else if (playbackState === 5) {
         const err = status.error ?? 'Error de reproducción';
         if (store.error !== err) updates.error = err;
+        // Auto-skip on unrecoverable track error if queue is active
+        if (store.isPlaying && store.queue.length > 1 && !autoSkipTimerRef.current) {
+          autoSkipTimerRef.current = setTimeout(() => {
+            autoSkipTimerRef.current = null;
+            if (usePlayerStore.getState().isPlaying) {
+              usePlayerStore.getState().next();
+            }
+          }, 2500);
+        }
       }
 
       if (Object.keys(updates).length > 0) {
@@ -45,6 +69,9 @@ export function usePlayerEngine() {
 
     return () => {
       unsubscribe();
+      if (autoSkipTimerRef.current) {
+        clearTimeout(autoSkipTimerRef.current);
+      }
     };
   }, []);
 }

@@ -214,12 +214,63 @@ export const AVATAR_PRESETS = [
   },
 ];
 
+const discordAvatarCache = new Map<string, string>();
+
+export async function fetchDiscordAvatar(discordId: string): Promise<string | null> {
+  const cleanId = (discordId || '').trim();
+  if (!cleanId || !/^\d+$/.test(cleanId)) return null;
+  if (discordAvatarCache.has(cleanId)) return discordAvatarCache.get(cleanId)!;
+
+  try {
+    const res = await fetch(`https://api.lanyard.rest/v1/users/${cleanId}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.success && data?.data?.discord_user?.avatar) {
+        const u = data.data.discord_user;
+        const ext = u.avatar.startsWith('a_') ? 'gif' : 'png';
+        const url = `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.${ext}?size=256`;
+        discordAvatarCache.set(cleanId, url);
+        return url;
+      }
+    }
+  } catch {}
+
+  const fallback = `https://cdn.discordapp.com/embed/avatars/${Math.abs(parseInt(cleanId.slice(-4), 10) || 0) % 5}.png`;
+  return fallback;
+}
+
 export function resolveAvatarUrl(
-  user?: Partial<UserAccess> | Partial<CommunityUser> | null
+  user?: Partial<UserAccess> | Partial<CommunityUser> | (Partial<UserAccess> & { discord_avatar_url?: string }) | null
 ): string | null {
   if (!user) return null;
 
-  // 1. Explicit avatar_url
+  const isDiscordSource = user.avatar_source === 'discord';
+
+  // 1. If user selected Discord avatar source, prioritize Discord assets
+  if (isDiscordSource) {
+    const directDiscord = (user as any)?.discord_avatar_url;
+    if (directDiscord && typeof directDiscord === 'string' && directDiscord.trim().length > 0) {
+      return directDiscord.trim();
+    }
+    const communityDiscord = (user as Partial<CommunityUser>)?.discord;
+    if (communityDiscord?.avatar_url) {
+      return communityDiscord.avatar_url;
+    }
+    if (user.avatar_url && user.avatar_url.includes('cdn.discordapp.com')) {
+      return user.avatar_url.trim();
+    }
+    if (user.discord_id && typeof user.discord_id === 'string' && user.discord_id.trim().length > 0) {
+      const cleanId = user.discord_id.trim();
+      if (discordAvatarCache.has(cleanId)) {
+        return discordAvatarCache.get(cleanId)!;
+      }
+      void fetchDiscordAvatar(cleanId);
+      const lastDigits = parseInt(cleanId.slice(-4), 10) || 0;
+      return `https://cdn.discordapp.com/embed/avatars/${Math.abs(lastDigits) % 5}.png`;
+    }
+  }
+
+  // 2. Explicit avatar_url (gallery upload, custom URL, preset)
   const rawUrl = user.avatar_url;
   if (rawUrl && typeof rawUrl === 'string' && rawUrl.trim().length > 0) {
     const trimmed = rawUrl.trim();
@@ -235,16 +286,23 @@ export function resolveAvatarUrl(
     return `${apiBase.replace(/\/$/, '')}/${trimmed.replace(/^\//, '')}`;
   }
 
-  // 2. Discord profile avatar object
+  // 3. Fallback to Discord profile avatar object if available
   const communityDiscord = (user as Partial<CommunityUser>)?.discord;
   if (communityDiscord?.avatar_url) {
     return communityDiscord.avatar_url;
   }
+  if ((user as any)?.discord_avatar_url) {
+    return (user as any).discord_avatar_url;
+  }
 
-  // 3. Discord ID default fallback
+  // 4. Discord ID default fallback
   if (user.discord_id && typeof user.discord_id === 'string' && user.discord_id.trim().length > 0) {
-    const rawId = user.discord_id.trim();
-    const lastDigits = parseInt(rawId.slice(-4), 10) || 0;
+    const cleanId = user.discord_id.trim();
+    if (discordAvatarCache.has(cleanId)) {
+      return discordAvatarCache.get(cleanId)!;
+    }
+    void fetchDiscordAvatar(cleanId);
+    const lastDigits = parseInt(cleanId.slice(-4), 10) || 0;
     const index = Math.abs(lastDigits) % 5;
     return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
   }
