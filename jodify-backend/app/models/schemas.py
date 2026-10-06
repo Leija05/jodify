@@ -161,6 +161,26 @@ class MaintenanceRequest(BaseModel):
     message: str = ""
 
 
+class DevUpdateUserRequest(BaseModel):
+    new_username: str | None = None
+    password: str | None = None
+    role: str | None = None
+    display_name: str | None = None
+    bio: str | None = None
+    avatar_url: str | None = None
+    avatar_source: str | None = None
+    discord_id: str | None = None
+    custom_badge: str | None = None
+    vibe: str | None = None
+    theme: str | None = None
+    accent_color: str | None = None
+    avatar_frame: str | None = None
+    profile_effect: str | None = None
+    profile_bg_mode: str | None = None
+    custom_gradient_start: str | None = None
+    custom_gradient_end: str | None = None
+
+
 # ---------- Preferences ----------
 
 class UserPreferencesRequest(BaseModel):

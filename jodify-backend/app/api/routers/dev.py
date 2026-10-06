@@ -18,6 +18,7 @@ from ...models.schemas import (
     CreateDevTokenRequest,
     CreateUserRequest,
     DevAccessRequest,
+    DevUpdateUserRequest,
     MaintenanceRequest,
     RedeemTokenRequest,
     SetRoleRequest,
@@ -259,6 +260,7 @@ async def dev_users(_dev: Annotated[dict, Depends(require_dev)]) -> list[dict]:
             "username": doc.get("username", ""),
             "display_name": doc.get("display_name"),
             "role": doc.get("role", "user"),
+            "bio": doc.get("bio", ""),
             "is_online": doc.get("is_online", 0),
             "last_seen": doc.get("last_seen"),
             "created_at": doc.get("created_at"),
@@ -370,6 +372,156 @@ async def force_offline(username: str, dev: Annotated[dict, Depends(require_dev)
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     await events.publish({"type": "user.offline", "message": f"@{username} forzado a offline por @{dev.get('username', '')}"})
     return {"ok": True}
+
+
+@router.put("/users/{identifier}")
+async def dev_update_user(identifier: str, body: DevUpdateUserRequest, dev: Annotated[dict, Depends(require_dev)]) -> dict:
+    """Modifica los datos de un usuario: username, password, rol, perfil, etc."""
+    query = {"username": identifier}
+    if ObjectId.is_valid(identifier):
+        query = {"$or": [{"_id": ObjectId(identifier)}, {"username": identifier}]}
+
+    target = await col("users").find_one(query)
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    old_username = target.get("username", "")
+    updates: dict = {}
+    fields_set = getattr(body, "model_fields_set", None) or getattr(body, "__fields_set__", set())
+
+    new_username = None
+    if "new_username" in fields_set and body.new_username:
+        clean_name = body.new_username.strip()
+        if len(clean_name) < 2:
+            raise HTTPException(status_code=400, detail="El nombre de usuario debe tener al menos 2 caracteres")
+        if clean_name != old_username:
+            if target.get("role") == "dev" and old_username == DEV_USERNAME:
+                raise HTTPException(status_code=400, detail="No se puede cambiar el nombre de la cuenta dev principal")
+            existing = await col("users").find_one({"username": clean_name})
+            if existing:
+                raise HTTPException(status_code=409, detail="Ese nombre de usuario ya está en uso")
+            updates["username"] = clean_name
+            new_username = clean_name
+
+    if "password" in fields_set and body.password:
+        clean_pwd = body.password.strip()
+        if len(clean_pwd) < 4:
+            raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
+        salt, p_hash = hash_password(clean_pwd)
+        updates["salt"] = salt
+        updates["password_hash"] = p_hash
+
+    if "role" in fields_set and body.role:
+        new_role = body.role.strip().lower()
+        if new_role not in ("user", "mod", "admin", "dev"):
+            raise HTTPException(status_code=400, detail="Rol inválido")
+        if target.get("role") == "dev" and new_role != "dev":
+            raise HTTPException(status_code=400, detail="No se puede degradar la cuenta dev")
+        if target.get("role") != "dev" and new_role == "dev":
+            raise HTTPException(status_code=400, detail="No se puede otorgar el rol dev")
+        updates["role"] = new_role
+
+    if "display_name" in fields_set:
+        updates["display_name"] = body.display_name.strip() if body.display_name else None
+    if "bio" in fields_set:
+        updates["bio"] = body.bio.strip()[:160] if body.bio else ""
+    if "avatar_url" in fields_set:
+        updates["avatar_url"] = body.avatar_url.strip() if body.avatar_url else None
+    if "avatar_source" in fields_set:
+        updates["avatar_source"] = body.avatar_source.strip() if body.avatar_source else "custom"
+    if "discord_id" in fields_set:
+        updates["discord_id"] = body.discord_id.strip() if body.discord_id else None
+    if "custom_badge" in fields_set:
+        updates["custom_badge"] = body.custom_badge.strip() if body.custom_badge else None
+    if "vibe" in fields_set:
+        updates["vibe"] = body.vibe.strip()[:60] if body.vibe else None
+    if "theme" in fields_set:
+        updates["theme"] = body.theme.strip() if body.theme else "aurora"
+    if "accent_color" in fields_set:
+        updates["accent_color"] = body.accent_color.strip() if body.accent_color else None
+    if "avatar_frame" in fields_set:
+        updates["avatar_frame"] = body.avatar_frame.strip() if body.avatar_frame else "none"
+    if "profile_effect" in fields_set:
+        updates["profile_effect"] = body.profile_effect.strip() if body.profile_effect else "none"
+    if "profile_bg_mode" in fields_set:
+        updates["profile_bg_mode"] = body.profile_bg_mode.strip() if body.profile_bg_mode else "preset"
+    if "custom_gradient_start" in fields_set:
+        updates["custom_gradient_start"] = body.custom_gradient_start.strip() if body.custom_gradient_start else "#6366f1"
+    if "custom_gradient_end" in fields_set:
+        updates["custom_gradient_end"] = body.custom_gradient_end.strip() if body.custom_gradient_end else "#ec4899"
+
+    if updates:
+        await col("users").update_one({"_id": target["_id"]}, {"$set": updates})
+
+    if new_username and new_username != old_username:
+        await col("likes").update_many({"username": old_username}, {"$set": {"username": new_username}})
+        await col("history").update_many({"username": old_username}, {"$set": {"username": new_username}})
+        await col("downloads").update_many({"username": old_username}, {"$set": {"username": new_username}})
+        await col("jam_members").update_many({"username": old_username}, {"$set": {"username": new_username}})
+
+    await events.publish({
+        "type": "user.updated",
+        "message": f"Datos de @{old_username} modificados por @{dev.get('username', '')}"
+    })
+
+    updated_doc = await col("users").find_one({"_id": target["_id"]})
+    return {
+        "id": sid(updated_doc.get("_id")),
+        "username": updated_doc.get("username", ""),
+        "display_name": updated_doc.get("display_name"),
+        "role": updated_doc.get("role", "user"),
+        "bio": updated_doc.get("bio", ""),
+        "avatar_url": updated_doc.get("avatar_url"),
+        "avatar_source": updated_doc.get("avatar_source", "custom"),
+        "avatar_frame": updated_doc.get("avatar_frame", "none"),
+        "theme": updated_doc.get("theme", "aurora"),
+        "accent_color": updated_doc.get("accent_color"),
+        "profile_effect": updated_doc.get("profile_effect", "none"),
+        "custom_badge": updated_doc.get("custom_badge"),
+        "vibe": updated_doc.get("vibe"),
+        "profile_bg_mode": updated_doc.get("profile_bg_mode", "preset"),
+        "custom_gradient_start": updated_doc.get("custom_gradient_start", "#6366f1"),
+        "custom_gradient_end": updated_doc.get("custom_gradient_end", "#ec4899"),
+        "anthem_song_name": updated_doc.get("anthem_song_name"),
+        "discord_id": updated_doc.get("discord_id"),
+        "is_online": updated_doc.get("is_online", 0),
+        "last_seen": updated_doc.get("last_seen"),
+        "created_at": updated_doc.get("created_at"),
+    }
+
+
+@router.delete("/users/{identifier}")
+async def dev_delete_user(identifier: str, dev: Annotated[dict, Depends(require_dev)]) -> dict:
+    """Elimina permanentemente una cuenta de usuario y sus datos asociados."""
+    query = {"username": identifier}
+    if ObjectId.is_valid(identifier):
+        query = {"$or": [{"_id": ObjectId(identifier)}, {"username": identifier}]}
+
+    target = await col("users").find_one(query)
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if target.get("role") == "dev":
+        raise HTTPException(status_code=400, detail="No se puede eliminar la cuenta de desarrollador")
+
+    target_username = target.get("username", "")
+    if dev.get("username") == target_username:
+        raise HTTPException(status_code=400, detail="No puedes eliminar tu propia cuenta en sesión")
+
+    await col("users").delete_one({"_id": target["_id"]})
+
+    if target_username:
+        await col("likes").delete_many({"username": target_username})
+        await col("history").delete_many({"username": target_username})
+        await col("downloads").delete_many({"username": target_username})
+        await col("jam_members").delete_many({"username": target_username})
+
+    await events.publish({
+        "type": "user.deleted",
+        "message": f"Usuario @{target_username} eliminado por @{dev.get('username', '')}"
+    })
+
+    return {"ok": True, "username": target_username}
 
 
 @router.post("/maintenance")

@@ -1,10 +1,20 @@
 import { useMemo, useState } from 'react';
-import { MagnifyingGlass, PaintBrush, Power, UserPlus, Users } from '@phosphor-icons/react';
+import {
+  MagnifyingGlass,
+  PaintBrush,
+  PencilSimple,
+  Power,
+  Trash,
+  UserPlus,
+  Users,
+} from '@phosphor-icons/react';
 import { Button } from '../ui/Button';
 import { timeAgo } from './devBits';
 import { devService } from '../../services/dev.service';
 import { useToastStore } from '../../store/toast.store';
+import { confirmDialog } from '../../store/confirm.store';
 import { DevUserStylesModal } from './DevUserStylesModal';
+import { DevEditUserModal } from './DevEditUserModal';
 import type { DevUserRow } from '../../lib/types';
 
 const ROLES: Array<{ value: 'user' | 'mod' | 'admin'; label: string }> = [
@@ -31,11 +41,17 @@ export function DevUsers({
   const [newRole, setNewRole] = useState<'user' | 'mod' | 'admin'>('user');
   const [createError, setCreateError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<DevUserRow | null>(null);
+  const [stylesUser, setStylesUser] = useState<DevUserRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
-    return users.filter((u) => u.username.toLowerCase().includes(q) || u.role.toLowerCase().includes(q));
+    return users.filter(
+      (u) =>
+        u.username.toLowerCase().includes(q) ||
+        (u.display_name && u.display_name.toLowerCase().includes(q)) ||
+        u.role.toLowerCase().includes(q)
+    );
   }, [users, query]);
 
   const changeRole = async (user: DevUserRow, role: 'user' | 'mod' | 'admin') => {
@@ -60,6 +76,33 @@ export function DevUsers({
       onChanged();
     } catch {
       useToastStore.getState().show('No se pudo forzar offline', 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const deleteUser = async (user: DevUserRow) => {
+    if (user.role === 'dev') return;
+    const ok = await confirmDialog({
+      title: `¿Eliminar usuario @${user.username}?`,
+      message: `Esta acción borrará permanentemente la cuenta de ${user.display_name || user.username}, incluyendo sus canciones favoritas, historial de reproducción y datos asociados. No se puede revertir.`,
+      confirmLabel: 'Eliminar definitivamente',
+      cancelLabel: 'Cancelar',
+      tone: 'danger',
+      icon: 'trash',
+    });
+    if (!ok) return;
+
+    setBusy(user.id);
+    try {
+      await devService.deleteUser(user.username);
+      useToastStore.getState().show(`Cuenta @${user.username} eliminada`, 'success');
+      onChanged();
+    } catch (err) {
+      useToastStore.getState().show(
+        err instanceof Error ? err.message : 'No se pudo eliminar el usuario',
+        'error'
+      );
     } finally {
       setBusy(null);
     }
@@ -215,20 +258,48 @@ export function DevUsers({
                 </td>
                 <td className="jf-dev-table-muted">{timeAgo(user.last_seen)}</td>
                 <td>
-                  <div className="jf-dev-row-actions">
+                  <div className="jf-dev-row-actions" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setEditingUser(user)}
+                      title={`Modificar datos de @${user.username} (usuario, contraseña, rol, perfil)`}
+                    >
+                      <PencilSimple size={13} />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStylesUser(user)}
                       title={`Personalizar estilos VIP, temas, marcos y badges para @${user.username}`}
                     >
                       <PaintBrush size={13} />
                       Estilos
                     </Button>
                     {user.role !== 'dev' && user.is_online === 1 && (
-                      <Button variant="ghost" size="sm" onClick={() => void offline(user)} disabled={busy === user.id}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void offline(user)}
+                        disabled={busy === user.id}
+                        title="Forzar desconexión offline"
+                      >
                         <Power size={13} />
                         Offline
+                      </Button>
+                    )}
+                    {user.role !== 'dev' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void deleteUser(user)}
+                        disabled={busy === user.id}
+                        style={{ color: 'var(--error, #ef4444)' }}
+                        title={`Eliminar permanentemente a @${user.username}`}
+                      >
+                        <Trash size={13} />
+                        Borrar
                       </Button>
                     )}
                   </div>
@@ -248,11 +319,22 @@ export function DevUsers({
       )}
 
       {editingUser && (
-        <DevUserStylesModal
+        <DevEditUserModal
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSaved={() => {
             setEditingUser(null);
+            onChanged();
+          }}
+        />
+      )}
+
+      {stylesUser && (
+        <DevUserStylesModal
+          user={stylesUser}
+          onClose={() => setStylesUser(null)}
+          onSaved={() => {
+            setStylesUser(null);
             onChanged();
           }}
         />

@@ -154,11 +154,21 @@ async def delete_user(user_id: str, _admin: Annotated[dict, Depends(require_admi
     if str(_admin.get("_id")) == user_id:
         raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo")
     try:
-        result = await col("users").delete_one({"_id": ObjectId(user_id)})
+        oid = ObjectId(user_id)
+        target = await col("users").find_one({"_id": oid})
     except Exception as exc:
         raise HTTPException(status_code=400, detail="ID de usuario inválido") from exc
-    if result.deleted_count == 0:
+    if not target:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if target.get("role") == "dev":
+        raise HTTPException(status_code=400, detail="No se puede eliminar la cuenta de desarrollador")
+    await col("users").delete_one({"_id": oid})
+    target_username = target.get("username")
+    if target_username:
+        await col("likes").delete_many({"username": target_username})
+        await col("history").delete_many({"username": target_username})
+        await col("downloads").delete_many({"username": target_username})
+        await col("jam_members").delete_many({"username": target_username})
 
 
 @router.post("/{username}/heartbeat")

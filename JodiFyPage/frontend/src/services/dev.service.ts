@@ -76,6 +76,17 @@ export const devService = {
     return api.post<{ ok: boolean }>(`/dev/users/${encodeURIComponent(username)}/offline`);
   },
 
+  async updateUser(
+    usernameOrId: string,
+    data: Partial<DevUserRow> & { password?: string; new_username?: string }
+  ): Promise<DevUserRow> {
+    return api.put<DevUserRow>(`/dev/users/${encodeURIComponent(usernameOrId)}`, data);
+  },
+
+  async deleteUser(usernameOrId: string): Promise<{ ok: boolean; username: string }> {
+    return api.del<{ ok: boolean; username: string }>(`/dev/users/${encodeURIComponent(usernameOrId)}`);
+  },
+
   async setMaintenance(enabled: boolean, message = ''): Promise<{ enabled: boolean; message: string }> {
     return api.post<{ enabled: boolean; message: string }>('/dev/maintenance', { enabled, message });
   },

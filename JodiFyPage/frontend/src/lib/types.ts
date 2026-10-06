@@ -63,6 +63,7 @@ export interface DevUserRow {
   last_seen?: string | null;
   created_at?: string | null;
   display_name?: string | null;
+  bio?: string | null;
   avatar_url?: string | null;
   avatar_source?: 'custom' | 'discord' | 'initials' | null;
   avatar_frame?: string | null;

@@ -85,22 +85,23 @@ export async function loadLibrary(username: string | null): Promise<void> {
       const songs: Song[] = [...fetchedSongs];
       const likedIds: Array<number | string> = [...fetchedLikedIds];
 
+      const norm = (s?: string) => (s || '').trim().toLowerCase();
+      const songKey = (s: { name?: string; artist?: string }) => `${norm(s.name)}|${norm(s.artist)}`;
+
+      const existingIds = new Set(songs.map((s) => String(s.id)));
+      const existingKeys = new Map<string, Song>();
+      const existingYtIds = new Map<string, Song>();
+
+      for (const s of songs) {
+        existingKeys.set(songKey(s), s);
+        if (s.youtube_id) existingYtIds.set(String(s.youtube_id), s);
+      }
+
       // Integrar y conciliar canciones externas guardadas en Me Gusta (con deduplicación inteligente)
       try {
         const rawCached = localStorage.getItem('jf_external_liked_songs');
         if (rawCached) {
           const cachedSongs: Song[] = JSON.parse(rawCached);
-          const norm = (s?: string) => (s || '').trim().toLowerCase();
-          const songKey = (s: { name?: string; artist?: string }) => `${norm(s.name)}|${norm(s.artist)}`;
-
-          const existingIds = new Set(songs.map((s) => String(s.id)));
-          const existingKeys = new Map<string, Song>();
-          const existingYtIds = new Map<string, Song>();
-
-          for (const s of songs) {
-            existingKeys.set(songKey(s), s);
-            if (s.youtube_id) existingYtIds.set(String(s.youtube_id), s);
-          }
 
           const genuinelyNewSongs: Song[] = [];
           const updatedCachedSongs: Song[] = [];
