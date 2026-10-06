@@ -98,6 +98,14 @@ async def listening_stats(username: str) -> dict:
     downloaded = await col("downloads").count_documents({"username": username})
     doc = await col("users").find_one({"username": username}, {"listening_seconds": 1}) or {}
     listening_seconds = int(doc.get("listening_seconds", 0) or 0)
+    # Asegurar que el tiempo acumulado no quede por debajo del historial de canciones reproducidas
+    estimated_history_sec = played * 192
+    if estimated_history_sec > listening_seconds:
+        listening_seconds = estimated_history_sec
+        await col("users").update_one(
+            {"username": username},
+            {"$set": {"listening_seconds": listening_seconds}}
+        )
     return {
         "liked": liked,
         "played": played,

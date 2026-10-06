@@ -23,7 +23,7 @@ import type { UserAccess, Song } from '@lib/types';
 import type { CommunityUser } from '@services/users.service';
 import { fetchUserStats, fetchUserTopSongs } from '@services/users.service';
 import { getThemeDefinition } from '@lib/avatar';
-import { calculateMelomanoLevel, pickCoverUrl } from '@lib/utils';
+import { calculateMelomanoLevel, pickCoverUrl, isSongLiked, formatRelativeTime } from '@lib/utils';
 import { PetCompanionCard } from '../social/PetCompanionCard';
 import { PixelPet } from '../social/PixelPet';
 import { useLibraryStore } from '@stores/library.store';
@@ -43,15 +43,6 @@ interface UserProfileModalProps {
   isCurrentUser?: boolean;
   onLogout?: () => void;
   onOpenAccountDetails?: () => void;
-}
-
-function formatRelativeTime(dateString?: string | null): string {
-  if (!dateString) return 'hace un momento';
-  const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
-  if (diff < 60) return 'ahora mismo';
-  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
-  return `hace ${Math.floor(diff / 86400)} días`;
 }
 
 export function UserProfileModal({
@@ -88,6 +79,12 @@ export function UserProfileModal({
   const [editModalTab, setEditModalTab] = useState<'identity' | 'anthem' | 'avatar' | 'pet' | 'frame' | 'theme' | 'animation'>('identity');
   const [stats, setStats] = useState<{ liked: number; played: number; downloaded: number; listening_seconds?: number } | null>(null);
   const [topSongs, setTopSongs] = useState<Array<{ song_name: string; count: number }>>([]);
+
+  const likedSongsCount = useMemo(() => {
+    const ids = new Set(likedIds.map(String));
+    const matching = songs.filter((s) => isSongLiked(s, ids)).length;
+    return matching > 0 || songs.length > 0 ? matching : (stats?.liked ?? likedIds.length);
+  }, [songs, likedIds, stats?.liked]);
 
   // Animation values for smooth, premium entry
   const animValue = useMemo(() => new Animated.Value(0), []);
@@ -136,12 +133,12 @@ export function UserProfileModal({
 
   const melomano = useMemo(() => {
     return calculateMelomanoLevel({
-      liked: isCurrentUser ? likedIds.length : stats?.liked ?? 0,
-      played: stats?.played ?? (isCurrentUser ? downloadedIds.length : 0),
-      downloaded: isCurrentUser ? downloadedIds.length : stats?.downloaded ?? 0,
+      liked: isCurrentUser ? likedSongsCount : (stats?.liked ?? 0),
+      played: stats?.played ?? 0,
+      downloaded: isCurrentUser ? downloadedIds.length : (stats?.downloaded ?? 0),
       listening_seconds: user?.listening_seconds ?? stats?.listening_seconds ?? 0,
     });
-  }, [user?.listening_seconds, likedIds.length, downloadedIds.length, stats, isCurrentUser]);
+  }, [user?.listening_seconds, likedSongsCount, downloadedIds.length, stats, isCurrentUser]);
 
   const roleTheme = useMemo(() => {
     switch (role) {
@@ -663,7 +660,7 @@ export function UserProfileModal({
                     <Ionicons name="heart" size={16} color={colors.accent} />
                   </View>
                   <Text style={styles.statValue}>
-                    {isCurrentUser ? likedIds.length : stats?.liked ?? 0}
+                    {isCurrentUser ? likedSongsCount : stats?.liked ?? 0}
                   </Text>
                   <Text style={styles.statTitle}>Favoritas</Text>
                 </View>
@@ -674,7 +671,7 @@ export function UserProfileModal({
                   <View style={styles.statIconWrap}>
                     <Ionicons name="musical-notes" size={16} color={colors.secondary} />
                   </View>
-                  <Text style={styles.statValue}>{stats?.played ?? (isCurrentUser ? downloadedIds.length : 0)}</Text>
+                  <Text style={styles.statValue}>{stats?.played ?? 0}</Text>
                   <Text style={styles.statTitle}>Reproducidas</Text>
                 </View>
 

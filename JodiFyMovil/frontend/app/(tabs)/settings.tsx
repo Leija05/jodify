@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,6 +7,7 @@ import {
   Alert,
   Switch,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,6 +21,7 @@ import { DynamicBackground } from '@components/player/DynamicBackground';
 import { EqualizerBars } from '@components/ui/EqualizerBars';
 import { currentAppVersion } from '@services/update.service';
 import { clearAllDownloads } from '@services/downloads.service';
+import { fetchUserStats } from '@services/users.service';
 import { useLibraryStore } from '@stores/library.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { usePlayerStore } from '@stores/player.store';
@@ -30,7 +32,7 @@ import { UserProfileModal } from '@components/profile/UserProfileModal';
 import { EditProfileModal } from '@components/profile/EditProfileModal';
 import { UserAvatar } from '@components/ui/UserAvatar';
 import { getSongPalette } from '@lib/palette';
-import { pickCoverUrl, resolveSongTitle, calculateMelomanoLevel } from '@lib/utils';
+import { pickCoverUrl, resolveSongTitle, calculateMelomanoLevel, isSongLiked } from '@lib/utils';
 import { PetCompanionCard } from '@components/social/PetCompanionCard';
 import { PixelPet } from '@components/social/PixelPet';
 import { colors, typography, radius, gradients } from '@theme';
@@ -47,6 +49,9 @@ const QUICK_PRESETS = [
 export default function SettingsScreen() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
+  const [editModalTab, setEditModalTab] = useState<'identity' | 'anthem' | 'avatar' | 'pet' | 'frame' | 'theme' | 'animation'>('identity');
+  const [refreshing, setRefreshing] = useState(false);
+  const [userStats, setUserStats] = useState<{ liked: number; played: number; downloaded: number; listening_seconds?: number } | null>(null);
 
   const user = useSettingsStore((s) => s.user);
   const refreshProfile = useSettingsStore((s) => s.refreshProfile);
@@ -55,12 +60,51 @@ export default function SettingsScreen() {
   const startSleepTimer = useSettingsStore((s) => s.startSleepTimer);
   const cancelSleepTimer = useSettingsStore((s) => s.cancelSleepTimer);
 
+  const loadUserStats = useCallback(async () => {
+    if (!user?.username) return;
+    try {
+      const stats = await fetchUserStats(user.username);
+      if (stats) {
+        setUserStats(stats);
+        if (
+          stats.listening_seconds !== undefined &&
+          (user.listening_seconds === undefined || stats.listening_seconds > user.listening_seconds)
+        ) {
+          useSettingsStore.setState({
+            user: { ...user, listening_seconds: stats.listening_seconds },
+          });
+        }
+      }
+    } catch {}
+  }, [user?.username, user?.listening_seconds]);
+
   useEffect(() => {
     void refreshProfile();
-  }, [refreshProfile]);
+    void loadUserStats();
+  }, [refreshProfile, loadUserStats]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refreshProfile(),
+        loadUserStats(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshProfile, loadUserStats]);
+
+  const songs = useLibraryStore((s) => s.songs);
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
   const likedIds = useLibraryStore((s) => s.likedIds);
+
+  const likedSongsCount = useMemo(() => {
+    const ids = new Set(likedIds.map(String));
+    const count = songs.filter((s) => isSongLiked(s, ids)).length;
+    return count > 0 || songs.length > 0 ? count : (userStats?.liked ?? likedIds.length);
+  }, [songs, likedIds, userStats?.liked]);
+
   const updateStatus = useUpdateStore((s) => s.status);
   const updateInfo = useUpdateStore((s) => s.info);
   const runCheck = useUpdateStore((s) => s.runCheck);
@@ -96,13 +140,14 @@ export default function SettingsScreen() {
   }, [role]);
 
   const melomano = useMemo(() => {
+    const sec = userStats?.listening_seconds ?? user?.listening_seconds ?? 0;
     return calculateMelomanoLevel({
-      liked: likedIds.length,
-      played: downloadedIds.length,
+      liked: likedSongsCount,
+      played: userStats?.played ?? 0,
       downloaded: downloadedIds.length,
-      listening_seconds: user?.listening_seconds ?? 0,
+      listening_seconds: sec,
     });
-  }, [user?.listening_seconds, likedIds.length, downloadedIds.length]);
+  }, [user?.listening_seconds, userStats, likedSongsCount, downloadedIds.length]);
 
 
   const formattedCreatedAt = useMemo(() => {
@@ -147,7 +192,19 @@ export default function SettingsScreen() {
       {/* Dynamic Background adapting to current song cover art */}
       <DynamicBackground song={currentSong} intensity={0.85} />
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary, colors.secondary]}
+          />
+        }
+      >
       {/* Screen Header */}
       <View style={styles.header}>
         <Text style={styles.screenTitle}>Ajustes</Text>
@@ -244,7 +301,10 @@ export default function SettingsScreen() {
 
             {/* Quick Edit Button */}
             <PressableFluid
-              onPress={() => setAccountDetailsOpen(true)}
+              onPress={() => {
+                setEditModalTab('identity');
+                setAccountDetailsOpen(true);
+              }}
               haptic="medium"
               style={styles.editProfileBtn}
               hitSlop={8}
@@ -261,7 +321,10 @@ export default function SettingsScreen() {
               petVariant={user.pet_variant}
               petName={user.pet_name}
               isCurrentUser={true}
-              onCustomize={() => setAccountDetailsOpen(true)}
+              onCustomize={() => {
+                setEditModalTab('pet');
+                setAccountDetailsOpen(true);
+              }}
             />
           </View>
 
@@ -306,7 +369,7 @@ export default function SettingsScreen() {
                 <Text style={{ fontSize: 13 }}>{melomano.badgeEmoji}</Text>
               </View>
               <Text style={[styles.metricNumber, { color: '#FFD700' }]}>Nv. {melomano.level}</Text>
-              <Text style={styles.metricLabel}>{melomano.title}</Text>
+              <Text style={styles.metricLabel}>Rango</Text>
             </View>
 
             <View style={styles.metricDivider} />
@@ -325,7 +388,7 @@ export default function SettingsScreen() {
               <View style={styles.metricIconWrap}>
                 <Ionicons name="heart" size={14} color={colors.accent} />
               </View>
-              <Text style={styles.metricNumber}>{likedIds.length}</Text>
+              <Text style={styles.metricNumber}>{likedSongsCount}</Text>
               <Text style={styles.metricLabel}>Favoritas</Text>
             </View>
 
@@ -343,7 +406,9 @@ export default function SettingsScreen() {
           {/* Melomano XP Micro Bar */}
           <View style={styles.xpMicroBarWrap}>
             <View style={styles.xpMicroLabels}>
-              <Text style={styles.xpMicroTitle}>Progreso a Nivel {melomano.level + 1}</Text>
+              <Text style={styles.xpMicroTitle} numberOfLines={1}>
+                {melomano.title} • Nivel {melomano.level + 1}
+              </Text>
               <Text style={styles.xpMicroValue}>{melomano.progressPercent}% XP</Text>
             </View>
             <View style={styles.xpMicroTrack}>
@@ -745,6 +810,7 @@ export default function SettingsScreen() {
     <EditProfileModal
       visible={accountDetailsOpen && !!user}
       onClose={() => setAccountDetailsOpen(false)}
+      initialTab={editModalTab}
     />
     </View>
     </View>

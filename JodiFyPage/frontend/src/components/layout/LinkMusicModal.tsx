@@ -334,7 +334,21 @@ export function LinkMusicModal() {
           }));
           const CHUNK_SIZE = 100;
           for (let i = 0; i < batchPayload.length; i += CHUNK_SIZE) {
-            await songsService.registerBatch(batchPayload.slice(i, i + CHUNK_SIZE), false);
+            const res = await songsService.registerBatch(batchPayload.slice(i, i + CHUNK_SIZE), false);
+            if (res.added) {
+              for (const song of res.added) {
+                useLibraryStore.getState().upsertSong(song);
+                useLibraryStore.getState().toggleLikeLocal(song.id, true);
+                void likesService.addLike(session.username, song.id).catch(() => undefined);
+              }
+            }
+            if (res.skipped) {
+              for (const song of res.skipped) {
+                useLibraryStore.getState().upsertSong(song);
+                useLibraryStore.getState().toggleLikeLocal(song.id, true);
+                void likesService.addLike(session.username, song.id).catch(() => undefined);
+              }
+            }
           }
           for (const s of vSongs) {
             void likesService.addLike(session.username, s.id).catch(() => undefined);

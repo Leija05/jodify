@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shuffleArray, clamp, formatDuration, formatRelativeTime, parseLyrics, findActiveLyricIndex, sortSongs, filterSongsByTab, searchSongs, pickCoverUrl, resolveArtist } from '../../lib/utils';
+import { shuffleArray, clamp, formatDuration, formatRelativeTime, parseLyrics, findActiveLyricIndex, sortSongs, filterSongsByTab, searchSongs, pickCoverUrl, resolveArtist, calculateMelomanoLevel } from '../../lib/utils';
 import type { Song } from '../../lib/types';
 
 describe('utils', () => {
@@ -49,6 +49,9 @@ describe('utils', () => {
       expect(formatRelativeTime(new Date(now - 300000).toISOString())).toBe('5m');
       expect(formatRelativeTime(new Date(now - 7200000).toISOString())).toBe('2h');
       expect(formatRelativeTime(new Date(now - 172800000).toISOString())).toBe('2d');
+      expect(formatRelativeTime(null)).toBe('ahora');
+      expect(formatRelativeTime(undefined)).toBe('ahora');
+      expect(formatRelativeTime('invalid-date')).toBe('ahora');
     });
   });
 
@@ -210,6 +213,42 @@ describe('utils', () => {
     it('should return null if neither', () => {
       const song: Song = { id: 1, name: 'Test' };
       expect(resolveArtist(song)).toBeNull();
+    });
+  });
+
+  describe('calculateMelomanoLevel', () => {
+    it('should calculate accurate hours from listening_seconds without false inflation', () => {
+      const res = calculateMelomanoLevel({
+        listening_seconds: 7200, // 2 hours exactly
+        played: 5,
+        liked: 3,
+        downloaded: 1,
+      });
+      expect(res.listenedMinutes).toBe(120);
+      expect(res.listenedHours).toBe(2);
+      expect(res.level).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle 0 seconds without inflating played as hours when sec=0', () => {
+      const res = calculateMelomanoLevel({
+        listening_seconds: 0,
+        played: 0,
+        liked: 0,
+        downloaded: 0,
+      });
+      expect(res.listenedMinutes).toBe(0);
+      expect(res.listenedHours).toBe(0);
+      expect(res.level).toBe(1);
+      expect(res.title).toBe('Iniciado del Ritmo');
+    });
+
+    it('should accurately calculate fraction hours', () => {
+      const res = calculateMelomanoLevel({
+        listening_seconds: 1800, // 30 minutes = 0.5 hours
+        played: 1,
+      });
+      expect(res.listenedMinutes).toBe(30);
+      expect(res.listenedHours).toBe(0.5);
     });
   });
 });

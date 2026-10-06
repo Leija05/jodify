@@ -23,7 +23,7 @@ import { UserProfileModal } from '@components/profile/UserProfileModal';
 import { EditProfileModal } from '@components/profile/EditProfileModal';
 import { PixelPet } from '@components/social/PixelPet';
 import type { Song } from '@lib/types';
-import { pickCoverUrl, resolveArtist, calculateMelomanoLevel } from '@lib/utils';
+import { pickCoverUrl, resolveArtist, calculateMelomanoLevel, isSongLiked } from '@lib/utils';
 import { getSongPalette } from '@lib/palette';
 import { fetchTopSongs } from '@services/songs.service';
 import { useLibraryStore } from '@stores/library.store';
@@ -85,14 +85,20 @@ export default function HomeScreen() {
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
   const likedIds = useLibraryStore((s) => s.likedIds);
 
+  const likedSongsCount = useMemo(() => {
+    const ids = new Set(likedIds.map(String));
+    const matching = songs.filter((s) => isSongLiked(s, ids)).length;
+    return matching > 0 || songs.length > 0 ? matching : likedIds.length;
+  }, [songs, likedIds]);
+
   const melomano = useMemo(() => {
     return calculateMelomanoLevel({
-      liked: likedIds.length,
-      played: downloadedIds.length,
+      liked: likedSongsCount,
+      played: 0,
       downloaded: downloadedIds.length,
       listening_seconds: user?.listening_seconds ?? 0,
     });
-  }, [user?.listening_seconds, likedIds.length, downloadedIds.length]);
+  }, [user?.listening_seconds, likedSongsCount, downloadedIds.length]);
 
   const handleQuickShuffle = useCallback(() => {
     if (songs.length === 0) return;

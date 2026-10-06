@@ -247,15 +247,29 @@ async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
             "likes": 1,
             "play_count": 0,
             "source": "youtube" if yt_id else "web",
+            "_liked_by": s_req.liked_by,
         }
         to_insert_docs.append(doc)
 
     # 3. Inserción masiva en bloque (insert_many) en MongoDB
     if to_insert_docs:
         res = await col("songs").insert_many(to_insert_docs, ordered=False)
+        likes_to_insert = []
         for doc, inserted_id in zip(to_insert_docs, res.inserted_ids):
             doc["_id"] = inserted_id
             added.append(song_view(doc))
+            l_by = doc.pop("_liked_by", None)
+            if l_by:
+                likes_to_insert.append({
+                    "username": l_by,
+                    "song_id": str(inserted_id),
+                    "created_at": now_iso,
+                })
+        if likes_to_insert:
+            try:
+                await col("likes").insert_many(likes_to_insert, ordered=False)
+            except Exception:
+                pass
 
     # 4. Actualización masiva de likes si no se omiten duplicados
     if existing_to_bump:
@@ -264,6 +278,32 @@ async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
         for ex in existing_to_bump:
             ex["likes"] = ex.get("likes", 0) + 1
             added.append(song_view(ex))
+
+    # 5. Sincronizar likes para canciones preexistentes si venían marcadas con liked_by
+    existing_likes_to_add = []
+    for s_req in body.songs:
+        if s_req.liked_by:
+            n_clean = (s_req.name or "").strip().lower()
+            a_clean = (s_req.artist or "").strip().lower()
+            y_clean = (s_req.youtube_id or "").strip()
+            target_match = None
+            if y_clean and y_clean in existing_by_yt:
+                target_match = existing_by_yt[y_clean]
+            elif (n_clean, a_clean) in existing_by_name_artist:
+                target_match = existing_by_name_artist[(n_clean, a_clean)]
+            elif not a_clean and n_clean in existing_by_name:
+                target_match = existing_by_name[n_clean]
+            if target_match:
+                existing_likes_to_add.append({
+                    "username": s_req.liked_by,
+                    "song_id": str(target_match["_id"]),
+                    "created_at": now_iso,
+                })
+    if existing_likes_to_add:
+        try:
+            await col("likes").insert_many(existing_likes_to_add, ordered=False)
+        except Exception:
+            pass
 
     if added:
         invalidate_songs_cache()

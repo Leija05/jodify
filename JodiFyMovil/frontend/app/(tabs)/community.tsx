@@ -20,7 +20,7 @@ import { usePlayerStore } from '@stores/player.store';
 import { useJamStore } from '@stores/jam.store';
 import { useSettingsStore } from '@stores/settings.store';
 import { useUiStore } from '@stores/ui.store';
-import { resolveArtist } from '@lib/utils';
+import { resolveArtist, formatRelativeTime } from '@lib/utils';
 import { mmkv } from '@lib/mmkv';
 import { colors } from '@theme';
 
@@ -132,14 +132,6 @@ function UserCard({ user, onPress }: UserCardProps) {
       </View>
     </PressableFluid>
   );
-}
-
-function formatRelativeTime(dateString: string): string {
-  const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
-  if (diff < 60) return 'ahora';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
 }
 
 export default function CommunityScreen() {

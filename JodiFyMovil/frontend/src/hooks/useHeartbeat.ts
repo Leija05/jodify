@@ -90,10 +90,22 @@ export function useHeartbeat() {
       return;
     }
 
-    // Every 15 seconds of playback, increment listening_seconds on backend
+    // Every 15 seconds of playback, increment listening_seconds on backend and local store
     listeningIntervalRef.current = setInterval(() => {
       if (user?.username) {
-        recordListeningTime(user.username, 15).catch(() => {});
+        recordListeningTime(user.username, 15)
+          .then(() => {
+            const cur = useSettingsStore.getState().user;
+            if (cur) {
+              useSettingsStore.setState({
+                user: {
+                  ...cur,
+                  listening_seconds: (cur.listening_seconds ?? 0) + 15,
+                },
+              });
+            }
+          })
+          .catch(() => {});
       }
     }, 15000);
 

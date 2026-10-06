@@ -164,12 +164,12 @@ export interface MelomanoRank {
 export function calculateMelomanoLevel(
   stats: { liked?: number; played?: number; downloaded?: number; listening_seconds?: number } | null | undefined,
 ): MelomanoRank {
-  const liked = stats?.liked ?? 0;
-  const played = stats?.played ?? 0;
-  const downloaded = stats?.downloaded ?? 0;
-  const sec = stats?.listening_seconds ?? 0;
+  const liked = Math.max(0, stats?.liked ?? 0);
+  const played = Math.max(0, stats?.played ?? 0);
+  const downloaded = Math.max(0, stats?.downloaded ?? 0);
+  const sec = Math.max(0, stats?.listening_seconds ?? 0);
 
-  // Minutos de escucha reales acumulados + estimación por canciones reproducidas
+  // Minutos de escucha acumulados (tiempo real registrado en segundos o base histórica por reproducciones)
   const realMinutes = Math.floor(sec / 60);
   const estimatedPlayedMinutes = Math.round(played * 3.2);
   const listenedMinutes = Math.max(realMinutes, estimatedPlayedMinutes);
