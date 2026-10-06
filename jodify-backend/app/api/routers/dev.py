@@ -542,6 +542,20 @@ async def purge_logs(_dev: Annotated[dict, Depends(require_dev)]) -> None:
     await col("logs").delete_many({})
 
 
+@router.post("/repair-covers")
+async def dev_repair_covers(_dev: Annotated[dict, Depends(require_dev)]) -> dict:
+    """Repara carátulas duplicadas de playlists en toda la biblioteca."""
+    from .songs import repair_duplicate_covers_in_db
+
+    result = await repair_duplicate_covers_in_db()
+    repaired_count = result.get("repaired_count", 0)
+    await events.publish({
+        "type": "songs.covers_repaired",
+        "message": f"Reparadas {repaired_count} carátulas de canciones por @{_dev.get('username', 'dev')}",
+    })
+    return result
+
+
 @router.get("/stream")
 async def dev_stream(_dev: Annotated[dict, Depends(require_dev)]) -> StreamingResponse:
     """SSE: métricas cada 4 s + eventos live (logs, tokens, roles, mantenimiento)."""

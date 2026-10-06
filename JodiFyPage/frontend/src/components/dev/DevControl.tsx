@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eraser, Power, ShieldWarning, Wrench } from '@phosphor-icons/react';
+import { ArrowClockwise, Eraser, Power, ShieldWarning, Sparkle, Wrench } from '@phosphor-icons/react';
 import { Button } from '../ui/Button';
 import { devService } from '../../services/dev.service';
 import { useToastStore } from '../../store/toast.store';
@@ -11,6 +11,7 @@ export function DevControl({ state, onChanged }: { state: DevState | null; onCha
   const [message, setMessage] = useState(state?.maintenance?.message ?? '');
   const [toggling, setToggling] = useState(false);
   const [purging, setPurging] = useState(false);
+  const [repairingCovers, setRepairingCovers] = useState(false);
 
   const toggle = async () => {
     setToggling(true);
@@ -45,6 +46,36 @@ export function DevControl({ state, onChanged }: { state: DevState | null; onCha
       useToastStore.getState().show('No se pudo purgar', 'error');
     } finally {
       setPurging(false);
+    }
+  };
+
+  const repairCovers = async () => {
+    const ok = await confirmDialog({
+      title: '¿Restaurar carátulas de playlists?',
+      message:
+        'Se buscarán en la biblioteca canciones que compartan la misma foto de una playlist y se restaurará la carátula original de su álbum en HD.',
+      confirmLabel: 'Restaurar carátulas',
+      tone: 'primary',
+    });
+    if (!ok) return;
+
+    setRepairingCovers(true);
+    try {
+      const res = await devService.repairPlaylistCovers();
+      if (res.repaired_count > 0) {
+        useToastStore
+          .getState()
+          .show(`✅ ¡Éxito! Se restauraron las carátulas originales de ${res.repaired_count} canciones.`, 'success', 4500);
+      } else {
+        useToastStore
+          .getState()
+          .show('Todas las canciones ya tienen sus carátulas originales correctas.', 'info', 3000);
+      }
+      onChanged();
+    } catch {
+      useToastStore.getState().show('Error al restaurar las carátulas', 'error');
+    } finally {
+      setRepairingCovers(false);
     }
   };
 
@@ -84,6 +115,34 @@ export function DevControl({ state, onChanged }: { state: DevState | null; onCha
               <Button variant={maintenance ? 'danger' : 'primary'} size="sm" onClick={() => void toggle()} disabled={toggling}>
                 <Power size={13} />
                 {toggling ? 'Cambiando…' : maintenance ? 'Apagar' : 'Activar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="jf-dev-card">
+          <div className="jf-dev-card-head">
+            <span className="jf-dev-card-title">
+              <Sparkle size={15} /> Mantenimiento de Biblioteca
+            </span>
+            <span className="jf-dev-card-sub">reparación de metadatos y carátulas</span>
+          </div>
+          <div className="jf-dev-form">
+            <div className="jf-dev-risky" style={{ borderColor: 'rgba(0, 240, 255, 0.2)' }}>
+              <div>
+                <strong>Restaurar carátulas de playlists</strong>
+                <span className="jf-dev-card-sub">
+                  Busca canciones con la foto repetida de una playlist y restaura su carátula original de álbum en HD.
+                </span>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void repairCovers()}
+                disabled={repairingCovers}
+              >
+                <ArrowClockwise size={13} className={repairingCovers ? 'animate-spin' : ''} />
+                {repairingCovers ? 'Reparando…' : 'Reparar carátulas'}
               </Button>
             </div>
           </div>

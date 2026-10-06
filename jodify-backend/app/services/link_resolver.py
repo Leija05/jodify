@@ -284,7 +284,9 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
 
                             item_dur = int(item.get("duration", 0) / 1000) if item.get("duration") else None
                             search_target = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(f'{item_artist} {item_title}')}"
-                            item_thumb = thumbnail  # Usa la carátula del álbum o de la playlist como base instantánea
+                            # Si es un álbum, todas las canciones comparten la carátula oficial del álbum.
+                            # Si es una playlist, cada canción debe tener su propia carátula original, NUNCA la foto de la playlist.
+                            item_thumb = thumbnail if entity_type == "album" else None
 
                             playlist_items.append({
                                 "id": f"sp-{abs(hash(item_title + item_artist)) % 10000000}",
@@ -297,51 +299,61 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                 "source": "spotify",
                             })
 
-                        # Para playlists: resolver de forma ultrarrápida solo los primeros 3 temas para preview inmediato.
-                        # El resto se empareja de forma diferida (lazy) en demanda al reproducir en JodiFy Player.
+                        # Para playlists: resolver en paralelo las carátulas originales de TODAS las canciones
                         if entity_type == "playlist" and playlist_items:
-                            sem = asyncio.Semaphore(3)
-                            preview_items = playlist_items[:3]
-                            preview_raw = raw_tracks[:3]
+                            sem_covers = asyncio.Semaphore(16)
+                            sem_yt = asyncio.Semaphore(3)
 
-                            async def _resolve_track_details(p_item: dict[str, Any], raw_item: dict[str, Any]):
+                            async def _resolve_single_track_cover(p_item: dict[str, Any], raw_item: dict[str, Any]):
                                 raw_uri = raw_item.get("uri") or ""
                                 tid = raw_uri.split(":")[-1] if raw_uri.startswith("spotify:track:") else None
                                 q = f"{p_item.get('artist', '')} {p_item.get('title', '')}".strip()
 
-                                # 1. Cover individual de Spotify oEmbed
+                                # 1. Cover individual original de Spotify oEmbed por Track ID
                                 if tid:
-                                    async with sem:
+                                    async with sem_covers:
                                         try:
                                             res = await client.get(
                                                 f"https://open.spotify.com/oembed?url=https://open.spotify.com/track/{tid}",
-                                                timeout=2.5,
+                                                timeout=3.0,
                                             )
                                             if res.status_code == 200:
                                                 t_url = res.json().get("thumbnail_url")
                                                 if t_url:
                                                     p_item["thumbnail"] = t_url
+                                                    return
                                         except Exception:
                                             pass
 
-                                # 2. Fallback cover de iTunes Search API si aún no hay carátula
-                                if not p_item.get("thumbnail") and q:
-                                    async with sem:
+                                # 2. Fallback: iTunes Search API oficial (cover HD del álbum o single original)
+                                if q:
+                                    async with sem_covers:
                                         try:
                                             res = await client.get(
                                                 f"https://itunes.apple.com/search?term={urllib.parse.quote_plus(q)}&media=music&entity=song&limit=1",
-                                                timeout=2.0,
+                                                timeout=2.5,
                                             )
                                             if res.status_code == 200:
                                                 data = res.json().get("results", [])
                                                 if data and data[0].get("artworkUrl100"):
-                                                    p_item["thumbnail"] = data[0]["artworkUrl100"].replace("100x100bb", "300x300bb")
+                                                    p_item["thumbnail"] = data[0]["artworkUrl100"].replace("100x100bb", "600x600bb")
+                                                    return
                                         except Exception:
                                             pass
 
-                                # 3. Emparejar con YouTube ID directo
+                            # Lanzar resolución concurrente de carátulas originales para toda la playlist
+                            cover_tasks = [
+                                _resolve_single_track_cover(p_item, raw_item)
+                                for p_item, raw_item in zip(playlist_items, raw_tracks)
+                            ]
+                            await asyncio.gather(*cover_tasks, return_exceptions=True)
+
+                            # Para los primeros 3 temas: emparejar también audio YouTube para preview instantáneo
+                            preview_items = playlist_items[:3]
+                            async def _pair_preview_yt(p_item: dict[str, Any]):
+                                q = f"{p_item.get('artist', '')} {p_item.get('title', '')}".strip()
                                 if q:
-                                    async with sem:
+                                    async with sem_yt:
                                         try:
                                             yid = await _search_youtube_video_id(q)
                                             if yid:
@@ -354,11 +366,7 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                         except Exception:
                                             pass
 
-                            track_tasks = [
-                                _resolve_track_details(p_item, raw_item)
-                                for p_item, raw_item in zip(preview_items, preview_raw)
-                            ]
-                            await asyncio.gather(*track_tasks, return_exceptions=True)
+                            await asyncio.gather(*[_pair_preview_yt(p) for p in preview_items], return_exceptions=True)
     except Exception as exc:
         logger.warning(f"Error parseando Spotify embed para {url}: {exc}")
 
@@ -477,6 +485,7 @@ async def resolve_link(url: str) -> dict[str, Any]:
 
         # Es playlist
         if ("_type" in info and info["_type"] == "playlist") or "entries" in info:
+            playlist_thumb = info.get("thumbnail")
             entries = info.get("entries") or []
             playlist_items = []
             for item in entries:
@@ -484,6 +493,14 @@ async def resolve_link(url: str) -> dict[str, Any]:
                     continue
                 yt_vid_id = item.get("id")
                 item_url = item.get("url") or item.get("webpage_url") or (f"https://www.youtube.com/watch?v={yt_vid_id}" if yt_vid_id else "")
+                
+                raw_thumb = item.get("thumbnail")
+                # Si el thumbnail de la entrada es idéntico a la carátula global de la playlist, descartarlo
+                if raw_thumb and playlist_thumb and raw_thumb == playlist_thumb:
+                    raw_thumb = None
+
+                item_thumb = raw_thumb or (f"https://i.ytimg.com/vi/{yt_vid_id}/hqdefault.jpg" if yt_vid_id else None)
+
                 playlist_items.append({
                     "id": yt_vid_id or f"yt-{abs(hash(item.get('title', ''))) % 10000000}",
                     "youtube_id": yt_vid_id,
@@ -491,7 +508,7 @@ async def resolve_link(url: str) -> dict[str, Any]:
                     "title": item.get("title") or "Canción",
                     "artist": item.get("uploader") or item.get("artist") or item.get("channel") or "Desconocido",
                     "duration": item.get("duration"),
-                    "thumbnail": item.get("thumbnail") or (f"https://i.ytimg.com/vi/{yt_vid_id}/hqdefault.jpg" if yt_vid_id else None),
+                    "thumbnail": item_thumb,
                     "url": item_url,
                     "stream_url": f"/api/links/stream?url={item_url}" if item_url else "",
                 })

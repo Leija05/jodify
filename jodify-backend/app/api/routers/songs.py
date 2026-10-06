@@ -1,7 +1,11 @@
+import asyncio
 from datetime import datetime
 import re
 import time
 from typing import Annotated
+import urllib.parse
+
+import httpx
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -31,6 +35,33 @@ TOP_CACHE_TTL_SECONDS = 60.0
 def invalidate_songs_cache():
     _SONGS_CACHE["timestamp"] = 0.0
     _TOP_CACHE["timestamp"] = 0.0
+
+
+async def async_fetch_cover_url(artist: str, title: str, client: httpx.AsyncClient | None = None) -> str | None:
+    """Busca carátula oficial en alta resolución (600x600) en la API de iTunes."""
+    clean_artist = (artist or "").split(",")[0].strip()
+    clean_title = re.sub(r"\(.*?\)|\[.*?\]", "", title or "").strip()
+    q = f"{clean_artist} {clean_title}".strip()
+    if not q:
+        return None
+    url = f"https://itunes.apple.com/search?term={urllib.parse.quote_plus(q)}&media=music&entity=song&limit=1"
+    try:
+        if client:
+            resp = await client.get(url, timeout=3.5)
+            if resp.status_code == 200:
+                results = resp.json().get("results", [])
+                if results and results[0].get("artworkUrl100"):
+                    return results[0]["artworkUrl100"].replace("100x100bb", "600x600bb")
+        else:
+            async with httpx.AsyncClient(timeout=4.0) as c:
+                resp = await c.get(url)
+                if resp.status_code == 200:
+                    results = resp.json().get("results", [])
+                    if results and results[0].get("artworkUrl100"):
+                        return results[0]["artworkUrl100"].replace("100x100bb", "600x600bb")
+    except Exception:
+        pass
+    return None
 
 
 def song_view(doc: dict) -> dict:
@@ -200,6 +231,17 @@ async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
         for d in existing_docs if d.get("name")
     }
 
+    # Detectar carátulas compartidas de playlist dentro del lote recibido
+    # Si una carátula aparece repetida para 2 o más canciones o es un mosaico de Spotify (ab67706c),
+    # es una foto de playlist y NO debe asignarse a las canciones individuales.
+    raw_covers_count: dict[str, int] = {}
+    for s_req in body.songs:
+        c = (s_req.cover_url or "").strip()
+        if c:
+            raw_covers_count[c] = raw_covers_count.get(c, 0) + 1
+
+    playlist_covers = {c for c, count in raw_covers_count.items() if count >= 2 or "ab67706c" in c}
+
     seen_in_batch = set()
     to_insert_docs = []
     existing_to_bump = []
@@ -234,13 +276,21 @@ async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
                 existing_to_bump.append(existing)
             continue
 
+        song_cover = s_req.cover_url
+        if song_cover and song_cover in playlist_covers:
+            # Descartar carátula compartida de playlist para la canción individual
+            song_cover = None
+
+        if not song_cover and yt_id:
+            song_cover = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
+
         doc = {
             "name": name_clean,
             "artist": artist_clean,
             "album": (s_req.album or "Playlist Import").strip(),
             "url": s_req.url or "",
             "youtube_id": yt_id,
-            "cover_url": s_req.cover_url,
+            "cover_url": song_cover,
             "duration": s_req.duration,
             "added_by": s_req.added_by or "Playlist Import",
             "created_at": now_iso,
@@ -251,7 +301,22 @@ async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
         }
         to_insert_docs.append(doc)
 
-    # 3. Inserción masiva en bloque (insert_many) en MongoDB
+    # 3. Enriquecer carátulas individuales originales para canciones del lote que perdieron la de playlist o no tienen
+    songs_needing_art = [d for d in to_insert_docs if not d.get("cover_url") or "ab67706c" in str(d.get("cover_url"))]
+    if songs_needing_art:
+        sem_enrich = asyncio.Semaphore(12)
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            async def _resolve_doc_art(d_item: dict):
+                async with sem_enrich:
+                    art = await async_fetch_cover_url(d_item.get("artist", ""), d_item.get("name", ""), client=client)
+                    if art:
+                        d_item["cover_url"] = art
+                    elif d_item.get("youtube_id") and not d_item.get("cover_url"):
+                        d_item["cover_url"] = f"https://i.ytimg.com/vi/{d_item['youtube_id']}/hqdefault.jpg"
+
+            await asyncio.gather(*[_resolve_doc_art(d) for d in songs_needing_art], return_exceptions=True)
+
+    # 4. Inserción masiva en bloque (insert_many) en MongoDB
     if to_insert_docs:
         res = await col("songs").insert_many(to_insert_docs, ordered=False)
         likes_to_insert = []
@@ -520,3 +585,85 @@ async def sync_seed_songs(_admin: Annotated[dict, Depends(require_admin)]) -> di
 
     created = await seed_audio()
     return {"created": created}
+
+
+async def repair_duplicate_covers_in_db() -> dict:
+    """Escanea la base de datos de canciones, detecta aquellas que recibieron la foto de una playlist
+    (mosaico ab67706c o carátula idéntica compartida entre artistas diferentes) y restaura su carátula original."""
+    cursor = col("songs").find({}, {"name": 1, "artist": 1, "album": 1, "cover_url": 1, "youtube_id": 1})
+    all_songs = await cursor.to_list(length=5000)
+
+    cover_groups: dict[str, list[dict]] = {}
+    for s in all_songs:
+        c = s.get("cover_url")
+        if c:
+            cover_groups.setdefault(c, []).append(s)
+
+    songs_to_repair = []
+    for s in all_songs:
+        c = (s.get("cover_url") or "").strip()
+        # 1. Carátula de mosaico de playlist de Spotify
+        if "ab67706c" in c:
+            songs_to_repair.append(s)
+            continue
+        # 2. Carátula compartida entre canciones de diferentes artistas (playlist importada)
+        if c and len(cover_groups.get(c, [])) > 1:
+            artists_sharing = {
+                (x.get("artist") or "").strip().lower()
+                for x in cover_groups[c]
+                if (x.get("artist") or "").strip()
+            }
+            if len(artists_sharing) > 1:
+                songs_to_repair.append(s)
+                continue
+        # 3. Canciones sin carátula
+        if not c:
+            songs_to_repair.append(s)
+
+    if not songs_to_repair:
+        return {"ok": True, "repaired_count": 0, "total_examined": len(all_songs), "songs": []}
+
+    sem = asyncio.Semaphore(12)
+    repaired_records = []
+
+    async with httpx.AsyncClient(timeout=6.0) as client:
+        async def _fix_single(s_doc: dict):
+            s_id = s_doc["_id"]
+            artist = s_doc.get("artist") or ""
+            name = s_doc.get("name") or ""
+            yt_id = s_doc.get("youtube_id")
+
+            real_cover = None
+            async with sem:
+                real_cover = await async_fetch_cover_url(artist, name, client=client)
+
+            if not real_cover and yt_id:
+                real_cover = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
+
+            if real_cover and real_cover != s_doc.get("cover_url"):
+                await col("songs").update_one({"_id": s_id}, {"$set": {"cover_url": real_cover}})
+                repaired_records.append({
+                    "id": str(s_id),
+                    "name": name,
+                    "artist": artist,
+                    "old_cover": s_doc.get("cover_url"),
+                    "new_cover": real_cover,
+                })
+
+        await asyncio.gather(*[_fix_single(s) for s in songs_to_repair], return_exceptions=True)
+
+    if repaired_records:
+        invalidate_songs_cache()
+
+    return {
+        "ok": True,
+        "repaired_count": len(repaired_records),
+        "total_examined": len(all_songs),
+        "songs": repaired_records,
+    }
+
+
+@router.post("/repair-covers", response_model=None)
+async def repair_covers_endpoint() -> dict:
+    """Repara y restaura las carátulas originales de canciones que tienen fotos de playlist repetidas."""
+    return await repair_duplicate_covers_in_db()

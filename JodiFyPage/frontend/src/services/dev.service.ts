@@ -95,6 +95,10 @@ export const devService = {
     await api.del('/dev/logs');
   },
 
+  async repairPlaylistCovers(): Promise<{ ok: boolean; repaired_count: number; total_examined: number; songs: any[] }> {
+    return api.post<{ ok: boolean; repaired_count: number; total_examined: number; songs: any[] }>('/dev/repair-covers');
+  },
+
   subscribeStream(onEvent: (event: DevLogEvent) => void): () => void {
     const token = getAuthToken();
     const controller = new AbortController();

@@ -50,20 +50,23 @@ import { songsService } from '../../services/songs.service';
 import { cacheExternalLikedSong, removeExternalLikedSong } from '../../services/player-shortcuts';
 import { playSong } from '../../services/player.service';
 
-function toVirtualSong(track: {
-  title: string;
-  artist?: string;
-  album?: string;
-  stream_url?: string;
-  url?: string;
-  thumbnail?: string;
-  duration?: number;
-  id?: string;
-  youtube_id?: string;
-  source?: string;
-  original_url?: string;
-  webpage_url?: string;
-}): Song {
+function toVirtualSong(
+  track: {
+    title: string;
+    artist?: string;
+    album?: string;
+    stream_url?: string;
+    url?: string;
+    thumbnail?: string;
+    duration?: number;
+    id?: string;
+    youtube_id?: string;
+    source?: string;
+    original_url?: string;
+    webpage_url?: string;
+  },
+  playlistCover?: string
+): Song {
   const hashVal = Math.abs(
     Array.from(track.title + (track.artist || '')).reduce(
       (acc, char) => (acc << 5) - acc + char.charCodeAt(0),
@@ -86,6 +89,13 @@ function toVirtualSong(track: {
 
   const effectiveSource = track.source || (ytId ? 'youtube' : (allUrls.includes('spotify') ? 'spotify' : 'web'));
 
+  let cover = track.thumbnail;
+  // Nunca propagar la foto general de una playlist o mosaico a una canción individual
+  if (cover && ((playlistCover && cover === playlistCover) || cover.includes('ab67706c'))) {
+    cover = undefined;
+  }
+  const finalCover = cover || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined);
+
   return {
     id: cleanId,
     name: track.title,
@@ -94,7 +104,7 @@ function toVirtualSong(track: {
     url: track.stream_url || track.url || '',
     youtube_id: ytId,
     source: effectiveSource,
-    cover_url: track.thumbnail || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined),
+    cover_url: finalCover,
     duration: track.duration,
     likes: 0,
     added_by: 'Enlace Web',
@@ -258,7 +268,7 @@ export function LinkMusicModal() {
 
     setIsImporting(true);
     try {
-      const vSongs = targetItems.map((item) => toVirtualSong(item));
+      const vSongs = targetItems.map((item) => toVirtualSong(item, playlist.thumbnail));
       vSongs.forEach((s) => useLibraryStore.getState().upsertSong(s));
 
       if (session?.username) {
@@ -311,7 +321,7 @@ export function LinkMusicModal() {
     setIsImporting(true);
     let count = 0;
     try {
-      const vSongs = targetItems.map((item) => toVirtualSong(item));
+      const vSongs = targetItems.map((item) => toVirtualSong(item, resolved?.thumbnail));
       for (const s of vSongs) {
         useLibraryStore.getState().upsertSong(s);
         useLibraryStore.getState().toggleLikeLocal(s.id, true);
@@ -399,7 +409,9 @@ export function LinkMusicModal() {
 
     try {
       const username = session?.username || (isAdmin ? 'Admin' : 'Usuario');
-      const allSongs = itemsToImport.map((item) => toVirtualSong(item));
+      const allSongs = itemsToImport.map((item) =>
+        toVirtualSong(item, resolved?.type === 'playlist' ? resolved.thumbnail : undefined)
+      );
 
       // Guardar de inmediato en la biblioteca local para respuesta reactiva instantánea
       allSongs.forEach((v) => useLibraryStore.getState().upsertSong(v));
@@ -452,7 +464,7 @@ export function LinkMusicModal() {
   const handlePlaySelectedPlaylist = async (playlist: ResolvedMedia & { type: 'playlist' }) => {
     const targetItems = selectedItems.length > 0 ? selectedItems : playlist.items;
     if (!targetItems.length) return;
-    const songs = targetItems.map((item) => toVirtualSong(item));
+    const songs = targetItems.map((item) => toVirtualSong(item, playlist.thumbnail));
     songs.forEach((s) => useLibraryStore.getState().upsertSong(s));
 
     const queue = useQueueStore.getState();
@@ -465,7 +477,7 @@ export function LinkMusicModal() {
   const handleQueueSelectedPlaylist = (playlist: ResolvedMedia & { type: 'playlist' }) => {
     const targetItems = selectedItems.length > 0 ? selectedItems : playlist.items;
     if (!targetItems.length) return;
-    const songs = targetItems.map((item) => toVirtualSong(item));
+    const songs = targetItems.map((item) => toVirtualSong(item, playlist.thumbnail));
     songs.forEach((s) => {
       useLibraryStore.getState().upsertSong(s);
       useQueueStore.getState().add(s);
@@ -484,6 +496,55 @@ export function LinkMusicModal() {
       void loadSuggestions();
     }
   }, [ui.modal, activeTab]);
+
+  // Enriquecer en vivo las carátulas auténticas de canciones de playlists que falten o traigan la de la playlist
+  useEffect(() => {
+    if (resolved?.type !== 'playlist' || !resolved.items?.length) return;
+    const playlistCover = resolved.thumbnail;
+    const itemsNeedingThumb = resolved.items.filter(
+      (it) => !it.thumbnail || (playlistCover && it.thumbnail === playlistCover) || it.thumbnail.includes('ab67706c')
+    );
+    if (!itemsNeedingThumb.length) return;
+
+    let isMounted = true;
+    const fetchMissingCovers = async () => {
+      const CHUNK = 6;
+      for (let i = 0; i < itemsNeedingThumb.length; i += CHUNK) {
+        if (!isMounted) break;
+        const chunk = itemsNeedingThumb.slice(i, i + CHUNK);
+        await Promise.all(
+          chunk.map(async (item) => {
+            try {
+              const cleanArtist = (item.artist || '').split(',')[0].trim();
+              const cleanTitle = (item.title || '').replace(/\(.*?\)|\[.*?\]/g, '').trim();
+              const term = encodeURIComponent(`${cleanArtist} ${cleanTitle}`.trim());
+              const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=1`);
+              if (res.ok) {
+                const data = await res.json();
+                const artwork = data.results?.[0]?.artworkUrl100?.replace('100x100bb', '600x600bb');
+                if (artwork && isMounted) {
+                  setResolved((prev) => {
+                    if (!prev || prev.type !== 'playlist') return prev;
+                    return {
+                      ...prev,
+                      items: prev.items.map((it) => (it.id === item.id ? { ...it, thumbnail: artwork } : it)),
+                    };
+                  });
+                }
+              }
+            } catch {
+              // Silencioso ante fallos de red
+            }
+          })
+        );
+      }
+    };
+
+    void fetchMissingCovers();
+    return () => {
+      isMounted = false;
+    };
+  }, [resolved?.type, (resolved as any)?.id || (resolved as any)?.title]);
 
   if (ui.modal !== 'linkMusic') return null;
 
@@ -1236,10 +1297,13 @@ export function LinkMusicModal() {
                 <div className="jf-link-playlist-items">
                   {resolved.items.map((item, idx) => {
                     const isSelected = selectedIndices.has(idx);
-                    const isDup = checkDuplicate(item);
-                    const vSong = toVirtualSong(item);
+                    const vSong = toVirtualSong(item, resolved.thumbnail);
                     const liked = isTrackLiked(vSong.id);
-                    const itemThumb = item.thumbnail || (item.youtube_id ? `https://i.ytimg.com/vi/${item.youtube_id}/hqdefault.jpg` : undefined);
+                    const itemThumb =
+                      (item.thumbnail && item.thumbnail !== resolved.thumbnail && !item.thumbnail.includes('ab67706c')
+                        ? item.thumbnail
+                        : undefined) ||
+                      (item.youtube_id ? `https://i.ytimg.com/vi/${item.youtube_id}/hqdefault.jpg` : undefined);
 
                     return (
                       <div
