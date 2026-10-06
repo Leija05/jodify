@@ -399,6 +399,19 @@ export function HomeShowcaseView() {
               <span>Historial</span>
             </button>
 
+            {(isAdmin || isDev) && (
+              <button
+                type="button"
+                className="jf-btn-header-action"
+                onClick={() => ui.open('deleteSongs')}
+                title="Eliminar varias canciones de la biblioteca"
+                style={{ color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.35)' }}
+              >
+                <Trash size={16} weight="bold" />
+                <span>Eliminar música</span>
+              </button>
+            )}
+
             {isDev && (
               <button
                 type="button"

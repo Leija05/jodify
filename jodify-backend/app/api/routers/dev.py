@@ -289,14 +289,17 @@ async def create_user(body: CreateUserRequest, dev: Annotated[dict, Depends(requ
     if role not in ("user", "mod", "admin"):
         raise HTTPException(status_code=400, detail="Rol inválido. Usá 'user', 'mod' o 'admin'.")
     username = body.username.strip()
+    clean_pwd = body.password.strip()
     if len(username) < 2:
         raise HTTPException(status_code=400, detail="El usuario debe tener al menos 2 caracteres")
-    if len(body.password) < 4:
+    if len(clean_pwd) < 4:
         raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
-    existing = await col("users").find_one({"username": username})
+    import re
+
+    existing = await col("users").find_one({"username": {"$regex": f"^{re.escape(username)}$", "$options": "i"}})
     if existing:
         raise HTTPException(status_code=409, detail="Ese usuario ya existe")
-    salt, password_hash = hash_password(body.password)
+    salt, password_hash = hash_password(clean_pwd)
     await col("users").insert_one(
         {
             "username": username,

@@ -453,23 +453,46 @@ async def upload_song(
 
 @router.delete("", status_code=204)
 async def delete_songs(body: DeleteSongsRequest, _admin: Annotated[dict, Depends(require_admin)]) -> None:
-    ids = []
-    for raw in body.ids:
-        try:
-            ids.append(ObjectId(str(raw)))
-        except Exception:
-            continue
-    if not ids:
+    raw_ids = [str(raw).strip() for raw in body.ids if str(raw).strip()]
+    if not raw_ids:
         return
-    songs = await col("songs").find({"_id": {"$in": ids}}).to_list(1000)
+
+    obj_ids = []
+    str_ids = []
+    for r in raw_ids:
+        str_ids.append(r)
+        try:
+            obj_ids.append(ObjectId(r))
+        except Exception:
+            pass
+
+    or_clauses = []
+    if obj_ids:
+        or_clauses.append({"_id": {"$in": obj_ids}})
+    if str_ids:
+        or_clauses.append({"id": {"$in": str_ids}})
+        or_clauses.append({"youtube_id": {"$in": str_ids}})
+
+    if not or_clauses:
+        return
+
+    songs = await col("songs").find({"$or": or_clauses}).to_list(2000)
     for song in songs:
         fid = song.get("audio_file_id")
         if isinstance(fid, ObjectId):
             await delete_audio(fid)
-    await col("likes").delete_many({"song_id": {"$in": [str(i) for i in ids]}})
-    await col("downloads").delete_many({"song_id": {"$in": [str(i) for i in ids]}})
-    await col("history").delete_many({"song_id": {"$in": [str(i) for i in ids]}})
-    await col("songs").delete_many({"_id": {"$in": ids}})
+        cov_fid = song.get("cover_file_id")
+        if isinstance(cov_fid, ObjectId):
+            await delete_audio(cov_fid)
+
+    matched_ids = [s["_id"] for s in songs]
+    all_id_strings = list({str(s["_id"]) for s in songs} | set(str_ids))
+
+    if matched_ids:
+        await col("songs").delete_many({"_id": {"$in": matched_ids}})
+    await col("likes").delete_many({"song_id": {"$in": all_id_strings}})
+    await col("downloads").delete_many({"song_id": {"$in": all_id_strings}})
+    await col("history").delete_many({"song_id": {"$in": all_id_strings}})
     invalidate_songs_cache()
 
 

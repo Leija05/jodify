@@ -123,6 +123,31 @@ async def create_access_token(
         "redeemed_by": [],
     }
     result = await col("dev_tokens").insert_one(doc)
+
+    # Si se asignó usuario y contraseña al generar el token, crear la cuenta directamente en col("users")
+    # para que puedan iniciar sesión inmediatamente con esas credenciales sin forzar un canje previo.
+    clean_u = (assigned_username or "").strip()
+    clean_p = (assigned_password or "").strip()
+    if clean_u and clean_p and len(clean_u) >= 2 and len(clean_p) >= 4:
+        import re
+        from ..core.security import hash_password
+        existing_u = await col("users").find_one({"username": {"$regex": f"^{re.escape(clean_u)}$", "$options": "i"}})
+        if not existing_u:
+            u_salt, u_hash = hash_password(clean_p)
+            await col("users").insert_one({
+                "username": clean_u,
+                "salt": u_salt,
+                "password_hash": u_hash,
+                "role": role,
+                "is_online": 0,
+                "last_seen": None,
+                "discord_id": None,
+                "current_song_id": None,
+                "current_song_name": None,
+                "listening_since": None,
+                "created_at": _now(),
+            })
+
     return {**token_view(doc | {"_id": result.inserted_id}), "token": plain}
 
 

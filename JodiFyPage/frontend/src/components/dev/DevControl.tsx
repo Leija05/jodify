@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ArrowClockwise, Eraser, Power, ShieldWarning, Sparkle, Wrench } from '@phosphor-icons/react';
+import { ArrowClockwise, Eraser, Power, ShieldWarning, Sparkle, Trash, Wrench } from '@phosphor-icons/react';
 import { Button } from '../ui/Button';
 import { devService } from '../../services/dev.service';
 import { useToastStore } from '../../store/toast.store';
+import { useUiStore } from '../../store/ui.store';
 import { confirmDialog } from '../../store/confirm.store';
 import type { DevState } from '../../lib/types';
 
@@ -143,6 +144,23 @@ export function DevControl({ state, onChanged }: { state: DevState | null; onCha
               >
                 <ArrowClockwise size={13} className={repairingCovers ? 'animate-spin' : ''} />
                 {repairingCovers ? 'Reparando…' : 'Reparar carátulas'}
+              </Button>
+            </div>
+
+            <div className="jf-dev-risky" style={{ borderColor: 'rgba(239, 68, 68, 0.25)', marginTop: '8px' }}>
+              <div>
+                <strong>Eliminar canciones en lote</strong>
+                <span className="jf-dev-card-sub">
+                  Selecciona y elimina múltiples canciones de la biblioteca con un solo clic.
+                </span>
+              </div>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => useUiStore.getState().open('deleteSongs')}
+              >
+                <Trash size={13} />
+                Eliminar música
               </Button>
             </div>
           </div>

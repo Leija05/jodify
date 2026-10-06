@@ -357,6 +357,16 @@ export function SongContextMenu() {
               <div className="jf-context-menu-sep" />
               <MenuItem icon={<PencilSimple size={15} />} label="Editar información" onClick={handleEdit} testId="cm-edit" />
               <MenuItem icon={<Trash size={15} />} label="Eliminar canción" danger onClick={handleDelete} testId="cm-delete" />
+              <MenuItem
+                icon={<Trash size={15} />}
+                label="Eliminar varias canciones…"
+                danger
+                onClick={() => {
+                  hide();
+                  useUiStore.getState().open('deleteSongs');
+                }}
+                testId="cm-delete-multiple"
+              />
             </>
           )}
         </motion.div>

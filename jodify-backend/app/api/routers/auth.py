@@ -1,7 +1,8 @@
 from datetime import datetime
+import re
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Annotated
 
 from ...core.config import DEV_MODE, DEV_USERNAME
 from ...core.database import col
@@ -34,9 +35,25 @@ async def dev_login() -> AuthResponse:
 async def login(body: LoginRequest) -> AuthResponse:
     if await maintenance_blocked():
         raise HTTPException(status_code=503, detail="La plataforma está en mantenimiento. Probá más tarde.")
-    doc = await col("users").find_one({"username": body.username.strip()})
-    if doc is None or not verify_password(body.password, doc.get("salt", ""), doc.get("password_hash", "")):
+    clean_username = body.username.strip()
+    if not clean_username:
+        raise HTTPException(status_code=400, detail="El nombre de usuario es requerido")
+
+    # Búsqueda insensible a mayúsculas/minúsculas para evitar rechazos por mayúscula inicial en teclados móviles
+    doc = await col("users").find_one({
+        "username": {"$regex": f"^{re.escape(clean_username)}$", "$options": "i"}
+    })
+    if doc is None:
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+
+    salt = doc.get("salt", "")
+    p_hash = doc.get("password_hash", "")
+    pwd = body.password
+
+    # Probar contraseña tal como viene y con strip por si hubo espacios accidentales
+    if not verify_password(pwd, salt, p_hash) and not verify_password(pwd.strip(), salt, p_hash):
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+
     role = doc.get("role", "user")
     return AuthResponse(token=create_token(doc["username"], role), username=doc["username"], role=role)
 
