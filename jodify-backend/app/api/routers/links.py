@@ -132,7 +132,7 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "ios", "mweb"],
+                "player_client": ["visionos", "android"],
             }
         },
         "http_headers": {
@@ -141,6 +141,17 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         },
     }
     cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
+    if not cookie_path or not os.path.exists(cookie_path):
+        cookie_text = os.environ.get("YOUTUBE_COOKIES_TEXT") or os.environ.get("YOUTUBE_COOKIES")
+        if cookie_text:
+            try:
+                tmp_dir = tempfile.gettempdir()
+                tmp_cookie_file = os.path.join(tmp_dir, "jodify_yt_cookies.txt")
+                with open(tmp_cookie_file, "w", encoding="utf-8") as f:
+                    f.write(cookie_text)
+                cookie_path = tmp_cookie_file
+            except Exception:
+                pass
     if cookie_path and os.path.exists(cookie_path):
         ydl_opts["cookiefile"] = cookie_path
 
@@ -312,56 +323,56 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 logger.warning(f"No se pudo guardar YOUTUBE_COOKIES_TEXT temporal: {e}")
 
     configs = [
-        # Estrategia 1: Cliente Android (Mobile API oficial de YouTube, directa y ultrarrápida)
+        # Estrategia 1: VisionOS + Android (máxima compatibilidad, evita bloqueos de bot)
         {
             "format": "18/140/bestaudio[ext=m4a]/251/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 5,
+            "socket_timeout": 6,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"],
+                    "player_client": ["visionos", "android"],
                 }
             },
         },
-        # Estrategia 2: Cliente TV + VisionOS (audio puro AAC 140 / Opus 251)
+        # Estrategia 2: Cliente TV Embedded + Web Creator
         {
-            "format": "140/251/bestaudio[ext=m4a]/bestaudio/18/best",
+            "format": "18/140/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 5,
+            "socket_timeout": 6,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["tv", "visionos"],
+                    "player_client": ["tv_embedded", "web_creator"],
                 }
             },
         },
-        # Estrategia 3: Cliente Web Creator + Android Creator
-        {
-            "format": "140/bestaudio/18/best",
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 5,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["web_creator", "android_creator"],
-                }
-            },
-        },
-        # Estrategia 4: iOS / mweb estándar
+        # Estrategia 3: Cliente MWeb + iOS
         {
             "format": "18/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 5,
+            "socket_timeout": 6,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["mweb", "ios"],
+                }
+            },
+        },
+        # Estrategia 4: Default yt-dlp
+        {
+            "format": "bestaudio/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 6,
         },
     ]
 
@@ -387,10 +398,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             last_error = exc
             err_str = str(exc).lower()
             if "confirm you’re not a bot" in err_str or "confirm you're not a bot" in err_str:
-                logger.warning(f"[YouTube Stream] YouTube antibot activo para {url}: {exc}")
-                if not cookie_path or not os.path.exists(cookie_path):
-                    # Sin cookies configuradas en el servidor, no insistir en bucle para evitar socket timeout
-                    break
+                logger.warning(f"[YouTube Stream] YouTube antibot activo en estrategia para {url}: {exc}")
             continue
 
     raise ValueError(f"No se pudo obtener el flujo de audio del enlace: {last_error}")

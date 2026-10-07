@@ -2,7 +2,7 @@
   "expo": {
     "name": "JodiFy",
     "slug": "jodify-mobile",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "dark",
@@ -47,7 +47,7 @@
         "backgroundColor": "#030305"
       },
       "package": "com.jodify.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.FOREGROUND_SERVICE",

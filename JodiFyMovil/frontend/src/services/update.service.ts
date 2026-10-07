@@ -35,13 +35,13 @@ export function currentAppVersion(): string {
     packageJson.version ||
     Constants.nativeAppVersion ||
     Constants.expoConfig?.version ||
-    '1.0.1'
+    '1.0.2'
   );
 }
 
 export function currentBuildNumber(): number {
   const raw = Constants.nativeBuildVersion || Constants.expoConfig?.android?.versionCode;
-  return raw ? parseInt(String(raw), 10) : 2;
+  return raw ? parseInt(String(raw), 10) : 3;
 }
 
 export function resolveAbsoluteDownloadUrl(relativeOrAbsolute: string): string {
