@@ -580,10 +580,10 @@ export function DevUpdates() {
             <Button
               type="submit"
               variant="primary"
-              disabled={uploading || !selectedFile}
+              disabled={uploading || (uploadMode === 'file' ? !selectedFile : !externalUrl.trim())}
             >
               <CloudArrowUp size={18} style={{ marginRight: 6 }} />
-              {uploading ? `Subiendo (${uploadProgress}%)…` : 'Publicar y Activar Actualización'}
+              {uploading ? `Publicando (${uploadProgress}%)…` : 'Publicar y Activar Actualización'}
             </Button>
           </div>
         </form>
