@@ -67,7 +67,8 @@ def _get_ytdlp_opts(extract_flat: bool = False, is_search: bool = False) -> dict
     }
 
     # Soporte para cookies opcionales si se configuran en el entorno
-    cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
+    from .cookie_manager import get_valid_cookies_file
+    cookie_path = get_valid_cookies_file()
     if cookie_path and os.path.exists(cookie_path):
         opts["cookiefile"] = cookie_path
 

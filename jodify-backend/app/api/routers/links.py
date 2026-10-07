@@ -131,18 +131,8 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         "quiet": True,
         "no_warnings": True,
     }
-    cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
-    if not cookie_path or not os.path.exists(cookie_path):
-        cookie_text = os.environ.get("YOUTUBE_COOKIES_TEXT") or os.environ.get("YOUTUBE_COOKIES")
-        if cookie_text:
-            try:
-                tmp_dir = tempfile.gettempdir()
-                tmp_cookie_file = os.path.join(tmp_dir, "jodify_yt_cookies.txt")
-                with open(tmp_cookie_file, "w", encoding="utf-8") as f:
-                    f.write(cookie_text.replace("\\r\\n", "\n").replace("\\n", "\n"))
-                cookie_path = tmp_cookie_file
-            except Exception:
-                pass
+    from ...services.cookie_manager import get_valid_cookies_file
+    cookie_path = get_valid_cookies_file()
     if cookie_path and os.path.exists(cookie_path):
         ydl_opts["cookiefile"] = cookie_path
 
@@ -298,76 +288,90 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
         return cached_url, cached_headers
 
     now = time.time()
-
     is_search = url.startswith("ytsearch")
-    cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
-    if not cookie_path or not os.path.exists(cookie_path):
-        cookie_text = os.environ.get("YOUTUBE_COOKIES_TEXT") or os.environ.get("YOUTUBE_COOKIES")
-        if cookie_text:
-            try:
-                tmp_dir = tempfile.gettempdir()
-                tmp_cookie_file = os.path.join(tmp_dir, "jodify_yt_cookies.txt")
-                with open(tmp_cookie_file, "w", encoding="utf-8") as f:
-                    f.write(cookie_text.replace("\\r\\n", "\n").replace("\\n", "\n"))
-                cookie_path = tmp_cookie_file
-            except Exception as e:
-                logger.warning(f"No se pudo guardar YOUTUBE_COOKIES_TEXT temporal: {e}")
 
-    configs = [
-        # Estrategia 1: Cliente estándar (con cookies tiene acceso inmediato a 100% de formatos Opus y AAC)
-        {
+    from ...services.cookie_manager import get_valid_cookies_file
+    cookie_path = get_valid_cookies_file()
+
+    configs: list[dict[str, Any]] = []
+
+    # 1. Estrategias con cookies (si existen y fueron validadas)
+    if cookie_path and os.path.exists(cookie_path):
+        # Web estándar con cookies: Máxima fidelidad de audio (Opus / AAC 160kbps)
+        configs.append({
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
-        },
-        # Estrategia 2: Android + Web
-        {
+            "cookiefile": cookie_path,
+        })
+        # Android con cookies
+        configs.append({
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
+            "cookiefile": cookie_path,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "web"],
+                    "player_client": ["android"],
                 }
             },
+        })
+
+    # 2. Estrategias universales de fallback (funcionan sin cookies en IPs de datacenter/Render y no activan el antibot)
+    # Android PURO (comprobado que extrae stream de audio formato 18 aún cuando web está bloqueado)
+    configs.append({
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": False if is_search else True,
+        "socket_timeout": 8,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"],
+            }
         },
-        # Estrategia 3: MWeb
-        {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["mweb"],
-                }
-            },
+    })
+    # Android + iOS
+    configs.append({
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": False if is_search else True,
+        "socket_timeout": 8,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios"],
+            }
         },
-        # Estrategia 4: VisionOS
-        {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos"],
-                }
-            },
+    })
+    # MWeb
+    configs.append({
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": False if is_search else True,
+        "socket_timeout": 8,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["mweb"],
+            }
         },
-    ]
+    })
+    # VisionOS / Web fallback
+    configs.append({
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": False if is_search else True,
+        "socket_timeout": 8,
+    })
 
     last_error: Exception | None = None
     for ydl_opts in configs:
-        if cookie_path and os.path.exists(cookie_path):
-            ydl_opts["cookiefile"] = cookie_path
-
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
