@@ -130,15 +130,6 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         "writethumbnail": True,
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["visionos", "android"],
-            }
-        },
-        "http_headers": {
-            "User-Agent": "com.google.android.youtube/19.29.35 (Linux; U; Android 14; en_US; Pixel 7 Pro Build/UQ1A.240105.004) gzip",
-            "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
-        },
     }
     cookie_path = os.environ.get("YOUTUBE_COOKIES_PATH") or os.environ.get("COOKIES_FILE")
     if not cookie_path or not os.path.exists(cookie_path):
@@ -323,56 +314,52 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 logger.warning(f"No se pudo guardar YOUTUBE_COOKIES_TEXT temporal: {e}")
 
     configs = [
-        # Estrategia 1: VisionOS + Android (máxima compatibilidad, evita bloqueos de bot)
+        # Estrategia 1: Cliente estándar (con cookies tiene acceso inmediato a 100% de formatos Opus y AAC)
         {
-            "format": "18/140/bestaudio[ext=m4a]/251/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
+        },
+        # Estrategia 2: Android + Web
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["visionos", "android"],
+                    "player_client": ["android", "web"],
                 }
             },
         },
-        # Estrategia 2: Cliente TV Embedded + Web Creator
+        # Estrategia 3: MWeb
         {
-            "format": "18/140/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["tv_embedded", "web_creator"],
+                    "player_client": ["mweb"],
                 }
             },
         },
-        # Estrategia 3: Cliente MWeb + iOS
+        # Estrategia 4: VisionOS
         {
-            "format": "18/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["mweb", "ios"],
+                    "player_client": ["visionos"],
                 }
             },
-        },
-        # Estrategia 4: Default yt-dlp
-        {
-            "format": "bestaudio/best",
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
         },
     ]
 

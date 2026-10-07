@@ -12,9 +12,9 @@ async function getToken(): Promise<string | null> {
 const defaultRemote = (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
 const CANDIDATE_BASES = Array.from(
   new Set([
-    ...(__DEV__ ? ['http://192.168.1.11:8000', 'http://localhost:8000', 'http://10.0.2.2:8000'] : []),
     defaultRemote,
     'https://jodify-backend.onrender.com',
+    ...(__DEV__ ? ['http://10.0.2.2:8000', 'http://localhost:8000'] : []),
   ])
 );
 
