@@ -29,11 +29,16 @@ export interface DownloadProgressData {
 }
 
 export function currentAppVersion(): string {
-  return Constants.expoConfig?.version || '1.0.0';
+  return (
+    Constants.nativeAppVersion ||
+    Constants.expoConfig?.version ||
+    '1.0.1'
+  );
 }
 
 export function currentBuildNumber(): number {
-  return Constants.expoConfig?.android?.versionCode || 1;
+  const raw = Constants.nativeBuildVersion || Constants.expoConfig?.android?.versionCode;
+  return raw ? parseInt(String(raw), 10) : 2;
 }
 
 export function resolveAbsoluteDownloadUrl(relativeOrAbsolute: string): string {
