@@ -57,7 +57,7 @@ app.add_api_route("/songs/{song_id}/cover", songs.stream_cover, methods=["GET"])
 
 @app.get("/api/health")
 async def health() -> dict:
-    return {"status": "ok"}
+    return {"status": "ok", "version": "2.0.1"}
 
 
 @app.get("/")

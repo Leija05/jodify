@@ -293,9 +293,36 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     from ...services.cookie_manager import get_valid_cookies_file
     cookie_path = get_valid_cookies_file()
 
-    configs: list[dict[str, Any]] = []
+    configs: list[dict[str, Any]] = [
+        # Estrategia 1: Cliente Android PURO sin cookies (Resolución en ~1.0s, evade antibot de YouTube en cloud IPs y entrega audio mp4a formato 18)
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 4,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"],
+                }
+            },
+        },
+        # Estrategia 2: Android + iOS
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 4,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios"],
+                }
+            },
+        },
+    ]
 
-    # 1. Estrategias con cookies (si existen y fueron validadas)
+    # Estrategias con cookies (si existen y fueron validadas) como respaldo de alta fidelidad
     if cookie_path and os.path.exists(cookie_path):
         # Web estándar con cookies: Máxima fidelidad de audio (Opus / AAC 160kbps)
         configs.append({
@@ -303,7 +330,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
+            "socket_timeout": 4,
             "cookiefile": cookie_path,
         })
         # Android con cookies
@@ -312,7 +339,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
+            "socket_timeout": 4,
             "cookiefile": cookie_path,
             "extractor_args": {
                 "youtube": {
@@ -321,53 +348,25 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             },
         })
 
-    # 2. Estrategias universales de fallback (funcionan sin cookies en IPs de datacenter/Render y no activan el antibot)
-    # Android PURO (comprobado que extrae stream de audio formato 18 aún cuando web está bloqueado)
+    # Estrategias adicionales de fallback
     configs.append({
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": False if is_search else True,
-        "socket_timeout": 8,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android"],
-            }
-        },
-    })
-    # Android + iOS
-    configs.append({
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "noplaylist": False if is_search else True,
-        "socket_timeout": 8,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "ios"],
-            }
-        },
-    })
-    # MWeb
-    configs.append({
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "noplaylist": False if is_search else True,
-        "socket_timeout": 8,
+        "socket_timeout": 4,
         "extractor_args": {
             "youtube": {
                 "player_client": ["mweb"],
             }
         },
     })
-    # VisionOS / Web fallback
     configs.append({
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": False if is_search else True,
-        "socket_timeout": 8,
+        "socket_timeout": 4,
     })
 
     last_error: Exception | None = None
