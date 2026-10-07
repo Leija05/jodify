@@ -332,6 +332,23 @@ export function ensurePlayerWithSource(source: string): AudioPlayer {
   return player;
 }
 
+export function preloadSource(source: string): void {
+  if (!source) return;
+  const normalized = normalizeSource(source);
+  if (cachedPlayers.has(normalized)) return;
+
+  const player = createRealAudioPlayer(source);
+  const newCached: CachedPlayer = {
+    player,
+    source: normalized,
+    lastUsed: Date.now() - 3000,
+    listeners: new Set(),
+  };
+
+  cachedPlayers.set(normalized, newCached);
+  evictOldestIfNeeded();
+}
+
 export function currentPlayerSource(): string | null {
   return currentPlayerKey;
 }

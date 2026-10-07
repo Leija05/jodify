@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { configureAudioMode, onPlayerStatus } from '../stores/audio';
-import { usePlayerStore } from '../stores/player.store';
+import { usePlayerStore, preloadNextTrack } from '../stores/player.store';
 
 export function usePlayerEngine() {
   const lastFinishedRef = useRef(0);
   const autoSkipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const preloadedForTrackRef = useRef(false);
 
   useEffect(() => {
     void configureAudioMode();
@@ -16,6 +17,7 @@ export function usePlayerEngine() {
       const store = usePlayerStore.getState();
 
       if (playbackState === 6) {
+        preloadedForTrackRef.current = false;
         const now = Date.now();
         if (now - lastFinishedRef.current > 1200) {
           lastFinishedRef.current = now;
@@ -41,6 +43,11 @@ export function usePlayerEngine() {
         if (autoSkipTimerRef.current) {
           clearTimeout(autoSkipTimerRef.current);
           autoSkipTimerRef.current = null;
+        }
+        // Lookahead buffer: precarga proactiva al llegar al 70% del tema si aún no se precargó
+        if (duration > 15 && currentTime / duration > 0.70 && !preloadedForTrackRef.current) {
+          preloadedForTrackRef.current = true;
+          void preloadNextTrack();
         }
       } else if (playbackState === 2) {
         if (store.isPlaying) updates.isPlaying = false;

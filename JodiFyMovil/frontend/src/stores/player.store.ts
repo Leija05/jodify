@@ -5,7 +5,7 @@ import { API_BASE } from '../lib/constants';
 import { getActiveApiBase, getCandidateBases, setActiveApiBase } from '../services/api';
 import { shuffleArray } from '../lib/utils';
 import { activateLockScreenForSong, syncLockScreen } from '../services/lockscreen.service';
-import { ensurePlayerWithSource, getPlayer, onPlayerStatus, releasePlayer } from './audio';
+import { ensurePlayerWithSource, getPlayer, onPlayerStatus, preloadSource, releasePlayer } from './audio';
 import { useEqStore } from './eq.store';
 import { applyNative, enableEqualizer, applyBassBoost, applyVirtualizer } from '../services/equalizer.service';
 import { recordHistory } from '../services/history.service';
@@ -210,6 +210,75 @@ function buildOrder(queueLength: number, shuffle: boolean, currentIndex: number)
   return mixed;
 }
 
+function getNextSongFromState(state: { queue: Song[]; queueIndex: number; repeat: RepeatMode; order: number[]; shuffle: boolean }): Song | null {
+  const { queue, queueIndex, repeat, order, shuffle } = state;
+  if (!queue || queue.length === 0) return null;
+  if (repeat === 'one') {
+    return queue[queueIndex] ?? null;
+  }
+  let nextIndex = queueIndex + 1;
+  if (shuffle && order.length > 1) {
+    const pos = order.indexOf(queueIndex);
+    nextIndex = order[(pos + 1) % order.length] ?? nextIndex;
+  }
+  if (nextIndex >= queue.length) {
+    if (repeat === 'all') nextIndex = 0;
+    else return null;
+  }
+  return queue[nextIndex] ?? null;
+}
+
+let preloadTimer: ReturnType<typeof setTimeout> | null = null;
+let lastPreloadedKey: string | null = null;
+
+export async function preloadNextTrack(): Promise<void> {
+  const state = usePlayerStore.getState();
+  const nextSong = getNextSongFromState(state);
+  if (!nextSong) return;
+
+  const nextSongKey = String(nextSong.id || nextSong.youtube_id || nextSong.name);
+  if (lastPreloadedKey === nextSongKey) return;
+
+  // Pre-resolve youtube_id if it's a search URL or missing on youtube/spotify songs
+  const raw = (nextSong.url || nextSong.stream_url || '');
+  if (!nextSong.youtube_id && !nextSong.localUri) {
+    if (raw.includes('search_query=') || raw.includes('spotify') || nextSong.source === 'spotify') {
+      const match = raw.match(/search_query=([^&]+)/);
+      const q = (match && match[1]) ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : `${nextSong.artist || ''} ${nextSong.name}`.trim();
+      const artist = nextSong.artist || '';
+      const title = nextSong.name || q;
+      try {
+        const matchedId = await matchTrackToYoutubeId(artist, title);
+        if (matchedId) {
+          nextSong.youtube_id = matchedId;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  if (nextSong.localUri) {
+    preloadSource(nextSong.localUri);
+    lastPreloadedKey = nextSongKey;
+    return;
+  }
+
+  const base = getActiveApiBase();
+  const source = resolveSource(nextSong, base, true);
+  if (!source) return;
+
+  lastPreloadedKey = nextSongKey;
+  preloadSource(source);
+}
+
+function schedulePreloadNext(): void {
+  if (preloadTimer) clearTimeout(preloadTimer);
+  preloadTimer = setTimeout(() => {
+    void preloadNextTrack();
+  }, 1800);
+}
+
 import { DeviceEventEmitter } from 'react-native';
 
 export const usePlayerStore = create<PlayerState>()((set, get) => {
@@ -272,6 +341,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
         activateLockScreenForSong(song);
         void recordPlayIfNeeded(song);
         set({ error: null });
+        schedulePreloadNext();
         return;
       } catch (localErr) {
         console.warn(`[Player] Local audio playback failed for "${song.name}", falling back to network:`, localErr);
@@ -306,6 +376,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
         void recordPlayIfNeeded(song);
         setActiveApiBase(base);
         set({ error: null });
+        schedulePreloadNext();
         return;
       } catch (err: any) {
         lastError = err;
