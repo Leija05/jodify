@@ -4,6 +4,8 @@ import Constants from 'expo-constants';
 import { apiFetch } from './api';
 import { API_BASE } from '../lib/constants';
 
+import packageJson from '../../package.json';
+
 export interface UpdateCheckResult {
   update_available: boolean;
   id?: string;
@@ -30,6 +32,7 @@ export interface DownloadProgressData {
 
 export function currentAppVersion(): string {
   return (
+    packageJson.version ||
     Constants.nativeAppVersion ||
     Constants.expoConfig?.version ||
     '1.0.1'
