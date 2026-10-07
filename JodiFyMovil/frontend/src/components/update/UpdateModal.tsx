@@ -171,21 +171,21 @@ export function UpdateModal() {
                 {isDownloading
                   ? 'Descargando Actualización…'
                   : isReady
-                  ? '¡Descarga Completa!'
-                  : isInstalling
-                  ? 'Instalando en el Sistema…'
-                  : isError
-                  ? 'Error de Actualización'
-                  : 'Nueva Versión Disponible'}
+                    ? '¡Descarga Completa!'
+                    : isInstalling
+                      ? 'Instalando en el Sistema…'
+                      : isError
+                        ? 'Error de Actualización'
+                        : 'Nueva Versión Disponible'}
               </Text>
               <Text style={styles.subtitle}>
                 {isDownloading
                   ? 'Obteniendo el paquete APK oficial desde la base de datos'
                   : isReady
-                  ? 'El paquete está verificado y listo para ser instalado'
-                  : isError
-                  ? (error || 'No se pudo completar la operación')
-                  : 'Una nueva versión de JodiFy Mobile está lista para instalar'}
+                    ? 'El paquete está verificado y listo para ser instalado'
+                    : isError
+                      ? (error || 'No se pudo completar la operación')
+                      : 'Una nueva versión de JodiFy Mobile está lista para instalar'}
               </Text>
             </View>
 

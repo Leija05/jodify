@@ -44,6 +44,9 @@ export function DevUpdates() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Form fields
+  const [uploadMode, setUploadMode] = useState<'url' | 'file'>('url');
+  const [externalUrl, setExternalUrl] = useState('');
+  const [sizeMB, setSizeMB] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [version, setVersion] = useState('');
   const [buildNumber, setBuildNumber] = useState('');
@@ -87,17 +90,37 @@ export function DevUpdates() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) {
-      useToastStore.getState().show('Selecciona un archivo APK primero', 'warning');
-      return;
+    if (uploadMode === 'file') {
+      if (!selectedFile) {
+        useToastStore.getState().show('Selecciona un archivo APK primero', 'warning');
+        return;
+      }
+    } else {
+      if (!externalUrl.trim()) {
+        useToastStore.getState().show('Ingresa la URL directa de descarga del APK', 'warning');
+        return;
+      }
+      if (!externalUrl.trim().startsWith('http://') && !externalUrl.trim().startsWith('https://')) {
+        useToastStore.getState().show('La URL de descarga debe comenzar con http:// o https://', 'warning');
+        return;
+      }
     }
+
     if (!version.trim()) {
-      useToastStore.getState().show('Especifica el número de versión (ej: 2.0.1)', 'warning');
+      useToastStore.getState().show('Especifica el número de versión (ej: 1.0.1)', 'warning');
       return;
     }
 
     const formData = new FormData();
-    formData.append('file', selectedFile);
+    if (uploadMode === 'file' && selectedFile) {
+      formData.append('file', selectedFile);
+    } else {
+      formData.append('download_url', externalUrl.trim());
+      if (sizeMB.trim()) {
+        const bytes = Math.round(parseFloat(sizeMB.trim()) * 1024 * 1024);
+        if (bytes > 0) formData.append('size_bytes', String(bytes));
+      }
+    }
     formData.append('version', version.trim());
     if (buildNumber.trim()) {
       formData.append('build_number', buildNumber.trim());
@@ -113,10 +136,12 @@ export function DevUpdates() {
       const res = await devService.uploadAppUpdate(formData, (percent) => {
         setUploadProgress(percent);
       });
-      useToastStore.getState().show(res.message || 'Actualización subida con éxito', 'success');
+      useToastStore.getState().show(res.message || 'Actualización publicada con éxito', 'success');
 
       // Reset form
       setSelectedFile(null);
+      setExternalUrl('');
+      setSizeMB('');
       setVersion('');
       setBuildNumber('');
       setNotes('');
@@ -126,7 +151,7 @@ export function DevUpdates() {
       void loadUpdates();
     } catch (err) {
       useToastStore.getState().show(
-        err instanceof Error ? err.message : 'Error al subir la actualización',
+        err instanceof Error ? err.message : 'Error al publicar la actualización',
         'error'
       );
     } finally {
@@ -297,53 +322,133 @@ export function DevUpdates() {
         }}
       >
         <h4 style={{ margin: '0 0 16px', fontSize: 15, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Sparkle size={18} color="#7f00ff" /> Subir Nueva Actualización (.apk) a MongoDB
+          <Sparkle size={18} color="#7f00ff" /> Publicar Nueva Actualización (.apk)
         </h4>
 
-        <form onSubmit={(e) => void handleUpload(e)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Dropzone */}
-          <div
-            onClick={() => fileInputRef.current?.click()}
+        {/* Mode Selector */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          <button
+            type="button"
+            onClick={() => setUploadMode('url')}
             style={{
-              border: '2px dashed rgba(127,0,255,0.4)',
-              borderRadius: 10,
-              padding: 24,
-              textAlign: 'center',
+              flex: 1,
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: uploadMode === 'url' ? '1px solid #00e5ff' : '1px solid rgba(255,255,255,0.1)',
+              background: uploadMode === 'url' ? 'rgba(0,229,255,0.12)' : 'rgba(255,255,255,0.03)',
+              color: uploadMode === 'url' ? '#00e5ff' : '#888',
+              fontWeight: 600,
+              fontSize: 13,
               cursor: 'pointer',
-              background: selectedFile ? 'rgba(127,0,255,0.08)' : 'rgba(255,255,255,0.02)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
               transition: 'all 0.2s ease',
             }}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".apk"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileSelect(file);
-              }}
-            />
-            {selectedFile ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <FileArchive size={36} color="#00e5ff" />
-                <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>{selectedFile.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>
-                  {formatBytes(selectedFile.size)} · Clic para cambiar archivo
-                </div>
+            <CloudArrowUp size={16} /> URL de Descarga Directa (Recomendado)
+          </button>
+          <button
+            type="button"
+            onClick={() => setUploadMode('file')}
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: uploadMode === 'file' ? '1px solid #7f00ff' : '1px solid rgba(255,255,255,0.1)',
+              background: uploadMode === 'file' ? 'rgba(127,0,255,0.15)' : 'rgba(255,255,255,0.03)',
+              color: uploadMode === 'file' ? '#c084fc' : '#888',
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <FileArchive size={16} /> Subir archivo .apk a MongoDB
+          </button>
+        </div>
+
+        <form onSubmit={(e) => void handleUpload(e)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {uploadMode === 'url' ? (
+            <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: 10, padding: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#00e5ff', marginBottom: 6, fontWeight: 600 }}>
+                URL Directa de Descarga del APK (GitHub Releases, CDN, Google Drive directo, etc.) *
+              </label>
+              <input
+                type="url"
+                placeholder="https://github.com/Leija05/jodify/releases/download/v1.0.1/Jodify-Release.apk"
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                required={uploadMode === 'url'}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: '#fff',
+                  fontSize: 14,
+                }}
+              />
+              <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-muted, #888)', lineHeight: 1.5 }}>
+                💡 <strong>Sin consumir los 512 MB de MongoDB Atlas:</strong> Aloja el APK en GitHub Releases u otro hosting gratuito. La base de datos solo almacena los metadatos de versión (menos de 1 KB). La app móvil descargará e instalará la actualización con la misma barra de progreso y velocidad en vivo.
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <CloudArrowUp size={36} color="#7f00ff" />
-                <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
-                  Arrastra aquí el archivo <strong style={{ color: '#00e5ff' }}>.apk</strong> o haz clic para examinar
-                </div>
-                <div style={{ fontSize: 12, color: '#777' }}>
-                  El binario se almacenará fragmentado en GridFS para descargas rápidas y seguras
-                </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ background: 'rgba(255,170,0,0.06)', border: '1px solid rgba(255,170,0,0.25)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#ffb74d' }}>
+                ⚠️ <strong>Aviso de cuota:</strong> MongoDB Atlas Free Tier tiene un límite de 512 MB para toda la base de datos. Subir un APK de ~55 MB puede exceder la cuota si tienes muchas canciones subidas.
               </div>
-            )}
-          </div>
+              {/* Dropzone */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: '2px dashed rgba(127,0,255,0.4)',
+                  borderRadius: 10,
+                  padding: 24,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: selectedFile ? 'rgba(127,0,255,0.08)' : 'rgba(255,255,255,0.02)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".apk"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileSelect(file);
+                  }}
+                />
+                {selectedFile ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <FileArchive size={36} color="#00e5ff" />
+                    <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>{selectedFile.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>
+                      {formatBytes(selectedFile.size)} · Clic para cambiar archivo
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <CloudArrowUp size={36} color="#7f00ff" />
+                    <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
+                      Arrastra aquí el archivo <strong style={{ color: '#00e5ff' }}>.apk</strong> o haz clic para examinar
+                    </div>
+                    <div style={{ fontSize: 12, color: '#777' }}>
+                      El binario se almacenará fragmentado en GridFS para descargas rápidas y seguras
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Form Fields Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
@@ -389,6 +494,30 @@ export function DevUpdates() {
                 }}
               />
             </div>
+
+            {uploadMode === 'url' && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 6, fontWeight: 600 }}>
+                  Peso aproximado en MB (Opcional)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="ej: 54.5"
+                  value={sizeMB}
+                  onChange={(e) => setSizeMB(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#fff',
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Release Notes */}

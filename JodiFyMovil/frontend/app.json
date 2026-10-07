@@ -2,7 +2,7 @@
   "expo": {
     "name": "JodiFy",
     "slug": "jodify-mobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "dark",
@@ -15,20 +15,31 @@
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/your-project-id"
     },
-    "runtimeVersion": { "policy": "appVersion" },
-    "assetBundlePatterns": ["**/*"],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jodify.mobile",
       "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": ["audio", "remote-notification"],
-        "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": true },
+        "UIBackgroundModes": [
+          "audio",
+          "remote-notification"
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
         "NSCameraUsageDescription": "JodiFy needs camera access for profile photos",
         "NSPhotoLibraryUsageDescription": "JodiFy needs photo library access for cover art",
         "NSMicrophoneUsageDescription": "JodiFy needs microphone for voice messages"
       },
-      "associatedDomains": ["applinks:jodify.app"]
+      "associatedDomains": [
+        "applinks:jodify.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -36,7 +47,7 @@
         "backgroundColor": "#030305"
       },
       "package": "com.jodify.mobile",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.FOREGROUND_SERVICE",
@@ -52,8 +63,14 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "data": { "scheme": "jodify", "host": "*" },
-          "category": ["BROWSABLE", "DEFAULT"]
+          "data": {
+            "scheme": "jodify",
+            "host": "*"
+          },
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -70,7 +87,10 @@
         {
           "backgroundColor": "#030305",
           "image": "./assets/images/splash.png",
-          "dark": { "image": "./assets/images/splash.png", "backgroundColor": "#030305" },
+          "dark": {
+            "image": "./assets/images/splash.png",
+            "backgroundColor": "#030305"
+          },
           "imageWidth": 200
         }
       ],
@@ -79,7 +99,9 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#7F00FF",
-          "sounds": ["./assets/sounds/notification.wav"]
+          "sounds": [
+            "./assets/sounds/notification.wav"
+          ]
         }
       ],
       [
@@ -94,8 +116,12 @@
       "tsconfigPaths": true
     },
     "extra": {
-      "router": { "origin": false },
-      "eas": { "projectId": "your-project-id" },
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "your-project-id"
+      },
       "apiBase": "https://jodify-backend.onrender.com",
       "socketUrl": "wss://jodify-backend.onrender.com"
     },

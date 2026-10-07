@@ -95,16 +95,16 @@ async def check_update(
         "size_bytes": doc.get("size_bytes", 0),
         "sha256": doc.get("sha256", ""),
         "mandatory": bool(doc.get("mandatory", False)),
-        "download_url": f"/api/updates/download/{update_id}",
+        "download_url": doc.get("download_url") or f"/api/updates/download/{update_id}",
         "filename": doc.get("filename", f"JodiFy-v{latest_version}.apk"),
         "uploaded_at": doc.get("created_at", ""),
     }
 
 
 @router.get("/download/{update_id}")
-async def download_update(update_id: str, request: Request) -> StreamingResponse:
+async def download_update(update_id: str, request: Request):
     """
-    Descarga el archivo APK correspondiente al ID de actualización desde GridFS.
+    Descarga el archivo APK correspondiente al ID de actualización desde GridFS o redirige a su URL externa.
     """
     try:
         oid = ObjectId(update_id)
@@ -115,6 +115,10 @@ async def download_update(update_id: str, request: Request) -> StreamingResponse
     if not doc:
         raise HTTPException(status_code=404, detail="Actualización no encontrada")
 
+    if doc.get("download_url") and not doc.get("file_id"):
+        from starlette.responses import RedirectResponse
+        return RedirectResponse(url=doc["download_url"], status_code=302)
+
     file_id = doc.get("file_id")
     if not file_id:
         raise HTTPException(status_code=404, detail="Archivo binario no encontrado")
@@ -124,7 +128,7 @@ async def download_update(update_id: str, request: Request) -> StreamingResponse
 
 
 @router.get("/latest/download")
-async def download_latest_update(request: Request, platform: str = "android") -> StreamingResponse:
+async def download_latest_update(request: Request, platform: str = "android"):
     """
     Descarga directa de la última versión APK activa.
     """
@@ -135,6 +139,10 @@ async def download_latest_update(request: Request, platform: str = "android") ->
     if not doc:
         raise HTTPException(status_code=404, detail="No hay actualizaciones disponibles")
 
+    if doc.get("download_url") and not doc.get("file_id"):
+        from starlette.responses import RedirectResponse
+        return RedirectResponse(url=doc["download_url"], status_code=302)
+
     file_id = doc.get("file_id")
     filename = doc.get("filename") or f"JodiFy-v{doc.get('version', 'app')}.apk"
     return await serve_apk(file_id, filename, request)
@@ -144,31 +152,54 @@ async def download_latest_update(request: Request, platform: str = "android") ->
 
 @router.post("/upload")
 async def upload_update(
-    file: UploadFile = File(..., description="Archivo binario .apk"),
+    file: UploadFile | None = File(None, description="Archivo binario .apk (opcional si se especifica download_url)"),
+    download_url: str | None = Form(None, description="URL directa de descarga del APK (ej: GitHub Releases, CDN, etc.)"),
     version: str = Form(..., description="Versión semver, ej: 2.0.1"),
     build_number: int | None = Form(None, description="Número entero de build, ej: 21"),
     release_notes: str = Form("", description="Notas de la versión y changelog"),
     mandatory: bool = Form(False, description="¿La actualización es obligatoria?"),
     platform: str = Form("android", description="Plataforma de destino (android/desktop)"),
+    size_bytes: int | None = Form(None, description="Tamaño en bytes del archivo si es externo"),
     admin: dict = Depends(require_admin),
 ) -> dict:
     """
-    Sube un archivo APK a la base de datos MongoDB (GridFS) y lo activa como la versión más reciente.
+    Sube un archivo APK a MongoDB GridFS o registra un enlace de descarga externo (GitHub Releases, CDN, etc.).
     """
-    if not file.filename or not file.filename.lower().endswith(".apk"):
-        raise HTTPException(status_code=400, detail="El archivo debe tener extensión .apk")
-
     clean_version = re.sub(r"^[vV]", "", version.strip())
     if not clean_version:
         raise HTTPException(status_code=400, detail="Debe proporcionar una versión válida")
 
-    # Guardar archivo en GridFS bucket 'apk_releases'
     safe_filename = f"JodiFy-v{clean_version}.apk"
-    try:
-        file_id, size_bytes, sha256_hash = await store_apk(safe_filename, file)
-    except Exception as exc:
-        logger.exception("Error al guardar APK en GridFS")
-        raise HTTPException(status_code=500, detail=f"Error al escribir en la base de datos: {exc}")
+    file_id = None
+    sha256_hash = ""
+    final_size = size_bytes or 0
+    clean_download_url = download_url.strip() if download_url else None
+
+    # Modo A: Enlace de descarga externo (GitHub Releases, Drive, etc.)
+    if clean_download_url:
+        if not (clean_download_url.startswith("http://") or clean_download_url.startswith("https://")):
+            raise HTTPException(status_code=400, detail="La URL de descarga debe comenzar con http:// o https://")
+    # Modo B: Archivo binario .apk subido directamente a GridFS
+    elif file and file.filename:
+        if not file.filename.lower().endswith(".apk"):
+            raise HTTPException(status_code=400, detail="El archivo debe tener extensión .apk")
+        safe_filename = file.filename if file.filename.endswith(".apk") else f"JodiFy-v{clean_version}.apk"
+        try:
+            file_id, final_size, sha256_hash = await store_apk(safe_filename, file)
+        except Exception as exc:
+            err_str = str(exc)
+            if "quota" in err_str.lower() or "8000" in err_str:
+                raise HTTPException(
+                    status_code=507,
+                    detail="El clúster de MongoDB Atlas superó su límite de 512 MB. Utilice la opción de 'URL de Descarga Directa' (ej. GitHub Releases) para registrar la actualización sin consumir espacio en la base de datos.",
+                )
+            logger.exception("Error al guardar APK en GridFS")
+            raise HTTPException(status_code=500, detail=f"Error al escribir en la base de datos: {exc}")
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe proporcionar un archivo binario .apk o un enlace de descarga externo (download_url).",
+        )
 
     # Desactivar versiones activas anteriores de esta plataforma
     await col("app_updates").update_many(
@@ -185,29 +216,32 @@ async def upload_update(
         "release_notes": release_notes.strip() or f"Actualización a la versión v{clean_version}",
         "file_id": file_id,
         "filename": safe_filename,
-        "size_bytes": size_bytes,
+        "size_bytes": final_size,
         "sha256": sha256_hash,
         "mandatory": bool(mandatory),
         "is_active": True,
         "uploaded_by": admin.get("username", "admin"),
         "created_at": now_iso,
     }
+    if clean_download_url:
+        record["download_url"] = clean_download_url
 
     res = await col("app_updates").insert_one(record)
     record["_id"] = str(res.inserted_id)
-    record["file_id"] = str(file_id)
+    if file_id:
+        record["file_id"] = str(file_id)
 
     # Registrar log en system_logs
     await col("logs").insert_one({
         "event_type": "app.update_uploaded",
-        "message": f"Nueva versión {clean_version} subida por {admin.get('username')}",
+        "message": f"Nueva versión {clean_version} publicada por {admin.get('username')}",
         "admin_user": admin.get("username"),
         "created_at": now_iso,
     })
 
     return {
         "success": True,
-        "message": f"Actualización v{clean_version} subida y activada con éxito en la base de datos.",
+        "message": f"Actualización v{clean_version} publicada y activada con éxito.",
         "update": record,
     }
 
@@ -233,7 +267,7 @@ async def list_updates(_admin: dict = Depends(require_admin)) -> list[dict]:
             "is_active": doc.get("is_active", False),
             "uploaded_by": doc.get("uploaded_by"),
             "created_at": doc.get("created_at"),
-            "download_url": f"/api/updates/download/{sid(doc['_id'])}",
+            "download_url": doc.get("download_url") or f"/api/updates/download/{sid(doc['_id'])}",
         })
     return results
 
