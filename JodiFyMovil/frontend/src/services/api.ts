@@ -1,6 +1,8 @@
 import { API_BASE, STORAGE_KEYS } from '../lib/constants';
 import { mmkv } from '../lib/mmkv';
 import { secureStorage, AUTH_KEYS } from '../lib/secure-store';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 async function getToken(): Promise<string | null> {
   const secure = await secureStorage.getItem(AUTH_KEYS.accessToken);
@@ -9,12 +11,29 @@ async function getToken(): Promise<string | null> {
   return token ?? null;
 }
 
+const getDevHostBases = (): string[] => {
+  if (!__DEV__) return [];
+  const bases: string[] = [];
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      bases.push(`http://${ip}:8000`);
+    }
+  }
+  if (Platform.OS === 'android') {
+    bases.push('http://10.0.2.2:8000');
+  }
+  bases.push('http://localhost:8000');
+  return bases;
+};
+
 const defaultRemote = (API_BASE || 'https://jodify-backend.onrender.com').replace(/\/+$/, '');
 const CANDIDATE_BASES = Array.from(
   new Set([
     defaultRemote,
     'https://jodify-backend.onrender.com',
-    ...(__DEV__ ? ['http://10.0.2.2:8000', 'http://localhost:8000'] : []),
+    ...getDevHostBases(),
   ])
 );
 

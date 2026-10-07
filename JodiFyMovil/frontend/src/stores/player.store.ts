@@ -353,6 +353,27 @@ export const usePlayerStore = create<PlayerState>()((set, get) => {
       }
     }
 
+    // Si la canción no tiene youtube_id directo pero tiene query o viene de búsqueda/Spotify,
+    // resolver de antemano el ID de YouTube exacto para evitar enviar URLs pesadas de search_query
+    if (!song.youtube_id && !song.localUri && (song.name || song.url?.includes('search_query'))) {
+      let queryTitle = song.name || '';
+      let queryArtist = song.artist || '';
+      if (song.url && song.url.includes('search_query=')) {
+        try {
+          const match = song.url.match(/search_query=([^&]+)/);
+          if (match && match[1]) {
+            queryTitle = decodeURIComponent(match[1].replace(/\+/g, ' '));
+          }
+        } catch {}
+      }
+      try {
+        const matched = await matchTrackToYoutubeId(queryArtist, queryTitle);
+        if (matched) {
+          song.youtube_id = matched;
+        }
+      } catch {}
+    }
+
     const candidateBases = getCandidateBases();
     let lastError: any = null;
 

@@ -132,7 +132,8 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android_music", "tv_embedded", "android"],
+
+                "player_client": ["visionos", "android"],
             }
         },
     }
@@ -299,44 +300,43 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     cookie_path = get_valid_cookies_file()
 
     configs: list[dict[str, Any]] = [
-        # Estrategia 1: Cliente android_music (YouTube Music Android) PURO sin cookies
-        # Evade 100% los retos antibot ("Sign in to confirm you're not a bot") en IPs de centros de datos (Render/GCP/AWS)
-        # y extrae streams de audio progresivo directo (Opus 160k / AAC 128k) en ~1 segundo.
+        # Estrategia 1: Cliente visionos (Apple VisionOS) - cliente oficial y moderno en yt-dlp
+        # No activa desafíos de bot en IPs de nube (Render/GCP/AWS) y extrae formatos de audio progresivo directo (Opus / AAC).
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android_music"],
+                    "player_client": ["visionos"],
                 }
             },
         },
-        # Estrategia 2: Cliente tv_embedded (Smart TV embebido) - excelente bypass antibot alternativo en la nube
+        # Estrategia 2: Cliente android puro
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["tv_embedded"],
+                    "player_client": ["android"],
                 }
             },
         },
-        # Estrategia 3: android_music + android combinados
+        # Estrategia 3: visionos y android combinados
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android_music", "android"],
+                    "player_client": ["visionos", "android"],
                 }
             },
         },
@@ -349,11 +349,11 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
             "cookiefile": cookie_path,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android_music"],
+                    "player_client": ["visionos"],
                 }
             },
         })
@@ -362,11 +362,11 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
             "cookiefile": cookie_path,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["tv_embedded"],
+                    "player_client": ["android"],
                 }
             },
         })
@@ -375,7 +375,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 6,
+            "socket_timeout": 8,
             "cookiefile": cookie_path,
         })
 
@@ -385,12 +385,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": False if is_search else True,
-        "socket_timeout": 6,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android"],
-            }
-        },
+        "socket_timeout": 8,
     })
 
     last_error: Exception | None = None

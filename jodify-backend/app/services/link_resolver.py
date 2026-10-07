@@ -211,7 +211,7 @@ async def _search_youtube_video_id(query: str, exclude_id: str | None = None) ->
                 "extract_flat": True,
                 "extractor_args": {
                     "youtube": {
-                        "player_client": ["android_music", "tv_embedded", "android"],
+                        "player_client": ["visionos", "android"],
                     }
                 },
             }) as ydl:
