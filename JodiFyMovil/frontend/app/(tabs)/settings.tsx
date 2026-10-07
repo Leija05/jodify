@@ -8,11 +8,13 @@ import {
   Switch,
   Image,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { API_HOST } from '@lib/constants';
+import { checkBackendHealth, type BackendHealthResult } from '@services/api';
 import { EmptyState } from '@components/ui/EmptyState';
 import { DoubleBezelCard } from '@components/ui/DoubleBezelCard';
 import { PressableFluid } from '@components/ui/PressableFluid';
@@ -78,10 +80,24 @@ export default function SettingsScreen() {
     } catch {}
   }, [user?.username, user?.listening_seconds]);
 
+  const [backendHealth, setBackendHealth] = useState<BackendHealthResult | null>(null);
+  const [healthChecking, setHealthChecking] = useState(false);
+
+  const refreshBackendHealth = useCallback(async () => {
+    setHealthChecking(true);
+    try {
+      const res = await checkBackendHealth(5000);
+      setBackendHealth(res);
+    } finally {
+      setHealthChecking(false);
+    }
+  }, []);
+
   useEffect(() => {
     void refreshProfile();
     void loadUserStats();
-  }, [refreshProfile, loadUserStats]);
+    void refreshBackendHealth();
+  }, [refreshProfile, loadUserStats, refreshBackendHealth]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -89,11 +105,12 @@ export default function SettingsScreen() {
       await Promise.all([
         refreshProfile(),
         loadUserStats(),
+        refreshBackendHealth(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshProfile, loadUserStats]);
+  }, [refreshProfile, loadUserStats, refreshBackendHealth]);
 
   const songs = useLibraryStore((s) => s.songs);
   const downloadedIds = useLibraryStore((s) => s.downloadedIds);
@@ -752,8 +769,60 @@ export default function SettingsScreen() {
             <Text style={styles.infoLabel}>Versión de la App</Text>
             <Text style={styles.infoValue}>v{currentAppVersion()}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Servidor JodiFy API</Text>
+          <View style={[styles.infoRow, { flexDirection: 'column', alignItems: 'stretch', gap: 2 }]}>
+            <View style={styles.serverRowHeader}>
+              <Text style={styles.infoLabel}>Servidor JodiFy API</Text>
+              <PressableFluid
+                onPress={() => void refreshBackendHealth()}
+                haptic="selection"
+                disabled={healthChecking}
+                style={[
+                  styles.backendStatusPill,
+                  backendHealth?.online
+                    ? styles.backendStatusPillOnline
+                    : healthChecking
+                    ? styles.backendStatusPillChecking
+                    : styles.backendStatusPillOffline,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.backendStatusDot,
+                    backendHealth?.online
+                      ? styles.backendStatusDotOnline
+                      : healthChecking
+                      ? styles.backendStatusDotChecking
+                      : styles.backendStatusDotOffline,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.backendStatusText,
+                    backendHealth?.online
+                      ? styles.backendStatusTextOnline
+                      : healthChecking
+                      ? styles.backendStatusTextChecking
+                      : styles.backendStatusTextOffline,
+                  ]}
+                >
+                  {healthChecking
+                    ? 'Probando…'
+                    : backendHealth?.online
+                    ? `En línea · ${backendHealth.latencyMs}ms`
+                    : 'Desconectado'}
+                </Text>
+                {healthChecking ? (
+                  <ActivityIndicator size={10} color="#FFB300" style={{ marginLeft: 3 }} />
+                ) : (
+                  <Ionicons
+                    name="refresh-outline"
+                    size={11}
+                    color={backendHealth?.online ? '#00E676' : '#FF5252'}
+                    style={{ marginLeft: 3, opacity: 0.8 }}
+                  />
+                )}
+              </PressableFluid>
+            </View>
             <Text style={styles.infoValue} numberOfLines={1}>
               {API_HOST.replace(/^https?:\/\//, '')}
             </Text>
@@ -1568,5 +1637,62 @@ const styles = StyleSheet.create({
     fontFamily: typography.labelMedium.fontFamily,
     fontSize: 12.5,
     fontWeight: '700',
+  },
+  serverRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 2,
+  },
+  backendStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    gap: 5,
+  },
+  backendStatusPillOnline: {
+    backgroundColor: 'rgba(0, 230, 118, 0.10)',
+    borderColor: 'rgba(0, 230, 118, 0.35)',
+  },
+  backendStatusPillChecking: {
+    backgroundColor: 'rgba(255, 179, 0, 0.10)',
+    borderColor: 'rgba(255, 179, 0, 0.35)',
+  },
+  backendStatusPillOffline: {
+    backgroundColor: 'rgba(255, 82, 82, 0.10)',
+    borderColor: 'rgba(255, 82, 82, 0.35)',
+  },
+  backendStatusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  backendStatusDotOnline: {
+    backgroundColor: '#00E676',
+  },
+  backendStatusDotChecking: {
+    backgroundColor: '#FFB300',
+  },
+  backendStatusDotOffline: {
+    backgroundColor: '#FF5252',
+  },
+  backendStatusText: {
+    fontSize: 10.5,
+    fontFamily: typography.labelSmall.fontFamily,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  backendStatusTextOnline: {
+    color: '#00E676',
+  },
+  backendStatusTextChecking: {
+    color: '#FFB300',
+  },
+  backendStatusTextOffline: {
+    color: '#FF5252',
   },
 });

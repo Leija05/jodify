@@ -30,13 +30,7 @@ def _parse_version(version_str: str) -> tuple[int, ...]:
 
 
 def _is_newer(latest_ver: str, current_ver: str, latest_build: int | None = None, current_build: int | None = None) -> bool:
-    """Verifica si latest es superior a current ya sea por build_number o por semver."""
-    if latest_build is not None and current_build is not None:
-        if latest_build > current_build:
-            return True
-        if latest_build < current_build:
-            return False
-
+    """Verifica si latest es superior a current ya sea por semver o por build_number."""
     v_latest = _parse_version(latest_ver)
     v_current = _parse_version(current_ver)
 
@@ -45,7 +39,20 @@ def _is_newer(latest_ver: str, current_ver: str, latest_build: int | None = None
     v_latest_padded = v_latest + (0,) * (max_len - len(v_latest))
     v_current_padded = v_current + (0,) * (max_len - len(v_current))
 
-    return v_latest_padded > v_current_padded
+    # 1. Si la versión semver es estrictamente superior (ej: 1.0.3 > 1.0.2)
+    if v_latest_padded > v_current_padded:
+        return True
+
+    # 2. Si la versión semver es inferior (ej: 1.0.1 < 1.0.2)
+    if v_latest_padded < v_current_padded:
+        return False
+
+    # 3. Si la versión semver es idéntica (ej: 1.0.2 == 1.0.2), comparar por build_number
+    if latest_build is not None and current_build is not None:
+        if latest_build > current_build:
+            return True
+
+    return False
 
 
 # ---------- Endpoints Públicos de la App Móvil ----------

@@ -127,3 +127,39 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
 export function buildQueryKey(base: readonly unknown[], params: Record<string, unknown> = {}): readonly unknown[] {
   return [...base, params];
 }
+
+export interface BackendHealthResult {
+  online: boolean;
+  latencyMs: number;
+  host: string;
+  timestamp: number;
+  error?: string;
+}
+
+export async function checkBackendHealth(timeoutMs = 6000): Promise<BackendHealthResult> {
+  const base = getActiveApiBase();
+  const start = Date.now();
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(`${base}/api/health`, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    clearTimeout(timeoutId);
+    const latencyMs = Math.max(1, Date.now() - start);
+    if (res.ok) {
+      return { online: true, latencyMs, host: base, timestamp: Date.now() };
+    }
+    return { online: false, latencyMs, host: base, timestamp: Date.now(), error: `HTTP ${res.status}` };
+  } catch (err: any) {
+    return {
+      online: false,
+      latencyMs: Date.now() - start,
+      host: base,
+      timestamp: Date.now(),
+      error: err?.message || 'Sin conexión',
+    };
+  }
+}
