@@ -148,7 +148,7 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
                 tmp_dir = tempfile.gettempdir()
                 tmp_cookie_file = os.path.join(tmp_dir, "jodify_yt_cookies.txt")
                 with open(tmp_cookie_file, "w", encoding="utf-8") as f:
-                    f.write(cookie_text)
+                    f.write(cookie_text.replace("\\r\\n", "\n").replace("\\n", "\n"))
                 cookie_path = tmp_cookie_file
             except Exception:
                 pass
@@ -317,7 +317,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 tmp_dir = tempfile.gettempdir()
                 tmp_cookie_file = os.path.join(tmp_dir, "jodify_yt_cookies.txt")
                 with open(tmp_cookie_file, "w", encoding="utf-8") as f:
-                    f.write(cookie_text)
+                    f.write(cookie_text.replace("\\r\\n", "\n").replace("\\n", "\n"))
                 cookie_path = tmp_cookie_file
             except Exception as e:
                 logger.warning(f"No se pudo guardar YOUTUBE_COOKIES_TEXT temporal: {e}")
