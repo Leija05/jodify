@@ -73,11 +73,24 @@ async def serve_audio(song_id: str, request: Request | None) -> StreamingRespons
     if song is None:
         raise HTTPException(status_code=404, detail="Canción no encontrada")
     file_id = song.get("audio_file_id")
-    if file_id is None:
-        raise HTTPException(status_code=404, detail="Archivo de audio no encontrado")
-
-    meta = await dbmod.audio_files().find_one({"_id": file_id})
+    meta = await dbmod.audio_files().find_one({"_id": file_id}) if file_id else None
     if meta is None:
+        # Fallback resiliente: si el audio no existe en GridFS, resolver instantáneamente desde YouTube
+        from .link_resolver import _search_youtube_video_id
+        from fastapi.responses import RedirectResponse
+        yt_id = (song.get("youtube_id") or "").strip()
+        if not yt_id:
+            title = (song.get("name") or "").strip()
+            artist = (song.get("artist") or "").strip()
+            query = f"{artist} {title}".strip() if artist else title
+            try:
+                yt_id = await _search_youtube_video_id(query)
+                if yt_id:
+                    await dbmod.col("songs").update_one({"_id": oid}, {"$set": {"youtube_id": yt_id}})
+            except Exception:
+                pass
+        if yt_id:
+            return RedirectResponse(url=f"/api/links/stream?url=https://www.youtube.com/watch?v={yt_id}", status_code=307)
         raise HTTPException(status_code=404, detail="Archivo de audio no encontrado")
 
     length = int(meta.get("length", 0))
@@ -141,11 +154,12 @@ async def serve_cover(song_id: str) -> StreamingResponse:
     if song is None:
         raise HTTPException(status_code=404, detail="Canción no encontrada")
     file_id = song.get("cover_file_id")
-    if file_id is None:
-        raise HTTPException(status_code=404, detail="Portada no encontrada")
-
-    meta = await dbmod.audio_files().find_one({"_id": file_id})
+    meta = await dbmod.audio_files().find_one({"_id": file_id}) if file_id else None
     if meta is None:
+        cover_url = song.get("cover_url")
+        if cover_url:
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=cover_url, status_code=307)
         raise HTTPException(status_code=404, detail="Portada no encontrada")
 
     length = int(meta.get("length", 0))
