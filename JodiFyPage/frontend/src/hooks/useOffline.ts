@@ -16,6 +16,10 @@ export function useOffline(): { isOffline: boolean } {
     const onOnline = () => {
       setIsOffline(false);
       useUiStore.getState().close('offline');
+      const library = useLibraryStore.getState();
+      if (library.currentTab === 'downloads') {
+        library.setCurrentTab('global');
+      }
       if (session) {
         void loadLibrary(session.username).then(() => {
           useToastStore.getState().show('Volviste a estar en línea', 'success');

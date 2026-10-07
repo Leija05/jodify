@@ -1,5 +1,5 @@
 import type { Song } from '../lib/types';
-import { usePlayerStore } from '../store/player.store';
+import { usePlayerStore, shuffleArray } from '../store/player.store';
 import { useLibraryStore } from '../store/library.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useJamStore } from '../store/jam.store';
@@ -182,6 +182,45 @@ export function pausePlayback(): void {
   useJamStore.getState().broadcastPlaybackChange('pause');
 }
 
+function ensurePlaybackContext(song: Song): void {
+  const player = usePlayerStore.getState();
+  const currentCtx = player.playbackContext;
+  if (currentCtx && currentCtx.songs.some((s) => String(s.id) === String(song.id))) {
+    return;
+  }
+
+  const library = useLibraryStore.getState();
+  const isDeviceOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+  const type = (isDeviceOffline || library.currentTab === 'downloads')
+    ? 'downloads'
+    : library.currentTab === 'personal'
+      ? 'favorites'
+      : 'library';
+  const title = (isDeviceOffline || library.currentTab === 'downloads')
+    ? 'Tus descargas'
+    : library.currentTab === 'personal'
+      ? 'Tus favoritas'
+      : 'Tu biblioteca';
+  const pool = (isDeviceOffline || library.currentTab === 'downloads')
+    ? library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)))
+    : library.currentTab === 'personal'
+      ? library.songs.filter((s) => library.likedIds.some((id) => String(id) === String(s.id)))
+      : library.songs;
+
+  const validPool = pool.length > 0 ? pool : [song];
+  player.setPlaybackContext({
+    type,
+    title,
+    songs: validPool,
+  });
+
+  if (player.isShuffle) {
+    const remaining = validPool.filter((s) => String(s.id) !== String(song.id));
+    usePlayerStore.setState({ shuffledQueue: shuffleArray(remaining) });
+  }
+}
+
 export async function playSong(song: Song, options: { fades?: boolean } = {}): Promise<boolean> {
   isResolvingPlayback = true;
   try {
@@ -201,6 +240,8 @@ async function executePlaySong(song: Song, options: { fades?: boolean } = {}): P
     useToastStore.getState().show('El host bloqueó la reproducción', 'warning');
     return false;
   }
+
+  ensurePlaybackContext(song);
 
   // 1. REPRODUCCIÓN PRIORITARIA SIN CONEXIÓN (MODO OFFLINE)
   // Si la canción está descargada en el almacén local IndexedDB, reproducir directamente desde el Blob

@@ -467,10 +467,8 @@ export function LinkMusicModal() {
     const songs = targetItems.map((item) => toVirtualSong(item, playlist.thumbnail));
     songs.forEach((s) => useLibraryStore.getState().upsertSong(s));
 
-    const queue = useQueueStore.getState();
-    songs.slice(1).forEach((s) => queue.add(s));
-
-    await playSong(songs[0]);
+    const plTitle = playlist.title || 'Playlist Importada';
+    await usePlayerStore.getState().playWithContext(songs[0], songs, plTitle, 'playlist');
     useToastStore.getState().show(`Reproduciendo playlist (${songs.length} pistas)`, 'success', 2500);
   };
 

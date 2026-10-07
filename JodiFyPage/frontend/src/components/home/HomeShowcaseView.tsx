@@ -36,7 +36,6 @@ import { useContextMenuStore } from '../../store/contextmenu.store';
 import { useToastStore } from '../../store/toast.store';
 import { confirmDialog } from '../../store/confirm.store';
 import { useSongCoverGradient } from '../../lib/colorExtractor';
-import { playSong } from '../../services/player.service';
 import { toggleLikeCurrent } from '../../services/player-shortcuts';
 import { likesService } from '../../services/social.service';
 import { useIsAdmin, useIsDev, useSession } from '../../context/SessionContext';
@@ -169,8 +168,9 @@ export function HomeShowcaseView() {
       player.togglePlay();
       return;
     }
-    await playSong(heroSong);
-    player.setIsPlaying(true);
+    const contextTitle = activeFilter === 'liked' ? 'Tus favoritas' : 'Tu biblioteca';
+    const contextType = activeFilter === 'liked' ? 'favorites' : 'library';
+    await player.playWithContext(heroSong, filteredSongs, contextTitle, contextType);
   };
 
   const handlePlayCard = async (song: Song, e: React.MouseEvent) => {
@@ -180,8 +180,9 @@ export function HomeShowcaseView() {
       player.togglePlay();
       return;
     }
-    await playSong(song);
-    player.setIsPlaying(true);
+    const contextTitle = activeFilter === 'liked' ? 'Tus favoritas' : 'Tu biblioteca';
+    const contextType = activeFilter === 'liked' ? 'favorites' : 'library';
+    await player.playWithContext(song, filteredSongs, contextTitle, contextType);
   };
 
   const handleHeroLike = async () => {
@@ -210,14 +211,8 @@ export function HomeShowcaseView() {
 
   const handlePlayGroup = async (groupSongs: Song[], groupName: string) => {
     if (!groupSongs || groupSongs.length === 0) return;
-    const [first, ...rest] = groupSongs;
-    await playSong(first);
-    usePlayerStore.getState().setIsPlaying(true);
-    const queue = useQueueStore.getState();
-    queue.clear();
-    for (const s of rest) {
-      queue.add(s);
-    }
+    const [first] = groupSongs;
+    await usePlayerStore.getState().playWithContext(first, groupSongs, `Álbum: ${groupName}`, 'album');
     useToastStore.getState().show(`Reproduciendo canciones de «${groupName}»`, 'success', 2000);
   };
 
@@ -1034,7 +1029,14 @@ export function HomeShowcaseView() {
                     <div className="jf-songs-showcase-list">
                       <ul className="jf-songs-list-container">
                         {groupItems.map((song, idx) => (
-                          <SongRow key={song.id} song={song} index={idx} />
+                          <SongRow
+                            key={song.id}
+                            song={song}
+                            index={idx}
+                            contextSongs={groupItems}
+                            contextTitle={`Álbum: ${groupName}`}
+                            contextType="album"
+                          />
                         ))}
                       </ul>
                     </div>
@@ -1077,7 +1079,14 @@ export function HomeShowcaseView() {
               <div className="jf-songs-showcase-list">
                 <ul className="jf-songs-list-container">
                   {filteredSongs.map((song, idx) => (
-                    <SongRow key={song.id} song={song} index={idx} />
+                    <SongRow
+                      key={song.id}
+                      song={song}
+                      index={idx}
+                      contextSongs={filteredSongs}
+                      contextTitle={activeFilter === 'liked' ? 'Tus favoritas' : 'Tu biblioteca'}
+                      contextType={activeFilter === 'liked' ? 'favorites' : 'library'}
+                    />
                   ))}
                 </ul>
               </div>

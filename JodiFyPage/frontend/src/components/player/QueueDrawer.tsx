@@ -9,6 +9,7 @@ import {
   Plus,
   Sparkle,
   MusicNotes,
+  Shuffle,
 } from '@phosphor-icons/react';
 import { Drawer } from '../ui/Drawer';
 import { EmptyState } from '../ui/EmptyState';
@@ -31,6 +32,11 @@ export function QueueDrawer() {
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
+  const isShuffle = usePlayerStore((s) => s.isShuffle);
+  const shuffledQueue = usePlayerStore((s) => s.shuffledQueue);
+  const playbackContext = usePlayerStore((s) => s.playbackContext);
+  const playWithContext = usePlayerStore((s) => s.playWithContext);
+  const getEffectivePool = usePlayerStore((s) => s.getEffectivePool);
 
   const librarySongs = useLibraryStore((s) => s.songs);
   const currentTab = useLibraryStore((s) => s.currentTab);
@@ -41,21 +47,24 @@ export function QueueDrawer() {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const dragOccurredRef = useRef(false);
 
-  // Pool de la colección actual según la pestaña activa
+  // Pool de la colección actual según el contexto o pestaña activa
   const pool = useMemo(() => {
-    if (currentTab === 'downloads') {
-      return librarySongs.filter((s) => downloadedIds.some((id) => String(id) === String(s.id)));
-    }
-    if (currentTab === 'personal') {
-      return librarySongs.filter((s) => likedIds.some((id) => String(id) === String(s.id)));
-    }
-    return librarySongs;
-  }, [librarySongs, currentTab, downloadedIds, likedIds]);
+    return getEffectivePool();
+  }, [getEffectivePool, playbackContext, librarySongs, currentTab, downloadedIds, likedIds]);
 
-  // Canciones siguientes de la colección (excluyendo las que ya están en la cola manual prioritaria)
+  // Canciones siguientes de la colección (o la cola barajada si está en shuffle)
   const upcomingFromCollection = useMemo(() => {
-    if (pool.length === 0) return [];
     const manualIds = new Set(items.map((x) => String(x.id)));
+
+    // Si está activo el modo aleatorio, mostrar la lista barajada
+    if (isShuffle) {
+      if (shuffledQueue.length > 0) {
+        return shuffledQueue.filter((s) => !manualIds.has(String(s.id)));
+      }
+      return [];
+    }
+
+    if (pool.length === 0) return [];
     const currentIdx = pool.findIndex((s) => String(s.id) === String(currentSong?.id));
 
     if (currentIdx === -1) {
@@ -69,7 +78,7 @@ export function QueueDrawer() {
     }
 
     return pool.slice(currentIdx + 1).filter((s) => !manualIds.has(String(s.id)));
-  }, [pool, currentSong?.id, items, repeatMode]);
+  }, [pool, isShuffle, shuffledQueue, currentSong?.id, items, repeatMode]);
 
   const totalPrioritySeconds = items.reduce(
     (acc, s) => acc + (typeof s.duration === 'number' ? s.duration : 0),
@@ -85,8 +94,9 @@ export function QueueDrawer() {
   };
 
   const playDirectly = async (song: Song) => {
-    await playSong(song);
-    usePlayerStore.getState().setIsPlaying(true);
+    const title = playbackContext?.title || 'Tu biblioteca';
+    const type = playbackContext?.type || 'library';
+    await playWithContext(song, pool, title, type);
   };
 
   const totalUpcomingCount = items.length + upcomingFromCollection.length;
@@ -282,8 +292,25 @@ export function QueueDrawer() {
         <div className="jf-queue-section-header">
           <div className="jf-queue-header-left">
             <span className="jf-queue-badge">
-              <ListBullets size={13} /> Siguiente de tu lista
+              <ListBullets size={13} /> Siguiente de: {playbackContext?.title || 'Tu biblioteca'}
             </span>
+            {isShuffle && (
+              <span
+                className="jf-queue-badge jf-queue-badge--shuffle"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'rgba(0, 240, 255, 0.12)',
+                  color: '#00f0ff',
+                  padding: '2px 8px',
+                  borderRadius: '99px',
+                  border: '1px solid rgba(0, 240, 255, 0.25)',
+                }}
+              >
+                <Shuffle size={12} weight="bold" /> Aleatorio
+              </span>
+            )}
             <span className="jf-queue-count-pill">{upcomingFromCollection.length}</span>
           </div>
           {repeatMode === 'all' && (

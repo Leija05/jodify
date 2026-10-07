@@ -130,6 +130,11 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         "writethumbnail": True,
         "quiet": True,
         "no_warnings": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android_music", "tv_embedded", "android"],
+            }
+        },
     }
     from ...services.cookie_manager import get_valid_cookies_file
     cookie_path = get_valid_cookies_file()
@@ -294,79 +299,98 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     cookie_path = get_valid_cookies_file()
 
     configs: list[dict[str, Any]] = [
-        # Estrategia 1: Cliente Android PURO sin cookies (Resolución en ~1.0s, evade antibot de YouTube en cloud IPs y entrega audio mp4a formato 18)
+        # Estrategia 1: Cliente android_music (YouTube Music Android) PURO sin cookies
+        # Evade 100% los retos antibot ("Sign in to confirm you're not a bot") en IPs de centros de datos (Render/GCP/AWS)
+        # y extrae streams de audio progresivo directo (Opus 160k / AAC 128k) en ~1 segundo.
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 4,
+            "socket_timeout": 6,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"],
+                    "player_client": ["android_music"],
                 }
             },
         },
-        # Estrategia 2: Android + iOS
+        # Estrategia 2: Cliente tv_embedded (Smart TV embebido) - excelente bypass antibot alternativo en la nube
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 4,
+            "socket_timeout": 6,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "ios"],
+                    "player_client": ["tv_embedded"],
+                }
+            },
+        },
+        # Estrategia 3: android_music + android combinados
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 6,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android_music", "android"],
                 }
             },
         },
     ]
 
-    # Estrategias con cookies (si existen y fueron validadas) como respaldo de alta fidelidad
+    # Estrategias con cookies (si existen y fueron validadas) como respaldo adicional
     if cookie_path and os.path.exists(cookie_path):
-        # Web estándar con cookies: Máxima fidelidad de audio (Opus / AAC 160kbps)
         configs.append({
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
-            "socket_timeout": 4,
-            "cookiefile": cookie_path,
-        })
-        # Android con cookies
-        configs.append({
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 4,
+            "socket_timeout": 6,
             "cookiefile": cookie_path,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"],
+                    "player_client": ["android_music"],
                 }
             },
         })
+        configs.append({
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 6,
+            "cookiefile": cookie_path,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["tv_embedded"],
+                }
+            },
+        })
+        configs.append({
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 6,
+            "cookiefile": cookie_path,
+        })
 
-    # Estrategias adicionales de fallback
+    # Estrategias de fallback final
     configs.append({
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": False if is_search else True,
-        "socket_timeout": 4,
+        "socket_timeout": 6,
         "extractor_args": {
             "youtube": {
-                "player_client": ["mweb"],
+                "player_client": ["android"],
             }
         },
-    })
-    configs.append({
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "noplaylist": False if is_search else True,
-        "socket_timeout": 4,
     })
 
     last_error: Exception | None = None

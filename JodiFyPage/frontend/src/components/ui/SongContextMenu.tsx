@@ -25,7 +25,6 @@ import { useUiStore } from '../../store/ui.store';
 import { usePlaylistsStore } from '../../store/playlists.store';
 import { useIsAdmin, useIsDev, useSession } from '../../context/SessionContext';
 import { resolveMediaUrl } from '../../lib/utils';
-import { playSong } from '../../services/player.service';
 import { toggleLikeCurrent } from '../../services/player-shortcuts';
 import { downloadSong, removeDownload } from '../../services/offline.service';
 import { confirmDialog } from '../../store/confirm.store';
@@ -130,8 +129,21 @@ export function SongContextMenu() {
       player.togglePlay();
       return;
     }
-    await playSong(song);
-    usePlayerStore.getState().setIsPlaying(true);
+    const currentCtx = player.playbackContext;
+    if (currentCtx && currentCtx.songs.some((s) => String(s.id) === String(song.id))) {
+      await player.playWithContext(song, currentCtx.songs, currentCtx.title, currentCtx.type);
+    } else {
+      const library = useLibraryStore.getState();
+      const isDeviceOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+      const songs = isDeviceOffline || library.currentTab === 'downloads'
+        ? library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)))
+        : library.currentTab === 'personal'
+          ? library.songs.filter((s) => library.likedIds.some((id) => String(id) === String(s.id)))
+          : library.songs;
+      const title = isDeviceOffline || library.currentTab === 'downloads' ? 'Tus descargas' : library.currentTab === 'personal' ? 'Tus favoritas' : 'Tu biblioteca';
+      const type = isDeviceOffline || library.currentTab === 'downloads' ? 'downloads' : library.currentTab === 'personal' ? 'favorites' : 'library';
+      await player.playWithContext(song, songs.length > 0 ? songs : [song], title, type);
+    }
   };
 
   const handleQueuePriority = () => {

@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 import { useToastStore } from './toast.store';
-import { usePlayerStore } from './player.store';
+import { usePlayerStore, shuffleArray } from './player.store';
 import { useLibraryStore } from './library.store';
 import { useQueueStore } from './queue.store';
-import { playSong } from '../services/player.service';
 
 export interface CustomPlaylist {
   id: string;
@@ -269,14 +268,21 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     }
 
     set({ activePlaylistId: playlistId });
-    // Carga todas las canciones restantes de la playlist en la cola para que se reproduzca entera
+    // Limpia la cola prioritaria manual para que el orden sea fiel a la playlist
     const queue = useQueueStore.getState();
     queue.clear();
-    if (songsToPlay.length > 1) {
-      queue.addMany(songsToPlay.slice(1));
-    }
-    await playSong(songsToPlay[0]);
-    usePlayerStore.getState().setIsPlaying(true);
+
+    const player = usePlayerStore.getState();
+    const song = player.isShuffle
+      ? shuffleArray(songsToPlay)[0]
+      : songsToPlay[0];
+
+    await player.playWithContext(
+      song,
+      songsToPlay,
+      `Playlist: ${pl.name}`,
+      'playlist'
+    );
     useToastStore.getState().show(
       `Reproduciendo playlist «${pl.name}» (${songsToPlay.length} canciones)`,
       'success',

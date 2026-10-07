@@ -8,7 +8,6 @@ import { SongCover } from '../ui/SongCover';
 import { useUiStore } from '../../store/ui.store';
 import { useLibraryStore } from '../../store/library.store';
 import { usePlayerStore } from '../../store/player.store';
-import { playSong } from '../../services/player.service';
 import { fetchListeningHistory } from '../../services/users.service';
 import { timeAgo, songArtistMeta } from '../../lib/utils';
 import type { Song } from '../../lib/types';
@@ -121,8 +120,14 @@ export function ListeningHistoryModal() {
       target = librarySongs.find((s) => s.name.toLowerCase() === songName.toLowerCase());
     }
     if (!target) return;
-    await playSong(target);
-    usePlayerStore.getState().setIsPlaying(true);
+    const activeList = tab === 'top' ? topList : recentList;
+    const historySongs = activeList.map((i) => i.song).filter((s): s is Song => Boolean(s));
+    await usePlayerStore.getState().playWithContext(
+      target,
+      historySongs.length > 0 ? historySongs : [target],
+      tab === 'top' ? 'Tus más escuchadas' : 'Historial de reproducción',
+      'custom'
+    );
   };
 
   const reload = async () => {

@@ -220,8 +220,13 @@ export function PlayerBar() {
         <button className="jf-control jf-fullscreen-btn" aria-label="Pantalla completa" onClick={() => ui.open('fullscreen')} disabled={!song}>
           <ArrowsOut size={17} />
         </button>
-        <button className="jf-control jf-mobile-queue" aria-label="Abrir cola" onClick={() => ui.toggle('queue')}>
-          <List size={17} />
+        <button
+          className={`jf-control jf-player-queue-btn ${ui.modal === 'queue' ? 'is-active' : ''}`}
+          aria-label="Abrir cola de reproducción"
+          title="Cola de reproducción (Q)"
+          onClick={() => ui.toggle('queue')}
+        >
+          <List size={17} weight="bold" />
         </button>
       </div>
     </motion.footer>

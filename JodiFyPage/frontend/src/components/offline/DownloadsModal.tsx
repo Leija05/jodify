@@ -10,9 +10,9 @@ import {
   Play,
 } from '@phosphor-icons/react';
 import { useDownloadsStore } from '../../store/downloads.store';
+import { usePlayerStore } from '../../store/player.store';
 import { SongCover } from '../ui/SongCover';
 import { formatDuration } from '../../lib/utils';
-import { playSong } from '../../services/player.service';
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '0 KB';
@@ -170,7 +170,13 @@ export function DownloadsModal() {
                           className="jf-dl-play-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            void playSong(task.song);
+                            const completedSongs = completedTasks.map((t) => t.song);
+                            void usePlayerStore.getState().playWithContext(
+                              task.song,
+                              completedSongs.length > 0 ? completedSongs : [task.song],
+                              'Tus descargas',
+                              'downloads'
+                            );
                           }}
                           title="Reproducir ahora sin conexión"
                           style={{

@@ -11,15 +11,19 @@ import { songArtistMeta } from '../../lib/utils';
 import { SongCover } from '../ui/SongCover';
 import { toggleLikeCurrent } from '../../services/player-shortcuts';
 import { downloadSong, removeDownload } from '../../services/offline.service';
-import { playSong } from '../../services/player.service';
+
+import type { PlaybackContext } from '../../store/player.store';
 
 interface SongRowProps {
   song: Song;
   index: number;
   showDownloaded?: boolean;
+  contextSongs?: Song[];
+  contextTitle?: string;
+  contextType?: PlaybackContext['type'];
 }
 
-export function SongRow({ song, index }: SongRowProps) {
+export function SongRow({ song, index, contextSongs, contextTitle, contextType }: SongRowProps) {
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const likedIds = useLibraryStore((s) => s.likedIds);
@@ -35,8 +39,31 @@ export function SongRow({ song, index }: SongRowProps) {
       usePlayerStore.getState().togglePlay();
       return;
     }
-    await playSong(song);
-    usePlayerStore.getState().setIsPlaying(true);
+
+    const library = useLibraryStore.getState();
+    const isDeviceOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+    const songsToUse = contextSongs && contextSongs.length > 0
+      ? contextSongs
+      : (isDeviceOffline || library.currentTab === 'downloads'
+          ? library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)))
+          : library.currentTab === 'personal'
+            ? library.songs.filter((s) => library.likedIds.some((id) => String(id) === String(s.id)))
+            : library.songs);
+
+    const titleToUse = contextTitle || (
+      isDeviceOffline || library.currentTab === 'downloads' ? 'Tus descargas' :
+      library.currentTab === 'personal' ? 'Tus favoritas' :
+      'Tu biblioteca'
+    );
+
+    const typeToUse = contextType || (
+      isDeviceOffline || library.currentTab === 'downloads' ? 'downloads' :
+      library.currentTab === 'personal' ? 'favorites' :
+      'library'
+    );
+
+    await usePlayerStore.getState().playWithContext(song, songsToUse, titleToUse, typeToUse);
   };
 
   const handleLike = async (e: React.MouseEvent) => {

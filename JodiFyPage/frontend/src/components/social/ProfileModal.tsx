@@ -48,7 +48,6 @@ import { fetchLanyardProfile } from '../../services/social.service';
 import { downloadJson, getSongCoverCandidates, calculateMelomanoLevel } from '../../lib/utils';
 import { statusView, presenceLabel } from '../../lib/status';
 import { usePlayerStore } from '../../store/player.store';
-import { playSong } from '../../services/player.service';
 import {
   AVATAR_FRAME_UNLOCKS,
   PROFILE_THEME_UNLOCKS,
@@ -475,16 +474,24 @@ export function ProfileModal() {
 
   const playAnthem = async () => {
     if (!anthemSong) return;
-    await playSong(anthemSong);
-    usePlayerStore.getState().setIsPlaying(true);
+    await usePlayerStore.getState().playWithContext(
+      anthemSong,
+      [anthemSong],
+      'Tu himno personal',
+      'user'
+    );
     toast.show(`Reproduciendo tu himno: "${anthemSong.name}"`, 'info', 2000);
   };
 
   const playTopSong = async (songName: string) => {
     const song = librarySongs.find((s) => s.name.toLowerCase() === songName.toLowerCase());
     if (song) {
-      await playSong(song);
-      usePlayerStore.getState().setIsPlaying(true);
+      await usePlayerStore.getState().playWithContext(
+        song,
+        [song],
+        'Tu canción favorita',
+        'user'
+      );
     }
   };
 

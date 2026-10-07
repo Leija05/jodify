@@ -21,7 +21,6 @@ import { useSettingsStore } from '../../store/settings.store';
 import { useToastStore } from '../../store/toast.store';
 import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
-import { playSong } from '../../services/player.service';
 import { SongCover } from '../ui/SongCover';
 import { EqualizerVisualizer } from './EqualizerVisualizer';
 
@@ -412,7 +411,7 @@ export function EqualizerModal() {
                 if (currentSong) {
                   togglePlay();
                 } else if (librarySongs.length > 0 && librarySongs[0]) {
-                  void playSong(librarySongs[0]);
+                  void usePlayerStore.getState().playWithContext(librarySongs[0], librarySongs, 'Tu biblioteca', 'library');
                 }
               }}
               title={isPlaying ? 'Pausar' : 'Reproducir'}

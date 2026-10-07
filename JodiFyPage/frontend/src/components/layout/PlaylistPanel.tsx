@@ -40,7 +40,6 @@ import type { Tab, Song } from '../../lib/types';
 import { formatTime, formatDuration, resolveAvatarSrc } from '../../lib/utils';
 import { useSleepTimer } from '../../hooks/useSleepTimer';
 import { usePlayerStore } from '../../store/player.store';
-import { playSong } from '../../services/player.service';
 import { useToastStore } from '../../store/toast.store';
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -409,8 +408,12 @@ export function PlaylistPanel() {
                         }}
                         onClick={() => {
                           if (plDragOccurredRef.current) return;
-                          void playSong(song);
-                          usePlayerStore.getState().setIsPlaying(true);
+                          void usePlayerStore.getState().playWithContext(
+                            song,
+                            viewingPlaylistSongs,
+                            `Playlist: ${viewingPlaylist.name}`,
+                            'playlist'
+                          );
                         }}
                         title="Mantén pulsado y arrastra para reordenar"
                       >
@@ -567,13 +570,17 @@ export function PlaylistPanel() {
 }
 
 async function smartMix(): Promise<void> {
-  const { shuffleArray } = await import('../../lib/utils');
+  const { shuffleArray } = await import('../../store/player.store');
   const library = useLibraryStore.getState();
-  const pool = library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)));
+  const isDeviceOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const pool = isDeviceOffline
+    ? library.songs.filter((s) => library.downloadedIds.some((id) => String(id) === String(s.id)))
+    : library.songs;
   if (pool.length === 0) return;
-  const { playSong } = await import('../../services/player.service');
-  await playSong(shuffleArray(pool)[0]);
-  usePlayerStore.getState().setIsPlaying(true);
+  const player = usePlayerStore.getState();
+  player.setShuffle(true);
+  const shuffled = shuffleArray(pool);
+  await player.playWithContext(shuffled[0], pool, 'Mix inteligente', 'library');
 }
 
 async function enterDownloadsTab(): Promise<void> {

@@ -64,6 +64,11 @@ def _get_ytdlp_opts(extract_flat: bool = False, is_search: bool = False) -> dict
         "extract_flat": "in_playlist" if (extract_flat or is_search) else False,
         "socket_timeout": 15,
         "noplaylist": False if is_search else not extract_flat,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android_music", "tv_embedded", "android"],
+            }
+        },
     }
 
     # Soporte para cookies opcionales si se configuran en el entorno
@@ -83,10 +88,9 @@ def _extract_with_ytdlp(url: str, extract_flat: bool = False) -> dict[str, Any]:
             info = ydl.extract_info(url, download=False)
             return ydl.sanitize_info(info) or {}
     except Exception as exc:
-        logger.warning(f"Extracción por defecto falló para {url} ({exc}), probando fallback Android...")
-        # Fallback a cliente Android
+        logger.warning(f"Extracción por defecto falló para {url} ({exc}), probando fallback TV Embedded / Android...")
         fallback_opts = dict(ydl_opts)
-        fallback_opts["extractor_args"] = {"youtube": {"player_client": ["android"]}}
+        fallback_opts["extractor_args"] = {"youtube": {"player_client": ["tv_embedded", "android"]}}
         try:
             with yt_dlp.YoutubeDL(fallback_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -200,7 +204,17 @@ async def _search_youtube_video_id(query: str, exclude_id: str | None = None) ->
     try:
         loop = asyncio.get_running_loop()
         def _ytsearch():
-            with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True, "extract_flat": True}) as ydl:
+            with yt_dlp.YoutubeDL({
+                "quiet": True,
+                "skip_download": True,
+                "noplaylist": True,
+                "extract_flat": True,
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android_music", "tv_embedded", "android"],
+                    }
+                },
+            }) as ydl:
                 res = ydl.extract_info(f"ytsearch3:{clean_q}", download=False)
                 if res and "entries" in res and res["entries"]:
                     for entry in res["entries"]:

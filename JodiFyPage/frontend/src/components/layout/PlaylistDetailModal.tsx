@@ -17,7 +17,6 @@ import {
 import { useUiStore } from '../../store/ui.store';
 import { usePlaylistsStore, CustomPlaylist } from '../../store/playlists.store';
 import { useLibraryStore } from '../../store/library.store';
-import { playSong } from '../../services/player.service';
 import { usePlayerStore } from '../../store/player.store';
 import { useToastStore } from '../../store/toast.store';
 import { SongCover } from '../ui/SongCover';
@@ -70,22 +69,26 @@ export function PlaylistDetailModal() {
 
   const handlePlaySong = async (song: Song) => {
     if (dragOccurredRef.current) return;
-    await playSong(song);
-    usePlayerStore.getState().setIsPlaying(true);
+    await usePlayerStore.getState().playWithContext(
+      song,
+      playlistSongs,
+      `Playlist: ${playlist.name}`,
+      'playlist'
+    );
   };
 
   const handleShufflePlay = async () => {
     if (playlistSongs.length === 0) return;
+    const player = usePlayerStore.getState();
+    player.setShuffle(true);
     const shuffled = shuffleArray([...playlistSongs]);
-    const { useQueueStore } = await import('../../store/queue.store');
-    const queue = useQueueStore.getState();
-    queue.clear();
-    if (shuffled.length > 1) {
-      queue.addMany(shuffled.slice(1));
-    }
-    await playSong(shuffled[0]);
-    usePlayerStore.getState().setIsPlaying(true);
-    useToastStore.getState().show(`Reproduciendo «${playlist.name}» en aleatorio`, 'success', 2200);
+    await player.playWithContext(
+      shuffled[0],
+      playlistSongs,
+      `Playlist: ${playlist.name}`,
+      'playlist'
+    );
+    useToastStore.getState().show(`Reproduciendo «${playlist.name}» en aleatorio 🔀`, 'success', 2200);
   };
 
   const handleRemove = async (e: React.MouseEvent, songId: string | number) => {

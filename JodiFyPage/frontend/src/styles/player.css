@@ -367,16 +367,22 @@
   color: var(--text-muted);
 }
 
-.jf-mobile-queue {
-  display: none;
+.jf-player-queue-btn {
+  display: flex;
   color: var(--text-muted);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.jf-player-queue-btn:hover {
+  color: var(--text-primary);
+  transform: scale(1.08);
+}
+
+.jf-player-queue-btn.is-active {
+  color: var(--accent);
 }
 
 @media (max-width: 860px) {
-  .jf-mobile-queue {
-    display: flex;
-  }
-
   .jf-fullscreen-btn {
     display: none;
   }

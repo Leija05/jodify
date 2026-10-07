@@ -40,7 +40,12 @@ export const useLibraryStore = create<LibraryState>((set) => ({
   songs: [],
   likedIds: [],
   downloadedIds: [],
-  currentTab: readLs<Tab>('jfCurrentTab', 'global'),
+  currentTab: (() => {
+    const isDeviceOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+    if (isDeviceOffline) return 'downloads';
+    const saved = readLs<Tab>('jfCurrentTab', 'global');
+    return saved === 'downloads' ? 'global' : saved;
+  })(),
   searchTerm: readLs<string>('jfSearch', ''),
   currentSort: readLs<SortMode>('jfSort', 'recent'),
   addedByFilter: '',

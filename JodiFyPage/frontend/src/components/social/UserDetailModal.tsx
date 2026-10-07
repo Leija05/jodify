@@ -25,14 +25,13 @@ import { fetchLanyardProfile } from '../../services/social.service';
 import { useLibraryStore } from '../../store/library.store';
 import { usePlayerStore } from '../../store/player.store';
 import { useSession } from '../../context/SessionContext';
-import { playSong } from '../../services/player.service';
 import { timeAgo, resolveAvatarSrc, calculateMelomanoLevel } from '../../lib/utils';
 import { statusView, jfIsOnline, presenceLabel } from '../../lib/status';
 import { useSongCoverGradient } from '../../lib/colorExtractor';
 import { AnthemCard } from './AnthemCard';
 import { PixelPet } from './PixelPet';
 import { ProfileEntranceAnimation } from './ProfileEntranceAnimation';
-import type { CommunityUser } from '../../lib/types';
+import type { CommunityUser, Song } from '../../lib/types';
 
 export function UserDetailModal() {
   const ui = useUiStore();
@@ -119,14 +118,30 @@ export function UserDetailModal() {
     if (!targetName) return;
     const song = librarySongs.find((s) => s.name.toLowerCase() === targetName.toLowerCase());
     if (!song) return;
-    await playSong(song);
-    usePlayerStore.getState().setIsPlaying(true);
+
+    const userSongs = topSongs
+      .map((ts) => librarySongs.find((s) => s.name.toLowerCase() === ts.song_name.toLowerCase()))
+      .filter((s): s is Song => Boolean(s));
+
+    const poolToUse = userSongs.length > 0 ? userSongs : [song];
+    const userName = user?.display_name || user?.username || 'Usuario';
+    await usePlayerStore.getState().playWithContext(
+      song,
+      poolToUse,
+      `Canciones de ${userName}`,
+      'user'
+    );
   };
 
   const playAnthem = async () => {
     if (!anthemSong) return;
-    await playSong(anthemSong);
-    usePlayerStore.getState().setIsPlaying(true);
+    const userName = user?.display_name || user?.username || 'Usuario';
+    await usePlayerStore.getState().playWithContext(
+      anthemSong,
+      [anthemSong],
+      `Himno de ${userName}`,
+      'user'
+    );
   };
 
   const sendReaction = (emoji: string, label: string) => {
