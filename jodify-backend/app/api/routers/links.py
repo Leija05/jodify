@@ -299,9 +299,48 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     from ...services.cookie_manager import get_valid_cookies_file
     cookie_path = get_valid_cookies_file()
 
-    configs: list[dict[str, Any]] = [
-        # Estrategia 1: Cliente visionos (Apple VisionOS) - cliente oficial y moderno en yt-dlp
-        # No activa desafíos de bot en IPs de nube (Render/GCP/AWS) y extrae formatos de audio progresivo directo (Opus / AAC).
+    configs: list[dict[str, Any]] = []
+
+    # Estrategia A: Si hay cookies válidas configuradas, usarlas primero (alta fidelidad y autorización)
+    if cookie_path and os.path.exists(cookie_path):
+        configs.append({
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "cookiefile": cookie_path,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["visionos", "web"],
+                }
+            },
+        })
+        configs.append({
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "cookiefile": cookie_path,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"],
+                }
+            },
+        })
+        configs.append({
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "cookiefile": cookie_path,
+        })
+
+    # Estrategia B: Clientes sin cookies optimizados para evadir bot-checks en IPs de datacenters
+    configs.extend([
+        # 1. Cliente visionos (Apple VisionOS): client oficial JS-less moderno en yt-dlp
         {
             "quiet": True,
             "no_warnings": True,
@@ -314,7 +353,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 }
             },
         },
-        # Estrategia 2: Cliente android puro
+        # 2. Cliente android puro
         {
             "quiet": True,
             "no_warnings": True,
@@ -327,7 +366,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 }
             },
         },
-        # Estrategia 3: visionos y android combinados
+        # 3. Clientes combinados visionos + android
         {
             "quiet": True,
             "no_warnings": True,
@@ -340,53 +379,15 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 }
             },
         },
-    ]
-
-    # Estrategias con cookies (si existen y fueron validadas) como respaldo adicional
-    if cookie_path and os.path.exists(cookie_path):
-        configs.append({
+        # 4. Fallback estándar sin restricciones de cliente
+        {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
-            "cookiefile": cookie_path,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos"],
-                }
-            },
-        })
-        configs.append({
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "cookiefile": cookie_path,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android"],
-                }
-            },
-        })
-        configs.append({
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "cookiefile": cookie_path,
-        })
-
-    # Estrategias de fallback final
-    configs.append({
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "noplaylist": False if is_search else True,
-        "socket_timeout": 8,
-    })
+        },
+    ])
 
     last_error: Exception | None = None
     for ydl_opts in configs:
@@ -504,11 +505,35 @@ async def stream_audio_link(
                 url = f"ytsearch1:{query}"
 
     loop = asyncio.get_running_loop()
+    raw_stream_url = None
+    upstream_headers: dict[str, str] = {}
+
     try:
         raw_stream_url, upstream_headers = await loop.run_in_executor(None, _get_raw_stream_url, url)
     except Exception as exc:
-        logger.error(f"Error extrayendo stream para {url}: {exc}")
-        raise HTTPException(status_code=400, detail=f"No se pudo obtener el flujo de audio: {str(exc)}")
+        logger.warning(f"Extracción directa falló para {url} ({exc}). Buscando track alternativo de respaldo...")
+        from ...services.link_resolver import extract_youtube_id
+        yt_id = extract_youtube_id(url)
+        alt_id = None
+        if yt_id:
+            song_doc = await col("songs").find_one({"youtube_id": yt_id})
+            if song_doc:
+                q = f"{song_doc.get('artist', '')} {song_doc.get('name', '')} audio".strip()
+                try:
+                    alt_id = await _search_youtube_video_id(q, exclude_id=yt_id)
+                except Exception:
+                    pass
+
+        if alt_id and alt_id != yt_id:
+            try:
+                alt_url = f"https://www.youtube.com/watch?v={alt_id}"
+                raw_stream_url, upstream_headers = await loop.run_in_executor(None, _get_raw_stream_url, alt_url)
+                logger.info(f"Stream recuperado exitosamente con ID alternativo {alt_id}")
+                asyncio.create_task(col("songs").update_many({"youtube_id": yt_id}, {"$set": {"youtube_id": alt_id}}))
+            except Exception as alt_exc:
+                raise HTTPException(status_code=400, detail=f"No se pudo obtener el flujo de audio: {str(alt_exc)}")
+        else:
+            raise HTTPException(status_code=400, detail=f"No se pudo obtener el flujo de audio: {str(exc)}")
 
     client_headers: dict[str, str] = dict(upstream_headers)
     if request:

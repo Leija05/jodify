@@ -22,6 +22,11 @@ async def lifespan(_app: FastAPI):
     count = await col("songs").count_documents({})
     if count == 0:
         await seed_audio()
+    try:
+        from .services.cookie_manager import restore_cookies_from_db_if_needed
+        await restore_cookies_from_db_if_needed()
+    except Exception:
+        pass
     logger.info("JodiFy API lista sobre MongoDB (total canciones: %d)", count)
     yield
     if dbmod.client is not None:

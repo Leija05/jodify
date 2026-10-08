@@ -91,10 +91,11 @@ export const linksService = {
     await api.del(`/links/suggestions/${id}`);
   },
 
-  async matchTrack(artist?: string, title?: string): Promise<{ youtube_id: string; url: string } | null> {
+  async matchTrack(artist?: string, title?: string, excludeId?: string | null): Promise<{ youtube_id: string; url: string } | null> {
     try {
+      const excludeParam = excludeId ? `&exclude_id=${encodeURIComponent(excludeId)}` : '';
       const res = await api.get<{ success: boolean; youtube_id: string; url: string }>(
-        `/links/match-track?artist=${encodeURIComponent(artist || '')}&title=${encodeURIComponent(title || '')}`
+        `/links/match-track?artist=${encodeURIComponent(artist || '')}&title=${encodeURIComponent(title || '')}${excludeParam}`
       );
       if (res && res.youtube_id) {
         return { youtube_id: res.youtube_id, url: res.url };

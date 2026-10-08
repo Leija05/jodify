@@ -7,6 +7,7 @@ from typing import Annotated
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from pymongo.errors import PyMongoError
 
 from ...core.config import DEV_MODE, DEV_USERNAME, JWT_EXPIRES_MINUTES
@@ -580,3 +581,67 @@ async def dev_stream(_dev: Annotated[dict, Depends(require_dev)]) -> StreamingRe
                 await asyncio.sleep(0)
 
     return StreamingResponse(event_source(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+class SaveCookiesRequest(BaseModel):
+    cookies: str
+
+
+@router.get("/cookies")
+async def dev_get_cookies_status(_dev: Annotated[dict, Depends(require_dev)]) -> dict:
+    """Devuelve el estado, cantidad y diagnóstico de cookies activas de YouTube."""
+    from ...services.cookie_manager import get_cookie_diagnostics
+    return {"ok": True, "diagnostics": get_cookie_diagnostics()}
+
+
+@router.post("/cookies")
+async def dev_save_cookies(
+    body: SaveCookiesRequest,
+    _dev: Annotated[dict, Depends(require_dev)],
+) -> dict:
+    """Sanitiza, valida y guarda cookies de YouTube en MongoDB y archivo local."""
+    from ...services.cookie_manager import save_cookies_persistently, get_cookie_diagnostics
+
+    res = await save_cookies_persistently(body.cookies)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Error procesando cookies"))
+
+    await events.publish({
+        "type": "cookies.updated",
+        "message": f"Cookies de YouTube actualizadas ({res.get('count')} cookies) por @{_dev.get('username', 'dev')}",
+    })
+
+    return {
+        "ok": True,
+        "result": res,
+        "diagnostics": get_cookie_diagnostics(),
+    }
+
+
+@router.post("/cookies/test")
+async def dev_test_cookies(
+    _dev: Annotated[dict, Depends(require_dev)],
+    url: str = Query("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+) -> dict:
+    """Prueba en tiempo real si el extractor puede obtener flujo de audio con las cookies actuales."""
+    import time
+    from .links import _get_raw_stream_url
+    start = time.time()
+    try:
+        loop = asyncio.get_running_loop()
+        stream_url, headers = await loop.run_in_executor(None, _get_raw_stream_url, url)
+        elapsed = round(time.time() - start, 2)
+        return {
+            "ok": True,
+            "elapsed_seconds": elapsed,
+            "stream_url_length": len(stream_url),
+            "message": f"Extracción exitosa en {elapsed}s",
+        }
+    except Exception as exc:
+        elapsed = round(time.time() - start, 2)
+        return {
+            "ok": False,
+            "elapsed_seconds": elapsed,
+            "error": str(exc),
+            "message": f"Prueba falló en {elapsed}s: {exc}",
+        }

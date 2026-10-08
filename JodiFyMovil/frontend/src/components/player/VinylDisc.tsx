@@ -197,6 +197,34 @@ export const VinylDisc = React.forwardRef<View, VinylDiscProps>(
             />
           </View>
         </Animated.View>
+
+        {/* Stationary Anisotropic Specular Light Overlay */}
+        <View pointerEvents="none" style={[styles.sheenOverlay, { width: size, height: size, borderRadius: radius }]}>
+          <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            <Defs>
+              <SvgLinearGradient id="stationarySheen1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <Stop offset="0%" stopColor="rgba(255,255,255,0.16)" />
+                <Stop offset="20%" stopColor="rgba(168,85,247,0.14)" />
+                <Stop offset="40%" stopColor="rgba(6,182,212,0.16)" />
+                <Stop offset="48%" stopColor="rgba(0,0,0,0)" />
+                <Stop offset="52%" stopColor="rgba(0,0,0,0)" />
+                <Stop offset="60%" stopColor="rgba(6,182,212,0.16)" />
+                <Stop offset="80%" stopColor="rgba(168,85,247,0.14)" />
+                <Stop offset="100%" stopColor="rgba(255,255,255,0.14)" />
+              </SvgLinearGradient>
+              <SvgLinearGradient id="stationarySheen2" x1="100%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor="rgba(255,255,255,0.12)" />
+                <Stop offset="30%" stopColor="rgba(0,240,255,0.12)" />
+                <Stop offset="48%" stopColor="rgba(0,0,0,0)" />
+                <Stop offset="52%" stopColor="rgba(0,0,0,0)" />
+                <Stop offset="70%" stopColor="rgba(168,85,247,0.12)" />
+                <Stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+              </SvgLinearGradient>
+            </Defs>
+            <Circle cx={radius} cy={radius} r={radius - 2} fill="url(#stationarySheen1)" />
+            <Circle cx={radius} cy={radius} r={radius - 2} fill="url(#stationarySheen2)" />
+          </Svg>
+        </View>
       </View>
     );
   }
@@ -261,6 +289,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     borderWidth: 1,
     borderColor: 'rgba(255,215,0,0.4)',
+  },
+  sheenOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    overflow: 'hidden',
+    zIndex: 5,
   },
 });
 

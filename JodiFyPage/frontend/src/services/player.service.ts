@@ -361,6 +361,9 @@ async function executePlaySong(song: Song, options: { fades?: boolean } = {}): P
         audio.volume = player.volume;
         audio.muted = player.muted;
         await audio.play();
+        if (audio.error) {
+          throw new Error('Audio element error: ' + audio.error.message);
+        }
         player.setIsPlaying(true);
         player.setSourceUrl(streamCandidate);
         useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
@@ -371,18 +374,44 @@ async function executePlaySong(song: Song, options: { fades?: boolean } = {}): P
       }
     }
 
+    // Si los streams directos fallaron, buscar versión alternativa en YouTube antes de iframe
+    if (!(song as any)._altRetried) {
+      try {
+        const altMatch = await linksService.matchTrack(song.artist || '', song.name, ytId);
+        if (altMatch && altMatch.youtube_id && altMatch.youtube_id !== ytId) {
+          const altSong: Song = {
+            ...song,
+            youtube_id: altMatch.youtube_id,
+            url: altMatch.url,
+          };
+          (altSong as any)._altRetried = true;
+          return await executePlaySong(altSong, options);
+        }
+      } catch (altErr) {
+        console.warn('[player.service] No se pudo encontrar versión alternativa en YouTube:', altErr);
+      }
+    }
+
     if (audio) {
       audio.pause();
       audio.removeAttribute('src');
       audio.load();
     }
     const ytSuccess = await ytPlayerService.playVideo(ytId);
-    if (ytSuccess || !song.url || song.url.includes('youtube.com') || song.url.includes('youtu.be')) {
+    if (ytSuccess) {
       player.setIsPlaying(true);
       useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
       logListeningHistory(song, false);
       return true;
     }
+
+    // Si todo falló, no engañar al usuario marcando reproducción en 0:00
+    player.setIsPlaying(false);
+    useToastStore.getState().show(`No se pudo reproducir «${song.name}». Saltando a la siguiente…`, 'warning', 2500);
+    setTimeout(() => {
+      void usePlayerStore.getState().next();
+    }, 1000);
+    return false;
   }
 
   // Si no es canción de YouTube, detener el reproductor de YouTube

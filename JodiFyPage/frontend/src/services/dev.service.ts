@@ -99,6 +99,18 @@ export const devService = {
     return api.post<{ ok: boolean; repaired_count: number; total_examined: number; songs: any[] }>('/dev/repair-covers');
   },
 
+  async getCookiesStatus(): Promise<{ ok: boolean; diagnostics: any }> {
+    return api.get('/dev/cookies');
+  },
+
+  async saveCookies(cookiesText: string): Promise<{ ok: boolean; result: any; diagnostics: any }> {
+    return api.post('/dev/cookies', { cookies: cookiesText });
+  },
+
+  async testCookies(): Promise<{ ok: boolean; elapsed_seconds: number; message: string; error?: string }> {
+    return api.post('/dev/cookies/test');
+  },
+
   subscribeStream(onEvent: (event: DevLogEvent) => void): () => void {
     const token = getAuthToken();
     const controller = new AbortController();
