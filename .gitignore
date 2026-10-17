@@ -12,6 +12,8 @@ dist-electron/
 release/
 win-unpacked/
 
+jodify-video
+
 # Generado por scripts/sync-assets.mjs desde assets/icon.ico
 JodiFyPage/frontend/public/favicon.ico
 
