@@ -910,7 +910,22 @@ export function SettingsModal() {
                         Estado: <strong>{updaterStatus}</strong>
                       </span>
                     </div>
-                    <div className="jf-settings-control">
+                    <div className="jf-settings-control" style={{ display: 'flex', gap: '8px' }}>
+                      {updaterInfo?.state?.available || updaterInfo?.state?.downloaded ? (
+                        <Button
+                          variant="glass"
+                          size="sm"
+                          onClick={() => {
+                            window.dispatchEvent(
+                              new CustomEvent('jodify:open-desktop-updater', {
+                                detail: updaterInfo?.state,
+                              })
+                            );
+                          }}
+                        >
+                          Ver Novedades
+                        </Button>
+                      ) : null}
                       {updaterInfo?.state?.downloaded ? (
                         <Button variant="primary" size="sm" onClick={() => void installUpdate()}>
                           Reiniciar e Instalar

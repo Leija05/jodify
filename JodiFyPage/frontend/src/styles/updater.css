@@ -1,11 +1,11 @@
-/* ============ Updater — Modal de Actualización Premium (Neon Obsidian) ============ */
+/* ============ Updater — Modal de Actualización Premium (Neon Obsidian Double-Bezel) ============ */
 .jf-update-backdrop {
   position: fixed;
   inset: 0;
   z-index: calc(var(--z-modal) + 1);
-  background: rgba(3, 3, 6, 0.82);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgba(4, 3, 8, 0.86);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,89 +13,135 @@
 }
 
 [data-theme='light'] .jf-update-backdrop {
-  background: rgba(28, 32, 52, 0.55);
+  background: rgba(20, 24, 40, 0.65);
+}
+
+/* Double-Bezel Outer Casing */
+.jf-update-modal-shell {
+  position: relative;
+  width: min(540px, 94vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 3px;
+  border-radius: 26px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(127, 0, 255, 0.28) 45%,
+    rgba(0, 229, 255, 0.22) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 70px rgba(0, 0, 0, 0.8),
+    0 0 80px rgba(127, 0, 255, 0.25);
 }
 
 .jf-update-card {
   position: relative;
-  width: min(510px, 94vw);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(90vh - 6px);
+  overflow-y: auto;
+  overflow-x: hidden;
   background:
-    linear-gradient(180deg, rgba(var(--primary-rgb), 0.08), transparent 36%),
-    var(--surface-solid);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-top-color: rgba(255, 255, 255, 0.22);
-  border-radius: var(--radius-xl);
-  box-shadow:
-    var(--shadow-lg),
-    0 0 110px rgba(var(--primary-rgb), 0.22),
-    0 25px 60px rgba(0, 0, 0, 0.7);
-  overflow: hidden;
+    radial-gradient(120% 70% at 50% 0%, rgba(127, 0, 255, 0.12) 0%, transparent 80%),
+    linear-gradient(180deg, #100d1e 0%, #090713 60%, #05040a 100%);
+  border-radius: 23px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 [data-theme='light'] .jf-update-card {
   background:
-    linear-gradient(180deg, rgba(var(--primary-rgb), 0.06), transparent 36%),
-    var(--surface-solid);
-  border-top-color: rgba(255, 255, 255, 0.8);
+    radial-gradient(120% 70% at 50% 0%, rgba(127, 0, 255, 0.08) 0%, transparent 80%),
+    linear-gradient(180deg, #f8f7ff 0%, #ffffff 100%);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
+/* Luces y auras de fondo dinámicas */
 .jf-update-aura {
   position: absolute;
   inset: -140px -80px auto -80px;
-  height: 320px;
+  height: 340px;
   background:
-    radial-gradient(460px 220px at 20% 20%, rgba(var(--primary-rgb), 0.25), transparent 65%),
-    radial-gradient(460px 220px at 80% 15%, rgba(var(--secondary-rgb), 0.18), transparent 65%),
-    radial-gradient(360px 180px at 50% 35%, rgba(0, 255, 204, 0.12), transparent 70%);
+    radial-gradient(460px 220px at 20% 20%, rgba(127, 0, 255, 0.3), transparent 65%),
+    radial-gradient(460px 220px at 80% 15%, rgba(0, 229, 255, 0.22), transparent 65%),
+    radial-gradient(360px 180px at 50% 35%, rgba(0, 255, 170, 0.15), transparent 70%);
   pointer-events: none;
 }
 
 .jf-update-neon-ring {
   position: absolute;
   top: 0;
-  left: 10%;
-  right: 10%;
+  left: 8%;
+  right: 8%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(var(--primary-rgb), 0.8), rgba(var(--secondary-rgb), 0.8), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(127, 0, 255, 0.9),
+    rgba(0, 229, 255, 0.9),
+    transparent
+  );
   filter: blur(1px);
+  pointer-events: none;
+}
+
+.jf-update-grid-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 180px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
   pointer-events: none;
 }
 
 .jf-update-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 2;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-full);
-  background: var(--surface-hover);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .jf-update-close:hover {
-  color: var(--text);
-  background: var(--surface-active);
-  transform: rotate(90deg);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: rotate(90deg) scale(1.05);
 }
 
 .jf-update-close:active {
   transform: scale(0.92);
 }
 
+/* Cabecera Hero */
 .jf-update-hero {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 34px 28px 12px;
+  gap: 12px;
+  padding: 30px 26px 10px;
+  z-index: 2;
 }
 
 .jf-update-mark-wrapper {
@@ -111,8 +157,8 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  background: var(--gradient-primary);
-  box-shadow: 0 14px 34px rgba(var(--primary-rgb), 0.45);
+  background: linear-gradient(135deg, #7f00ff 0%, #00e5ff 100%);
+  box-shadow: 0 14px 36px rgba(127, 0, 255, 0.45);
   z-index: 1;
 }
 
@@ -122,8 +168,8 @@
   inset: 0;
   border-radius: var(--radius-full);
   border: 1.5px solid rgba(255, 255, 255, 0.35);
-  border-top-color: rgba(255, 255, 255, 0.8);
-  border-bottom-color: rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  border-bottom-color: rgba(255, 255, 255, 0.15);
   pointer-events: none;
 }
 
@@ -131,38 +177,47 @@
   position: absolute;
   inset: -18px;
   border-radius: var(--radius-full);
-  background: radial-gradient(50% 50% at 50% 50%, rgba(var(--primary-rgb), 0.45), transparent 70%);
+  background: radial-gradient(50% 50% at 50% 50%, rgba(127, 0, 255, 0.5), transparent 70%);
   animation: jf-mark-pulse 2.2s infinite ease-in-out;
   pointer-events: none;
+}
+
+.jf-update-mark-glow.is-ready {
+  background: radial-gradient(50% 50% at 50% 50%, rgba(0, 230, 118, 0.55), transparent 70%);
+}
+
+.jf-update-mark-glow.is-downloading {
+  background: radial-gradient(50% 50% at 50% 50%, rgba(0, 229, 255, 0.55), transparent 70%);
 }
 
 @keyframes jf-mark-pulse {
   0%, 100% {
     transform: scale(0.92);
-    opacity: 0.6;
+    opacity: 0.65;
   }
   50% {
-    transform: scale(1.15);
+    transform: scale(1.18);
     opacity: 1;
   }
 }
 
+/* Ecualizador dinámico */
 .jf-update-eq {
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  height: 20px;
+  height: 18px;
   margin-top: -2px;
 }
 
 .jf-update-eq-bar {
-  width: 4px;
+  width: 3.5px;
   height: 100%;
   border-radius: 2px;
-  background: var(--gradient-primary);
-  transform: scaleY(0.2);
+  background: linear-gradient(180deg, #00e5ff, #7f00ff);
+  transform: scaleY(0.25);
   transform-origin: bottom;
-  transition: transform 0.4s var(--ease-out);
+  transition: transform 0.3s ease;
 }
 
 .jf-update-eq-bar--live {
@@ -177,7 +232,7 @@
     transform: scaleY(1);
   }
   62% {
-    transform: scaleY(0.6);
+    transform: scaleY(0.55);
   }
 }
 
@@ -186,30 +241,30 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .jf-update-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 4px 12px;
+  padding: 4px 13px;
   border-radius: 99px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .jf-update-status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--primary);
-  box-shadow: 0 0 10px var(--primary);
+  background: #00e5ff;
+  box-shadow: 0 0 10px #00e5ff;
 }
 
 .jf-update-status-dot.is-ready {
-  background: #00ffcc;
-  box-shadow: 0 0 12px #00ffcc;
+  background: #00e676;
+  box-shadow: 0 0 12px #00e676;
 }
 
 .jf-update-status-dot.is-active {
@@ -223,64 +278,76 @@
 
 .jf-update-status-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
 }
 
 .jf-update-title {
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text);
+  letter-spacing: -0.025em;
+  color: #fff;
   margin: 0;
 }
 
-/* Selector y comparador de versiones */
+[data-theme='light'] .jf-update-title {
+  color: var(--text);
+}
+
+.jf-update-subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  max-width: 440px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Selector y comparador de versiones con chips estilo Neón */
 .jf-update-versions {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .jf-version-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6px 14px;
+  padding: 6px 16px;
   border-radius: var(--radius-md);
 }
 
 .jf-version-box--old {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .jf-version-box--old .jf-version-number {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 15px;
   color: var(--text-muted);
   text-decoration: line-through;
-  text-decoration-color: rgba(var(--accent-rgb), 0.6);
+  text-decoration-color: rgba(255, 82, 82, 0.6);
 }
 
 .jf-version-box--new {
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.22), rgba(var(--secondary-rgb), 0.16));
-  border: 1px solid rgba(var(--secondary-rgb), 0.45);
-  box-shadow: 0 0 24px rgba(var(--primary-rgb), 0.25);
+  background: linear-gradient(135deg, rgba(127, 0, 255, 0.28), rgba(0, 229, 255, 0.2));
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.2);
 }
 
 .jf-version-box--new .jf-version-number {
   font-family: var(--font-mono);
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 16.5px;
+  font-weight: 800;
   color: #fff;
 }
 
 .jf-version-label {
-  font-size: 9.5px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-weight: 700;
@@ -289,125 +356,273 @@
 }
 
 .jf-update-version-arrow {
-  color: var(--secondary);
+  color: #00e5ff;
   animation: jf-arrow-glow 1.5s infinite alternate ease-in-out;
 }
 
 @keyframes jf-arrow-glow {
-  from { transform: scale(1); filter: drop-shadow(0 0 2px var(--secondary)); }
-  to { transform: scale(1.2); filter: drop-shadow(0 0 8px var(--secondary)); }
+  from {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px #00e5ff);
+  }
+  to {
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 8px #00e5ff);
+  }
 }
 
+/* Cuerpo del modal */
 .jf-update-body {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 10px 26px 26px;
+  padding: 12px 24px 26px;
+  z-index: 2;
 }
 
-/* Tarjetas de aspectos destacados */
+/* Sección de Novedades de actualización */
+.jf-update-highlights-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.jf-update-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.jf-update-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.jf-section-icon {
+  color: #00e5ff;
+}
+
+.jf-update-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.jf-update-count-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+/* Lista Bento de Novedades Automáticas */
 .jf-update-highlights {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
+  gap: 8px;
 }
 
 .jf-highlight-item {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: all 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+}
+
+.jf-highlight-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+
+.jf-highlight--cyan::before {
+  background: #00e5ff;
+  box-shadow: 0 0 10px #00e5ff;
+}
+
+.jf-highlight--purple::before {
+  background: #b388ff;
+  box-shadow: 0 0 10px #b388ff;
+}
+
+.jf-highlight--amber::before {
+  background: #ffd700;
+  box-shadow: 0 0 10px #ffd700;
+}
+
+.jf-highlight--green::before {
+  background: #00e676;
+  box-shadow: 0 0 10px #00e676;
+}
+
+.jf-highlight-item:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
 }
 
 .jf-highlight-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .jf-hi-cyan {
-  background: rgba(0, 210, 255, 0.12);
-  color: #00d2ff;
-  border: 1px solid rgba(0, 210, 255, 0.28);
+  background: rgba(0, 229, 255, 0.14);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.32);
 }
 
 .jf-hi-purple {
-  background: rgba(180, 80, 255, 0.12);
-  color: #c780ff;
-  border: 1px solid rgba(180, 80, 255, 0.28);
+  background: rgba(179, 136, 255, 0.14);
+  color: #b388ff;
+  border: 1px solid rgba(179, 136, 255, 0.32);
+}
+
+.jf-hi-amber {
+  background: rgba(255, 215, 0, 0.14);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.32);
 }
 
 .jf-hi-green {
-  background: rgba(0, 255, 170, 0.12);
-  color: #00ffaa;
-  border: 1px solid rgba(0, 255, 170, 0.28);
+  background: rgba(0, 230, 118, 0.14);
+  color: #00e676;
+  border: 1px solid rgba(0, 230, 118, 0.32);
+}
+
+.jf-highlight-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jf-highlight-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .jf-highlight-title {
   font-size: 13px;
   font-weight: 700;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+[data-theme='light'] .jf-highlight-title {
   color: var(--text);
-  margin: 0 0 2px;
+}
+
+.jf-highlight-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 1.5px 6.5px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
+
+.jf-tag--cyan {
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+}
+
+.jf-tag--purple {
+  color: #b388ff;
+  background: rgba(179, 136, 255, 0.12);
+  border: 1px solid rgba(179, 136, 255, 0.3);
+}
+
+.jf-tag--amber {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.jf-tag--green {
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.12);
+  border: 1px solid rgba(0, 230, 118, 0.3);
 }
 
 .jf-highlight-desc {
   font-size: 11.5px;
-  color: var(--text-muted);
-  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.45;
   margin: 0;
 }
 
-/* Notas de versión */
-.jf-update-notes {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+[data-theme='light'] .jf-highlight-desc {
+  color: var(--text-muted);
 }
 
-.jf-update-notes-head {
+/* Botón expandible para ver más mejoras */
+.jf-update-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.jf-update-expand-btn:hover {
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.06);
+  border-color: rgba(0, 229, 255, 0.3);
+}
+
+/* Caja de error */
+.jf-update-error-box {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.jf-update-notes-text {
+  gap: 8px;
   font-size: 12px;
-  line-height: 1.55;
-  color: var(--text-muted);
-  max-height: 90px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  background: rgba(0, 0, 0, 0.25);
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.jf-update-error {
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--error);
-  background: rgba(var(--error-rgb), 0.08);
-  border: 1px solid rgba(var(--error-rgb), 0.28);
+  line-height: 1.4;
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.08);
+  border: 1px solid rgba(255, 82, 82, 0.25);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: 10px 14px;
 }
 
 /* Barra de progreso de descarga */
@@ -415,6 +630,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
 }
 
 .jf-update-progress-labels {
@@ -426,14 +645,15 @@
 .jf-progress-status-text {
   font-size: 12px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .jf-update-percent {
   font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 700;
-  color: #00ffcc;
+  font-size: 14px;
+  font-weight: 800;
+  color: #00e5ff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
 }
 
 .jf-update-progress-track {
@@ -450,18 +670,22 @@
   position: relative;
   height: 100%;
   border-radius: var(--radius-full);
-  background: linear-gradient(90deg, #7f00ff, #00d2ff, #00ffaa);
-  transition: width 0.35s ease;
-  box-shadow: 0 0 12px rgba(0, 210, 255, 0.5);
+  background: linear-gradient(90deg, #7f00ff 0%, #00e5ff 60%, #00e676 100%);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.6);
 }
 
-.jf-update-progress-fill::after {
-  content: '';
+.jf-update-progress-shine {
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.5) 50%, transparent 80%);
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 80%
+  );
   background-size: 200% 100%;
-  animation: jf-update-shimmer 1.3s linear infinite;
+  animation: jf-update-shimmer 1.4s linear infinite;
 }
 
 @keyframes jf-update-shimmer {
@@ -469,7 +693,7 @@
   to { background-position: -80% 0; }
 }
 
-/* Botones de acción */
+/* Botones de acción con patrón Button-in-Button */
 .jf-update-actions {
   display: flex;
   gap: 12px;
@@ -480,16 +704,37 @@
   flex: 1;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 46px;
-  border-radius: var(--radius-md);
+  justify-content: space-between;
+  padding: 0 8px 0 18px;
+  height: 48px;
+  border-radius: 99px;
   font-family: var(--font-body);
   font-size: 13.5px;
   font-weight: 700;
-  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  text-decoration: none;
+}
+
+.jf-btn-label {
+  flex: 1;
+  text-align: left;
+}
+
+.jf-btn-nested-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  transition: transform 0.2s ease;
+}
+
+.jf-update-btn:hover .jf-btn-nested-icon {
+  transform: scale(1.08) rotate(-4deg);
 }
 
 .jf-update-btn:active {
@@ -504,40 +749,44 @@
 
 .jf-update-btn--primary {
   color: #fff;
-  background: var(--gradient-primary);
-  border: none;
-  box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.38);
+  background: linear-gradient(135deg, #7f00ff 0%, #00e5ff 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 26px rgba(127, 0, 255, 0.38);
 }
 
 .jf-update-btn--primary:hover:not(:disabled) {
   transform: translateY(-1.5px);
-  box-shadow: 0 12px 30px rgba(var(--primary-rgb), 0.55);
+  box-shadow: 0 12px 34px rgba(0, 229, 255, 0.45);
 }
 
 .jf-update-btn--primary.is-ready-pulse {
-  background: linear-gradient(135deg, #00b09b, #96c93d);
-  box-shadow: 0 8px 26px rgba(0, 255, 170, 0.45);
+  background: linear-gradient(135deg, #00b09b 0%, #00e676 100%);
+  box-shadow: 0 8px 26px rgba(0, 230, 118, 0.45);
   animation: jf-install-pulse 2s infinite ease-in-out;
 }
 
 @keyframes jf-install-pulse {
   0%, 100% {
-    box-shadow: 0 8px 26px rgba(0, 255, 170, 0.45);
+    box-shadow: 0 8px 26px rgba(0, 230, 118, 0.45);
   }
   50% {
-    box-shadow: 0 12px 34px rgba(0, 255, 170, 0.75);
+    box-shadow: 0 12px 36px rgba(0, 230, 118, 0.75);
   }
 }
 
 .jf-update-btn--ghost {
+  justify-content: center;
+  flex: 0 0 140px;
+  padding: 0 16px;
   color: var(--text-muted);
-  background: var(--surface-hover);
-  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .jf-update-btn--ghost:hover {
-  color: var(--text);
-  background: var(--surface-active);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .jf-bounce {
@@ -549,7 +798,19 @@
   to { transform: translateY(3px); }
 }
 
-@media (max-width: 480px) {
+.jf-spin-slow {
+  animation: jf-spin 2s linear infinite;
+}
+
+@keyframes jf-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 520px) {
+  .jf-update-modal-shell {
+    width: 96vw;
+  }
   .jf-update-versions {
     gap: 8px;
   }
@@ -558,5 +819,9 @@
   }
   .jf-update-actions {
     flex-direction: column;
+  }
+  .jf-update-btn--ghost {
+    flex: auto;
+    width: 100%;
   }
 }

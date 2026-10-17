@@ -1,11 +1,10 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import {
   Animated,
   Modal,
   StyleSheet,
   Text,
   View,
-  ScrollView,
   Dimensions,
   Easing,
 } from 'react-native';
@@ -15,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import { PressableFluid } from '@components/ui/PressableFluid';
 import { useUpdateStore } from '@stores/update.store';
 import { colors, typography, radius } from '@theme';
+import { extractMobileUpdateHighlights } from '../../utils/updateNotesParser';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -192,6 +192,8 @@ export function UpdateModal() {
   const closeModal = useUpdateStore((s) => s.closeModal);
   const cancelDownload = useUpdateStore((s) => s.cancelDownload);
 
+  const [showAllNotes, setShowAllNotes] = useState(false);
+
   // Entrance spring & opacity
   const scale = useRef(new Animated.Value(0.88)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -345,13 +347,9 @@ export function UpdateModal() {
     outputRange: ['0%', '100%'],
   });
 
-  const notesList = useMemo(() => {
-    if (!info?.notes) return ['Mejoras de rendimiento, estabilidad y nuevas funciones.'];
-    return info.notes
-      .split('\n')
-      .map((line) => line.replace(/^[-*•]\s*/, '').trim())
-      .filter(Boolean);
-  }, [info?.notes]);
+  const parsedHighlights = useMemo(() => {
+    return extractMobileUpdateHighlights(info?.notes, info?.latest);
+  }, [info?.notes, info?.latest]);
 
   if (!visible && ((opacity as any)._value ?? 0) === 0) return null;
 
@@ -365,14 +363,28 @@ export function UpdateModal() {
       <View style={styles.backdrop}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.backdropDim, { opacity }]} />
 
-        <Animated.View style={[styles.dialog, { opacity, transform: [{ scale }] }]}>
-          {/* Obsidian Space Glass Background */}
+        {/* Double-Bezel Outer Casing with Ambient Aura */}
+        <Animated.View style={[styles.dialogShell, { opacity, transform: [{ scale }] }]}>
           <LinearGradient
-            colors={['#17132B', '#0B0917', '#05040A']}
+            colors={
+              isReady
+                ? ['rgba(0, 230, 118, 0.55)', 'rgba(0, 229, 255, 0.35)', 'rgba(127, 0, 255, 0.25)']
+                : isError
+                ? ['rgba(255, 61, 92, 0.55)', 'rgba(127, 0, 255, 0.35)', 'rgba(0, 229, 255, 0.25)']
+                : ['rgba(127, 0, 255, 0.55)', 'rgba(0, 229, 255, 0.4)', 'rgba(127, 0, 255, 0.25)']
+            }
             start={{ x: 0, y: 0 }}
-            end={{ x: 0.8, y: 1 }}
-            style={styles.cardGradient}
+            end={{ x: 1, y: 1 }}
+            style={styles.dialogBorderGlow}
           >
+            <View style={styles.dialog}>
+              {/* Obsidian Space Glass Background */}
+              <LinearGradient
+                colors={['#151028', '#0b0818', '#05040a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.8, y: 1 }}
+                style={styles.cardGradient}
+              >
             {/* Ambient Nebula Glow Behind Icon */}
             <LinearGradient
               colors={
@@ -613,25 +625,93 @@ export function UpdateModal() {
               </View>
             )}
 
-            {/* Release Notes / Changelog */}
-            {!isDownloading && notesList.length > 0 && (
-              <View style={styles.notesContainer}>
-                <View style={styles.notesHeaderRow}>
-                  <Ionicons name="sparkles" size={12} color="#00E5FF" />
-                  <Text style={styles.notesHeader}>NOVEDADES DE ESTA VERSIÓN</Text>
+            {/* Novedades de actualización Automáticas */}
+            {!isDownloading && parsedHighlights.items.length > 0 && (
+              <View style={styles.highlightsContainer}>
+                <View style={styles.highlightsHeaderRow}>
+                  <View style={styles.highlightsHeaderLeft}>
+                    <Ionicons name="sparkles" size={13} color="#00E5FF" />
+                    <Text style={styles.highlightsHeader}>NOVEDADES DE ACTUALIZACIÓN</Text>
+                  </View>
+                  <View style={styles.highlightsCountPill}>
+                    <Text style={styles.highlightsCountText}>
+                      {parsedHighlights.totalCount} {parsedHighlights.totalCount === 1 ? 'mejora' : 'mejoras'}
+                    </Text>
+                  </View>
                 </View>
-                <ScrollView style={styles.notesScroll} showsVerticalScrollIndicator={false}>
-                  {notesList.map((item, index) => (
-                    <View key={index} style={styles.noteItem}>
-                      <View style={styles.noteBullet} />
-                      <Text style={styles.noteText}>{item}</Text>
+
+                <View style={styles.highlightsList}>
+                  {(showAllNotes ? parsedHighlights.allItems : parsedHighlights.items).map((item) => (
+                    <View
+                      key={item.id}
+                      style={[
+                        styles.highlightCard,
+                        { borderLeftColor: item.accentColor },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.highlightIconWrap,
+                          {
+                            backgroundColor: item.bgGlow,
+                            borderColor: item.accentColor + '40',
+                          },
+                        ]}
+                      >
+                        <Ionicons name={item.iconName} size={15} color={item.accentColor} />
+                      </View>
+                      <View style={styles.highlightContent}>
+                        <View style={styles.highlightTitleRow}>
+                          <Text style={styles.highlightTitle} numberOfLines={1}>
+                            {item.title}
+                          </Text>
+                          <View
+                            style={[
+                              styles.highlightTagWrap,
+                              {
+                                backgroundColor: item.bgGlow,
+                                borderColor: item.accentColor + '50',
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.highlightTagText, { color: item.accentColor }]}>
+                              {item.tag}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.highlightDesc} numberOfLines={2}>
+                          {item.description}
+                        </Text>
+                      </View>
                     </View>
                   ))}
-                </ScrollView>
+                </View>
+
+                {parsedHighlights.hasMore && (
+                  <PressableFluid
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowAllNotes(!showAllNotes);
+                    }}
+                    haptic="light"
+                    style={styles.expandHighlightsBtn}
+                  >
+                    <Text style={styles.expandHighlightsText}>
+                      {showAllNotes
+                        ? 'Mostrar solo lo principal'
+                        : `Ver todas las mejoras (+${parsedHighlights.totalCount - 3})`}
+                    </Text>
+                    <Ionicons
+                      name={showAllNotes ? 'chevron-up' : 'chevron-down'}
+                      size={12}
+                      color="#00E5FF"
+                    />
+                  </PressableFluid>
+                )}
               </View>
             )}
 
-            {/* Action Buttons */}
+            {/* Action Buttons con patrón Button-in-Button */}
             <View style={styles.actionContainer}>
               {isReady ? (
                 <PressableFluid
@@ -648,8 +728,12 @@ export function UpdateModal() {
                     end={{ x: 1, y: 0 }}
                     style={styles.primaryBtnFill}
                   >
-                    <Ionicons name="checkmark-circle" size={20} color={colors.white} />
-                    <Text style={styles.primaryBtnText}>Instalar Actualización Ahora</Text>
+                    <View style={styles.btnContentWrap}>
+                      <Text style={styles.primaryBtnText}>Instalar Actualización Ahora</Text>
+                      <View style={styles.btnNestedIconCircle}>
+                        <Ionicons name="checkmark-circle" size={17} color={colors.white} />
+                      </View>
+                    </View>
                   </LinearGradient>
                 </PressableFluid>
               ) : isDownloading ? (
@@ -679,8 +763,12 @@ export function UpdateModal() {
                     end={{ x: 1, y: 0 }}
                     style={styles.primaryBtnFill}
                   >
-                    <Ionicons name="cloud-download-outline" size={20} color={colors.white} />
-                    <Text style={styles.primaryBtnText}>Descargar e Instalar</Text>
+                    <View style={styles.btnContentWrap}>
+                      <Text style={styles.primaryBtnText}>Descargar e Instalar</Text>
+                      <View style={styles.btnNestedIconCircle}>
+                        <Ionicons name="cloud-download-outline" size={17} color={colors.white} />
+                      </View>
+                    </View>
                   </LinearGradient>
                 </PressableFluid>
               )}
@@ -697,6 +785,8 @@ export function UpdateModal() {
                   <Text style={styles.dismissBtnText}>Recordarme más tarde</Text>
                 </PressableFluid>
               )}
+            </View>
+              </LinearGradient>
             </View>
           </LinearGradient>
         </Animated.View>
@@ -715,17 +805,26 @@ const styles = StyleSheet.create({
   backdropDim: {
     backgroundColor: 'rgba(3, 3, 5, 0.88)',
   },
-  dialog: {
-    width: Math.min(SCREEN_WIDTH - 28, 410),
-    borderRadius: radius.xxl,
+  dialogShell: {
+    width: Math.min(SCREEN_WIDTH - 24, 420),
+    borderRadius: 28,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: 'rgba(127, 0, 255, 0.45)',
-    elevation: 30,
+    elevation: 32,
     shadowColor: '#7F00FF',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.65,
-    shadowRadius: 36,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.7,
+    shadowRadius: 40,
+  },
+  dialogBorderGlow: {
+    padding: 2,
+    borderRadius: 28,
+  },
+  dialog: {
+    borderRadius: 26,
+    overflow: 'hidden',
+    backgroundColor: '#070510',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   cardGradient: {
     padding: 24,
@@ -994,50 +1093,123 @@ const styles = StyleSheet.create({
   telemetryBytesText: {
     color: colors.textMuted,
     fontSize: 10.5,
-    marginTop: 1,
   },
-  notesContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    padding: 14,
+  /* Novedades de actualización Automáticas */
+  highlightsContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.025)',
+    borderRadius: 18,
+    padding: 13,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 18,
-    maxHeight: 130,
+    marginBottom: 16,
   },
-  notesHeaderRow: {
+  highlightsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  highlightsHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 8,
   },
-  notesHeader: {
-    color: '#00E5FF',
+  highlightsHeader: {
+    color: '#E0E7FF',
     fontSize: 10.5,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.9,
   },
-  notesScroll: {
-    maxHeight: 85,
+  highlightsCountPill: {
+    backgroundColor: 'rgba(0, 229, 255, 0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.28)',
   },
-  noteItem: {
+  highlightsCountText: {
+    color: '#00E5FF',
+    fontSize: 9.5,
+    fontWeight: '800',
+    fontFamily: typography.labelSmall.fontFamily,
+  },
+  highlightsList: {
+    gap: 7,
+  },
+  highlightCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderLeftWidth: 3,
+  },
+  highlightIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginTop: 1,
+  },
+  highlightContent: {
+    flex: 1,
+    gap: 2,
+  },
+  highlightTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    gap: 6,
   },
-  noteBullet: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#7F00FF',
-  },
-  noteText: {
+  highlightTitle: {
     flex: 1,
+    color: colors.white,
+    fontFamily: typography.labelMedium.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  highlightTagWrap: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  highlightTagText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  highlightDesc: {
     color: colors.textSecondary,
     fontFamily: typography.bodySmall.fontFamily,
-    fontSize: 12,
-    lineHeight: 16.5,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  expandHighlightsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    marginTop: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderStyle: 'dashed',
+  },
+  expandHighlightsText: {
+    color: '#00E5FF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   actionContainer: {
     gap: 10,
@@ -1046,24 +1218,37 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     overflow: 'hidden',
     shadowColor: '#00E5FF',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
-    shadowRadius: 12,
+    shadowRadius: 14,
     elevation: 8,
   },
   primaryBtnFill: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  btnContentWrap: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 12,
+    paddingRight: 4,
+    height: 40,
+  },
+  btnNestedIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
   },
   primaryBtnText: {
     color: colors.white,
     fontFamily: typography.labelLarge.fontFamily,
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   cancelBtn: {
     flexDirection: 'row',
@@ -1084,7 +1269,7 @@ const styles = StyleSheet.create({
   dismissBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   dismissBtnText: {
     color: colors.textMuted,

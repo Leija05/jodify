@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowDown,
@@ -9,20 +9,44 @@ import {
   ShieldCheck,
   Lightning,
   Cpu,
+  CaretDown,
+  CaretUp,
+  MusicNotes,
 } from '@phosphor-icons/react';
 import type { DesktopUpdaterState } from '../../types/electron';
+import {
+  extractDesktopUpdateHighlights,
+  type UpdateHighlightItem,
+} from '../../lib/updateNotesParser';
 
-const EQ_BARS = [0, 1, 2, 3, 4, 5, 6];
+const EQ_BARS = [0, 1, 2, 3, 4, 5, 6, 7];
 
 export function DesktopUpdaterModal() {
-  const updater = window.jodifyUpdater;
+  const updater = typeof window !== 'undefined' ? window.jodifyUpdater : undefined;
   const [open, setOpen] = useState(false);
   const [currentVersion, setCurrentVersion] = useState('');
   const [state, setState] = useState<DesktopUpdaterState | null>(null);
+  const [showAllNotes, setShowAllNotes] = useState(false);
   const promptedRef = useRef(false);
 
   useEffect(() => {
-    if (!updater) return;
+    // Escucha de evento manual o dev para inspección y testing
+    const handleManualOpen = (e: Event) => {
+      const customEvent = e as CustomEvent<DesktopUpdaterState | undefined>;
+      if (customEvent.detail) {
+        setState(customEvent.detail);
+      }
+      setOpen(true);
+    };
+
+    window.addEventListener('jodify:open-desktop-updater', handleManualOpen);
+
+    if (!updater) {
+      return () => {
+        window.removeEventListener('jodify:open-desktop-updater', handleManualOpen);
+      };
+    }
+
     const unsubscribe = updater.onEvent((payload) => {
       if (payload.type !== 'state' || !payload.state) return;
       setState(payload.state);
@@ -31,6 +55,7 @@ export function DesktopUpdaterModal() {
         setOpen(true);
       }
     });
+
     void updater
       .getState()
       .then((info) => {
@@ -42,14 +67,16 @@ export function DesktopUpdaterModal() {
         }
       })
       .catch(() => undefined);
-    return unsubscribe;
+
+    return () => {
+      unsubscribe?.();
+      window.removeEventListener('jodify:open-desktop-updater', handleManualOpen);
+    };
   }, [updater]);
 
-  if (!updater) return null;
-
   const close = () => setOpen(false);
-  const install = () => void updater.install();
-  const checkAgain = () => void updater.check();
+  const install = () => void updater?.install();
+  const checkAgain = () => void updater?.check();
 
   const downloading = !!state?.available && !!state?.downloading && !state?.downloaded;
   const ready = !!state?.downloaded;
@@ -57,6 +84,30 @@ export function DesktopUpdaterModal() {
   const latest = state?.latestVersion ?? '';
   const percent = state?.percent ?? 0;
   const notes = state?.notes?.trim() ?? '';
+
+  // Extracción automática y categorización de novedades
+  const parsedData = useMemo(() => {
+    return extractDesktopUpdateHighlights(notes, latest);
+  }, [notes, latest]);
+
+  const displayedItems = showAllNotes ? parsedData.allHighlights : parsedData.highlights;
+
+  const renderHighlightIcon = (item: UpdateHighlightItem) => {
+    switch (item.badgeTone) {
+      case 'amber':
+        return <Lightning size={16} weight="fill" />;
+      case 'green':
+        return <ShieldCheck size={16} weight="fill" />;
+      case 'purple':
+        return <MusicNotes size={16} weight="fill" />;
+      case 'cyan':
+      default:
+        return <Sparkle size={16} weight="fill" />;
+    }
+  };
+
+  // Solo renderizar si estamos en entorno Electron o si fue abierto manualmente
+  if (!updater && !open) return null;
 
   return (
     <AnimatePresence>
@@ -66,221 +117,272 @@ export function DesktopUpdaterModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) close();
+            if (e.target === e.currentTarget && !downloading) close();
           }}
           role="presentation"
         >
+          {/* Double-Bezel Hardware Wrapper */}
           <motion.div
-            className="jf-update-card"
+            className="jf-update-modal-shell"
             role="dialog"
             aria-modal="true"
-            aria-label="Actualización de JodiFy"
-            initial={{ opacity: 0, scale: 0.92, y: 26 }}
+            aria-label="Actualización de JodiFy Desktop"
+            initial={{ opacity: 0, scale: 0.94, y: 24 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 16 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* Auras y luces de fondo dinámicas */}
-            <div className="jf-update-aura" aria-hidden="true" />
-            <div className="jf-update-neon-ring" aria-hidden="true" />
+            <div className="jf-update-card">
+              {/* Luces y auras de fondo dinámicas */}
+              <div className="jf-update-aura" aria-hidden="true" />
+              <div className="jf-update-neon-ring" aria-hidden="true" />
+              <div className="jf-update-grid-pattern" aria-hidden="true" />
 
-            <button
-              className="jf-update-close"
-              onClick={close}
-              aria-label="Cerrar"
-              title="Hacerlo después"
-            >
-              <X size={17} weight="bold" />
-            </button>
-
-            <div className="jf-update-hero">
-              {/* Emblema holográfico animado */}
-              <div className="jf-update-mark-wrapper">
-                <div className="jf-update-mark-glow" aria-hidden="true" />
-                <motion.div
-                  className="jf-update-mark"
-                  animate={ready ? { rotate: [0, -5, 5, 0] } : {}}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              {!downloading && (
+                <button
+                  className="jf-update-close"
+                  onClick={close}
+                  aria-label="Cerrar"
+                  title="Hacerlo después"
                 >
-                  {ready ? (
-                    <RocketLaunch size={34} weight="fill" />
-                  ) : downloading ? (
-                    <ArrowDown size={30} weight="bold" className="jf-bounce" />
-                  ) : (
-                    <Sparkle size={32} weight="fill" />
-                  )}
-                </motion.div>
-              </div>
+                  <X size={15} weight="bold" />
+                </button>
+              )}
 
-              {/* Ecualizador dinámico en miniatura */}
-              <div className="jf-update-eq" aria-hidden="true">
-                {EQ_BARS.map((i) => (
-                  <span
-                    key={i}
-                    className={`jf-update-eq-bar ${
-                      downloading || ready ? 'jf-update-eq-bar--live' : ''
-                    }`}
-                    style={{ animationDelay: `${i * 0.08}s` }}
+              {/* Cabecera Hero con holograma musical */}
+              <div className="jf-update-hero">
+                <div className="jf-update-mark-wrapper">
+                  <div
+                    className={`jf-update-mark-glow ${ready ? 'is-ready' : downloading ? 'is-downloading' : ''}`}
+                    aria-hidden="true"
                   />
-                ))}
-              </div>
-
-              <div className="jf-update-header-text">
-                <div className="jf-update-status-pill">
-                  <span className={`jf-update-status-dot ${ready ? 'is-ready' : 'is-active'}`} />
-                  <span className="jf-update-status-label">
-                    {ready
-                      ? 'Actualización Lista para Instalar'
-                      : downloading
-                      ? `Descargando Nueva Versión (${percent}%)`
-                      : 'Nueva Versión Oficial Disponible'}
-                  </span>
+                  <motion.div
+                    className="jf-update-mark"
+                    animate={ready ? { rotate: [0, -4, 4, 0] } : {}}
+                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    {ready ? (
+                      <RocketLaunch size={36} weight="fill" />
+                    ) : downloading ? (
+                      <ArrowDown size={32} weight="bold" className="jf-bounce" />
+                    ) : (
+                      <Sparkle size={34} weight="fill" />
+                    )}
+                  </motion.div>
                 </div>
 
-                <h2 className="jf-update-title">JodiFy Desktop Update</h2>
-              </div>
-
-              {/* Comparador de versiones con chips estilo Neón */}
-              <div className="jf-update-versions">
-                <div className="jf-version-box jf-version-box--old">
-                  <span className="jf-version-label">Instalada</span>
-                  <span className="jf-version-number">
-                    {currentVersion ? `v${currentVersion}` : 'v…'}
-                  </span>
-                </div>
-
-                <div className="jf-update-version-arrow" aria-hidden="true">
-                  <Lightning size={16} weight="fill" />
-                </div>
-
-                <div className="jf-version-box jf-version-box--new">
-                  <span className="jf-version-label">Disponible</span>
-                  <span className="jf-version-number">{latest ? `v${latest}` : 'v…'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="jf-update-body">
-              {/* Tarjetas de aspectos destacados de la actualización */}
-              <div className="jf-update-highlights">
-                <div className="jf-highlight-item">
-                  <div className="jf-highlight-icon jf-hi-cyan">
-                    <Lightning size={16} weight="bold" />
-                  </div>
-                  <div>
-                    <h4 className="jf-highlight-title">Audio en 2do Plano Continuo</h4>
-                    <p className="jf-highlight-desc">
-                      Reproducción ininterrumpida al minimizar la app o cambiar de ventana.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="jf-highlight-item">
-                  <div className="jf-highlight-icon jf-hi-purple">
-                    <Sparkle size={16} weight="fill" />
-                  </div>
-                  <div>
-                    <h4 className="jf-highlight-title">DJ Scratching & Audio FX Lab</h4>
-                    <p className="jf-highlight-desc">
-                      Audio 8D envolvente, filtro vinilo Lo-Fi, sub-bass 320k y scratch táctil.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="jf-highlight-item">
-                  <div className="jf-highlight-icon jf-hi-green">
-                    <ShieldCheck size={16} weight="bold" />
-                  </div>
-                  <div>
-                    <h4 className="jf-highlight-title">Buscador y Cola Interactiva</h4>
-                    <p className="jf-highlight-desc">
-                      Arrastra y reordena la cola con un clic y explora enlaces sin bloqueos.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Registro de cambios del desarrollador si está disponible */}
-              {notes && (
-                <div className="jf-update-notes">
-                  <div className="jf-update-notes-head">
-                    <Cpu size={14} weight="bold" />
-                    <span>Notas de la versión</span>
-                  </div>
-                  <div className="jf-update-notes-text">{notes}</div>
-                </div>
-              )}
-
-              {error && <p className="jf-update-error">{error}</p>}
-
-              {/* Barra de progreso de descarga futurista */}
-              {downloading && (
-                <div className="jf-update-progress-block">
-                  <div className="jf-update-progress-labels">
-                    <span className="jf-progress-status-text">Descargando archivos…</span>
-                    <span className="jf-update-percent">{percent}%</span>
-                  </div>
-                  <div className="jf-update-progress-track">
-                    <div
-                      className="jf-update-progress-fill"
-                      style={{ width: `${Math.max(percent, 5)}%` }}
+                {/* Ecualizador dinámico en vivo */}
+                <div className="jf-update-eq" aria-hidden="true">
+                  {EQ_BARS.map((i) => (
+                    <span
+                      key={i}
+                      className={`jf-update-eq-bar ${
+                        downloading || ready ? 'jf-update-eq-bar--live' : ''
+                      }`}
+                      style={{ animationDelay: `${i * 0.07}s` }}
                     />
+                  ))}
+                </div>
+
+                <div className="jf-update-header-text">
+                  <div className="jf-update-status-pill">
+                    <span className={`jf-update-status-dot ${ready ? 'is-ready' : 'is-active'}`} />
+                    <span className="jf-update-status-label">
+                      {ready
+                        ? 'INSTALADOR LISTO'
+                        : downloading
+                        ? `DESCARGANDO PAQUETE · ${percent}%`
+                        : 'NUEVA VERSIÓN DISPONIBLE'}
+                    </span>
+                  </div>
+
+                  <h2 className="jf-update-title">JodiFy Desktop</h2>
+                  <p className="jf-update-subtitle">
+                    {ready
+                      ? 'La actualización se descargó exitosamente y está lista para aplicarse.'
+                      : downloading
+                      ? 'Obteniendo los archivos del sistema y componentes de audio en segundo plano…'
+                      : 'Descubre las mejoras de rendimiento y funciones diseñadas para tu escritorio.'}
+                  </p>
+                </div>
+
+                {/* Cápsula de salto de versión estilizada */}
+                <div className="jf-update-versions">
+                  <div className="jf-version-box jf-version-box--old">
+                    <span className="jf-version-label">Instalada</span>
+                    <span className="jf-version-number">
+                      {currentVersion ? `v${currentVersion}` : 'v…'}
+                    </span>
+                  </div>
+
+                  <div className="jf-update-version-arrow" aria-hidden="true">
+                    <Lightning size={16} weight="fill" />
+                  </div>
+
+                  <div className="jf-version-box jf-version-box--new">
+                    <span className="jf-version-label">Disponible</span>
+                    <span className="jf-version-number">{latest ? `v${latest}` : 'v…'}</span>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Botones de acción principales */}
-              <div className="jf-update-actions">
-                {ready || downloading ? (
-                  <>
+              {/* Cuerpo del modal con Novedades Automáticas */}
+              <div className="jf-update-body">
+                {/* Sección de Novedades Automáticas */}
+                <div className="jf-update-highlights-section">
+                  <div className="jf-update-section-header">
+                    <div className="jf-update-section-title-wrap">
+                      <Sparkle size={15} weight="fill" className="jf-section-icon" />
+                      <h3 className="jf-update-section-title">Novedades de actualización</h3>
+                    </div>
+                    <span className="jf-update-count-badge">
+                      {parsedData.totalCount} mejoras clave
+                    </span>
+                  </div>
+
+                  {/* Lista de características filtradas automáticamente */}
+                  <div className="jf-update-highlights">
+                    {displayedItems.map((item) => (
+                      <motion.div
+                        key={item.id}
+                        className={`jf-highlight-item jf-highlight--${item.badgeTone}`}
+                        layout
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <div className={`jf-highlight-icon jf-hi-${item.badgeTone}`}>
+                          {renderHighlightIcon(item)}
+                        </div>
+                        <div className="jf-highlight-content">
+                          <div className="jf-highlight-top">
+                            <h4 className="jf-highlight-title">{item.title}</h4>
+                            <span className={`jf-highlight-tag jf-tag--${item.badgeTone}`}>
+                              {item.tag}
+                            </span>
+                          </div>
+                          <p className="jf-highlight-desc">{item.description}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Botón para expandir más mejoras si hay más de 3 */}
+                  {parsedData.hasMore && (
                     <button
-                      className={`jf-update-btn jf-update-btn--primary ${ready ? 'is-ready-pulse' : ''}`}
-                      onClick={install}
-                      disabled={!ready}
+                      className="jf-update-expand-btn"
+                      onClick={() => setShowAllNotes(!showAllNotes)}
+                      type="button"
                     >
-                      {ready ? (
-                        <>
-                          <RocketLaunch size={18} weight="fill" />
-                          Instalar y Reiniciar Ahora
-                        </>
+                      <span>
+                        {showAllNotes
+                          ? 'Mostrar solo lo principal'
+                          : `Ver todas las mejoras (+${parsedData.totalCount - 3})`}
+                      </span>
+                      {showAllNotes ? (
+                        <CaretUp size={13} weight="bold" />
                       ) : (
-                        <>
-                          <ArrowDown size={18} weight="bold" />
-                          Descargando en segundo plano…
-                        </>
+                        <CaretDown size={13} weight="bold" />
                       )}
                     </button>
-                    <button className="jf-update-btn jf-update-btn--ghost" onClick={close}>
-                      Hacerlo después
-                    </button>
-                  </>
-                ) : error ? (
-                  <>
-                    <button
-                      className="jf-update-btn jf-update-btn--primary"
-                      onClick={checkAgain}
-                    >
-                      <ArrowClockwise size={17} weight="bold" /> Reintentar comprobación
-                    </button>
-                    <button className="jf-update-btn jf-update-btn--ghost" onClick={close}>
-                      Cerrar
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      className="jf-update-btn jf-update-btn--primary"
-                      onClick={checkAgain}
-                    >
-                      <ArrowDown size={17} weight="bold" /> Descargar Actualización
-                    </button>
-                    <button className="jf-update-btn jf-update-btn--ghost" onClick={close}>
-                      Posponer
-                    </button>
-                  </>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="jf-update-error-box">
+                    <X size={16} weight="bold" />
+                    <span>{error}</span>
+                  </div>
                 )}
+
+                {/* Barra de progreso interactiva con telemetría */}
+                {downloading && (
+                  <div className="jf-update-progress-block">
+                    <div className="jf-update-progress-labels">
+                      <span className="jf-progress-status-text">
+                        <Cpu size={14} weight="bold" style={{ display: 'inline', marginRight: 5 }} />
+                        Descargando binarios de actualización…
+                      </span>
+                      <span className="jf-update-percent">{percent}%</span>
+                    </div>
+                    <div className="jf-update-progress-track">
+                      <div
+                        className="jf-update-progress-fill"
+                        style={{ width: `${Math.max(percent, 6)}%` }}
+                      >
+                        <div className="jf-update-progress-shine" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Botones de acción principales con diseño Button-in-Button */}
+                <div className="jf-update-actions">
+                  {ready || downloading ? (
+                    <>
+                      <button
+                        className={`jf-update-btn jf-update-btn--primary ${ready ? 'is-ready-pulse' : ''}`}
+                        onClick={install}
+                        disabled={!ready}
+                      >
+                        <span className="jf-btn-label">
+                          {ready ? 'Instalar y Reiniciar Ahora' : 'Descargando en segundo plano…'}
+                        </span>
+                        <span className="jf-btn-nested-icon">
+                          {ready ? (
+                            <RocketLaunch size={16} weight="fill" />
+                          ) : (
+                            <ArrowDown size={16} weight="bold" className="jf-spin-slow" />
+                          )}
+                        </span>
+                      </button>
+                      <button
+                        className="jf-update-btn jf-update-btn--ghost"
+                        onClick={close}
+                      >
+                        Hacerlo después
+                      </button>
+                    </>
+                  ) : error ? (
+                    <>
+                      <button
+                        className="jf-update-btn jf-update-btn--primary"
+                        onClick={checkAgain}
+                      >
+                        <span className="jf-btn-label">Reintentar comprobación</span>
+                        <span className="jf-btn-nested-icon">
+                          <ArrowClockwise size={15} weight="bold" />
+                        </span>
+                      </button>
+                      <button
+                        className="jf-update-btn jf-update-btn--ghost"
+                        onClick={close}
+                      >
+                        Cerrar
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="jf-update-btn jf-update-btn--primary"
+                        onClick={checkAgain}
+                      >
+                        <span className="jf-btn-label">Descargar Actualización</span>
+                        <span className="jf-btn-nested-icon">
+                          <ArrowDown size={16} weight="bold" />
+                        </span>
+                      </button>
+                      <button
+                        className="jf-update-btn jf-update-btn--ghost"
+                        onClick={close}
+                      >
+                        Posponer
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>

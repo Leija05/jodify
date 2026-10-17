@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { IntroPage } from './pages/IntroPage';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
+import { UpdatePreviewPage } from './pages/UpdatePreviewPage';
 import { useAudioEngine, useVolumeBinding, useSettingsBinding, useEqBinding } from './hooks/useAudioEngine';
 import { useKeyboardShortcuts, useShortcutHint } from './hooks/useKeyboardShortcuts';
 import { useMediaSession } from './hooks/useMediaSession';
@@ -52,7 +53,7 @@ function Root() {
   return (
     <>
       <audio ref={audioRef} id="jodify-audio" preload="metadata" hidden />
-      {!ready ? (
+      {!ready && typeof window !== 'undefined' && !window.location.pathname.includes('update-preview') ? (
         <div
           style={{
             display: 'flex',
@@ -89,6 +90,7 @@ function Root() {
           <DownloadsBadge />
           <PlaylistDetailModal />
           <Routes>
+            <Route path="/update-preview" element={<UpdatePreviewPage />} />
             <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
             <Route path="/" element={session ? <HomePage /> : isElectron ? <LoginPage /> : <IntroPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
