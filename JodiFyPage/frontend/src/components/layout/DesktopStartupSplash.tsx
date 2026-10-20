@@ -548,115 +548,87 @@ export function DesktopStartupSplash() {
 
           {/* Central Animated Construction */}
           <div className={`jf-startup-stage ${stageRumble ? 'is-rumbling' : ''}`}>
-            <div
-              className={`jf-startup-logo-wrap ${pulsing ? 'is-pulsing' : ''} ${
-                assembled ? 'is-assembled' : ''
-              }`}
-            >
-              <svg className="jf-startup-svg" viewBox="0 0 1024 1024">
-                <defs>
-                  {/* Neon Body Flame Gradient (Theme Responsive) */}
-                  <linearGradient id="splash-body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor={styleMeta.accent} />
-                    <stop offset="55%" stopColor={styleMeta.secondary} />
-                    <stop offset="100%" stopColor="#2c0645" />
-                  </linearGradient>
+            {/* Hero Container: Centers Turntable & Mascot Logo as a Unified Architectural Unit */}
+            <div className="jf-startup-hero-container">
+              {/* Theme 2: Hi-Fi Turntable Platter & Mechanical Tonearm */}
+              {currentStyle === 'vinyl_groove' && (
+                <div className="jf-splash-vinyl-turntable">
+                  <div className="jf-splash-vinyl-disc">
+                    <div className="jf-splash-vinyl-grooves" />
+                    <div className="jf-splash-vinyl-reflection" />
+                    <div className="jf-splash-vinyl-label-rim" />
+                  </div>
+                  {/* Precision Mechanical Tonearm Assembly */}
+                  <div className="jf-splash-tonearm-assembly">
+                    <div className="jf-splash-tonearm-base">
+                      <div className="jf-splash-tonearm-bearing" />
+                      <div className="jf-splash-tonearm-weight" />
+                    </div>
+                    <div className="jf-splash-tonearm-wand">
+                      <div className="jf-splash-tonearm-headshell">
+                        <div className="jf-splash-tonearm-cartridge" />
+                        <div className="jf-splash-tonearm-needle" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                  {/* High-Fidelity Headphone Arc Gradient */}
-                  <linearGradient id="splash-hp-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor={styleMeta.secondary} />
-                    <stop offset="60%" stopColor={styleMeta.accent} />
-                    <stop offset="100%" stopColor="#120224" />
-                  </linearGradient>
+              {/* Master JodiFy Mascot Logo */}
+              <div
+                className={`jf-startup-logo-wrap ${pulsing ? 'is-pulsing' : ''} ${
+                  assembled ? 'is-assembled' : ''
+                }`}
+              >
+                <svg className="jf-startup-svg" viewBox="0 0 1024 1024">
+                  <defs>
+                    {/* Neon Body Flame Gradient (Theme Responsive) */}
+                    <linearGradient id="splash-body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor={styleMeta.accent} />
+                      <stop offset="55%" stopColor={styleMeta.secondary} />
+                      <stop offset="100%" stopColor="#2c0645" />
+                    </linearGradient>
 
-                  {/* Electric Laser Outline Trace Gradient */}
-                  <linearGradient id="splash-stroke-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="50%" stopColor={styleMeta.accent} />
-                    <stop offset="100%" stopColor={styleMeta.secondary} />
-                  </linearGradient>
+                    {/* High-Fidelity Headphone Arc Gradient */}
+                    <linearGradient id="splash-hp-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor={styleMeta.secondary} />
+                      <stop offset="60%" stopColor={styleMeta.accent} />
+                      <stop offset="100%" stopColor="#120224" />
+                    </linearGradient>
 
-                  {/* Electric Neon Green Eye Glow */}
-                  <filter id="splash-eye-glow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feDropShadow dx="0" dy="0" stdDeviation="20" floodColor="#00FF88" floodOpacity="0.95" />
-                    <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#ffffff" floodOpacity="0.9" />
-                  </filter>
+                    {/* Electric Neon Green Eye Glow */}
+                    <filter id="splash-eye-glow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor="#00FF88" floodOpacity="0.95" />
+                      <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#ffffff" floodOpacity="0.9" />
+                    </filter>
+                  </defs>
 
-                  {/* Cinematic Neon Bloom Filter */}
-                  <filter id="splash-neon-bloom" x="-30%" y="-30%" width="160%" height="160%">
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
+                  <g transform="translate(0,1024) scale(0.1,-0.1)">
+                    {/* Part 1: Left Headphone Arc */}
+                    <path className="jf-part-hp-left" fill="url(#splash-hp-grad)" d={P3_HP_LEFT} />
 
-                <g transform="translate(0,1024) scale(0.1,-0.1)">
-                  {/* Part 1: Left Headphone Arc (Stroke Laser Draw + Filled Body) */}
-                  <path
-                    className="jf-part-hp-left"
-                    fill="url(#splash-hp-grad)"
-                    d={P3_HP_LEFT}
-                    filter="drop-shadow(0 0 24px rgba(0, 240, 255, 0.65))"
-                  />
-                  <path
-                    className="jf-part-hp-left jf-stroke-draw-left"
-                    fill="none"
-                    stroke="url(#splash-stroke-grad)"
-                    strokeWidth="60"
-                    strokeLinecap="round"
-                    d={P3_HP_LEFT}
-                  />
+                    {/* Part 2: Right Headphone Arc */}
+                    <path className="jf-part-hp-right" fill="url(#splash-hp-grad)" d={P2_HP_RIGHT} />
 
-                  {/* Part 2: Right Headphone Arc (Stroke Laser Draw + Filled Body) */}
-                  <path
-                    className="jf-part-hp-right"
-                    fill="url(#splash-hp-grad)"
-                    d={P2_HP_RIGHT}
-                    filter="drop-shadow(0 0 24px rgba(168, 50, 232, 0.65))"
-                  />
-                  <path
-                    className="jf-part-hp-right jf-stroke-draw-right"
-                    fill="none"
-                    stroke="url(#splash-stroke-grad)"
-                    strokeWidth="60"
-                    strokeLinecap="round"
-                    d={P2_HP_RIGHT}
-                  />
+                    {/* Part 3: Glowing Neon Green Crescent Eyes */}
+                    <g className="jf-part-eyes">
+                      <ellipse cx="4500" cy="4200" rx="950" ry="950" fill="#00FF88" filter="url(#splash-eye-glow)" />
+                      <circle cx="4500" cy="4200" r="390" fill="#ffffff" opacity="0.95" />
+                      <ellipse cx="6400" cy="4800" rx="900" ry="1150" fill="#00FF88" filter="url(#splash-eye-glow)" />
+                      <circle cx="6400" cy="4800" r="370" fill="#ffffff" opacity="0.95" />
+                    </g>
 
-                  {/* Part 3: Glowing Neon Green Crescent Eyes behind flame cutouts */}
-                  <g className="jf-part-eyes">
-                    <ellipse cx="4500" cy="4200" rx="1000" ry="1000" fill="#00FF88" filter="url(#splash-eye-glow)" />
-                    <circle cx="4500" cy="4200" r="420" fill="#ffffff" opacity="0.95" />
-                    <ellipse cx="6400" cy="4800" rx="950" ry="1200" fill="#00FF88" filter="url(#splash-eye-glow)" />
-                    <circle cx="6400" cy="4800" r="400" fill="#ffffff" opacity="0.95" />
+                    {/* Part 4: Central Flame Droplet Head */}
+                    <path className="jf-part-face" fill="url(#splash-body-grad)" d={P1_FACE} />
                   </g>
+                </svg>
 
-                  {/* Part 4: Central Flame Droplet Head (Squash/Stretch with Laser Outline) */}
-                  <path
-                    className="jf-part-face"
-                    fill="url(#splash-body-grad)"
-                    d={P1_FACE}
-                    filter="drop-shadow(0 0 42px rgba(168, 50, 232, 0.88))"
-                  />
-                  <path
-                    className="jf-part-face jf-stroke-draw-face"
-                    fill="none"
-                    stroke="url(#splash-stroke-grad)"
-                    strokeWidth="70"
-                    strokeLinecap="round"
-                    d={P1_FACE}
-                  />
-                </g>
-              </svg>
+                {/* Central Magnetic Connection Flash */}
+                {flash && <div className="jf-splash-magnetic-flash" />}
 
-              {/* Central Magnetic Connection Flash */}
-              {flash && <div className="jf-splash-magnetic-flash" />}
-
-              {/* Holographic Surface Sheen Reflection */}
-              <div className="jf-splash-sheen-overlay" />
+                {/* Holographic Specular Sheen Reflection */}
+                <div className="jf-splash-sheen-overlay" />
+              </div>
             </div>
 
             {/* Bilateral 24-Band Reactive Audio Spectrum Visualizer */}

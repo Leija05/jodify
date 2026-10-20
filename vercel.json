@@ -3,7 +3,7 @@
   "framework": "vite",
   "buildCommand": "cd JodiFyPage/frontend && npm run build",
   "outputDirectory": "JodiFyPage/frontend/dist",
-  "installCommand": "cd JodiFyPage/frontend && npm install",
+  "installCommand": "cd /frontend && npm install",
   "cleanUrls": true,
   "rewrites": [
     {
