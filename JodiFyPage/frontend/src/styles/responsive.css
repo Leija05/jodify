@@ -6,7 +6,8 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-xl);
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   z-index: 1;
 }
 
@@ -406,32 +407,212 @@
 }
 
 @media (max-width: 860px) {
-  body {
-    overflow: auto;
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  body.is-in-app {
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+  }
+
+  /* Prevenir zoom forzado en iOS Safari al enfocar inputs */
+  input,
+  textarea,
+  select,
+  .jf-input,
+  .jf-home-search-input {
+    font-size: 16px !important;
   }
 
   .jf-app {
     display: flex;
     flex-direction: column;
-    height: auto;
+    height: auto !important;
     min-height: 100dvh;
-    padding: var(--space-md) var(--space-md) 180px;
-    gap: var(--space-md);
+    padding: 10px 10px calc(115px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 12px;
+    overflow: visible !important;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .jf-main-view-wrapper {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
-    height: auto;
+    gap: 12px;
+    height: auto !important;
+    overflow: visible !important;
+    width: 100%;
   }
 
-  /* Responsive Hero Featured */
+  /* Contenedor principal de la Home sin scroll anidado en móviles */
+  .jf-home-showcase {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    border-radius: var(--radius-lg);
+  }
+
+  .jf-home-showcase-scroll {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    flex: none !important;
+    padding: 12px 10px !important;
+    gap: 18px !important;
+  }
+
+  .jf-home-side-widget {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .jf-side-card {
+    border-radius: var(--radius-lg);
+    padding: 12px;
+  }
+
+  /* Cabecera del usuario y atajos horizontales en móvil */
+  .jf-home-user-header {
+    padding: 10px 12px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jf-home-profile-badge {
+    padding: 4px 6px;
+    margin: 0;
+    flex: 1 1 auto;
+  }
+
+  .jf-home-header-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    padding-bottom: 3px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .jf-home-header-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .jf-btn-header-action {
+    padding: 7px 12px;
+    font-size: 11.5px;
+    flex-shrink: 0;
+  }
+
+  .jf-btn-header-action span {
+    display: inline !important;
+  }
+
+  /* Barra de herramientas principal (Tabs deslizables horizontalmente y buscador) */
+  .jf-home-main-toolbar {
+    padding: 10px 12px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jf-home-toolbar-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    width: 100%;
+    padding: 2px 2px 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .jf-home-toolbar-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .jf-toolbar-tab {
+    padding: 7px 13px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .jf-home-toolbar-right {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .jf-home-search-wrap {
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Cuadrícula nativa de 2 columnas para canciones y playlists */
+  .jf-songs-big-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .jf-playlists-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .jf-song-card {
+    padding: 8px;
+    gap: 8px;
+    border-radius: var(--radius-md);
+  }
+
+  .jf-song-card-title {
+    font-size: 12.5px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .jf-song-card-artist {
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .jf-playlist-card {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .jf-playlist-card-title {
+    font-size: 13px;
+  }
+
+  /* Hero Featured adaptado a móvil */
   .jf-hero-featured {
     grid-template-columns: 1fr;
-    gap: 20px;
-    padding: 20px;
+    gap: 14px;
+    padding: 16px 14px;
     text-align: center;
+    border-radius: var(--radius-lg);
+    min-height: auto;
   }
 
   .jf-hero-artwork-col {
@@ -439,8 +620,9 @@
   }
 
   .jf-hero-artwork-wrap {
-    width: min(240px, 65vw);
-    height: min(240px, 65vw);
+    width: min(180px, 50vw);
+    height: min(180px, 50vw);
+    margin: 0 auto;
   }
 
   .jf-hero-badges-row,
@@ -451,30 +633,96 @@
   }
 
   .jf-hero-title {
-    font-size: 24px;
+    font-size: clamp(19px, 5.5vw, 24px);
   }
 
   .jf-lyrics {
-    min-height: 60vh;
+    min-height: 50vh;
   }
 
   .jf-playlist {
-    min-height: 420px;
+    min-height: 380px;
     max-height: 70vh;
   }
 
+  .jf-vinyl-deck,
+  .jf-turntable-deck {
+    width: min(200px, 52vw) !important;
+    height: min(200px, 52vw) !important;
+    margin: 0 auto !important;
+  }
+
+  /* Reproductor inferior en móvil: centrado perfecto, sin corte y con safe area */
   .jf-player {
-    bottom: var(--space-md);
-    width: calc(100vw - var(--space-md) * 2);
+    position: fixed !important;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: calc(100vw - 16px) !important;
+    max-width: 520px !important;
     flex-wrap: wrap;
-    gap: var(--space-sm);
-    padding: var(--space-sm);
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 18px;
+    z-index: var(--z-sticky) !important;
+  }
+
+  .jf-player-left {
+    flex: 1;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .jf-player-cover {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .jf-player-meta {
+    display: block;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .jf-player-title {
+    font-size: 12.5px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+  }
+
+  .jf-player-artist {
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+  }
+
+  .jf-player-right {
+    flex: 0 0 auto;
+    gap: 6px;
   }
 
   .jf-player-center {
     order: 3;
     flex-basis: 100%;
     min-width: 0;
+    margin-top: -2px;
+  }
+
+  .jf-player-timeline {
+    gap: 6px;
+  }
+
+  .jf-time {
+    font-size: 10px;
   }
 
   .jf-volume {
@@ -486,10 +734,13 @@
   }
 
   .jf-drawer {
-    top: var(--space-md);
-    bottom: var(--space-md);
-    right: var(--space-md);
-    width: calc(100vw - var(--space-md) * 2);
+    top: 10px;
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: calc(100vw - 20px);
+    border-radius: var(--radius-lg);
   }
 
   .jf-fullscreen {
@@ -518,10 +769,6 @@
     display: none;
   }
 
-  .jf-vinyl-deck {
-    width: min(220px, 58vw);
-  }
-
   .jf-fullscreen-title {
     font-size: 22px;
   }
@@ -540,81 +787,206 @@
   }
 
   .jf-modal-backdrop {
-    padding: var(--space-sm);
+    padding: 8px;
+    align-items: center;
   }
 
   .jf-modal-card {
-    max-height: 92vh;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 20px) !important;
+    border-radius: 20px !important;
   }
 }
 
 @media (max-width: 768px) {
   /* Intro & Landing page responsive */
+  .jf-intro {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
   .jf-intro-nav {
-    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 12px 16px;
+    background: rgba(3, 3, 6, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .jf-intro-hero {
-    padding: 60px 18px 40px;
+    padding: 44px 16px 28px;
+    text-align: center;
   }
 
   .jf-intro-hero-title {
-    font-size: clamp(32px, 8vw, 48px);
-    line-height: 1.15;
+    font-size: clamp(28px, 8vw, 42px);
+    line-height: 1.12;
+    margin: 0 0 14px;
   }
 
   .jf-intro-hero-text {
-    font-size: 15px;
-    padding: 0 4px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    margin: 0 auto 20px;
+    padding: 0;
+    max-width: 100%;
   }
 
   .jf-intro-hero-actions {
     flex-direction: column;
     width: 100%;
-    max-width: 380px;
+    max-width: 320px;
     margin: 0 auto;
-    gap: 12px;
+    gap: 10px;
   }
 
   .jf-intro-hero-actions .jf-btn--lg,
   .jf-intro-hero-actions a.jf-btn {
     width: 100%;
     justify-content: center;
-    padding: 14px 20px;
     min-height: 48px;
+    font-size: 14.5px;
+    border-radius: 14px;
+    box-sizing: border-box;
   }
 
   .jf-intro-downloads,
   .jf-intro-features,
   .jf-intro-cta {
-    padding: 40px 18px;
+    padding: 32px 16px;
   }
 
-  .jf-intro-download-grid,
-  .jf-intro-features-list {
-    grid-template-columns: 1fr;
+  .jf-intro-section-head {
+    margin-bottom: 22px;
+    text-align: center;
+  }
+
+  .jf-intro-section-title {
+    font-size: clamp(22px, 6vw, 30px);
+  }
+
+  .jf-intro-section-sub {
+    font-size: 13.5px;
+  }
+
+  .jf-intro-download-grid {
+    display: flex;
+    flex-direction: column;
     gap: 14px;
+    max-width: 360px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .jf-intro-download-card {
+    padding: 18px 16px;
+    border-radius: 18px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .jf-intro-features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 440px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .jf-intro-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 14px;
+    box-sizing: border-box;
+  }
+
+  .jf-intro-feature:first-child {
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .jf-intro-feature-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    flex-shrink: 0;
+    margin-top: 0;
+  }
+
+  .jf-intro-feature h3 {
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+
+  .jf-intro-feature p {
+    font-size: 13px;
+    line-height: 1.5;
   }
 
   .jf-intro-cta > div {
-    padding: 36px 20px;
+    padding: 28px 16px;
+    border-radius: 20px;
   }
 
   .jf-intro-cta-title {
-    font-size: 26px;
+    font-size: 22px;
+  }
+
+  .jf-intro-cta-text {
+    font-size: 13.5px;
+  }
+
+  .jf-intro-cta .jf-btn--lg {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+    border-radius: 14px;
   }
 
   .jf-intro-audio-btn {
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    right: 16px;
-    padding: 8px 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    right: 14px;
+    padding: 7px 12px;
     font-size: 11.5px;
+    z-index: 100;
+    border-radius: 99px;
+  }
+
+  /* Login page responsive */
+  .jf-login {
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(24px, env(safe-area-inset-bottom, 0px));
+    align-items: center;
+  }
+
+  .jf-login-shell {
+    padding: 6px;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .jf-login-card {
+    width: 100%;
+    padding: 22px 18px;
+    border-radius: 20px;
+  }
+
+  .jf-login-brand {
+    font-size: 28px;
   }
 }
 
 @media (max-width: 560px) {
   .jf-lyrics-panel-line {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
 
   .jf-eq-dsp-grid {
@@ -651,66 +1023,10 @@
     justify-content: flex-end;
   }
 
-  .jf-host-rec {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
+  .jf-host-rec,
   .jf-delete-tools {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  /* Bottom Player Bar en móviles: diseño ultra compacto con título y artista visibles */
-  .jf-player {
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    width: calc(100vw - 20px);
-    left: 10px;
-    right: 10px;
-    padding: 8px 12px;
-    border-radius: var(--radius-lg);
-    gap: 6px;
-  }
-
-  .jf-player-left {
-    flex: 1;
-    min-width: 0;
-    gap: 10px;
-  }
-
-  .jf-player-meta {
-    display: block;
-    min-width: 0;
-    flex: 1;
-  }
-
-  .jf-player-title {
-    font-size: 13px;
-    line-height: 1.25;
-  }
-
-  .jf-player-artist {
-    font-size: 11px;
-    line-height: 1.2;
-  }
-
-  .jf-player-right {
-    flex: 0 0 auto;
-    gap: 6px;
-  }
-
-  .jf-player-center {
-    order: 3;
-    flex-basis: 100%;
-    margin-top: -2px;
-  }
-
-  .jf-player-timeline {
-    gap: 8px;
-  }
-
-  .jf-time {
-    font-size: 10.5px;
   }
 
   /* Safe touch targets on mobile (>= 44px) */
@@ -719,7 +1035,7 @@
   .jf-control,
   .jf-view-mode-btn,
   .jf-pill {
-    min-height: 38px;
+    min-height: 40px;
   }
 
   .jf-control--play {
@@ -727,30 +1043,15 @@
     height: 44px;
   }
 
-  .jf-playlists-cards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-  }
-
-  .jf-songs-big-grid {
-    grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
-    gap: 10px;
-  }
-
   .jf-home-section-head {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
+    gap: 8px;
   }
 
   .jf-home-section-controls {
     flex-wrap: wrap;
     width: 100%;
-  }
-
-  .jf-home-search-wrap {
-    width: 100%;
-    max-width: 100%;
   }
 
   .jf-profile-stats {
