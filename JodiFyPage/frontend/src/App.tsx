@@ -20,6 +20,7 @@ import { PetCompanionWidget } from './components/social/PetCompanionWidget';
 import { DownloadsModal } from './components/offline/DownloadsModal';
 import { DownloadsBadge } from './components/offline/DownloadsBadge';
 import { PlaylistDetailModal } from './components/layout/PlaylistDetailModal';
+import { DesktopStartupSplash } from './components/layout/DesktopStartupSplash';
 import { usePlayerStore } from './store/player.store';
 import { useBackendStore } from './store/backend.store';
 
@@ -79,6 +80,7 @@ function Root() {
         </div>
       ) : (
         <>
+          <DesktopStartupSplash />
           <DynamicBackground />
           <GlobalErrorHandler />
           <BackendStatusBanner />

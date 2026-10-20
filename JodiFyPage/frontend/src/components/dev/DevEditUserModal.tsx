@@ -380,7 +380,7 @@ export function DevEditUserModal({ user, onClose, onSaved }: DevEditUserModalPro
         )}
 
         {/* Cuerpo del formulario con scroll independiente */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {activeTab === 'account' ? (
             <>
               {/* Grid 2 columnas: Handle y Nombre visible */}

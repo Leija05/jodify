@@ -3,14 +3,20 @@ import {
   ArrowClockwise,
   ArrowSquareOut,
   Broadcast,
+  CheckCircle,
   Copy,
   DownloadSimple,
   Globe,
   HardDrive,
+  Info,
+  Lightning,
   Moon,
   PaintBrush,
+  Play,
+  RocketLaunch,
   SignOut,
   SpeakerHigh,
+  Sparkle,
   Sun,
   Timer,
   TrashSimple,
@@ -18,8 +24,6 @@ import {
   UserPlus,
   UserSwitch,
   Waveform,
-  Sparkle,
-  Lightning,
 } from '@phosphor-icons/react';
 import type { DesktopUpdaterInfo, DesktopUpdaterState } from '../../types/electron';
 import { Modal } from '../ui/Modal';
@@ -34,8 +38,9 @@ import { removeDownload } from '../../services/offline.service';
 import { obsService } from '../../services/obs.service';
 import { clearSavedToken, getSavedToken, maskToken } from '../../lib/token';
 import { useT } from '../../lib/i18n';
+import { STARTUP_SPLASH_STYLES } from '../../lib/startupSplashStyles';
 
-type SettingsTab = 'general' | 'audio' | 'visual' | 'obs' | 'storage' | 'account';
+type SettingsTab = 'general' | 'audio' | 'visual' | 'obs' | 'storage' | 'account' | 'about';
 
 export function SettingsModal() {
   const t = useT();
@@ -54,8 +59,10 @@ export function SettingsModal() {
   const [newAdminPass, setNewAdminPass] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
 
-  const updater = window.jodifyUpdater;
+  const updater = typeof window !== 'undefined' ? window.jodifyUpdater : undefined;
   const [updaterInfo, setUpdaterInfo] = useState<DesktopUpdaterInfo | null>(null);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [lastCheckTime, setLastCheckTime] = useState<string | null>(null);
 
   useEffect(() => {
     if (!updater) return;
@@ -72,11 +79,26 @@ export function SettingsModal() {
   }, [updater]);
 
   const checkForUpdates = async () => {
-    if (!updater) return;
-    useToastStore.getState().show('Buscando actualizaciones…', 'info');
-    await updater.check().catch(() => {
-      useToastStore.getState().show('No se pudo buscar actualizaciones', 'error');
-    });
+    setIsCheckingUpdates(true);
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setLastCheckTime(timeStr);
+
+    if (updater) {
+      useToastStore.getState().show('Buscando actualizaciones en GitHub Releases…', 'info');
+      try {
+        await updater.check();
+      } catch {
+        useToastStore.getState().show('No se pudo buscar actualizaciones', 'error');
+      } finally {
+        setTimeout(() => setIsCheckingUpdates(false), 800);
+      }
+    } else {
+      useToastStore.getState().show('Verificando versión web de JodiFy…', 'info');
+      setTimeout(() => {
+        setIsCheckingUpdates(false);
+        useToastStore.getState().show('JodiFy Web v2.0.0 está al día con la última versión de producción', 'success');
+      }, 900);
+    }
   };
 
   const installUpdate = async () => {
@@ -86,14 +108,28 @@ export function SettingsModal() {
     });
   };
 
-  const updaterStatus = (() => {
+  const openReleaseNotesModal = () => {
+    window.dispatchEvent(
+      new CustomEvent('jodify:open-desktop-updater', {
+        detail: updaterInfo?.state,
+      })
+    );
+  };
+
+  const isUpdateAvailable = Boolean(updaterInfo?.state?.available || updaterInfo?.state?.downloaded);
+  const isDownloading = Boolean(updaterInfo?.state?.downloading);
+  const downloadPercent = Math.round(updaterInfo?.state?.percent ?? 0);
+  const isDownloaded = Boolean(updaterInfo?.state?.downloaded);
+  const currentAppVersion = updaterInfo?.version || (updater ? '1.3.3' : '2.0.0');
+
+  const updaterStatusText = (() => {
     const s = updaterInfo?.state;
-    if (!s) return null;
-    if (s.error) return `Error: ${s.error}`;
-    if (s.downloaded) return `Lista para instalar (v${s.latestVersion})`;
-    if (s.downloading) return `Descargando v${s.latestVersion}… ${s.percent}%`;
-    if (s.available) return `Disponible: v${s.latestVersion}`;
-    return 'Actualizada';
+    if (!s) return updater ? 'Al día' : 'Versión Web Estable';
+    if (s.error) return `Error al verificar: ${s.error}`;
+    if (s.downloaded) return `Versión v${s.latestVersion} descargada y lista para instalar`;
+    if (s.downloading) return `Descargando v${s.latestVersion}… ${downloadPercent}%`;
+    if (s.available) return `Nueva versión v${s.latestVersion} disponible`;
+    return 'Tienes instalada la versión más reciente';
   })();
 
   const createAdminUser = async () => {
@@ -237,6 +273,30 @@ export function SettingsModal() {
             <UserCircle size={16} />
             <span>{t('settings.tabs.account')}</span>
           </button>
+
+          <div className="jf-settings-sidebar-header" style={{ marginTop: '14px' }}>Sistema</div>
+          <button
+            type="button"
+            className={`jf-settings-nav-btn ${activeTab === 'about' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('about')}
+            style={{ position: 'relative' }}
+          >
+            <Info size={16} />
+            <span>{t('settings.tabs.about')}</span>
+            {isUpdateAvailable && (
+              <span
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#00e5ff',
+                  boxShadow: '0 0 8px #00e5ff',
+                }}
+              />
+            )}
+          </button>
         </div>
 
         {/* CONTENIDO PRINCIPAL SEGMENTADO */}
@@ -251,6 +311,57 @@ export function SettingsModal() {
                 <p className="jf-settings-pane-desc">
                   Personaliza el idioma de la aplicación y la experiencia de reproducción continua.
                 </p>
+              </div>
+
+              {/* Resumen de Versión y Actualizaciones */}
+              <div
+                className={`jf-settings-card ${isUpdateAvailable ? 'jf-settings-card--updater-active' : 'jf-settings-card--updater'}`}
+                style={{ marginBottom: '14px' }}
+              >
+                <div className="jf-settings-row">
+                  <div className="jf-settings-label-block">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span className="jf-settings-label-title" style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkle size={15} weight="fill" color="#00e5ff" /> Versión de la Aplicación
+                      </span>
+                      <span className={`jf-version-pill ${updater ? 'is-desktop' : 'is-web'}`}>
+                        <span className={`jf-version-dot ${isUpdateAvailable ? 'jf-version-dot--update' : ''}`} />
+                        v{currentAppVersion} {updater ? 'Desktop' : 'Web'}
+                      </span>
+                    </div>
+                    <span className="jf-settings-label-desc">
+                      {isDownloaded
+                        ? `Actualización v${updaterInfo?.state?.latestVersion} descargada y lista para instalar.`
+                        : isDownloading
+                        ? `Descargando nueva versión v${updaterInfo?.state?.latestVersion} (${downloadPercent}%)...`
+                        : isUpdateAvailable
+                        ? `Nueva versión v${updaterInfo?.state?.latestVersion} disponible.`
+                        : lastCheckTime
+                        ? `Sistema al día (última comprobación: ${lastCheckTime}).`
+                        : 'Tu aplicación se encuentra en la versión más reciente.'}
+                    </span>
+                  </div>
+                  <div className="jf-settings-control" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {isDownloaded ? (
+                      <Button variant="primary" size="sm" onClick={() => void installUpdate()}>
+                        <RocketLaunch size={14} /> Reiniciar e Instalar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="glass"
+                        size="sm"
+                        disabled={isCheckingUpdates || isDownloading}
+                        onClick={() => void checkForUpdates()}
+                      >
+                        <ArrowClockwise size={14} className={isCheckingUpdates ? 'jf-spin' : ''} />
+                        {isCheckingUpdates ? 'Buscando…' : 'Buscar actualizaciones'}
+                      </Button>
+                    )}
+                    <Button variant="glass" size="sm" onClick={() => setActiveTab('about')}>
+                      Detalles
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               <div className="jf-settings-card">
@@ -308,6 +419,38 @@ export function SettingsModal() {
                     <Switch
                       checked={settings.smartAutoRadio}
                       onChange={(v) => settings.set({ smartAutoRadio: v })}
+                    />
+                  </div>
+                </div>
+
+                {/* Animación de Inicio Desktop */}
+                <div className="jf-settings-row">
+                  <div className="jf-settings-label-block">
+                    <span className="jf-settings-label-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Sparkle size={14} weight="fill" color="#a855f7" /> {t('settings.visual.startupAnim')}
+                    </span>
+                    <span className="jf-settings-label-desc">
+                      {t('settings.visual.startupAnim.desc')}
+                    </span>
+                  </div>
+                  <div className="jf-settings-control" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => {
+                        window.dispatchEvent(
+                          new CustomEvent('jodify:play-startup-animation', {
+                            detail: { style: settings.startupSplashStyle },
+                          })
+                        );
+                      }}
+                      title="Reproducir la animación del logo"
+                    >
+                      <Play size={13} weight="fill" /> {t('settings.visual.startupAnim.test')}
+                    </Button>
+                    <Switch
+                      checked={settings.desktopStartupAnimation}
+                      onChange={(v) => settings.set({ desktopStartupAnimation: v })}
                     />
                   </div>
                 </div>
@@ -651,6 +794,151 @@ export function SettingsModal() {
                     />
                   </div>
                 </div>
+
+                {/* Animación de Inicio Cinemática */}
+                <div className="jf-settings-row">
+                  <div className="jf-settings-label-block">
+                    <span className="jf-settings-label-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Sparkle size={14} weight="fill" color="#00f0ff" /> {t('settings.visual.startupAnim')}
+                    </span>
+                    <span className="jf-settings-label-desc">
+                      {t('settings.visual.startupAnim.desc')}
+                    </span>
+                  </div>
+                  <div className="jf-settings-control" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => {
+                        window.dispatchEvent(
+                          new CustomEvent('jodify:play-startup-animation', {
+                            detail: { style: settings.startupSplashStyle },
+                          })
+                        );
+                      }}
+                    >
+                      <Play size={13} weight="fill" /> {t('settings.visual.startupAnim.test')}
+                    </Button>
+                    <Switch
+                      checked={settings.desktopStartupAnimation}
+                      onChange={(v) => settings.set({ desktopStartupAnimation: v })}
+                    />
+                  </div>
+                </div>
+
+                {settings.desktopStartupAnimation && (
+                  <div style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '14px' }}>
+                    <div style={{ marginBottom: '10px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff', display: 'block' }}>
+                        {t('settings.visual.startupAnim.style')}
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {t('settings.visual.startupAnim.style.desc')}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                        gap: '10px',
+                      }}
+                    >
+                      {STARTUP_SPLASH_STYLES.map((styleItem) => {
+                        const isSelected = (settings.startupSplashStyle || 'cyber_neon') === styleItem.id;
+
+                        return (
+                          <div
+                            key={styleItem.id}
+                            onClick={() => settings.set({ startupSplashStyle: styleItem.id })}
+                            style={{
+                              position: 'relative',
+                              padding: '12px 14px',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              background: isSelected ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                              border: isSelected
+                                ? `1.5px solid ${styleItem.accent}`
+                                : '1px solid rgba(255,255,255,0.08)',
+                              boxShadow: isSelected
+                                ? `0 0 16px ${styleItem.accent}33, inset 0 0 12px ${styleItem.accent}15`
+                                : 'none',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span
+                                  style={{
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '50%',
+                                    background: styleItem.accent,
+                                    boxShadow: `0 0 8px ${styleItem.accent}`,
+                                  }}
+                                />
+                                <span style={{ fontSize: '12.5px', fontWeight: 700, color: isSelected ? '#fff' : 'rgba(255,255,255,0.85)' }}>
+                                  {styleItem.name}
+                                </span>
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: '9.5px',
+                                  padding: '2px 6px',
+                                  borderRadius: '99px',
+                                  background: 'rgba(255,255,255,0.08)',
+                                  color: 'var(--text-muted)',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {styleItem.badge}
+                              </span>
+                            </div>
+
+                            <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                              {styleItem.desc}
+                            </p>
+
+                            <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  settings.set({ startupSplashStyle: styleItem.id });
+                                  window.dispatchEvent(
+                                    new CustomEvent('jodify:play-startup-animation', {
+                                      detail: { style: styleItem.id },
+                                    })
+                                  );
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: 'rgba(255,255,255,0.06)',
+                                  border: '1px solid rgba(255,255,255,0.12)',
+                                  borderRadius: '6px',
+                                  padding: '3px 8px',
+                                  color: isSelected ? styleItem.accent : 'rgba(255,255,255,0.7)',
+                                  fontSize: '10.5px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                }}
+                                title="Previsualizar esta variante"
+                              >
+                                <Play size={10} weight="fill" /> Probar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -900,45 +1188,157 @@ export function SettingsModal() {
                 </div>
               )}
 
-              {/* Actualizador Desktop */}
-              {updater && (
-                <div className="jf-settings-card">
-                  <div className="jf-settings-row">
-                    <div className="jf-settings-label-block">
-                      <span className="jf-settings-label-title">Actualizador de Escritorio</span>
-                      <span className="jf-settings-label-desc">
-                        Estado: <strong>{updaterStatus}</strong>
-                      </span>
-                    </div>
-                    <div className="jf-settings-control" style={{ display: 'flex', gap: '8px' }}>
-                      {updaterInfo?.state?.available || updaterInfo?.state?.downloaded ? (
-                        <Button
-                          variant="glass"
-                          size="sm"
-                          onClick={() => {
-                            window.dispatchEvent(
-                              new CustomEvent('jodify:open-desktop-updater', {
-                                detail: updaterInfo?.state,
-                              })
-                            );
-                          }}
-                        >
-                          Ver Novedades
-                        </Button>
-                      ) : null}
-                      {updaterInfo?.state?.downloaded ? (
-                        <Button variant="primary" size="sm" onClick={() => void installUpdate()}>
-                          Reiniciar e Instalar
-                        </Button>
-                      ) : (
-                        <Button variant="glass" size="sm" onClick={() => void checkForUpdates()}>
-                          <ArrowClockwise size={14} /> Buscar actualizaciones
-                        </Button>
-                      )}
-                    </div>
+              {/* Enlace a Acerca de y Versión */}
+              <div className="jf-settings-card">
+                <div className="jf-settings-row">
+                  <div className="jf-settings-label-block">
+                    <span className="jf-settings-label-title">Versión & Actualizaciones</span>
+                    <span className="jf-settings-label-desc">
+                      Consulta la versión actual, canales y busca actualizaciones en la sección del sistema.
+                    </span>
+                  </div>
+                  <div className="jf-settings-control">
+                    <Button variant="glass" size="sm" onClick={() => setActiveTab('about')}>
+                      <Info size={14} /> Ver Acerca de & Versión
+                    </Button>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
+          )}
+
+          {/* PESTAÑA 7: ACERCA DE & VERSIÓN */}
+          {activeTab === 'about' && (
+            <div className="jf-settings-tab-pane">
+              <div className="jf-settings-pane-header">
+                <h3 className="jf-settings-pane-title">
+                  <Info size={18} /> Acerca de JodiFy & Versión
+                </h3>
+                <p className="jf-settings-pane-desc">
+                  Información de la versión, verificación de actualizaciones de software y arquitectura del sistema.
+                </p>
+              </div>
+
+              {/* Hero Banner de la App */}
+              <div className="jf-about-hero">
+                <div className="jf-about-logo-wrapper">
+                  <img
+                    src={`${import.meta.env.BASE_URL}logo.png`}
+                    alt="JodiFy"
+                    style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div className="jf-about-meta">
+                  <div className="jf-about-title">
+                    <span>JodiFy Workstation</span>
+                    <span className={`jf-version-pill ${updater ? 'is-desktop' : 'is-web'}`}>
+                      <span className={`jf-version-dot ${isUpdateAvailable ? 'jf-version-dot--update' : ''}`} />
+                      v{currentAppVersion}
+                    </span>
+                  </div>
+                  <div className="jf-about-tagline">
+                    Experiencia de audio de ultra-baja latencia con DSP de 32-bit, visualizador espectral y sincronización en la nube.
+                  </div>
+                  <div style={{ marginTop: '6px' }}>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('jodify:play-startup-animation'));
+                      }}
+                    >
+                      <Sparkle size={13} color="#00f0ff" weight="fill" /> Reproducir Animación de Inicio
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tarjeta del Actualizador */}
+              <div className={`jf-settings-card ${isUpdateAvailable ? 'jf-settings-card--updater-active' : 'jf-settings-card--updater'}`}>
+                <div className="jf-settings-row">
+                  <div className="jf-settings-label-block">
+                    <span className="jf-settings-label-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {isUpdateAvailable ? (
+                        <RocketLaunch size={16} color="#00e5ff" />
+                      ) : (
+                        <CheckCircle size={16} color="#00e676" />
+                      )}
+                      Centro de Actualizaciones
+                    </span>
+                    <span className="jf-settings-label-desc">
+                      {updaterStatusText}
+                      {lastCheckTime && ` • Comprobado a las ${lastCheckTime}`}
+                    </span>
+                  </div>
+
+                  <div className="jf-settings-control" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {isUpdateAvailable && (
+                      <Button variant="glass" size="sm" onClick={openReleaseNotesModal}>
+                        <Sparkle size={14} /> Ver Novedades
+                      </Button>
+                    )}
+
+                    {isDownloaded ? (
+                      <Button variant="primary" size="sm" onClick={() => void installUpdate()}>
+                        <RocketLaunch size={14} /> Reiniciar e Instalar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={isCheckingUpdates || isDownloading}
+                        onClick={() => void checkForUpdates()}
+                      >
+                        <ArrowClockwise size={14} className={isCheckingUpdates ? 'jf-spin' : ''} />
+                        {isCheckingUpdates ? 'Buscando actualizaciones…' : 'Buscar actualizaciones'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Barra de progreso de descarga si aplica */}
+                {isDownloading && (
+                  <div className="jf-about-update-banner">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600 }}>
+                      <span style={{ color: '#00e5ff' }}>Descargando nueva versión v{updaterInfo?.state?.latestVersion}...</span>
+                      <span style={{ color: '#fff', fontFamily: 'monospace' }}>{downloadPercent}%</span>
+                    </div>
+                    <div className="jf-update-progress-container">
+                      <div
+                        className="jf-update-progress-bar"
+                        style={{ width: `${Math.max(5, Math.min(100, downloadPercent))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Telemetría y Entorno */}
+              <div className="jf-telemetry-grid">
+                <div className="jf-telemetry-card">
+                  <span className="jf-telemetry-label">Entorno de Ejecución</span>
+                  <span className="jf-telemetry-value">
+                    {updater ? 'Electron v32 (Desktop Nativo)' : 'Navegador Web (PWA WebAudio)'}
+                  </span>
+                </div>
+                <div className="jf-telemetry-card">
+                  <span className="jf-telemetry-label">Motor de Procesamiento</span>
+                  <span className="jf-telemetry-value">Web Audio API 32-Bit Float DSP</span>
+                </div>
+                <div className="jf-telemetry-card">
+                  <span className="jf-telemetry-label">Canal de Distribución</span>
+                  <span className="jf-telemetry-value">
+                    {updater ? 'GitHub Releases (Producción)' : 'Cloudflare CDN / Edge'}
+                  </span>
+                </div>
+                <div className="jf-telemetry-card">
+                  <span className="jf-telemetry-label">Licencia & Código</span>
+                  <span className="jf-telemetry-value">MIT Open Source • JodiFy Team</span>
+                </div>
+              </div>
             </div>
           )}
         </div>

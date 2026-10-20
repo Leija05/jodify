@@ -172,7 +172,7 @@ export function DevUserStylesModal({ user, onClose, onSaved }: DevUserStylesModa
     >
       <div
         className="jf-modal-card"
-        style={{ maxWidth: '680px', width: '94%', maxHeight: '90vh', overflowY: 'auto' }}
+        style={{ maxWidth: '680px', width: '94%', maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain', padding: '20px 24px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#fff' }}>

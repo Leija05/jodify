@@ -350,13 +350,23 @@
 /* ============ 26. Profile shell ============ */
 .jf-modal-card.jf-modal--profile {
   max-width: 880px !important;
-  width: 95vw !important;
+  width: min(95vw, 880px) !important;
+  height: min(88vh, 760px) !important;
+  max-height: min(88vh, 760px) !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .jf-modal-card.jf-modal--profile .jf-modal-body {
   padding: 12px 16px 20px;
-  max-height: 88vh;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .jf-profile-loading {

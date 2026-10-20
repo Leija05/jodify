@@ -2381,6 +2381,10 @@
 .jf-upload-body {
   max-height: 380px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
   padding: 16px 20px;
 }
 
@@ -3764,11 +3768,16 @@
 
 .jf-shortcuts-scroll-area {
   overflow-y: auto;
-  padding-right: 4px;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding-right: 6px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-height: 400px;
+  max-height: min(60vh, 480px);
+  min-height: 0;
 }
 
 .jf-shortcuts-category-section {

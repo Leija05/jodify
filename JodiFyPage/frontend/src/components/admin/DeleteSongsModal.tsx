@@ -214,7 +214,7 @@ export function DeleteSongsModal() {
         </div>
 
         {/* Lista seleccionable de canciones */}
-        <div className="jf-delete-list" style={{ maxHeight: '360px', overflowY: 'auto' }}>
+        <div className="jf-delete-list" style={{ maxHeight: '360px', overflowY: 'auto', overscrollBehavior: 'contain', paddingRight: '4px' }}>
           {filtered.length === 0 ? (
             <EmptyState icon={TrashSimple} title="No se encontraron canciones" />
           ) : (

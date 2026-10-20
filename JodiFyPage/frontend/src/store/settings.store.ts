@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { SleepTimerState } from '../lib/types';
 import type { Language } from '../lib/i18n';
 
+import type { StartupSplashStyle } from '../lib/startupSplashStyles';
+
 export interface SettingsState {
   language: Language;
   theme: 'dark' | 'light';
@@ -20,6 +22,8 @@ export interface SettingsState {
   analogNoise: boolean;
   spatialAudio: boolean;
   smartAutoRadio: boolean;
+  desktopStartupAnimation: boolean;
+  startupSplashStyle: StartupSplashStyle;
   obsTheme: 'default' | 'neon' | 'glass' | 'minimal';
   sleepTimer: SleepTimerState | null;
   obsOverlayBaseUrl: string;
@@ -51,6 +55,8 @@ const LS = {
   analogNoise: 'analogNoise',
   spatialAudio: 'spatialAudio',
   smartAutoRadio: 'smartAutoRadio',
+  desktopStartupAnimation: 'desktopStartupAnimation',
+  startupSplashStyle: 'startupSplashStyle',
   obsTheme: 'obsTheme',
   sleepTimer: 'sleepTimerData',
   obsUrl: 'obsOverlayPublicBaseUrl',
@@ -104,6 +110,8 @@ const initialState: SettingsState = {
   analogNoise: load(LS.analogNoise, true),
   spatialAudio: load(LS.spatialAudio, false),
   smartAutoRadio: load(LS.smartAutoRadio, true),
+  desktopStartupAnimation: load(LS.desktopStartupAnimation, true),
+  startupSplashStyle: load<StartupSplashStyle>(LS.startupSplashStyle, 'cyber_neon'),
   obsTheme: load<'default' | 'neon' | 'glass' | 'minimal'>(LS.obsTheme, 'default'),
   sleepTimer: load<SleepTimerState | null>(LS.sleepTimer, null),
   obsOverlayBaseUrl: load(LS.obsUrl, ''),

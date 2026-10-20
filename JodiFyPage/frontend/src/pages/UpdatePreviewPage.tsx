@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   Lightning,
   ArrowDown,
-  ArrowClockwise,
   Cpu,
   CaretDown,
   CaretUp,

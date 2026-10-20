@@ -39,6 +39,7 @@ export const translations = {
     'settings.tabs.obs': 'Overlay OBS',
     'settings.tabs.storage': 'Almacenamiento',
     'settings.tabs.account': 'Cuenta',
+    'settings.tabs.about': 'Acerca de & Versión',
 
     'settings.lang': 'Idioma de la aplicación',
     'settings.lang.desc': 'Elige el idioma de visualización de la interfaz',
@@ -60,6 +61,11 @@ export const translations = {
 
     'settings.visual.dynamicBg': 'Fondo dinámico y auroras vivas',
     'settings.visual.dynamicBg.desc': 'Genera iluminación ambiental fluida según la portada del tema actual',
+    'settings.visual.startupAnim': 'Animación de inicio al abrir la aplicación',
+    'settings.visual.startupAnim.desc': 'Reproduce el ensamblado cinemático del logo de JodiFy al iniciar en escritorio',
+    'settings.visual.startupAnim.test': 'Probar animación de inicio',
+    'settings.visual.startupAnim.style': 'Variante y estilo de pantalla de inicio',
+    'settings.visual.startupAnim.style.desc': 'Selecciona la experiencia visual y acústica para la bienvenida de JodiFy',
     'settings.visual.noise': 'Grano analógico cinematográfico',
     'settings.visual.noise.desc': 'Añade sutil micro-textura que erradica el banding en gradientes',
     'settings.visual.intensity': 'Intensidad de iluminación ambiental',
@@ -125,6 +131,7 @@ export const translations = {
     'settings.tabs.obs': 'OBS Overlay',
     'settings.tabs.storage': 'Storage',
     'settings.tabs.account': 'Account',
+    'settings.tabs.about': 'About & Updates',
 
     'settings.lang': 'Application Language',
     'settings.lang.desc': 'Select your preferred interface display language',
@@ -146,6 +153,11 @@ export const translations = {
 
     'settings.visual.dynamicBg': 'Dynamic Background & Aurora',
     'settings.visual.dynamicBg.desc': 'Generates living fluid ambient lighting matching current cover art',
+    'settings.visual.startupAnim': 'Desktop Startup Intro Animation',
+    'settings.visual.startupAnim.desc': 'Plays cinematic JodiFy logo assembly when launching the desktop app',
+    'settings.visual.startupAnim.test': 'Preview Startup Intro',
+    'settings.visual.startupAnim.style': 'Startup Screen Style & Variant',
+    'settings.visual.startupAnim.style.desc': 'Choose the visual theme and audio synthesis for JodiFy launch screen',
     'settings.visual.noise': 'Cinematic Analog Grain',
     'settings.visual.noise.desc': 'Adds subtle micro-texture that eliminates gradient color banding',
     'settings.visual.intensity': 'Ambient Lighting Intensity',
