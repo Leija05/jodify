@@ -6,6 +6,8 @@
   flex-direction: column;
   z-index: 1;
   overflow-x: hidden;
+  overflow-y: visible;
+  width: 100%;
 }
 
 /* ============ Promo Video Backdrop ============ */

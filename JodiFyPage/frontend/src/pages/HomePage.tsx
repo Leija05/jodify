@@ -51,6 +51,13 @@ export function HomePage() {
     else loadPlaylists(session.username);
   }, [session, navigate, loadPlaylists]);
 
+  useEffect(() => {
+    document.body.classList.add('is-in-app');
+    return () => {
+      document.body.classList.remove('is-in-app');
+    };
+  }, []);
+
   if (!session) return null;
 
   return (

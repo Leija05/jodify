@@ -50,10 +50,6 @@ function Root() {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-  }, []);
-
-  useEffect(() => {
     document.title = currentSong ? `${currentSong.name} — JodiFy` : 'JodiFy — Free Music For Friends';
   }, [currentSong]);
 
