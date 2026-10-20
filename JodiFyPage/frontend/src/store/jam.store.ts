@@ -94,6 +94,7 @@ export const useJamStore = create<JamState>((set, get) => ({
       const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
       void getPlayerSongId().then((songId) => {
         payload.songId = songId;
+        payload.timestamp = Date.now();
         if (event === 'play') {
           payload.time = audio?.currentTime ?? 0;
           emitBroadcast(get().code, 'jam-play', payload);

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
 import { useSession } from '../context/SessionContext';
 import { LyricsPanel } from '../components/layout/LyricsPanel';
 import { PlaylistPanel } from '../components/layout/PlaylistPanel';
@@ -54,18 +55,34 @@ export function HomePage() {
 
   return (
     <div className="jf-app" data-testid="main-app">
-      {/* Estructura dinámica: INICIO (Showcase + SideWidget) vs LETRAS (Lyrics + Library Playlist) */}
-      {mainView === 'home' ? (
-        <>
-          <HomeShowcaseView />
-          <HomeSideWidget />
-        </>
-      ) : (
-        <>
-          <LyricsPanel />
-          <PlaylistPanel />
-        </>
-      )}
+      {/* Estructura dinámica con micro-transiciones nativas (Showcase vs Letras) */}
+      <AnimatePresence mode="wait">
+        {mainView === 'home' ? (
+          <motion.div
+            key="home-showcase-view"
+            className="jf-main-view-wrapper"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <HomeShowcaseView />
+            <HomeSideWidget />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="lyrics-playlist-view"
+            className="jf-main-view-wrapper"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <LyricsPanel />
+            <PlaylistPanel />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <PlayerBar />
 

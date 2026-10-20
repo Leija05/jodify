@@ -24,6 +24,7 @@ import { DesktopStartupSplash } from './components/layout/DesktopStartupSplash';
 import { AppLoadingScreen } from './components/layout/AppLoadingScreen';
 import { usePlayerStore } from './store/player.store';
 import { useBackendStore } from './store/backend.store';
+import { initProactiveAudioUnlock } from './services/audioUnlock.service';
 
 const isElectron = typeof window !== 'undefined' && navigator.userAgent.includes('Electron');
 
@@ -39,6 +40,10 @@ function Root() {
   useShortcutHint();
   useMediaSession();
   useJamBoot();
+
+  useEffect(() => {
+    return initProactiveAudioUnlock();
+  }, []);
 
   useEffect(() => {
     useBackendStore.getState().init();

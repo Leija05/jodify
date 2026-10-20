@@ -197,6 +197,17 @@ ul, ol {
   z-index: 1;
 }
 
+.jf-main-view-wrapper {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 390px;
+  gap: 20px;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  will-change: transform, opacity;
+}
+
 .jf-dynamic-bg {
   position: fixed;
   inset: 0;

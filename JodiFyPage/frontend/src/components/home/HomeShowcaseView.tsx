@@ -709,8 +709,16 @@ export function HomeShowcaseView() {
         )}
 
         {/* ================= SECCIÓN DE PLAYLISTS EN INICIO ================= */}
-        {(homeTab === 'all' || homeTab === 'playlists') && (
-          <section className="jf-home-section jf-home-playlists-section">
+        <AnimatePresence mode="wait">
+          {(homeTab === 'all' || homeTab === 'playlists') && (
+            <motion.section
+              key={`home-pl-${playlistViewMode}`}
+              className="jf-home-section jf-home-playlists-section"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            >
             <div className="jf-home-section-head">
               <div className="jf-home-section-title-wrap">
                 <FolderPlus size={20} weight="fill" className="is-accent-icon" />
@@ -889,12 +897,21 @@ export function HomeShowcaseView() {
               ))}
             </div>
           )}
-        </section>
-      )}
+            </motion.section>
+          )}
+        </AnimatePresence>
 
-      {/* ================= SECCIÓN DE CANCIONES ================= */}
-      {(homeTab === 'all' || homeTab === 'songs') && (
-        <section className="jf-home-section jf-home-songs-section">
+        {/* ================= SECCIÓN DE CANCIONES ================= */}
+        <AnimatePresence mode="wait">
+          {(homeTab === 'all' || homeTab === 'songs') && (
+            <motion.section
+              key={`home-songs-${activeFilter}-${groupBy}-${songViewMode}`}
+              className="jf-home-section jf-home-songs-section"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            >
           <div className="jf-home-section-head">
             <div className="jf-home-section-title-wrap">
               <Flame size={20} weight="fill" className="is-primary-icon" />
@@ -1092,8 +1109,9 @@ export function HomeShowcaseView() {
               </div>
             )
           )}
-        </section>
-      )}
+            </motion.section>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );

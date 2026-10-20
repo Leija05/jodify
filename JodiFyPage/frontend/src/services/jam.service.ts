@@ -8,6 +8,7 @@ import { useToastStore } from '../store/toast.store';
 import { useUiStore } from '../store/ui.store';
 import { useLibraryStore } from '../store/library.store';
 import { playSong } from './player.service';
+import { jamNtp } from './jamNtp.service';
 
 let eventSource: EventSource | null = null;
 let sessionPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -71,11 +72,15 @@ export const jamService = {
 
     knownHostUsername = isHost ? username : knownHostUsername;
 
+    // Calibrar reloj NTP al conectar para compensar latencia de red
+    void jamNtp.synchronizeClock();
+
     const es = new EventSource(`${API_BASE}/jam/sessions/${sessionId}/events/stream`);
     eventSource = es;
 
     es.onopen = () => {
       void jamService.upsertMember(username, sessionId, isHost);
+      void jamNtp.synchronizeClock();
       if (!isHost) {
         void syncFromSession(username, sessionId);
       }
@@ -233,7 +238,11 @@ async function applyJamSync(payload: Record<string, unknown>): Promise<void> {
   useJamStore.getState().setSyncInProgress(true);
   await playSong(song, { fades: false });
   const audio = document.querySelector<HTMLAudioElement>('audio#jodify-audio');
-  if (audio && typeof payload.time === 'number') audio.currentTime = payload.time;
+  const rawTime = typeof payload.time === 'number' ? payload.time : 0;
+  const sentAt = (typeof payload.timestamp === 'number' ? payload.timestamp : payload.sentAt) as number | undefined;
+  const compensatedTime = jamNtp.computeTargetPosition(rawTime, sentAt, Boolean(payload.isPlaying));
+
+  if (audio) audio.currentTime = compensatedTime;
   if (payload.isPlaying) {
     audio?.play().catch(() => undefined);
     usePlayerStore.getState().setIsPlaying(true);
@@ -254,9 +263,16 @@ function applyJamSeek(payload: Record<string, unknown>): void {
   const player = usePlayerStore.getState();
   if (songId != null && String(player.currentSong?.id) !== String(songId)) return;
   const audio = document.querySelector<HTMLAudioElement>('audio#jodify-audio');
-  if (audio && typeof payload.time === 'number') {
-    audio.currentTime = payload.time;
-    player.setCurrentTime(payload.time);
+  const rawTime = typeof payload.time === 'number' ? payload.time : 0;
+  const sentAt = (typeof payload.timestamp === 'number' ? payload.timestamp : payload.sentAt) as number | undefined;
+  const compensatedTime = jamNtp.computeTargetPosition(rawTime, sentAt, player.isPlaying);
+
+  if (audio) {
+    // Solo corregir si la desviación es superior a 80 milisegundos (evita micro-cortes)
+    if (Math.abs(audio.currentTime - compensatedTime) > 0.08) {
+      audio.currentTime = compensatedTime;
+    }
+    player.setCurrentTime(compensatedTime);
   }
 }
 

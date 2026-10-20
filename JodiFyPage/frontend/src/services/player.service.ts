@@ -9,6 +9,7 @@ import { API_BASE } from '../lib/api';
 import { resolveMediaUrl } from '../lib/utils';
 import { linksService } from './links.service';
 import { ytPlayerService } from './yt-player.service';
+import { audioCacheService } from './audioCache.service';
 
 export function extractYoutubeId(song: Song | null | undefined): string | null {
   if (!song) return null;
@@ -80,6 +81,7 @@ export async function preloadNextTrack(song: Song | null | undefined): Promise<v
     }
 
     if (candidate && typeof document !== 'undefined') {
+      void audioCacheService.cacheTrack(song.id, candidate);
       if (!preloadedAudio) {
         preloadedAudio = document.createElement('audio');
         preloadedAudio.id = 'jodify-preloader';
@@ -307,6 +309,33 @@ async function executePlaySong(song: Song, options: { fades?: boolean } = {}): P
     return true;
   }
 
+  // 1.5. BUFFER / CACHÉ LOCAL INSTANTÁNEA (0ms IndexedDB Buffer)
+  const cachedBlobUrl = await audioCacheService.getCachedAudioUrl(song.id);
+  if (cachedBlobUrl && audio) {
+    ytPlayerService.stop();
+    if (options.fades !== false && settings.fadeEnabled && player.currentSong && player.isPlaying) {
+      rampVolume(audio, 0, getFadeMs());
+      await new Promise((r) => setTimeout(r, getFadeMs()));
+    }
+    player.setCurrentSong(song);
+    player.setCurrentTime(0);
+    if (song.duration) player.setDuration(song.duration);
+
+    audio.src = cachedBlobUrl;
+    audio.volume = player.volume;
+    audio.muted = player.muted;
+    try {
+      await audio.play();
+      player.setSourceUrl(cachedBlobUrl, cachedBlobUrl);
+      player.setIsPlaying(!audio.paused);
+      useToastStore.getState().show(`Reproduciendo «${song.name}» ⚡`, 'success', 1800);
+      logListeningHistory(song, false);
+      return true;
+    } catch (err) {
+      console.warn('[player.service] Falló reproducción de caché local, probando stream:', err);
+    }
+  }
+
   // 2. Si la canción no está descargada y NO hay conexión a internet activa
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     useToastStore.getState().show('Esta canción no está descargada para escuchar sin conexión', 'warning', 2500);
@@ -368,6 +397,7 @@ async function executePlaySong(song: Song, options: { fades?: boolean } = {}): P
         player.setSourceUrl(streamCandidate);
         useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
         logListeningHistory(song, false);
+        void audioCacheService.cacheTrack(song.id, streamCandidate);
         return true;
       } catch (err) {
         console.warn(`[player.service] Falló stream directo (${streamCandidate}), probando siguiente opción:`, err);
@@ -456,6 +486,7 @@ async function executePlaySong(song: Song, options: { fades?: boolean } = {}): P
   player.setSourceUrl(sourceUrl);
   player.setOfflinePlayback(false);
   player.setIsPlaying(!audio.paused);
+  if (sourceUrl) void audioCacheService.cacheTrack(song.id, sourceUrl);
 
   if (settings.fadeEnabled && options.fades !== false) {
     audio.volume = 0;

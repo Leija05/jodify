@@ -6,6 +6,7 @@ const http = require('http');
 const https = require('https');
 const { autoUpdater } = require('electron-updater');
 const { createTaskbarIcons } = require('./taskbar-icons');
+const { discordRpc } = require('./discordRpc');
 
 // ---- Cargador minimalista de .env (sin dependencias) ----
 function loadEnvFile(file) {
@@ -684,6 +685,13 @@ function registerPlayerIpc() {
         duration: state.duration ?? 0,
         isPlaying: !!state.playing,
       };
+
+      // Notificar a Discord Rich Presence nativo
+      try {
+        discordRpc.setPlaybackActivity(state);
+      } catch (e) {
+        console.warn('[main] Error actualizando Discord RPC:', e.message);
+      }
     }
     updateThumbar();
   });
@@ -854,6 +862,14 @@ app.whenReady().then(() => {
   registerUpdaterIpc();
   registerPlayerIpc();
   updateThumbar();
+
+  // Iniciar cliente nativo Discord Rich Presence
+  try {
+    discordRpc.connect();
+  } catch (err) {
+    console.warn('[main] Error iniciando Discord RPC:', err.message);
+  }
+
   if (app.isPackaged && !DEV_URL) {
     setupUpdater();
     autoUpdater.checkForUpdates();
@@ -865,6 +881,12 @@ app.whenReady().then(() => {
       updateThumbar();
     }
   });
+});
+
+app.on('will-quit', () => {
+  try {
+    discordRpc.destroy();
+  } catch {}
 });
 
 app.on('window-all-closed', () => {

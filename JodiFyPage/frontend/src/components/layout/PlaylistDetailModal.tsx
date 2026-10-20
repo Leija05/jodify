@@ -26,7 +26,39 @@ import type { Song } from '../../lib/types';
 
 export function PlaylistDetailModal() {
   const ui = useUiStore();
+  const isOpen = ui.modal === 'playlistDetail';
+  const playlistId = ui.modalPayload?.playlistId as string | undefined;
   const playlists = usePlaylistsStore((s) => s.playlists);
+
+  const foundPlaylist = useMemo(() => {
+    if (!playlistId) return undefined;
+    return playlists.find((p) => p.id === playlistId);
+  }, [playlists, playlistId]);
+
+  const lastPlaylistRef = useRef<CustomPlaylist | undefined>(foundPlaylist);
+  if (foundPlaylist) lastPlaylistRef.current = foundPlaylist;
+  const playlist = foundPlaylist || lastPlaylistRef.current;
+
+  return (
+    <AnimatePresence>
+      {isOpen && playlist && (
+        <PlaylistDetailModalView
+          key={playlist.id}
+          playlist={playlist}
+          onClose={() => ui.close('playlistDetail')}
+        />
+      )}
+    </AnimatePresence>
+  );
+}
+
+function PlaylistDetailModalView({
+  playlist,
+  onClose,
+}: {
+  playlist: CustomPlaylist;
+  onClose: () => void;
+}) {
   const playPlaylist = usePlaylistsStore((s) => s.playPlaylist);
   const deletePlaylist = usePlaylistsStore((s) => s.deletePlaylist);
   const updatePlaylist = usePlaylistsStore((s) => s.updatePlaylist);
@@ -45,16 +77,7 @@ export function PlaylistDetailModal() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragOccurredRef = useRef(false);
 
-  const isOpen = ui.modal === 'playlistDetail';
-  const playlistId = ui.modalPayload?.playlistId as string | undefined;
-
-  const playlist: CustomPlaylist | undefined = useMemo(() => {
-    if (!playlistId) return undefined;
-    return playlists.find((p) => p.id === playlistId);
-  }, [playlists, playlistId]);
-
   const playlistSongs: Song[] = useMemo(() => {
-    if (!playlist) return [];
     const songMap = new Map(librarySongs.map((s) => [String(s.id), s]));
     return playlist.songIds
       .map((id) => songMap.get(String(id)))
@@ -64,8 +87,6 @@ export function PlaylistDetailModal() {
   const totalDuration = useMemo(() => {
     return playlistSongs.reduce((acc, s) => acc + (typeof s.duration === 'number' ? s.duration : 0), 0);
   }, [playlistSongs]);
-
-  if (!isOpen || !playlist) return null;
 
   const handlePlaySong = async (song: Song) => {
     if (dragOccurredRef.current) return;
@@ -116,7 +137,7 @@ export function PlaylistDetailModal() {
     });
     if (ok) {
       deletePlaylist(playlist.id);
-      ui.close('playlistDetail');
+      onClose();
     }
   };
 
@@ -156,32 +177,38 @@ export function PlaylistDetailModal() {
   };
 
   return (
-    <AnimatePresence>
-      <div className="jf-modal-backdrop" onClick={() => ui.close('playlistDetail')}>
-        <motion.div
-          className="jf-pl-modal"
-          initial={{ opacity: 0, scale: 0.94, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.94, y: 15 }}
-          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-          onClick={(e) => e.stopPropagation()}
+    <motion.div
+      className="jf-modal-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="jf-pl-modal"
+        initial={{ opacity: 0, scale: 0.94, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 15 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Hero Banner Header */}
+        <div
+          className="jf-pl-modal-hero"
+          style={{
+            background: playlist.color || 'linear-gradient(135deg, #7f00ff 0%, #00f0ff 100%)',
+          }}
         >
-          {/* Hero Banner Header */}
-          <div
-            className="jf-pl-modal-hero"
-            style={{
-              background: playlist.color || 'linear-gradient(135deg, #7f00ff 0%, #00f0ff 100%)',
-            }}
+          <div className="jf-pl-modal-hero-pattern" />
+          <button
+            type="button"
+            className="jf-pl-modal-close"
+            onClick={onClose}
+            title="Cerrar ventana"
           >
-            <div className="jf-pl-modal-hero-pattern" />
-            <button
-              type="button"
-              className="jf-pl-modal-close"
-              onClick={() => ui.close('playlistDetail')}
-              title="Cerrar ventana"
-            >
-              <X size={18} weight="bold" />
-            </button>
+            <X size={18} weight="bold" />
+          </button>
 
             <div className="jf-pl-modal-hero-content">
               <div
@@ -533,7 +560,6 @@ export function PlaylistDetailModal() {
             </div>
           )}
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </motion.div>
   );
 }

@@ -1,5 +1,6 @@
 import { EQ_BANDS, EQ_MAX, EQ_MIN } from '../lib/constants';
 import { clamp } from '../lib/utils';
+import { registerAudioContext } from './audioUnlock.service';
 
 interface EqChain {
   context: AudioContext | null;
@@ -117,6 +118,7 @@ function ensureChain(): void {
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
     const context = chain.context || new Ctx();
+    registerAudioContext(context);
     const source = chain.source || context.createMediaElementSource(audio);
 
     const analyser = context.createAnalyser();

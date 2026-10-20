@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -10,6 +11,8 @@ import {
   MusicNotes,
   Radio,
   UsersThree,
+  SpeakerHigh,
+  SpeakerSlash,
 } from '@phosphor-icons/react';
 import { APP_TAGLINE } from '../lib/constants';
 
@@ -50,15 +53,93 @@ const FEATURES = [
 
 export function IntroPage() {
   const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(true);
+
+  // Limpieza total del elemento de video y audio al salir o navegar a login/app
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.volume = 0.45;
+      video.play().catch(() => {
+        // Autoplay policy fallback (start muted)
+        video.muted = true;
+        setIsMuted(true);
+        video.play().catch(() => undefined);
+      });
+    }
+
+    return () => {
+      if (video) {
+        video.pause();
+        video.muted = true;
+        video.removeAttribute('src');
+        video.load();
+      }
+    };
+  }, []);
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      const nextMuted = !videoRef.current.muted;
+      videoRef.current.muted = nextMuted;
+      setIsMuted(nextMuted);
+      if (!nextMuted) {
+        videoRef.current.volume = 0.45;
+        videoRef.current.play().catch(() => undefined);
+      }
+    }
+  };
 
   return (
     <div className="jf-intro" data-testid="intro-screen">
+      {/* Video de Promoción JodiFy de Fondo con Difuminado y Bucle */}
+      <div className="jf-intro-video-container" aria-hidden="true">
+        <video
+          ref={videoRef}
+          className="jf-intro-video-bg"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          src={`${import.meta.env.BASE_URL}jodify-promo.mp4`}
+        />
+        <div className="jf-intro-video-overlay" />
+      </div>
+
       <div className="jf-login-ambient" aria-hidden="true">
         <span className="jf-ambient-blob jf-ambient-blob--a" />
         <span className="jf-ambient-blob jf-ambient-blob--b" />
         <span className="jf-ambient-blob jf-ambient-blob--c" />
       </div>
       <div className="jf-login-glow" aria-hidden="true" />
+
+      {/* Botón flotante para silenciar/activar audio de la promo */}
+      <button
+        type="button"
+        className={`jf-intro-audio-btn ${isMuted ? 'is-muted' : 'is-active'}`}
+        onClick={toggleMute}
+        aria-label={isMuted ? 'Activar sonido de la promo' : 'Silenciar sonido de la promo'}
+        title={isMuted ? 'Activar sonido' : 'Silenciar'}
+      >
+        {isMuted ? (
+          <>
+            <SpeakerSlash size={17} weight="bold" />
+            <span>Audio silenciado</span>
+          </>
+        ) : (
+          <>
+            <SpeakerHigh size={17} weight="fill" />
+            <span className="jf-audio-waves" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+            <span>Audio activo</span>
+          </>
+        )}
+      </button>
 
       <header className="jf-intro-nav">
         <div className="jf-intro-nav-brand">

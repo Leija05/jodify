@@ -175,25 +175,27 @@
 }
 
 .jf-splash-theme--vinyl_groove .jf-startup-glow--primary {
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.38) 0%, transparent 70%);
 }
 
 .jf-splash-theme--vinyl_groove .jf-startup-glow--secondary {
-  background: radial-gradient(circle, rgba(255, 0, 128, 0.35) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 0, 128, 0.32) 0%, transparent 70%);
 }
 
+/* Vinyl Turntable Platter Unit (Concentric to Mascot Logo) */
 .jf-splash-vinyl-turntable {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(620px, 80vmin);
-  height: min(620px, 80vmin);
+  width: clamp(340px, 46vmin, 460px);
+  height: clamp(340px, 46vmin, 460px);
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
   perspective: 1100px;
   pointer-events: none;
+  z-index: 1;
 }
 
 .jf-splash-vinyl-disc {
@@ -201,27 +203,27 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: radial-gradient(circle, #18151f 0%, #0d0c11 60%, #060508 100%);
+  background: radial-gradient(circle, #1a1722 0%, #0e0d13 55%, #050407 100%);
   box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.9),
-    0 0 90px rgba(255, 215, 0, 0.22),
-    inset 0 0 120px rgba(0, 0, 0, 0.95);
-  animation: jf-vinyl-spin 10s linear infinite;
+    0 24px 70px rgba(0, 0, 0, 0.95),
+    0 0 85px rgba(255, 215, 0, 0.18),
+    inset 0 0 100px rgba(0, 0, 0, 0.92);
+  animation: jf-vinyl-spin 9s linear infinite;
   will-change: transform;
 }
 
 .jf-splash-vinyl-grooves {
   position: absolute;
-  inset: 22px;
+  inset: 16px;
   border-radius: 50%;
   background: repeating-radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.055) 0px,
-    rgba(255, 255, 255, 0.055) 1px,
+    rgba(255, 255, 255, 0.05) 0px,
+    rgba(255, 255, 255, 0.05) 1px,
     transparent 2px,
     transparent 5px
   );
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.18);
 }
 
 .jf-splash-vinyl-reflection {
@@ -229,42 +231,28 @@
   inset: 0;
   border-radius: 50%;
   background: conic-gradient(
-    from 35deg,
+    from 40deg,
     transparent 0deg,
-    rgba(255, 255, 255, 0.12) 40deg,
-    transparent 85deg,
+    rgba(255, 255, 255, 0.11) 35deg,
+    transparent 80deg,
     transparent 180deg,
-    rgba(255, 215, 0, 0.18) 220deg,
-    transparent 265deg
+    rgba(255, 215, 0, 0.16) 215deg,
+    transparent 260deg
   );
+  pointer-events: none;
 }
 
 .jf-splash-vinyl-label-rim {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 250px;
-  height: 250px;
-  margin-top: -125px;
-  margin-left: -125px;
+  width: 62%;
+  height: 62%;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 2px solid rgba(255, 215, 0, 0.45);
-  box-shadow: 0 0 35px rgba(255, 215, 0, 0.3), inset 0 0 25px rgba(255, 0, 128, 0.25);
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.08) 0%, transparent 80%);
-}
-
-.jf-splash-vinyl-spindle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 22px;
-  height: 22px;
-  margin-top: -11px;
-  margin-left: -11px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #ffffff 0%, #b8973d 50%, #4a3b10 100%);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 12px rgba(255, 215, 0, 0.6);
-  z-index: 5;
+  border: 2px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 32px rgba(255, 215, 0, 0.28), inset 0 0 25px rgba(255, 0, 128, 0.2);
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.09) 0%, transparent 80%);
 }
 
 @keyframes jf-vinyl-spin {
@@ -272,43 +260,124 @@
   100% { transform: rotate(360deg); }
 }
 
-.jf-splash-tonearm {
+/* Precision Mechanical Hi-Fi Tonearm Assembly */
+.jf-splash-tonearm-assembly {
   position: absolute;
-  top: 10%;
-  right: 14%;
-  width: 5px;
-  height: 260px;
-  background: linear-gradient(180deg, #d8d8d8 0%, #888888 65%, #ffd700 100%);
+  top: -24px;
+  right: -52px;
+  width: 180px;
+  height: 280px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Polished Pivot Base / Gimbal Housing */
+.jf-splash-tonearm-base {
+  position: absolute;
+  top: 0;
+  right: 18px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #3d3b44 0%, #1c1a22 65%, #0e0d13 100%);
+  border: 1.5px solid rgba(255, 215, 0, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), inset 0 2px 6px rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jf-splash-tonearm-bearing {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd700 0%, #a8851a 60%, #473507 100%);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.jf-splash-tonearm-weight {
+  position: absolute;
+  top: -14px;
+  right: 18px;
+  width: 12px;
+  height: 22px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #555 0%, #bbb 50%, #333 100%);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+}
+
+/* Moving Arm Wand */
+.jf-splash-tonearm-wand {
+  position: absolute;
+  top: 24px;
+  right: 40px;
+  width: 4.5px;
+  height: 230px;
+  background: linear-gradient(180deg, #ffffff 0%, #b8b8b8 40%, #ffd700 100%);
   border-radius: 99px;
   transform-origin: top center;
-  transform: rotate(-38deg);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85), 0 0 14px rgba(255, 215, 0, 0.35);
-  animation: jf-tonearm-glide 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+  transform: rotate(-36deg);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.9), 0 0 12px rgba(255, 215, 0, 0.3);
+  animation: jf-tonearm-glide 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.35s forwards;
 }
 
 @keyframes jf-tonearm-glide {
-  0% { transform: rotate(-38deg); opacity: 0; }
-  100% { transform: rotate(-14deg); opacity: 0.95; }
+  0% { transform: rotate(-36deg); opacity: 0; }
+  100% { transform: rotate(-13deg); opacity: 1; }
+}
+
+/* Headshell & Cartridge at Tip */
+.jf-splash-tonearm-headshell {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%) rotate(22deg);
+  width: 11px;
+  height: 30px;
+  background: #18151f;
+  border: 1px solid rgba(255, 215, 0, 0.7);
+  border-radius: 2px 2px 4px 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.9);
+}
+
+.jf-splash-tonearm-cartridge {
+  position: absolute;
+  bottom: 4px;
+  left: 2px;
+  right: 2px;
+  height: 12px;
+  background: linear-gradient(180deg, #ffd700 0%, #e65c00 100%);
+  border-radius: 1px;
+}
+
+.jf-splash-tonearm-needle {
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2.5px;
+  height: 5px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ffd700, 0 0 3px #ffffff;
 }
 
 .jf-splash-theme--vinyl_groove .jf-startup-logo-wrap {
-  animation: jf-vinyl-logo-flow 1.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: jf-vinyl-logo-flow 1.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes jf-vinyl-logo-flow {
   0% {
-    transform: rotateX(46deg) rotateZ(-140deg) scale(0.6);
+    transform: scale(0.4) rotate(-90deg);
     opacity: 0;
   }
-  65% {
-    transform: rotateX(-6deg) rotateZ(10deg) scale(1.08);
+  70% {
+    transform: scale(1.05) rotate(5deg);
     opacity: 1;
   }
-  85% {
-    transform: rotateX(2deg) rotateZ(-3deg) scale(0.98);
-  }
   100% {
-    transform: rotateX(0deg) rotateZ(0deg) scale(1);
+    transform: scale(1) rotate(0deg);
     opacity: 1;
   }
 }
@@ -667,6 +736,10 @@
    COMMON STAGE & SVG LOGO ASSEMBLY CHOREOGRAPHY
    Piece-by-Piece Physical Spring Easing with Magnetic Alignment & Continuous Float
    ========================================================================== */
+/* ==========================================================================
+   COMMON STAGE & SVG LOGO ARCHITECTURE
+   Harmonious Vertical Centering, Responsive Proportions, Zero Clipping
+   ========================================================================== */
 .jf-startup-stage {
   position: relative;
   display: flex;
@@ -674,7 +747,7 @@
   align-items: center;
   justify-content: center;
   z-index: 10;
-  gap: clamp(16px, 3vh, 30px);
+  gap: clamp(14px, 2.5vh, 26px);
   max-height: 94vh;
   padding: 16px;
   box-sizing: border-box;
@@ -694,20 +767,32 @@
   75% { transform: translate3d(-1px, 1px, 0); }
 }
 
+/* Hero Container: Anchors Central Visual Element (Turntable + Mascot) */
+.jf-startup-hero-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Vinyl Hi-Fi Theme Hero Spacing: Ensures Turntable never overlaps EQ or Typography */
+.jf-splash-theme--vinyl_groove .jf-startup-hero-container {
+  margin-top: clamp(20px, 3vh, 36px);
+  margin-bottom: clamp(60px, 8.5vh, 88px);
+}
+
 .jf-startup-logo-wrap {
   position: relative;
-  width: min(320px, 35vmin);
-  height: min(320px, 35vmin);
+  width: clamp(200px, 28vmin, 270px);
+  height: clamp(200px, 28vmin, 270px);
   display: flex;
   align-items: center;
   justify-content: center;
   transform-origin: center center;
   will-change: transform;
-}
-
-.jf-startup-svg path,
-.jf-startup-svg g {
-  transform-box: fill-box;
+  overflow: hidden;
+  border-radius: 50%;
+  z-index: 5;
 }
 
 .jf-startup-logo-wrap.is-pulsing {
@@ -716,62 +801,24 @@
 
 @keyframes jf-master-pulse {
   0% { transform: scale(1); }
-  35% { transform: scale(1.14); }
+  35% { transform: scale(1.12); }
   100% { transform: scale(1); }
 }
 
-/* Continuous Organic Mascot Levitation & Headphone Rhythm Groove */
+/* Continuous Organic Mascot Levitation */
 .jf-startup-logo-wrap.is-assembled {
   animation: jf-mascot-levitate 3.4s ease-in-out infinite alternate;
 }
 
 @keyframes jf-mascot-levitate {
   0% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   50% {
-    transform: translate3d(0, -12px, 0) rotate(0.85deg) scale(1.018);
+    transform: translate3d(0, -10px, 0) scale(1.018);
   }
   100% {
-    transform: translate3d(0, 4px, 0) rotate(-0.6deg) scale(0.995);
-  }
-}
-
-.jf-startup-logo-wrap.is-assembled .jf-stroke-draw-left,
-.jf-startup-logo-wrap.is-assembled .jf-stroke-draw-right,
-.jf-startup-logo-wrap.is-assembled .jf-stroke-draw-face {
-  display: none !important;
-}
-
-.jf-startup-logo-wrap.is-assembled .jf-part-hp-left {
-  animation: jf-hp-groove-left 1.7s ease-in-out infinite alternate;
-}
-.jf-startup-logo-wrap.is-assembled .jf-part-hp-right {
-  animation: jf-hp-groove-right 1.7s ease-in-out infinite alternate;
-}
-
-@keyframes jf-hp-groove-left {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(4px, -1px, 0) scale(1.02); }
-}
-
-@keyframes jf-hp-groove-right {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(-4px, -1px, 0) scale(1.02); }
-}
-
-.jf-startup-logo-wrap.is-assembled .jf-part-eyes {
-  animation: jf-eyes-pulse 2.2s ease-in-out infinite alternate;
-}
-
-@keyframes jf-eyes-pulse {
-  0% {
-    opacity: 0.92;
-    filter: drop-shadow(0 0 14px #00FF88);
-  }
-  100% {
-    opacity: 1;
-    filter: drop-shadow(0 0 28px #00FF88) drop-shadow(0 0 8px #ffffff);
+    transform: translate3d(0, 4px, 0) scale(0.995);
   }
 }
 
@@ -779,7 +826,32 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 0 45px rgba(168, 50, 232, 0.48));
+  filter: drop-shadow(0 0 35px rgba(168, 50, 232, 0.55));
+}
+
+.jf-part-hp-left,
+.jf-part-hp-right {
+  transition: opacity 0.3s ease;
+}
+
+.jf-part-face {
+  transition: opacity 0.3s ease;
+}
+
+/* Radiant Neon Crescent Eyes with Pulsing Energy Glow */
+.jf-part-eyes {
+  animation: jf-eyes-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes jf-eyes-pulse {
+  0% {
+    opacity: 0.88;
+    filter: drop-shadow(0 0 8px #00FF88);
+  }
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 24px #00FF88) drop-shadow(0 0 6px #ffffff);
+  }
 }
 
 /* Central Magnetic Connection Flash */
@@ -800,176 +872,7 @@
   100% { transform: scale(3.2); opacity: 0; filter: drop-shadow(0 0 80px transparent); }
 }
 
-/* Laser Drawing Stroke Outlines (Draw-In Effect) */
-.jf-stroke-draw-left {
-  stroke-dasharray: 6000;
-  stroke-dashoffset: 6000;
-}
-
-.jf-stroke-draw-right {
-  stroke-dasharray: 6000;
-  stroke-dashoffset: 6000;
-}
-
-.jf-stroke-draw-face {
-  stroke-dasharray: 10000;
-  stroke-dashoffset: 10000;
-}
-
-.jf-part-hp-left.jf-stroke-draw-left {
-  animation: jf-magnetic-left 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both,
-             jf-stroke-trace-hp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
-}
-
-.jf-part-hp-right.jf-stroke-draw-right {
-  animation: jf-magnetic-right 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both,
-             jf-stroke-trace-hp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
-}
-
-.jf-part-face.jf-stroke-draw-face {
-  animation: jf-fluid-drop-face 0.95s cubic-bezier(0.34, 1.45, 0.64, 1) 0.72s both,
-             jf-stroke-trace-face 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.65s forwards;
-}
-
-@keyframes jf-stroke-trace-hp {
-  0% {
-    stroke-dashoffset: 6000;
-    opacity: 1;
-    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.9));
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    stroke-dashoffset: 0;
-    opacity: 0;
-    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0));
-  }
-}
-
-@keyframes jf-stroke-trace-face {
-  0% {
-    stroke-dashoffset: 10000;
-    opacity: 1;
-    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.9));
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    stroke-dashoffset: 0;
-    opacity: 0;
-    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0));
-  }
-}
-
-/* Headphone Left Piece (Swoop from left with angular rotational inertia) */
-.jf-part-hp-left {
-  transform-origin: 25% 60%;
-  animation: jf-magnetic-left 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
-  will-change: transform, opacity;
-}
-
-@keyframes jf-magnetic-left {
-  0% {
-    transform: translate3d(-420px, 45px, 0) rotate(-28deg) scale(0.85);
-    opacity: 0;
-  }
-  68% {
-    transform: translate3d(16px, -2px, 0) rotate(1.5deg) scale(1.02);
-    opacity: 1;
-  }
-  86% {
-    transform: translate3d(-4px, 1px, 0) rotate(-0.5deg) scale(0.99);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-    opacity: 1;
-  }
-}
-
-/* Headphone Right Piece (Swoop from right with angular inertia) */
-.jf-part-hp-right {
-  transform-origin: 75% 60%;
-  animation: jf-magnetic-right 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
-  will-change: transform, opacity;
-}
-
-@keyframes jf-magnetic-right {
-  0% {
-    transform: translate3d(420px, 45px, 0) rotate(28deg) scale(0.85);
-    opacity: 0;
-  }
-  68% {
-    transform: translate3d(-16px, -2px, 0) rotate(-1.5deg) scale(1.02);
-    opacity: 1;
-  }
-  86% {
-    transform: translate3d(4px, 1px, 0) rotate(0.5deg) scale(0.99);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-    opacity: 1;
-  }
-}
-
-/* Central Mascot Flame Face Piece (Squash and Stretch Drop) */
-.jf-part-face {
-  transform-origin: 50% 50%;
-  animation: jf-fluid-drop-face 0.95s cubic-bezier(0.34, 1.45, 0.64, 1) 0.72s both;
-  will-change: transform, opacity;
-}
-
-@keyframes jf-fluid-drop-face {
-  0% {
-    transform: translate3d(0, -320px, 0) scaleY(1.4) scaleX(0.7);
-    opacity: 0;
-  }
-  62% {
-    transform: translate3d(0, 20px, 0) scaleY(0.88) scaleX(1.12);
-    opacity: 1;
-  }
-  82% {
-    transform: translate3d(0, -8px, 0) scaleY(1.05) scaleX(0.96);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) scaleY(1) scaleX(1);
-    opacity: 1;
-  }
-}
-
-/* Radiant Neon Crescent Eyes with Dual Micro-Blink */
-.jf-part-eyes {
-  transform-origin: 5450px 4500px;
-  animation: jf-ignite-eyes-core 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 1.32s both,
-             jf-realistic-blink 0.35s ease-in-out 1.95s;
-  will-change: transform, opacity;
-}
-
-@keyframes jf-ignite-eyes-core {
-  0% {
-    opacity: 0;
-    transform: scale(0.08);
-  }
-  58% {
-    opacity: 1;
-    transform: scale(1.3);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes jf-realistic-blink {
-  0%, 100% { transform: scaleY(1); }
-  40% { transform: scaleY(0.06); }
-  60% { transform: scaleY(0.06); }
-  75% { transform: scaleY(0.7); }
-  85% { transform: scaleY(0.08); }
-}
-
-/* Specular Shimmer Sweep across Central Mascot */
+/* Specular Shimmer Sweep across Central Mascot (Completely Dissolves to 0 Opacity) */
 .jf-splash-sheen-overlay {
   position: absolute;
   inset: 0;
@@ -977,19 +880,32 @@
   background: linear-gradient(
     125deg,
     transparent 0%,
-    transparent 40%,
+    transparent 38%,
     rgba(255, 255, 255, 0.35) 50%,
-    transparent 60%,
+    transparent 62%,
     transparent 100%
   );
-  transform: translate3d(-100%, -100%, 0);
+  transform: translate3d(-130%, -130%, 0);
   pointer-events: none;
-  animation: jf-sheen-sweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) 1.6s forwards;
+  opacity: 0;
+  animation: jf-sheen-sweep 1.25s cubic-bezier(0.16, 1, 0.3, 1) 1.5s forwards;
 }
 
 @keyframes jf-sheen-sweep {
-  0% { transform: translate3d(-120%, -120%, 0); }
-  100% { transform: translate3d(120%, 120%, 0); }
+  0% {
+    transform: translate3d(-130%, -130%, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  80% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(130%, 130%, 0);
+    opacity: 0;
+  }
 }
 
 /* Bilateral 24-Band Reactive Audio Spectrum Analyzer */

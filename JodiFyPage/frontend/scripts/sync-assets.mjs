@@ -35,3 +35,23 @@ if (!copied) {
     console.warn('[sync-assets] Aviso: No se encontró icon.ico compartido, continuando compilación...');
   }
 }
+
+// Sincronizar video de promoción para la página principal
+const promoDest = resolve(destDir, 'jodify-promo.mp4');
+const promoSources = [
+  resolve(currentDir, '..', '..', '..', 'jodify-video', 'jodify-21s-launch.mp4'),
+  resolve(currentDir, '..', '..', 'jodify-video', 'jodify-21s-launch.mp4'),
+  resolve(currentDir, '..', '..', '..', 'jodify-video', 'jodify-promo.mp4'),
+];
+
+for (const source of promoSources) {
+  if (existsSync(source) && !existsSync(promoDest)) {
+    try {
+      cpSync(source, promoDest);
+      console.log(`[sync-assets] jodify-promo.mp4 sincronizado desde ${source}`);
+      break;
+    } catch (e) {
+      console.warn('[sync-assets] Error copiando video de promo:', e.message);
+    }
+  }
+}

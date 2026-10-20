@@ -461,18 +461,6 @@ export function DesktopStartupSplash() {
               </>
             )}
 
-            {/* Theme 2: Vinyl Hi-Fi 3D */}
-            {currentStyle === 'vinyl_groove' && (
-              <div className="jf-splash-vinyl-turntable">
-                <div className="jf-splash-vinyl-disc">
-                  <div className="jf-splash-vinyl-grooves" />
-                  <div className="jf-splash-vinyl-reflection" />
-                  <div className="jf-splash-vinyl-label-rim" />
-                  <div className="jf-splash-vinyl-spindle" />
-                </div>
-                <div className="jf-splash-tonearm" />
-              </div>
-            )}
 
             {/* Theme 3: Aurora Cosmic */}
             {currentStyle === 'aurora_cosmic' && (

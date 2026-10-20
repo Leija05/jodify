@@ -39,6 +39,7 @@
       "main.js",
       "preload.js",
       "taskbar-icons.js",
+      "discordRpc.js",
       "assets/icon.ico",
       "bin/**/*",
       "dist-electron/**/*"
