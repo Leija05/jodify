@@ -2,15 +2,36 @@ import { cpSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const source = resolve(root, 'assets', 'icon.ico');
-const destDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'public');
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const destDir = resolve(currentDir, '..', 'public');
 const dest = resolve(destDir, 'favicon.ico');
 
 mkdirSync(destDir, { recursive: true });
-if (!existsSync(source)) {
-  console.error('[sync-assets] No se encontro el icono compartido:', source);
-  process.exit(1);
+
+const possibleSources = [
+  resolve(currentDir, '..', '..', '..', 'assets', 'icon.ico'),
+  resolve(currentDir, '..', '..', 'assets', 'icon.ico'),
+  resolve(currentDir, '..', 'assets', 'icon.ico'),
+];
+
+let copied = false;
+for (const source of possibleSources) {
+  if (existsSync(source)) {
+    try {
+      cpSync(source, dest);
+      console.log(`[sync-assets] favicon.ico sincronizado desde ${source}`);
+      copied = true;
+      break;
+    } catch {
+      // Continue to next candidate
+    }
+  }
 }
-cpSync(source, dest);
-console.log('[sync-assets] favicon.ico sincronizado desde assets/icon.ico');
+
+if (!copied) {
+  if (existsSync(dest)) {
+    console.log('[sync-assets] favicon.ico ya existe en public/, manteniendo icono existente.');
+  } else {
+    console.warn('[sync-assets] Aviso: No se encontró icon.ico compartido, continuando compilación...');
+  }
+}

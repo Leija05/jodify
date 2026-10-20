@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSettingsStore } from '../../store/settings.store';
+import { useSession } from '../../context/SessionContext';
 import {
   STARTUP_SPLASH_STYLES,
   type StartupSplashStyle,
@@ -271,14 +272,25 @@ function playStartupSynthChime(style: StartupSplashStyle) {
 export function DesktopStartupSplash() {
   const desktopStartupAnimation = useSettingsStore((s) => s.desktopStartupAnimation);
   const activeSettingStyle = useSettingsStore((s) => s.startupSplashStyle) || 'cyber_neon';
+  const { ready } = useSession();
+  const readyRef = useRef(ready);
+  readyRef.current = ready;
 
-  const [visible, setVisible] = useState(false);
+  const isTest = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === 'undefined' || isTest) return false;
+    const alreadySeen = sessionStorage.getItem('jodify:desktop_splash_seen') === 'true';
+    return Boolean(desktopStartupAnimation && !alreadySeen);
+  });
+
   const [currentStyle, setCurrentStyle] = useState<StartupSplashStyle>(activeSettingStyle);
   const [pulsing, setPulsing] = useState(false);
   const [assembled, setAssembled] = useState(false);
   const [flash, setFlash] = useState(false);
   const [stageRumble, setStageRumble] = useState(false);
   const [animKey, setAnimKey] = useState(0);
+  const minTimePassedRef = useRef(false);
   const timersRef = useRef<number[]>([]);
 
   const clearTimers = useCallback(() => {
@@ -289,7 +301,9 @@ export function DesktopStartupSplash() {
   const dismiss = useCallback(() => {
     clearTimers();
     setVisible(false);
-    sessionStorage.setItem('jodify:desktop_splash_seen', 'true');
+    try {
+      sessionStorage.setItem('jodify:desktop_splash_seen', 'true');
+    } catch {}
   }, [clearTimers]);
 
   const startAnimationSequence = useCallback(
@@ -301,6 +315,7 @@ export function DesktopStartupSplash() {
       setAssembled(false);
       setFlash(false);
       setStageRumble(false);
+      minTimePassedRef.current = false;
       setAnimKey((k) => k + 1);
       setVisible(true);
 
@@ -313,13 +328,7 @@ export function DesktopStartupSplash() {
       }, 1050);
       timersRef.current.push(tFlash);
 
-      // 3. Fully assembled continuous float at 1220ms
-      const tAssembled = window.setTimeout(() => {
-        setAssembled(true);
-      }, 1220);
-      timersRef.current.push(tAssembled);
-
-      // 4. Sonic shockwave rumble at 1750ms
+      // 3. Sonic shockwave rumble at 1750ms
       if (styleToPlay === 'sonic_shockwave') {
         const tRumble = window.setTimeout(() => {
           setStageRumble(true);
@@ -327,34 +336,55 @@ export function DesktopStartupSplash() {
         timersRef.current.push(tRumble);
       }
 
-      // 5. Climax pulse at 1950ms
+      // 4. Climax pulse at 1950ms
       const tPulse = window.setTimeout(() => {
         setPulsing(true);
       }, 1950);
       timersRef.current.push(tPulse);
 
-      // 6. Enhanced cinematic duration (4.2 seconds of silky smooth motion)
-      const tDismiss = window.setTimeout(() => {
+      // 5. Assembled transition right after the eye ignition and blink finish (2350ms)
+      const tAssembled = window.setTimeout(() => {
+        setAssembled(true);
+      }, 2350);
+      timersRef.current.push(tAssembled);
+
+      // 6. Minimum cinematic completion at 3800ms
+      const tMin = window.setTimeout(() => {
+        minTimePassedRef.current = true;
+        // If the session & app in the background are already ready, dismiss seamlessly!
+        if (readyRef.current) {
+          dismiss();
+        }
+      }, 3800);
+      timersRef.current.push(tMin);
+
+      // 7. Maximum fail-safe timeout at 7500ms
+      const tMax = window.setTimeout(() => {
         dismiss();
-      }, 4200);
-      timersRef.current.push(tDismiss);
+      }, 7500);
+      timersRef.current.push(tMax);
     },
     [clearTimers, dismiss, activeSettingStyle]
   );
 
+  // When session becomes ready, if the minimum intro time has already elapsed, dismiss immediately
   useEffect(() => {
-    // 1. Auto-play on desktop startup
-    const isElectron =
-      typeof window !== 'undefined' &&
-      (navigator.userAgent.includes('Electron') || Boolean(window.jodifyUpdater?.isDesktop));
+    if (ready && visible && minTimePassedRef.current) {
+      dismiss();
+    }
+  }, [ready, visible, dismiss]);
+
+  // Initial mount trigger
+  useEffect(() => {
+    if (isTest) return;
 
     const alreadySeen = sessionStorage.getItem('jodify:desktop_splash_seen') === 'true';
 
-    if (desktopStartupAnimation && isElectron && !alreadySeen) {
+    if (desktopStartupAnimation && !alreadySeen) {
       startAnimationSequence(activeSettingStyle);
     }
 
-    // 2. Manual preview listener
+    // Manual preview listener from Settings Modal
     const handleManualTrigger = (e: Event) => {
       const customEvent = e as CustomEvent<{ style?: StartupSplashStyle } | undefined>;
       const styleOverride = customEvent.detail?.style;
@@ -363,7 +393,7 @@ export function DesktopStartupSplash() {
 
     window.addEventListener('jodify:play-startup-animation', handleManualTrigger);
 
-    // 3. Escape key listener to skip intro
+    // Escape key listener to skip intro instantly
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         dismiss();
@@ -376,7 +406,7 @@ export function DesktopStartupSplash() {
       window.removeEventListener('jodify:play-startup-animation', handleManualTrigger);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [desktopStartupAnimation, startAnimationSequence, dismiss, clearTimers, activeSettingStyle]);
+  }, [desktopStartupAnimation, startAnimationSequence, dismiss, clearTimers, activeSettingStyle, isTest]);
 
   const styleMeta =
     STARTUP_SPLASH_STYLES.find((s) => s.id === currentStyle) || STARTUP_SPLASH_STYLES[0];

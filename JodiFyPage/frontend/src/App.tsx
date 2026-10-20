@@ -21,6 +21,7 @@ import { DownloadsModal } from './components/offline/DownloadsModal';
 import { DownloadsBadge } from './components/offline/DownloadsBadge';
 import { PlaylistDetailModal } from './components/layout/PlaylistDetailModal';
 import { DesktopStartupSplash } from './components/layout/DesktopStartupSplash';
+import { AppLoadingScreen } from './components/layout/AppLoadingScreen';
 import { usePlayerStore } from './store/player.store';
 import { useBackendStore } from './store/backend.store';
 
@@ -54,33 +55,11 @@ function Root() {
   return (
     <>
       <audio ref={audioRef} id="jodify-audio" preload="metadata" hidden />
+      <DesktopStartupSplash />
       {!ready && typeof window !== 'undefined' && !window.location.pathname.includes('update-preview') ? (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100vh',
-            width: '100vw',
-            background: '#07070a',
-            color: '#fff',
-          }}
-        >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              border: '3px solid rgba(255,255,255,0.12)',
-              borderTopColor: '#6366f1',
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
-        </div>
+        <AppLoadingScreen />
       ) : (
         <>
-          <DesktopStartupSplash />
           <DynamicBackground />
           <GlobalErrorHandler />
           <BackendStatusBanner />

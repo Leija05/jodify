@@ -21,6 +21,7 @@ JodiFyPage/frontend/public/favicon.ico
 
 .DS_Store
 Thumbs.db
+.vercel
 
 # Environment files
 *.env

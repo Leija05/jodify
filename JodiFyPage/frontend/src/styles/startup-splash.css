@@ -26,7 +26,7 @@
   cursor: default;
   perspective: 1200px;
   will-change: opacity, transform, filter;
-  contain: strict;
+  contain: paint layout;
 }
 
 /* Master Ambient Backdrop & Breathing Orbs */
@@ -186,10 +186,9 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 620px;
-  height: 620px;
-  margin-top: -310px;
-  margin-left: -310px;
+  width: min(620px, 80vmin);
+  height: min(620px, 80vmin);
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -475,8 +474,8 @@
 
 .jf-splash-oscilloscope-ring {
   position: absolute;
-  width: 440px;
-  height: 440px;
+  width: min(440px, 75vmin);
+  height: min(440px, 75vmin);
   border-radius: 50%;
   border: 1px dashed rgba(255, 0, 85, 0.35);
   box-shadow: 0 0 30px rgba(255, 0, 85, 0.2);
@@ -675,7 +674,10 @@
   align-items: center;
   justify-content: center;
   z-index: 10;
-  gap: 30px;
+  gap: clamp(16px, 3vh, 30px);
+  max-height: 94vh;
+  padding: 16px;
+  box-sizing: border-box;
   will-change: transform;
 }
 
@@ -694,13 +696,18 @@
 
 .jf-startup-logo-wrap {
   position: relative;
-  width: 330px;
-  height: 330px;
+  width: min(320px, 35vmin);
+  height: min(320px, 35vmin);
   display: flex;
   align-items: center;
   justify-content: center;
   transform-origin: center center;
   will-change: transform;
+}
+
+.jf-startup-svg path,
+.jf-startup-svg g {
+  transform-box: fill-box;
 }
 
 .jf-startup-logo-wrap.is-pulsing {
@@ -728,6 +735,12 @@
   100% {
     transform: translate3d(0, 4px, 0) rotate(-0.6deg) scale(0.995);
   }
+}
+
+.jf-startup-logo-wrap.is-assembled .jf-stroke-draw-left,
+.jf-startup-logo-wrap.is-assembled .jf-stroke-draw-right,
+.jf-startup-logo-wrap.is-assembled .jf-stroke-draw-face {
+  display: none !important;
 }
 
 .jf-startup-logo-wrap.is-assembled .jf-part-hp-left {
@@ -791,19 +804,31 @@
 .jf-stroke-draw-left {
   stroke-dasharray: 6000;
   stroke-dashoffset: 6000;
-  animation: jf-stroke-trace-hp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
 }
 
 .jf-stroke-draw-right {
   stroke-dasharray: 6000;
   stroke-dashoffset: 6000;
-  animation: jf-stroke-trace-hp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
 }
 
 .jf-stroke-draw-face {
   stroke-dasharray: 10000;
   stroke-dashoffset: 10000;
-  animation: jf-stroke-trace-face 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.65s forwards;
+}
+
+.jf-part-hp-left.jf-stroke-draw-left {
+  animation: jf-magnetic-left 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both,
+             jf-stroke-trace-hp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+}
+
+.jf-part-hp-right.jf-stroke-draw-right {
+  animation: jf-magnetic-right 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both,
+             jf-stroke-trace-hp 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+}
+
+.jf-part-face.jf-stroke-draw-face {
+  animation: jf-fluid-drop-face 0.95s cubic-bezier(0.34, 1.45, 0.64, 1) 0.72s both,
+             jf-stroke-trace-face 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.65s forwards;
 }
 
 @keyframes jf-stroke-trace-hp {
@@ -915,7 +940,7 @@
 
 /* Radiant Neon Crescent Eyes with Dual Micro-Blink */
 .jf-part-eyes {
-  transform-origin: 5400px 4500px;
+  transform-origin: 5450px 4500px;
   animation: jf-ignite-eyes-core 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 1.32s both,
              jf-realistic-blink 0.35s ease-in-out 1.95s;
   will-change: transform, opacity;
@@ -1076,7 +1101,8 @@
   position: absolute;
   top: 30px;
   right: 32px;
-  z-index: 50;
+  z-index: 1000;
+  pointer-events: auto;
   padding: 8px 18px;
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.065);

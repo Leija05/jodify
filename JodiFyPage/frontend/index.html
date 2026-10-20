@@ -12,9 +12,92 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="JodiFy" />
     <title>JodiFy — Free Music For Friends</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #030306;
+        color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        overflow: hidden;
+        user-select: none;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+      .jf-initial-stage {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 50% 50%, #0c0b16 0%, #050409 60%, #020204 100%);
+        gap: 22px;
+        z-index: 9999999;
+      }
+      .jf-initial-orb {
+        position: absolute;
+        width: 420px;
+        height: 420px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(127, 0, 255, 0.28) 0%, transparent 70%);
+        filter: blur(100px);
+        pointer-events: none;
+      }
+      .jf-initial-ring {
+        position: relative;
+        width: 52px;
+        height: 52px;
+      }
+      .jf-initial-ring::before,
+      .jf-initial-ring::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2.5px solid transparent;
+      }
+      .jf-initial-ring::before {
+        border-top-color: #00f0ff;
+        border-right-color: #a832e8;
+        animation: jf-init-spin 1.1s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+      }
+      .jf-initial-ring::after {
+        border-bottom-color: #00ff88;
+        border-left-color: #ff007f;
+        animation: jf-init-spin 1.5s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite reverse;
+      }
+      .jf-initial-brand {
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.35em;
+        text-indent: 0.35em;
+        color: rgba(255, 255, 255, 0.9);
+        text-transform: uppercase;
+        animation: jf-init-pulse 2.2s ease-in-out infinite alternate;
+      }
+      @keyframes jf-init-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes jf-init-pulse {
+        0% { opacity: 0.45; }
+        100% { opacity: 1; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="jf-initial-stage" aria-hidden="true">
+        <div class="jf-initial-orb"></div>
+        <div class="jf-initial-ring"></div>
+        <div class="jf-initial-brand">JODIFY</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
