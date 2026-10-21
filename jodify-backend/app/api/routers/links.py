@@ -132,7 +132,7 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-                "player_client": ["ios", "mweb", "android_music", "android", "visionos"],
+                "player_client": ["visionos", "android"],
             }
         },
     }
@@ -347,84 +347,52 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
 
     # Estrategia B: Clientes sin cookies optimizados para evadir bot-checks en IPs de datacenters
     configs.extend([
-        # 1. Cliente iOS (altamente resistente en datacenters y para audio M4A/AAC)
+        # 1. Cliente visionos (Apple VisionOS): libre de SABR restrictions en yt-dlp
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
-            "format": "bestaudio/best[ext=m4a]/best",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["ios"],
+                    "player_client": ["visionos"],
                 }
             },
         },
-        # 2. Cliente mweb (Mobile Web oficial)
+        # 2. Cliente android (retorna audio AAC formato 18 sin bloqueos)
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
-            "format": "bestaudio/best[ext=m4a]/best",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["mweb"],
+                    "player_client": ["android"],
                 }
             },
         },
-        # 3. Cliente android_music / android
+        # 3. Cliente android_vr
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
-            "format": "bestaudio/best[ext=m4a]/best",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android_music", "android"],
+                    "player_client": ["android_vr"],
                 }
             },
         },
-        # 4. Cliente tv_embedded
+        # 4. Modo estándar sin extractor_args
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
-            "format": "bestaudio/best[ext=m4a]/best",
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["tv_embedded"],
-                }
-            },
-        },
-        # 5. Cliente visionos / android_vr
-        {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "format": "bestaudio/best",
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos", "android_vr"],
-                }
-            },
-        },
-        # 6. Modo estándar sin extractor_args
-        {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "format": "bestaudio/best",
         },
     ])
 
