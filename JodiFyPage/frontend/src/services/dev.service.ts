@@ -107,8 +107,19 @@ export const devService = {
     return api.post('/dev/cookies', { cookies: cookiesText });
   },
 
-  async testCookies(): Promise<{ ok: boolean; elapsed_seconds: number; message: string; error?: string }> {
-    return api.post('/dev/cookies/test');
+  async testCookies(url?: string): Promise<{
+    ok: boolean;
+    elapsed_seconds: number;
+    message: string;
+    error?: string;
+    stream_url?: string;
+    audio_url?: string;
+    video_id?: string;
+    diagnostics?: any;
+    stream_url_length?: number;
+  }> {
+    const q = url ? `?url=${encodeURIComponent(url)}` : '';
+    return api.post(`/dev/cookies/test${q}`);
   },
 
   subscribeStream(onEvent: (event: DevLogEvent) => void): () => void {

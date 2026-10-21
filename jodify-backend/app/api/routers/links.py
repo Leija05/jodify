@@ -317,11 +317,6 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
             "cookiefile": cookie_path,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos", "web"],
-                }
-            },
         })
         configs.append({
             "quiet": True,
@@ -332,17 +327,9 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             "cookiefile": cookie_path,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"],
+                    "player_client": ["android", "web"],
                 }
             },
-        })
-        configs.append({
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "cookiefile": cookie_path,
         })
 
     # Estrategia B: Clientes sin cookies optimizados para evadir bot-checks en IPs de datacenters

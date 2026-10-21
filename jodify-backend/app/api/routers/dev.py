@@ -625,23 +625,35 @@ async def dev_test_cookies(
 ) -> dict:
     """Prueba en tiempo real si el extractor puede obtener flujo de audio con las cookies actuales."""
     import time
+    import urllib.parse
     from .links import _get_raw_stream_url
+    from ...services.link_resolver import extract_youtube_id
+    from ...services.cookie_manager import get_cookie_diagnostics
+
     start = time.time()
     try:
         loop = asyncio.get_running_loop()
         stream_url, headers = await loop.run_in_executor(None, _get_raw_stream_url, url)
         elapsed = round(time.time() - start, 2)
+        yt_id = extract_youtube_id(url)
         return {
             "ok": True,
             "elapsed_seconds": elapsed,
             "stream_url_length": len(stream_url),
+            "stream_url": stream_url,
+            "audio_url": f"/api/links/stream?url={urllib.parse.quote_plus(url)}",
+            "video_id": yt_id,
+            "diagnostics": get_cookie_diagnostics(),
             "message": f"Extracción exitosa en {elapsed}s",
         }
     except Exception as exc:
         elapsed = round(time.time() - start, 2)
+        yt_id = extract_youtube_id(url)
         return {
             "ok": False,
             "elapsed_seconds": elapsed,
             "error": str(exc),
+            "video_id": yt_id,
+            "diagnostics": get_cookie_diagnostics(),
             "message": f"Prueba falló en {elapsed}s: {exc}",
         }
