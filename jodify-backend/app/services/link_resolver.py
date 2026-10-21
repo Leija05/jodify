@@ -434,6 +434,9 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
         yt_id = await _search_youtube_video_id(f"{artist} {title}")
         if yt_id:
             yt_url = f"https://www.youtube.com/watch?v={yt_id}"
+    except Exception as exc:
+        logger.warning(f"No se pudo emparejar audio de YouTube para Spotify: {exc}")
+
     effective_stream_target = yt_url or url
     stream_url = f"/api/links/stream?url={effective_stream_target}"
     download_url = f"/api/links/download-proxy?url={effective_stream_target}"
