@@ -65,7 +65,7 @@ def _get_ytdlp_opts(extract_flat: bool = False, is_search: bool = False) -> dict
         "noplaylist": False if is_search else not extract_flat,
         "extractor_args": {
             "youtube": {
-                "player_client": ["visionos", "android_vr", "android"],
+                "player_client": ["ios", "mweb", "android_music", "android", "visionos"],
             }
         },
     }
@@ -87,9 +87,9 @@ def _extract_with_ytdlp(url: str, extract_flat: bool = False) -> dict[str, Any]:
             info = ydl.extract_info(url, download=False)
             return ydl.sanitize_info(info) or {}
     except Exception as exc:
-        logger.warning(f"Extracción por defecto falló para {url} ({exc}), probando fallback Android VR / Android...")
+        logger.warning(f"Extracción por defecto falló para {url} ({exc}), probando fallback iOS / mweb...")
         fallback_opts = dict(ydl_opts)
-        fallback_opts["extractor_args"] = {"youtube": {"player_client": ["android_vr", "android"]}}
+        fallback_opts["extractor_args"] = {"youtube": {"player_client": ["ios", "mweb", "tv_embedded"]}}
         try:
             with yt_dlp.YoutubeDL(fallback_opts) as ydl:
                 info = ydl.extract_info(url, download=False)

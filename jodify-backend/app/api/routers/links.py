@@ -125,15 +125,14 @@ async def delete_suggestion(
 
 def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
     ydl_opts: dict[str, Any] = {
-        "format": "bestaudio/best",
+        "format": "bestaudio/best[ext=m4a]/best",
         "outtmpl": output_path + ".%(ext)s",
         "writethumbnail": True,
         "quiet": True,
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-
-                "player_client": ["visionos", "android_vr", "android"],
+                "player_client": ["ios", "mweb", "android_music", "android", "visionos"],
             }
         },
     }
@@ -348,44 +347,84 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
 
     # Estrategia B: Clientes sin cookies optimizados para evadir bot-checks en IPs de datacenters
     configs.extend([
-        # 1. Cliente visionos (Apple VisionOS): client oficial JS-less moderno en yt-dlp
+        # 1. Cliente iOS (altamente resistente en datacenters y para audio M4A/AAC)
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
+            "format": "bestaudio/best[ext=m4a]/best",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["visionos"],
+                    "player_client": ["ios"],
                 }
             },
         },
-        # 2. Cliente android_vr
+        # 2. Cliente mweb (Mobile Web oficial)
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
+            "format": "bestaudio/best[ext=m4a]/best",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android_vr"],
+                    "player_client": ["mweb"],
                 }
             },
         },
-        # 3. Cliente android
+        # 3. Cliente android_music / android
         {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
+            "format": "bestaudio/best[ext=m4a]/best",
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"],
+                    "player_client": ["android_music", "android"],
                 }
             },
+        },
+        # 4. Cliente tv_embedded
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "format": "bestaudio/best[ext=m4a]/best",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["tv_embedded"],
+                }
+            },
+        },
+        # 5. Cliente visionos / android_vr
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "format": "bestaudio/best",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["visionos", "android_vr"],
+                }
+            },
+        },
+        # 6. Modo estándar sin extractor_args
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "format": "bestaudio/best",
         },
     ])
 
@@ -410,6 +449,36 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
             if "confirm you’re not a bot" in err_str or "confirm you're not a bot" in err_str:
                 logger.warning(f"[YouTube Stream] YouTube antibot activo en estrategia para {url}: {exc}")
             continue
+
+    # Estrategia C: Fallback mediante Invidious / Piped API si yt-dlp fue bloqueado por IP de datacenter
+    from ...services.link_resolver import extract_youtube_id
+    yt_id = extract_youtube_id(url)
+    if yt_id:
+        piped_instances = [
+            f"https://pipedapi.kavin.rocks/streams/{yt_id}",
+            f"https://api.piped.privacydev.net/streams/{yt_id}",
+            f"https://piped-api.lunar.icu/streams/{yt_id}",
+        ]
+        for api_url in piped_instances:
+            try:
+                with httpx.Client(timeout=6.0, follow_redirects=True) as client:
+                    resp = client.get(api_url)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        audio_streams = data.get("audioStreams", [])
+                        if audio_streams:
+                            # Preferir formato M4A o mayor bitrate
+                            m4a_streams = [s for s in audio_streams if s.get("format") in ("M4A", "m4a") or "m4a" in s.get("mimeType", "")]
+                            chosen = m4a_streams or audio_streams
+                            chosen.sort(key=lambda s: s.get("bitrate", 0))
+                            best_stream = chosen[-1]["url"]
+                            headers_dict = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+                            global_stream_cache.put(url, best_stream, headers=headers_dict, ttl=14400.0)
+                            logger.info(f"[Piped Fallback] Stream obtenido con éxito para {yt_id}")
+                            return best_stream, headers_dict
+            except Exception as p_err:
+                logger.debug(f"[Piped Fallback] Falló {api_url}: {p_err}")
+                continue
 
     raise ValueError(f"No se pudo obtener el flujo de audio del enlace: {last_error}")
 
