@@ -123,7 +123,16 @@ async def _resolve_youtube_oembed(video_id: str, original_url: str) -> dict[str,
             artist = parts[0].strip()
             title = parts[1].strip()
 
-    if "maxresdefault.jpg" in thumbnail:
+    # Buscar portada original oficial en HD (iTunes/Apple Music) para evitar thumbnails de YouTube
+    try:
+        from ..api.routers.songs import async_fetch_cover_url
+        real_art = await async_fetch_cover_url(artist, title)
+        if real_art:
+            thumbnail = real_art
+    except Exception:
+        pass
+
+    if "maxresdefault.jpg" in str(thumbnail):
         thumbnail = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
 
     stream_proxy_url = f"/api/links/stream?url=https://www.youtube.com/watch?v={video_id}"
@@ -425,11 +434,6 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
         yt_id = await _search_youtube_video_id(f"{artist} {title}")
         if yt_id:
             yt_url = f"https://www.youtube.com/watch?v={yt_id}"
-            if not thumbnail:
-                thumbnail = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
-    except Exception as exc:
-        logger.warning(f"No se pudo emparejar audio de YouTube para Spotify: {exc}")
-
     effective_stream_target = yt_url or url
     stream_url = f"/api/links/stream?url={effective_stream_target}"
     download_url = f"/api/links/download-proxy?url={effective_stream_target}"
@@ -548,8 +552,13 @@ async def resolve_link(url: str) -> dict[str, Any]:
                 title = parts[1].strip()
 
         thumb = info.get("thumbnail")
-        if not thumb and yt_id:
-            thumb = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
+        try:
+            from ..api.routers.songs import async_fetch_cover_url
+            real_art = await async_fetch_cover_url(artist, title)
+            if real_art:
+                thumb = real_art
+        except Exception:
+            pass
 
         stream_url = f"/api/links/stream?url={url}"
         download_url = f"/api/links/download-proxy?url={url}"

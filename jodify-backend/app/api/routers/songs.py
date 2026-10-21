@@ -316,15 +316,19 @@ async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
                         d_item["youtube_id"] = yid
                         d_item["url"] = f"https://www.youtube.com/watch?v={yid}"
                         d_item["source"] = "youtube"
-                        if not d_item.get("cover_url"):
-                            d_item["cover_url"] = f"https://i.ytimg.com/vi/{yid}/hqdefault.jpg"
                 except Exception:
                     pass
 
         await asyncio.gather(*[_resolve_doc_yt(d) for d in songs_needing_yt], return_exceptions=True)
 
-    # 3. Enriquecer carátulas individuales originales para canciones del lote que perdieron la de playlist o no tienen
-    songs_needing_art = [d for d in to_insert_docs if not d.get("cover_url") or "ab67706c" in str(d.get("cover_url"))]
+    # 3. Enriquecer carátulas individuales originales para canciones del lote que tienen thumbnail de YouTube, carátula de playlist repetida o no tienen
+    songs_needing_art = [
+        d for d in to_insert_docs
+        if not d.get("cover_url")
+        or "ab67706c" in str(d.get("cover_url"))
+        or "ytimg.com" in str(d.get("cover_url"))
+        or "youtube.com" in str(d.get("cover_url"))
+    ]
     if songs_needing_art:
         sem_enrich = asyncio.Semaphore(12)
         async with httpx.AsyncClient(timeout=4.0) as client:
@@ -333,8 +337,6 @@ async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
                     art = await async_fetch_cover_url(d_item.get("artist", ""), d_item.get("name", ""), client=client)
                     if art:
                         d_item["cover_url"] = art
-                    elif d_item.get("youtube_id") and not d_item.get("cover_url"):
-                        d_item["cover_url"] = f"https://i.ytimg.com/vi/{d_item['youtube_id']}/hqdefault.jpg"
 
             await asyncio.gather(*[_resolve_doc_art(d) for d in songs_needing_art], return_exceptions=True)
 
@@ -664,6 +666,11 @@ async def repair_duplicate_covers_in_db() -> dict:
         # 3. Canciones sin carátula
         if not c:
             songs_to_repair.append(s)
+            continue
+        # 4. Carátula proveniente de YouTube (thumbnail) que debe reemplazarse por portada original
+        if "ytimg.com" in c or "youtube.com" in c:
+            songs_to_repair.append(s)
+            continue
 
     if not songs_to_repair:
         return {"ok": True, "repaired_count": 0, "total_examined": len(all_songs), "songs": []}
@@ -676,17 +683,26 @@ async def repair_duplicate_covers_in_db() -> dict:
             s_id = s_doc["_id"]
             artist = s_doc.get("artist") or ""
             name = s_doc.get("name") or ""
-            yt_id = s_doc.get("youtube_id")
+
+            # Si el artista no estaba separado y el título tiene guión, extraerlo
+            clean_artist = artist
+            clean_name = name
+            if not clean_artist and ("-" in clean_name or "–" in clean_name or "—" in clean_name):
+                parts = re.split(r"\s*[-–—]\s*", clean_name, maxsplit=1)
+                if len(parts) == 2:
+                    clean_artist = parts[0].strip()
+                    clean_name = parts[1].strip()
 
             real_cover = None
             async with sem:
-                real_cover = await async_fetch_cover_url(artist, name, client=client)
-
-            if not real_cover and yt_id:
-                real_cover = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
+                real_cover = await async_fetch_cover_url(clean_artist, clean_name, client=client)
 
             if real_cover and real_cover != s_doc.get("cover_url"):
-                await col("songs").update_one({"_id": s_id}, {"$set": {"cover_url": real_cover}})
+                update_fields: dict[str, Any] = {"cover_url": real_cover}
+                if not artist and clean_artist:
+                    update_fields["artist"] = clean_artist
+                    update_fields["name"] = clean_name
+                await col("songs").update_one({"_id": s_id}, {"$set": update_fields})
                 repaired_records.append({
                     "id": str(s_id),
                     "name": name,

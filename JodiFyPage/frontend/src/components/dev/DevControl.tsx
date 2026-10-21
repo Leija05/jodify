@@ -217,8 +217,8 @@ export function DevControl({ state, onChanged }: { state: DevState | null; onCha
 
 const TEST_PRESETS = [
   { name: 'The Strokes - Someday', url: 'https://www.youtube.com/watch?v=knU9gRUWCno' },
-  { name: 'Joji - Slow Dancing', url: 'https://www.youtube.com/watch?v=K3QzzGGyozk' },
-  { name: 'José José - El Triste', url: 'https://www.youtube.com/watch?v=h2j_6b34X7M' },
+  { name: 'Joji - Slow Dancing', url: 'https://www.youtube.com/watch?v=LUXu4aTnK7E' },
+  { name: 'José José - El Triste', url: 'https://www.youtube.com/watch?v=E20G25SCAEg' },
   { name: 'Rick Astley - Never Gonna Give You Up', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
 ];
 

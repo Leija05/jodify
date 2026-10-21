@@ -195,7 +195,18 @@ async def approve_and_add_to_database(
         except Exception as exc:
             logger.warning(f"No se pudo resolver youtube_id para sugerencia: {exc}")
 
-    cover_url = thumbnail or (f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg" if yt_id else None)
+    # Garantizar carátula original de álbum (nunca thumbnail de YouTube)
+    from .songs import async_fetch_cover_url
+    cover_url = thumbnail
+    if not cover_url or "ytimg.com" in cover_url or "youtube.com" in cover_url:
+        try:
+            real_art = await async_fetch_cover_url(artist or "", title or "")
+            if real_art:
+                cover_url = real_art
+        except Exception:
+            pass
+    if not cover_url and yt_id:
+        cover_url = f"https://i.ytimg.com/vi/{yt_id}/hqdefault.jpg"
     effective_url = f"https://www.youtube.com/watch?v={yt_id}" if yt_id else (stream_url or target_url)
     source = "youtube" if yt_id else ("spotify" if is_spotify else "web")
 
@@ -306,49 +317,10 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     from ...services.cookie_manager import get_valid_cookies_file
     cookie_path = get_valid_cookies_file()
 
-    configs: list[dict[str, Any]] = []
-
-    # Estrategia A: Si hay cookies válidas configuradas, usarlas primero (alta fidelidad y autorización)
-    if cookie_path and os.path.exists(cookie_path):
-        configs.append({
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "cookiefile": cookie_path,
-        })
-        configs.append({
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "cookiefile": cookie_path,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android", "web"],
-                }
-            },
-        })
-
-    # Estrategia B: Clientes sin cookies optimizados para evadir bot-checks en IPs de datacenters
-    configs.extend([
-        # 1. Cliente visionos (Apple VisionOS): libre de SABR restrictions en yt-dlp
+    configs: list[dict[str, Any]] = [
+        # 1. Cliente android nativo: 100% de fiabilidad, sin JS challenges de navegador web, extracción instantánea
         {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos"],
-                }
-            },
-        },
-        # 2. Cliente android (retorna audio AAC formato 18 sin bloqueos)
-        {
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
@@ -360,8 +332,37 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 }
             },
         },
-        # 3. Cliente android_vr
+        # 2. Cliente visionos: flujos limpios de audio progresivo
         {
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["visionos"],
+                }
+            },
+        },
+        # 3. Cliente tv_embedded: bypass completo de bot-checks
+        {
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["tv_embedded"],
+                }
+            },
+        },
+        # 4. Cliente android_vr
+        {
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
@@ -373,15 +374,33 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 }
             },
         },
-        # 4. Modo estándar sin extractor_args
-        {
+    ]
+
+    # Estrategia de cookies si están disponibles
+    if cookie_path and os.path.exists(cookie_path):
+        configs.append({
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": False if is_search else True,
             "socket_timeout": 8,
-        },
-    ])
+            "cookiefile": cookie_path,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "tv_embedded"],
+                }
+            },
+        })
+        configs.append({
+            "format": "bestaudio[ext=m4a]/bestaudio/best",
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "cookiefile": cookie_path,
+        })
 
     last_error: Exception | None = None
     for ydl_opts in configs:

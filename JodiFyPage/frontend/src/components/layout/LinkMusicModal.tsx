@@ -94,7 +94,7 @@ function toVirtualSong(
   if (cover && ((playlistCover && cover === playlistCover) || cover.includes('ab67706c'))) {
     cover = undefined;
   }
-  const finalCover = cover || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined);
+  const finalCover = cover;
 
   return {
     id: cleanId,
@@ -1299,10 +1299,9 @@ export function LinkMusicModal() {
                     const vSong = toVirtualSong(item, resolved.thumbnail);
                     const liked = isTrackLiked(vSong.id);
                     const itemThumb =
-                      (item.thumbnail && item.thumbnail !== resolved.thumbnail && !item.thumbnail.includes('ab67706c')
+                      item.thumbnail && item.thumbnail !== resolved.thumbnail && !item.thumbnail.includes('ab67706c')
                         ? item.thumbnail
-                        : undefined) ||
-                      (item.youtube_id ? `https://i.ytimg.com/vi/${item.youtube_id}/hqdefault.jpg` : undefined);
+                        : undefined;
 
                     return (
                       <div

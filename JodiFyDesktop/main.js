@@ -179,7 +179,7 @@ function resolveLocalStreamUrl(targetOrId) {
   const ytdlpArgs = [
     '--get-url',
     '--extractor-args',
-    'youtube:player_client=visionos,android',
+    'youtube:player_client=android,visionos',
     '-f',
     'bestaudio[ext=m4a]/bestaudio/best',
     '--no-warnings',
