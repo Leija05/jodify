@@ -1,9 +1,5 @@
 import { api } from '../lib/api';
-
-const LYRIC_PROVIDERS = [
-  (artist: string, title: string) => `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`,
-  (artist: string, title: string) => `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`,
-];
+import { cleanArtistName, cleanSongTitle } from '../lib/utils';
 
 function normalize(s: string): string {
   return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -28,6 +24,25 @@ function pickLrclibHit(json: unknown, title: string): { syncedLyrics?: string; p
   );
 }
 
+async function safeFetchJson(url: string, timeoutMs = 3500): Promise<unknown | null> {
+  if (typeof window === 'undefined') return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) return null;
+    const text = await response.text();
+    return JSON.parse(text);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const inFlight = new Map<string, Promise<string | null>>();
 const cache = new Map<string, string | null>();
 
@@ -37,44 +52,57 @@ export function clearLyricsCache(): void {
 }
 
 export async function fetchLyrics(name: string, artist?: string): Promise<string | null> {
-  const search = name.trim();
-  if (!search) return null;
+  const cleanTitle = cleanSongTitle(name);
+  if (!cleanTitle) return null;
 
-  const key = `${artist ?? ''}|${search}`;
+  const { primary: primaryArtist, full: fullArtist } = cleanArtistName(artist);
+  const key = `${fullArtist}|${cleanTitle}`;
   const cached = cache.get(key);
   if (cached !== undefined) return cached;
   const pending = inFlight.get(key);
   if (pending) return pending;
 
   const task = (async (): Promise<string | null> => {
-    const artists = [...new Set([artist, search].filter(Boolean) as string[])];
-    for (const currentArtist of artists) {
-      for (let i = 0; i < LYRIC_PROVIDERS.length; i++) {
-        // Sin artista real, lyrics.ovh no puede buscar con sentido ("Hielo/Hielo").
-        if (i === 1 && !artist) continue;
-        const build = LYRIC_PROVIDERS[i];
-        try {
-          const response = await fetch(build(currentArtist, search));
-          if (!response.ok) continue;
-          const text = await response.text();
-          let json: unknown;
-          try {
-            json = JSON.parse(text);
-          } catch {
-            continue;
-          }
-          if (Array.isArray(json)) {
-            const hit = pickLrclibHit(json, search);
-            if (hit) return hit.syncedLyrics ?? hit.plainLyrics ?? null;
-          } else {
-            const record = json as { lyrics?: string };
-            if (record.lyrics && record.lyrics.trim()) return record.lyrics;
-          }
-        } catch {
-          continue;
+    // 1. Probar en lrclib.net con artista primario y título limpio
+    const lrclibUrls: string[] = [];
+    if (primaryArtist) {
+      lrclibUrls.push(
+        `https://lrclib.net/api/search?artist_name=${encodeURIComponent(primaryArtist)}&track_name=${encodeURIComponent(cleanTitle)}`,
+      );
+    }
+    if (fullArtist && fullArtist !== primaryArtist) {
+      lrclibUrls.push(
+        `https://lrclib.net/api/search?artist_name=${encodeURIComponent(fullArtist)}&track_name=${encodeURIComponent(cleanTitle)}`,
+      );
+    }
+    // Búsqueda general con query combinada como fallback en lrclib
+    lrclibUrls.push(`https://lrclib.net/api/search?q=${encodeURIComponent(`${primaryArtist} ${cleanTitle}`.trim())}`);
+
+    for (const url of lrclibUrls) {
+      const json = await safeFetchJson(url, 3000);
+      if (Array.isArray(json) && json.length > 0) {
+        const hit = pickLrclibHit(json, cleanTitle);
+        if (hit?.syncedLyrics || hit?.plainLyrics) {
+          return hit.syncedLyrics ?? hit.plainLyrics ?? null;
         }
       }
     }
+
+    // 2. Probar en lyrics.ovh únicamente si disponemos de artista real (nunca el título como artista)
+    const ovhArtists = [primaryArtist, fullArtist].filter(Boolean);
+    const uniqueOvhArtists = [...new Set(ovhArtists)];
+
+    for (const art of uniqueOvhArtists) {
+      const ovhUrl = `https://api.lyrics.ovh/v1/${encodeURIComponent(art)}/${encodeURIComponent(cleanTitle)}`;
+      const json = await safeFetchJson(ovhUrl, 2500);
+      if (json && typeof json === 'object') {
+        const record = json as { lyrics?: string };
+        if (record.lyrics && record.lyrics.trim().length > 0) {
+          return record.lyrics.trim();
+        }
+      }
+    }
+
     return null;
   })();
 

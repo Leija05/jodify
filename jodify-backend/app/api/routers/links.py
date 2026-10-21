@@ -414,6 +414,20 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
     raise ValueError(f"No se pudo obtener el flujo de audio del enlace: {last_error}")
 
 
+def _fix_mojibake(text: str | None) -> str:
+    if not text:
+        return ""
+    s = text.strip()
+    for enc in ("windows-1252", "latin-1"):
+        try:
+            fixed = s.encode(enc).decode("utf-8")
+            if fixed:
+                s = fixed
+        except Exception:
+            pass
+    return s.strip()
+
+
 @router.get("/match-track")
 async def match_track(
     artist: str = Query(""),
@@ -422,14 +436,21 @@ async def match_track(
 ) -> dict[str, Any]:
     """Busca en YouTube por Artista y Título en ~100ms y devuelve el youtube_id y url para reproducción instantánea."""
     from ...services.link_resolver import _search_youtube_video_id
-    query = f"{artist.strip()} {title.strip()}".strip()
+    clean_artist = _fix_mojibake(artist)
+    clean_title = _fix_mojibake(title)
+    # Remover interrogaciones finales o etiquetas redundantes de video
+    clean_title = re.sub(r"[\(\[\{].*?[\)\]\}]", "", clean_title).replace("?", "").strip()
+    primary_artist = re.split(r"[,&/]|(?:\b(?:feat|ft)\b)", clean_artist, flags=re.IGNORECASE)[0].strip()
+
+    query = f"{primary_artist} {clean_title}".strip() if primary_artist else clean_title
     if not query:
         raise HTTPException(status_code=400, detail="Query vacía")
 
     yt_id = await _search_youtube_video_id(query, exclude_id=exclude_id)
+    if not yt_id and clean_artist and clean_artist != primary_artist:
+        yt_id = await _search_youtube_video_id(f"{clean_artist} {clean_title}".strip(), exclude_id=exclude_id)
     if not yt_id:
-        clean_title = re.sub(r"[\(\[\{].*?[\)\]\}]", "", title).strip()
-        yt_id = await _search_youtube_video_id(f"{artist.strip()} {clean_title}".strip(), exclude_id=exclude_id)
+        yt_id = await _search_youtube_video_id(clean_title, exclude_id=exclude_id)
 
     if not yt_id:
         raise HTTPException(status_code=404, detail="No se encontró video en YouTube para este tema")

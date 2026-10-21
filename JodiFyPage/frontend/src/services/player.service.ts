@@ -6,7 +6,7 @@ import { useJamStore } from '../store/jam.store';
 import { useToastStore } from '../store/toast.store';
 import { getSongOffline, findSongOffline } from '../lib/idb';
 import { API_BASE } from '../lib/api';
-import { resolveMediaUrl } from '../lib/utils';
+import { resolveMediaUrl, fixMojibake } from '../lib/utils';
 import { linksService } from './links.service';
 import { ytPlayerService } from './yt-player.service';
 import { audioCacheService } from './audioCache.service';
@@ -232,7 +232,12 @@ export async function playSong(song: Song, options: { fades?: boolean } = {}): P
   }
 }
 
-async function executePlaySong(song: Song, options: { fades?: boolean } = {}): Promise<boolean> {
+async function executePlaySong(rawSong: Song, options: { fades?: boolean } = {}): Promise<boolean> {
+  const song: Song = {
+    ...rawSong,
+    name: fixMojibake(rawSong.name),
+    artist: fixMojibake(rawSong.artist),
+  };
   const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
   const player = usePlayerStore.getState();
   const settings = useSettingsStore.getState();
@@ -400,11 +405,27 @@ async function executePlaySong(song: Song, options: { fades?: boolean } = {}): P
         void audioCacheService.cacheTrack(song.id, streamCandidate);
         return true;
       } catch (err) {
-        console.warn(`[player.service] Falló stream directo (${streamCandidate}), probando siguiente opción:`, err);
+        // En entornos web o cuando el backend no dispone de stream directo, pasar fluidamente al reproductor de YouTube
+        console.info(`[player.service] Stream directo no disponible, cambiando fluidamente al reproductor YouTube oficial.`);
       }
     }
 
-    // Si los streams directos fallaron, buscar versión alternativa en YouTube antes de iframe
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }
+
+    // 1ª prioridad: reproducir el video original directamente en el player de YouTube integrado
+    const ytSuccess = await ytPlayerService.playVideo(ytId);
+    if (ytSuccess) {
+      player.setIsPlaying(true);
+      useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
+      logListeningHistory(song, false);
+      return true;
+    }
+
+    // 2ª prioridad: si el video original está bloqueado, eliminado o restringido, buscar alternativa en YouTube
     if (!(song as any)._altRetried) {
       try {
         const altMatch = await linksService.matchTrack(song.artist || '', song.name, ytId);
@@ -415,24 +436,18 @@ async function executePlaySong(song: Song, options: { fades?: boolean } = {}): P
             url: altMatch.url,
           };
           (altSong as any)._altRetried = true;
-          return await executePlaySong(altSong, options);
+          const altYtSuccess = await ytPlayerService.playVideo(altMatch.youtube_id);
+          if (altYtSuccess) {
+            player.setCurrentSong(altSong);
+            player.setIsPlaying(true);
+            useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
+            logListeningHistory(altSong, false);
+            return true;
+          }
         }
       } catch (altErr) {
         console.warn('[player.service] No se pudo encontrar versión alternativa en YouTube:', altErr);
       }
-    }
-
-    if (audio) {
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
-    }
-    const ytSuccess = await ytPlayerService.playVideo(ytId);
-    if (ytSuccess) {
-      player.setIsPlaying(true);
-      useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
-      logListeningHistory(song, false);
-      return true;
     }
 
     // Si todo falló, no engañar al usuario marcando reproducción en 0:00

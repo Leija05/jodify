@@ -27,6 +27,8 @@ export function PlayerBar() {
     else ensurePlaying();
   };
 
+  const progressPercent = player.duration && player.duration > 0 ? (player.currentTime / player.duration) * 100 : 0;
+
   return (
     <motion.footer
       className="jf-player"
@@ -35,6 +37,11 @@ export function PlayerBar() {
       transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
       data-testid="player-bar"
     >
+      {/* Barra de progreso sutil integrada para vista móvil */}
+      <div className="jf-player-mini-progress" aria-hidden="true">
+        <div className="jf-player-mini-progress-fill" style={{ width: `${progressPercent}%` }} />
+      </div>
+
       <div
         className="jf-player-left"
         onContextMenu={(e) => {
@@ -129,10 +136,10 @@ export function PlayerBar() {
           <span className="jf-time">{formatTime(player.duration)}</span>
         </div>
         <div className="jf-player-controls">
-          <button className={`jf-control ${player.isShuffle ? 'is-active' : ''}`} aria-label="Aleatorio" onClick={player.toggleShuffle}>
+          <button className={`jf-control jf-control--shuffle ${player.isShuffle ? 'is-active' : ''}`} aria-label="Aleatorio" onClick={player.toggleShuffle}>
             <Shuffle size={17} />
           </button>
-          <button className="jf-control" aria-label="Anterior" onClick={() => void player.previous()}>
+          <button className="jf-control jf-control--prev" aria-label="Anterior" onClick={() => void player.previous()}>
             <SkipBack size={19} weight="fill" />
           </button>
           <button className="jf-control jf-control--play" aria-label="Reproducir" onClick={handlePlayPause} disabled={!song} data-testid="play-btn">
@@ -148,11 +155,11 @@ export function PlayerBar() {
               </motion.span>
             </AnimatePresence>
           </button>
-          <button className="jf-control" aria-label="Siguiente" onClick={() => void player.next()}>
+          <button className="jf-control jf-control--next" aria-label="Siguiente" onClick={() => void player.next()}>
             <SkipForward size={19} weight="fill" />
           </button>
           <button
-            className={`jf-control ${player.repeatMode !== 'off' ? 'is-active' : ''} ${player.repeatMode === 'all' ? 'is-repeat-all' : ''} ${player.repeatMode === 'one' ? 'is-repeat-one' : ''}`}
+            className={`jf-control jf-control--repeat ${player.repeatMode !== 'off' ? 'is-active' : ''} ${player.repeatMode === 'all' ? 'is-repeat-all' : ''} ${player.repeatMode === 'one' ? 'is-repeat-one' : ''}`}
             aria-label={
               player.repeatMode === 'all'
                 ? 'Repetir toda la colección'

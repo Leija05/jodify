@@ -432,8 +432,8 @@
     flex-direction: column;
     height: auto !important;
     min-height: 100dvh;
-    padding: 10px 10px calc(115px + env(safe-area-inset-bottom, 0px)) !important;
-    gap: 12px;
+    padding: 8px 8px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 10px;
     overflow: visible !important;
     width: 100%;
     box-sizing: border-box;
@@ -442,10 +442,15 @@
   .jf-main-view-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     height: auto !important;
     overflow: visible !important;
     width: 100%;
+  }
+
+  /* Ocultar mascota flotante en móvil para que no estorbe ni bloquee toques */
+  .jf-pet-roam-wrap {
+    display: none !important;
   }
 
   /* Contenedor principal de la Home sin scroll anidado en móviles */
@@ -461,15 +466,15 @@
     min-height: auto !important;
     overflow: visible !important;
     flex: none !important;
-    padding: 12px 10px !important;
-    gap: 18px !important;
+    padding: 10px 8px !important;
+    gap: 14px !important;
   }
 
   .jf-home-side-widget {
     height: auto !important;
     min-height: auto !important;
     overflow: visible !important;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
   }
 
@@ -484,6 +489,7 @@
     gap: 10px;
     flex-direction: column;
     align-items: stretch;
+    border-radius: 16px;
   }
 
   .jf-home-profile-badge {
@@ -510,56 +516,89 @@
   }
 
   .jf-btn-header-action {
-    padding: 7px 12px;
+    padding: 6px 12px;
     font-size: 11.5px;
+    border-radius: 99px;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
   }
 
   .jf-btn-header-action span {
     display: inline !important;
   }
 
-  /* Barra de herramientas principal (Tabs deslizables horizontalmente y buscador) */
+  /* En pantalla táctil se oculta el botón de atajos de teclado */
+  .jf-btn-header-action[title*="Atajos"],
+  .jf-btn-header-action[title*="teclado"] {
+    display: none !important;
+  }
+
+  /* Barra de herramientas principal (Tabs deslizables horizontalmente y buscador compacto) */
   .jf-home-main-toolbar {
-    padding: 10px 12px;
-    gap: 10px;
-    flex-direction: column;
-    align-items: stretch;
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    border-radius: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .jf-home-toolbar-tabs {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 6px;
-    width: 100%;
-    padding: 2px 2px 4px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    width: 100% !important;
+    padding: 2px 2px 6px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
   }
 
   .jf-home-toolbar-tabs::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
 
   .jf-toolbar-tab {
-    padding: 7px 13px;
-    font-size: 12px;
-    white-space: nowrap;
-    flex-shrink: 0;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    border-radius: 99px !important;
   }
 
   .jf-home-toolbar-right {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-top: 2px !important;
   }
 
   .jf-home-search-wrap {
-    flex: 1;
-    width: 100%;
-    max-width: 100%;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    max-width: none !important;
+    height: 38px !important;
+  }
+
+  .jf-search-kbd-hint {
+    display: none !important;
+  }
+
+  .jf-view-mode-switcher--main {
+    flex-shrink: 0 !important;
+    height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 2px !important;
+  }
+
+  .jf-view-mode-switcher--main .jf-view-mode-btn {
+    padding: 5px 8px !important;
+    min-height: 32px !important;
   }
 
   /* Cuadrícula nativa de 2 columnas para canciones y playlists */
@@ -605,35 +644,53 @@
     font-size: 13px;
   }
 
-  /* Hero Featured adaptado a móvil */
+  /* Hero Featured adaptado a móvil: compacto, centrado y proporcionado */
   .jf-hero-featured {
-    grid-template-columns: 1fr;
-    gap: 14px;
-    padding: 16px 14px;
-    text-align: center;
-    border-radius: var(--radius-lg);
-    min-height: auto;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 14px 12px !important;
+    text-align: center !important;
+    border-radius: 16px !important;
+    min-height: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .jf-hero-artwork-col {
-    justify-content: center;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
   }
 
   .jf-hero-artwork-wrap {
-    width: min(180px, 50vw);
-    height: min(180px, 50vw);
-    margin: 0 auto;
+    width: min(150px, 44vw) !important;
+    height: min(150px, 44vw) !important;
+    border-radius: 12px !important;
+    margin: 0 auto !important;
+  }
+
+  .jf-hero-info-col {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .jf-hero-title {
+    font-size: 20px !important;
+    line-height: 1.2 !important;
+    margin: 2px 0 !important;
+    word-break: break-word !important;
   }
 
   .jf-hero-badges-row,
   .jf-hero-artist-row,
   .jf-hero-actions-row,
   .jf-hero-stats-line {
-    justify-content: center;
-  }
-
-  .jf-hero-title {
-    font-size: clamp(19px, 5.5vw, 24px);
+    justify-content: center !important;
   }
 
   .jf-lyrics {
@@ -647,90 +704,197 @@
 
   .jf-vinyl-deck,
   .jf-turntable-deck {
-    width: min(200px, 52vw) !important;
-    height: min(200px, 52vw) !important;
+    width: min(180px, 48vw) !important;
+    height: min(180px, 48vw) !important;
     margin: 0 auto !important;
   }
 
-  /* Reproductor inferior en móvil: centrado perfecto, sin corte y con safe area */
+  /* Mini reproductor nativo móvil: anclado de lado a lado con margen simétrico y altura de 58px */
   .jf-player {
     position: fixed !important;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%) !important;
-    width: calc(100vw - 16px) !important;
-    max-width: 520px !important;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px 12px;
-    border-radius: 18px;
-    z-index: var(--z-sticky) !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: none !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    padding: 0 10px !important;
+    border-radius: 14px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    background: rgba(14, 14, 20, 0.94) !important;
+    backdrop-filter: blur(28px) !important;
+    -webkit-backdrop-filter: blur(28px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+    overflow: hidden !important;
+    z-index: 9999 !important;
+  }
+
+  /* Barra de progreso de reproducción en el borde superior del mini reproductor */
+  .jf-player-mini-progress {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 2.5px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    z-index: 10 !important;
+  }
+
+  .jf-player-mini-progress-fill {
+    height: 100% !important;
+    background: linear-gradient(90deg, var(--primary), var(--secondary)) !important;
+    transition: width 0.2s linear !important;
   }
 
   .jf-player-left {
-    flex: 1;
-    min-width: 0;
-    gap: 8px;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    overflow: hidden !important;
+  }
+
+  .jf-player-cover-wrap {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
   }
 
   .jf-player-cover {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    flex-shrink: 0;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .jf-player-empty-logo {
+    width: 24px !important;
+    height: 24px !important;
   }
 
   .jf-player-meta {
-    display: block;
-    min-width: 0;
-    flex: 1;
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+    gap: 1px !important;
   }
 
   .jf-player-title {
-    font-size: 12.5px;
-    line-height: 1.25;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 140px;
+    font-size: 13px !important;
+    font-weight: 750 !important;
+    color: #fff !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
   }
 
   .jf-player-artist {
-    font-size: 11px;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 140px;
+    font-size: 11px !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
   }
 
-  .jf-player-right {
-    flex: 0 0 auto;
-    gap: 6px;
+  .jf-like-btn {
+    display: none !important;
   }
 
+  /* Centro: Play/Pause y Siguiente */
   .jf-player-center {
-    order: 3;
-    flex-basis: 100%;
-    min-width: 0;
-    margin-top: -2px;
+    order: 2 !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin: 0 !important;
+    min-width: 0 !important;
   }
 
   .jf-player-timeline {
-    gap: 6px;
+    display: none !important;
   }
 
-  .jf-time {
-    font-size: 10px;
+  .jf-player-controls {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
   }
 
-  .jf-volume {
-    display: none;
+  .jf-control.jf-control--shuffle,
+  .jf-control.jf-control--prev,
+  .jf-control.jf-control--repeat {
+    display: none !important;
   }
 
-  .jf-visualizer {
-    display: none;
+  .jf-control.jf-control--play {
+    width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    border-radius: 50% !important;
+    background: var(--primary) !important;
+    color: #fff !important;
+    box-shadow: 0 3px 12px rgba(127, 0, 255, 0.45) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .jf-control.jf-control--next {
+    width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: var(--text-muted) !important;
+  }
+
+  /* Derecha: Letras y Cola */
+  .jf-player-right {
+    order: 3 !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+  }
+
+  .jf-player-right .jf-visualizer,
+  .jf-player-right .jf-volume,
+  .jf-player-right .jf-theme-toggle,
+  .jf-player-right .jf-fullscreen-btn,
+  .jf-player-right button[aria-label="Silenciar"],
+  .jf-player-right button[aria-label="Activar sonido"] {
+    display: none !important;
+  }
+
+  .jf-lyrics-toggle,
+  .jf-player-queue-btn {
+    width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: var(--text-muted) !important;
   }
 
   .jf-drawer {

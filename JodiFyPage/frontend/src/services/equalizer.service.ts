@@ -108,10 +108,15 @@ function applySettings(): void {
   }
 }
 
-function ensureChain(): void {
+function ensureChain(force = false): void {
   if (chain.initialized && chain.context && chain.source) return;
   const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
   if (!audio) return;
+
+  // Evitar advertencia de autoplay de AudioContext: no crear el nodo Web Audio
+  // a menos que la reproducción esté activa o se invoque explícitamente tras interacción (force = true)
+  if (!force && audio.paused) return;
+
   try {
     const Ctx =
       window.AudioContext ||
@@ -201,6 +206,7 @@ function ensureChain(): void {
     chain.bassFilter = bassFilter;
     chain.filters = filters;
     chain.clarityFilter = clarityFilter;
+    chain.compressorNode = compressorNode;
     chain.analyser = analyser;
     chain.initialized = true;
     applySettings();
@@ -208,17 +214,20 @@ function ensureChain(): void {
     chain.context = null;
     chain.source = null;
     chain.analyser = null;
+    chain.compressorNode = null;
     chain.initialized = false;
   }
 }
 
 export const equalizerApi = {
   ensure(): void {
-    ensureChain();
+    ensureChain(false);
   },
 
   getAnalyser(): AnalyserNode | null {
-    ensureChain();
+    if (!chain.analyser) {
+      ensureChain(false);
+    }
     return chain.analyser;
   },
 
@@ -227,43 +236,36 @@ export const equalizerApi = {
   },
 
   setEnabled(enabled: boolean): void {
-    ensureChain();
     chain.enabled = enabled;
     applySettings();
   },
 
   setPreamp(db: number): void {
-    ensureChain();
     chain.preamp = db;
     applySettings();
   },
 
   setBassBoost(percent: number): void {
-    ensureChain();
     chain.bassBoost = percent;
     applySettings();
   },
 
   setClarity(percent: number): void {
-    ensureChain();
     chain.clarity = percent;
     applySettings();
   },
 
   setBandGain(index: number, gain: number): void {
-    ensureChain();
     chain.bandGains[index] = gain;
     applySettings();
   },
 
   setBandGains(values: number[]): void {
-    ensureChain();
     chain.bandGains = [...values];
     applySettings();
   },
 
   setVolumeNormalization(enabled: boolean): void {
-    ensureChain();
     chain.volumeNormalization = enabled;
     applySettings();
   },
@@ -276,7 +278,6 @@ export const equalizerApi = {
     clarity?: number;
     volumeNormalization?: boolean;
   }): void {
-    ensureChain();
     if (opts.enabled !== undefined) chain.enabled = opts.enabled;
     if (opts.bandGains !== undefined) chain.bandGains = [...opts.bandGains];
     if (opts.preamp !== undefined) chain.preamp = opts.preamp;
@@ -287,7 +288,6 @@ export const equalizerApi = {
   },
 
   reset(): void {
-    ensureChain();
     chain.bandGains = Array(EQ_BANDS.length).fill(0);
     chain.bassBoost = 0;
     chain.clarity = 0;
@@ -296,7 +296,7 @@ export const equalizerApi = {
   },
 
   resume(): void {
-    ensureChain();
+    ensureChain(true);
     if (chain.context && chain.context.state === 'suspended') {
       chain.context.resume().then(() => {
         applySettings();

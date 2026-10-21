@@ -22,13 +22,20 @@ const P3_HP_LEFT =
  */
 function playStartupSynthChime(style: StartupSplashStyle) {
   try {
+    // En web, los navegadores bloquean AudioContext sin interacción previa del usuario (Autoplay policy)
+    const isDesktopApp = typeof window !== 'undefined' && Boolean((window as unknown as { electron?: unknown }).electron);
+    if (!isDesktopApp) {
+      // En navegador web no forzar AudioContext durante el splash automático
+      return;
+    }
+
     const AudioCtx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
     if (ctx.state === 'suspended') {
-      void ctx.resume();
+      void ctx.resume().catch(() => undefined);
     }
 
     const now = ctx.currentTime;
