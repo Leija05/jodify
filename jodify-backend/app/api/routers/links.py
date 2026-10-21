@@ -252,7 +252,8 @@ def _select_progressive_audio(target_info: dict[str, Any]) -> str | None:
     if not formats:
         return target_info.get("url")
 
-    # 1. Pistas de solo audio progresivas (Opus, AAC) sin HLS (.m3u8)
+    # 1. Pistas de solo audio progresivas sin HLS (.m3u8)
+    # Preferir M4A/AAC (formato 140) para compatibilidad 100% universal con iOS Safari, Android y Web
     audio_only = [
         f for f in formats
         if f.get("acodec") != "none"
@@ -262,6 +263,13 @@ def _select_progressive_audio(target_info: dict[str, Any]) -> str | None:
         and f.get("url")
     ]
     if audio_only:
+        m4a_candidates = [
+            f for f in audio_only
+            if f.get("ext") in ("m4a", "mp4") or "mp4a" in str(f.get("acodec", "")).lower()
+        ]
+        if m4a_candidates:
+            m4a_candidates.sort(key=lambda x: (x.get("abr") or x.get("tbr") or 0))
+            return m4a_candidates[-1]["url"]
         return audio_only[-1]["url"]
 
     # 2. Pistas combinadas (ej: mp4 formato 18) sin m3u8
