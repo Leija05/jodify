@@ -189,12 +189,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   playWithContext: async (song, contextSongs, contextTitle, contextType = 'custom', options) => {
-    // Desbloquear elemento de audio inmediatamente en el gesto del usuario para compatibilidad móvil
+    // Desbloquear elemento de audio y reproductor inmediatamente en el gesto del usuario para compatibilidad móvil
     const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
     if (audio && audio.paused && !audio.src) {
       audio.load();
     }
     void import('../services/equalizer.service').then(({ equalizerApi }) => equalizerApi.resume()).catch(() => undefined);
+    void import('../services/yt-player.service').then(({ ytPlayerService }) => ytPlayerService.onUserGesture()).catch(() => undefined);
 
     const { isShuffle, currentSong, history } = get();
 

@@ -53,6 +53,7 @@ export function initProactiveAudioUnlock(): () => void {
 
   const handleInteraction = () => {
     void unlockAllAudioContexts();
+    import('./yt-player.service').then(({ ytPlayerService }) => ytPlayerService.onUserGesture()).catch(() => undefined);
   };
 
   interactionEvents.forEach((evt) => {

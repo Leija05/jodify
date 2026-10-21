@@ -372,11 +372,8 @@ async function executePlaySong(rawSong: Song, options: { fades?: boolean } = {})
     player.setCurrentSong(song);
     player.setCurrentTime(0);
     player.setDuration(song.duration ?? 0);
-    // Determinar si estamos en un dispositivo móvil (smartphone o tablet)
-    const isMobileDevice = typeof window !== 'undefined' && (
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-      || (window.matchMedia && window.matchMedia('(max-width: 768px)').matches)
-    );
+    player.setSourceUrl(song.url);
+    player.setOfflinePlayback(false);
 
     // 1. En la app de escritorio Electron con acelerador nativo local, probar stream directo local si existe:
     const isDesktopApp = typeof window !== 'undefined' && Boolean((window as any).electron || (window as any).jodifyPlayer);
@@ -403,61 +400,8 @@ async function executePlaySong(rawSong: Song, options: { fades?: boolean } = {})
       }
     }
 
-    // 2. En dispositivos móviles (iPhone, Android, tablets): la API de iframes de YouTube en segundo plano
-    // está bloqueada por políticas de ahorro de energía y autoplay de iOS Safari y Chrome Mobile.
-    // La reproducción se realiza a través del elemento <audio> nativo con stream directo (AAC M4A 140).
-    // Esto permite reproducción en segundo plano, controles de pantalla de bloqueo, avance fluido y ecualizador.
-    if (isMobileDevice) {
-      if (!audio) return false;
-      const streamCandidate = `${API_BASE}/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`;
-      try {
-        useToastStore.getState().show(`Cargando «${song.name}»…`, 'info', 1200);
-        ytPlayerService.stop();
-        audio.src = streamCandidate;
-        audio.volume = player.volume;
-        audio.muted = player.muted;
-        await audio.play();
-        if (audio.error) {
-          throw new Error('Audio element error: ' + audio.error.message);
-        }
-        player.setIsPlaying(true);
-        player.setSourceUrl(streamCandidate);
-        useToastStore.getState().show(`Reproduciendo «${song.name}» 📱`, 'success', 2000);
-        logListeningHistory(song, false);
-        void audioCacheService.cacheTrack(song.id, streamCandidate);
-        return true;
-      } catch (err: any) {
-        console.warn('[player.service] Error reproduciendo en móvil:', err);
-        if (err && err.name === 'NotAllowedError') {
-          player.setIsPlaying(false);
-          useToastStore.getState().show('Toca el botón ▶ para iniciar la música', 'info', 3000);
-          return false;
-        }
-      }
-    }
-
-    // 3. En navegador Desktop: intentar stream directo y fallback al reproductor de YouTube
-    if (audio) {
-      const streamCandidate = `${API_BASE}/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`;
-      try {
-        ytPlayerService.stop();
-        audio.src = streamCandidate;
-        audio.volume = player.volume;
-        audio.muted = player.muted;
-        await audio.play();
-        if (!audio.error) {
-          player.setIsPlaying(true);
-          player.setSourceUrl(streamCandidate);
-          useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
-          logListeningHistory(song, false);
-          void audioCacheService.cacheTrack(song.id, streamCandidate);
-          return true;
-        }
-      } catch {
-        // En desktop, si el stream directo no está disponible, continuar al reproductor YouTube oficial
-      }
-    }
-
+    // En navegador web (laptop/desktop y móvil): reproducir directamente con YouTube Iframe
+    // Esto garantiza 0 peticiones al backend (evitando bloqueos de IP de datacenter y errores de formato yt-dlp)
     if (audio) {
       audio.pause();
       audio.removeAttribute('src');

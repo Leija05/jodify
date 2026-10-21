@@ -33,12 +33,10 @@ export function useMediaSession(): void {
     };
 
     setHandler('play', () => {
-      const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
-      audio?.play().catch(() => undefined);
+      import('../services/player.service').then(({ ensurePlaying }) => ensurePlaying()).catch(() => undefined);
     });
     setHandler('pause', () => {
-      const audio = document.querySelector('audio#jodify-audio') as HTMLAudioElement | null;
-      audio?.pause();
+      import('../services/player.service').then(({ pausePlayback }) => pausePlayback()).catch(() => undefined);
     });
     setHandler('nexttrack', () => void usePlayerStore.getState().next());
     setHandler('previoustrack', () => void usePlayerStore.getState().previous());
