@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'motion/react';
 import { Heart, Download, Queue, Play, Pause } from '@phosphor-icons/react';
 import type { Song } from '../../lib/types';
@@ -23,7 +24,7 @@ interface SongRowProps {
   contextType?: PlaybackContext['type'];
 }
 
-export function SongRow({ song, index, contextSongs, contextTitle, contextType }: SongRowProps) {
+export const SongRow = memo(function SongRow({ song, index, contextSongs, contextTitle, contextType }: SongRowProps) {
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const likedIds = useLibraryStore((s) => s.likedIds);
@@ -156,4 +157,4 @@ export function SongRow({ song, index, contextSongs, contextTitle, contextType }
       </div>
     </motion.li>
   );
-}
+});

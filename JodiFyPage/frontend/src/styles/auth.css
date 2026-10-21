@@ -30,17 +30,20 @@
   min-height: 100%;
   width: auto;
   height: auto;
-  transform: translate(-50%, -50%) scale(1.08);
+  transform: translate(-50%, -50%) scale(1.02);
   object-fit: cover;
-  filter: blur(14px) brightness(0.38) saturate(1.25);
+  opacity: 0.42;
+  filter: brightness(0.7) saturate(1.15);
   pointer-events: none;
-  will-change: transform;
+  transform-origin: center center;
 }
 
 .jf-intro-video-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 25%, rgba(13, 10, 24, 0.42) 0%, rgba(5, 4, 10, 0.78) 60%, #030306 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: radial-gradient(ellipse at 50% 25%, rgba(13, 10, 24, 0.45) 0%, rgba(5, 4, 10, 0.85) 65%, #030306 100%);
   pointer-events: none;
 }
 

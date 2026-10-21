@@ -234,11 +234,10 @@ export function HomeShowcaseView() {
         key={song.id}
         data-testid={`song-row-${song.id}`}
         className={`jf-song-card ${isThisPlaying ? 'is-playing' : ''}`}
-        layout
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.18 }}
         onClick={(e) => handlePlayCard(song, e)}
         onContextMenu={(e) => handleContextMenuSong(e, song)}
         title={`Clic derecho para ver opciones de «${song.name}»`}

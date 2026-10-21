@@ -102,7 +102,7 @@ export function IntroPage() {
           loop
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           src={`${import.meta.env.BASE_URL}jodify-promo.mp4`}
         />
         <div className="jf-intro-video-overlay" />

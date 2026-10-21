@@ -13,21 +13,73 @@ import { SongCover } from '../ui/SongCover';
 import { ensurePlaying, pausePlayback } from '../../services/player.service';
 import { useContextMenuStore } from '../../store/contextmenu.store';
 
-export function PlayerBar() {
-  const player = usePlayerStore();
-  const settings = useSettingsStore();
-  const ui = useUiStore();
+function PlayerMiniProgress({ duration }: { duration: number }) {
+  const currentTime = usePlayerStore((s) => s.currentTime);
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  return (
+    <div className="jf-player-mini-progress" aria-hidden="true">
+      <div className="jf-player-mini-progress-fill" style={{ width: `${progressPercent}%` }} />
+    </div>
+  );
+}
 
-  const song = player.currentSong;
+function PlayerTimeline({ duration }: { duration: number }) {
+  const currentTime = usePlayerStore((s) => s.currentTime);
+  const seek = usePlayerStore((s) => s.seek);
+  const max = duration > 0 ? duration : 100;
+  return (
+    <div className="jf-player-timeline">
+      <span className="jf-time">{formatTime(currentTime)}</span>
+      <Slider
+        className="jf-progress"
+        fill
+        min={0}
+        max={max}
+        step={0.1}
+        value={Math.min(currentTime, max)}
+        onChange={(e) => seek(Number(e.target.value))}
+        aria-label="Progreso"
+        data-testid="progress-slider"
+      />
+      <span className="jf-time">{formatTime(duration)}</span>
+    </div>
+  );
+}
+
+export function PlayerBar() {
+  const song = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const isOfflinePlayback = usePlayerStore((s) => s.isOfflinePlayback);
+  const duration = usePlayerStore((s) => s.duration);
+  const isShuffle = usePlayerStore((s) => s.isShuffle);
+  const repeatMode = usePlayerStore((s) => s.repeatMode);
+  const volume = usePlayerStore((s) => s.volume);
+  const muted = usePlayerStore((s) => s.muted);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+  const cycleRepeatMode = usePlayerStore((s) => s.cycleRepeatMode);
+  const setVolume = usePlayerStore((s) => s.setVolume);
+  const setMuted = usePlayerStore((s) => s.setMuted);
+  const next = usePlayerStore((s) => s.next);
+  const previous = usePlayerStore((s) => s.previous);
+
+  const theme = useSettingsStore((s) => s.theme);
+  const toggleTheme = useSettingsStore((s) => s.toggleTheme);
+  const language = useSettingsStore((s) => s.language);
+  const disableVisualizer = useSettingsStore((s) => s.disableVisualizer);
+
+  const mainView = useUiStore((s) => s.mainView);
+  const toggleMainView = useUiStore((s) => s.toggleMainView);
+  const modal = useUiStore((s) => s.modal);
+  const openModal = useUiStore((s) => s.open);
+  const toggleModal = useUiStore((s) => s.toggle);
+
   const isLiked = useLibraryStore((s) => (song ? s.likedIds.some((id) => String(id) === String(song.id)) : false));
 
   const handlePlayPause = () => {
     if (!song) return;
-    if (player.isPlaying) pausePlayback();
+    if (isPlaying) pausePlayback();
     else ensurePlaying();
   };
-
-  const progressPercent = player.duration && player.duration > 0 ? (player.currentTime / player.duration) * 100 : 0;
 
   return (
     <motion.footer
@@ -38,9 +90,7 @@ export function PlayerBar() {
       data-testid="player-bar"
     >
       {/* Barra de progreso sutil integrada para vista móvil */}
-      <div className="jf-player-mini-progress" aria-hidden="true">
-        <div className="jf-player-mini-progress-fill" style={{ width: `${progressPercent}%` }} />
-      </div>
+      <PlayerMiniProgress duration={duration} />
 
       <div
         className="jf-player-left"
@@ -64,7 +114,7 @@ export function PlayerBar() {
               transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             >
               <SongCover song={song} alt="" className="jf-player-cover" eager />
-              {player.isPlaying && <span className="jf-player-cover-pulse" aria-hidden="true" />}
+              {isPlaying && <span className="jf-player-cover-pulse" aria-hidden="true" />}
             </motion.div>
           ) : (
             <motion.div
@@ -82,7 +132,7 @@ export function PlayerBar() {
         <div className="jf-player-meta">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
             <p className={`jf-player-title ${song && song.name.length > 28 ? 'is-long' : ''}`}>{song?.name ?? 'Nada sonando'}</p>
-            {player.isOfflinePlayback && (
+            {isOfflinePlayback && (
               <span
                 style={{
                   display: 'inline-flex',
@@ -120,118 +170,104 @@ export function PlayerBar() {
       </div>
 
       <div className="jf-player-center">
-        <div className="jf-player-timeline">
-          <span className="jf-time">{formatTime(player.currentTime)}</span>
-          <Slider
-            className="jf-progress"
-            fill
-            min={0}
-            max={player.duration && player.duration > 0 ? player.duration : 100}
-            step={0.1}
-            value={Math.min(player.currentTime, player.duration && player.duration > 0 ? player.duration : 100)}
-            onChange={(e) => player.seek(Number(e.target.value))}
-            aria-label="Progreso"
-            data-testid="progress-slider"
-          />
-          <span className="jf-time">{formatTime(player.duration)}</span>
-        </div>
+        <PlayerTimeline duration={duration} />
         <div className="jf-player-controls">
-          <button className={`jf-control jf-control--shuffle ${player.isShuffle ? 'is-active' : ''}`} aria-label="Aleatorio" onClick={player.toggleShuffle}>
+          <button className={`jf-control jf-control--shuffle ${isShuffle ? 'is-active' : ''}`} aria-label="Aleatorio" onClick={toggleShuffle}>
             <Shuffle size={17} />
           </button>
-          <button className="jf-control jf-control--prev" aria-label="Anterior" onClick={() => void player.previous()}>
+          <button className="jf-control jf-control--prev" aria-label="Anterior" onClick={() => void previous()}>
             <SkipBack size={19} weight="fill" />
           </button>
           <button className="jf-control jf-control--play" aria-label="Reproducir" onClick={handlePlayPause} disabled={!song} data-testid="play-btn">
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
-                key={player.isPlaying ? 'pause' : 'play'}
+                key={isPlaying ? 'pause' : 'play'}
                 initial={{ scale: 0.6, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.6, opacity: 0 }}
                 transition={{ duration: 0.16, ease: 'easeOut' }}
               >
-                {player.isPlaying ? <Pause size={24} weight="fill" /> : <Play size={24} weight="fill" />}
+                {isPlaying ? <Pause size={24} weight="fill" /> : <Play size={24} weight="fill" />}
               </motion.span>
             </AnimatePresence>
           </button>
-          <button className="jf-control jf-control--next" aria-label="Siguiente" onClick={() => void player.next()}>
+          <button className="jf-control jf-control--next" aria-label="Siguiente" onClick={() => void next()}>
             <SkipForward size={19} weight="fill" />
           </button>
           <button
-            className={`jf-control jf-control--repeat ${player.repeatMode !== 'off' ? 'is-active' : ''} ${player.repeatMode === 'all' ? 'is-repeat-all' : ''} ${player.repeatMode === 'one' ? 'is-repeat-one' : ''}`}
+            className={`jf-control jf-control--repeat ${repeatMode !== 'off' ? 'is-active' : ''} ${repeatMode === 'all' ? 'is-repeat-all' : ''} ${repeatMode === 'one' ? 'is-repeat-one' : ''}`}
             aria-label={
-              player.repeatMode === 'all'
+              repeatMode === 'all'
                 ? 'Repetir toda la colección'
-                : player.repeatMode === 'one'
+                : repeatMode === 'one'
                   ? 'Repetir esta canción'
                   : 'Repetición desactivada'
             }
             title={
-              player.repeatMode === 'all'
+              repeatMode === 'all'
                 ? 'Repitiendo toda la colección (Clic para una canción)'
-                : player.repeatMode === 'one'
+                : repeatMode === 'one'
                   ? 'Repitiendo esta canción (Clic para desactivar)'
                   : 'Activar repetición (Clic para repetir colección)'
             }
             onClick={() => {
-              const next = player.cycleRepeatMode();
+              const nextMode = cycleRepeatMode();
               const msg =
-                next === 'all'
-                  ? (settings.language === 'en' ? 'Loop entire collection' : 'Repetir toda la colección')
-                  : next === 'one'
-                    ? (settings.language === 'en' ? 'Loop current song' : 'Repetir esta canción')
-                    : (settings.language === 'en' ? 'Repeat off' : 'Repetición desactivada');
+                nextMode === 'all'
+                  ? (language === 'en' ? 'Loop entire collection' : 'Repetir toda la colección')
+                  : nextMode === 'one'
+                    ? (language === 'en' ? 'Loop current song' : 'Repetir esta canción')
+                    : (language === 'en' ? 'Repeat off' : 'Repetición desactivada');
               useToastStore.getState().show(msg, 'info', 1200);
             }}
           >
-            {player.repeatMode === 'one' ? (
+            {repeatMode === 'one' ? (
               <RepeatOnce size={18} weight="bold" />
             ) : (
-              <Repeat size={17} weight={player.repeatMode === 'all' ? 'bold' : 'regular'} />
+              <Repeat size={17} weight={repeatMode === 'all' ? 'bold' : 'regular'} />
             )}
           </button>
         </div>
       </div>
 
       <div className="jf-player-right">
-        {!settings.disableVisualizer && <Visualizer />}
-        <button className="jf-control" aria-label={player.muted ? 'Activar sonido' : 'Silenciar'} onClick={() => player.setMuted(!player.muted)}>
-          {player.muted || player.volume === 0 ? <SpeakerSimpleX size={18} /> : <SpeakerHigh size={18} />}
+        {!disableVisualizer && <Visualizer />}
+        <button className="jf-control" aria-label={muted ? 'Activar sonido' : 'Silenciar'} onClick={() => setMuted(!muted)}>
+          {muted || volume === 0 ? <SpeakerSimpleX size={18} /> : <SpeakerHigh size={18} />}
         </button>
         <Slider
           className="jf-volume"
           min={0}
           max={1}
           step={0.01}
-          value={player.volume}
-          onChange={(e) => player.setVolume(Number(e.target.value))}
+          value={volume}
+          onChange={(e) => setVolume(Number(e.target.value))}
           aria-label="Volumen"
           data-testid="volume-slider"
         />
         <button
           className="jf-control jf-theme-toggle"
           aria-label="Cambiar tema"
-          onClick={() => settings.toggleTheme()}
+          onClick={() => toggleTheme()}
         >
-          {settings.theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
         <button
-          className={`jf-control jf-lyrics-toggle ${ui.mainView === 'lyrics' ? 'is-active' : ''}`}
-          aria-label={ui.mainView === 'lyrics' ? 'Volver a pantalla de inicio (T)' : 'Ver letras sincronizadas (T)'}
-          title={ui.mainView === 'lyrics' ? 'Volver a Pantalla de Inicio (T)' : 'Ver Letras Sincronizadas y Biblioteca (T)'}
-          onClick={() => ui.toggleMainView()}
+          className={`jf-control jf-lyrics-toggle ${mainView === 'lyrics' ? 'is-active' : ''}`}
+          aria-label={mainView === 'lyrics' ? 'Volver a pantalla de inicio (T)' : 'Ver letras sincronizadas (T)'}
+          title={mainView === 'lyrics' ? 'Volver a Pantalla de Inicio (T)' : 'Ver Letras Sincronizadas y Biblioteca (T)'}
+          onClick={() => toggleMainView()}
         >
           <TextT size={17} weight="bold" />
         </button>
-        <button className="jf-control jf-fullscreen-btn" aria-label="Pantalla completa" onClick={() => ui.open('fullscreen')} disabled={!song}>
+        <button className="jf-control jf-fullscreen-btn" aria-label="Pantalla completa" onClick={() => openModal('fullscreen')} disabled={!song}>
           <ArrowsOut size={17} />
         </button>
         <button
-          className={`jf-control jf-player-queue-btn ${ui.modal === 'queue' ? 'is-active' : ''}`}
+          className={`jf-control jf-player-queue-btn ${modal === 'queue' ? 'is-active' : ''}`}
           aria-label="Abrir cola de reproducción"
           title="Cola de reproducción (Q)"
-          onClick={() => ui.toggle('queue')}
+          onClick={() => toggleModal('queue')}
         >
           <List size={17} weight="bold" />
         </button>

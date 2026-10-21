@@ -36,32 +36,22 @@ export function HomeSideWidget() {
     e.stopPropagation();
     useContextMenuStore.getState().show(e.clientX, e.clientY, currentSong);
   };
-  const currentTime = usePlayerStore((s) => s.currentTime);
   const duration = usePlayerStore((s) => s.duration);
   const togglePlay = usePlayerStore((s) => s.togglePlay);
   const next = usePlayerStore((s) => s.next);
   const previous = usePlayerStore((s) => s.previous);
-  const seek = usePlayerStore((s) => s.seek);
 
   const queue = useQueueStore((s) => s.items);
   const removeQueue = useQueueStore((s) => s.remove);
   const clearQueue = useQueueStore((s) => s.clear);
   const moveQueue = useQueueStore((s) => s.move);
-  const ui = useUiStore();
+  const setMainView = useUiStore((s) => s.setMainView);
+  const openModal = useUiStore((s) => s.open);
 
   // Color de iluminación ambiental según portada de la canción actual
   const gradient = useSongCoverGradient(currentSong);
 
-  // Letra actual en tiempo real para el sneak-peek de la tornamesa
-  const { lines, activeIndex } = useLyrics(
-    currentSong?.name ?? null,
-    songArtistMeta(currentSong),
-    currentSong?.lyrics ?? null,
-  );
-  const currentLyricLine = activeIndex >= 0 && lines[activeIndex] ? lines[activeIndex].text : null;
-
   const totalDuration = duration || currentSong?.duration || 0;
-  const progressPercent = totalDuration > 0 ? Math.min(100, Math.max(0, (currentTime / totalDuration) * 100)) : 0;
 
   // ================= ESTADO DE SCRATCH INTERACTIVO DEL VINILO =================
   const discRef = useRef<HTMLDivElement>(null);
@@ -97,7 +87,8 @@ export function HomeSideWidget() {
     lastAngleRef.current = currentAngle;
 
     setScratchAngle((prev) => prev + delta);
-    audioFxService.onVinylScratch(delta, totalDuration > 0 ? currentTime / totalDuration : 0);
+    const ct = usePlayerStore.getState().currentTime;
+    audioFxService.onVinylScratch(delta, totalDuration > 0 ? ct / totalDuration : 0);
   };
 
   const onDiscPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -110,56 +101,9 @@ export function HomeSideWidget() {
     }
   };
 
-  // ================= ESPECTRO DE AUDIO DINÁMICO EN VIVO (WEB AUDIO API) =================
-  const [frequencies, setFrequencies] = useState<number[]>(() => Array(20).fill(12));
-
-  useEffect(() => {
-    let animId: number;
-    let phase = 0;
-    const updateSpectrum = () => {
-      phase += 0.05;
-      const analyser = equalizerApi.getAnalyser();
-      if (analyser && isPlaying) {
-        const buffer = new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(buffer);
-        const step = Math.max(1, Math.floor(buffer.length / 24));
-        const sampled: number[] = [];
-        for (let i = 0; i < 20; i++) {
-          const val = buffer[i * step] || 0;
-          sampled.push(Math.max(12, Math.min(100, Math.round((val / 255) * 100))));
-        }
-        setFrequencies(sampled);
-      } else if (isPlaying) {
-        // Onda viva armónica en reproducción
-        const sampled: number[] = [];
-        for (let i = 0; i < 20; i++) {
-          const wave = Math.sin(phase + i * 0.45) * 35 + 45;
-          sampled.push(Math.round(wave));
-        }
-        setFrequencies(sampled);
-      } else {
-        // En pausa: reposo sutil (fijar una sola vez sin ciclar en bucle a 60 FPS)
-        setFrequencies((prev) => (prev[0] === 8 ? prev : prev.map(() => 8)));
-        return;
-      }
-      animId = requestAnimationFrame(updateSpectrum);
-    };
-
-    animId = requestAnimationFrame(updateSpectrum);
-    return () => cancelAnimationFrame(animId);
-  }, [isPlaying]);
-
   // ================= REORDENAR COLA CON DRAG & DROP =================
   const [queueDragOver, setQueueDragOver] = useState<number | null>(null);
   const [queueDraggingIdx, setQueueDraggingIdx] = useState<number | null>(null);
-
-  const handleSeekClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!totalDuration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-    seek(ratio * totalDuration);
-  };
 
   return (
     <aside className="jf-home-side-widget" data-testid="home-side-widget">
@@ -278,31 +222,8 @@ export function HomeSideWidget() {
             )}
           </div>
 
-          {/* Barra de progreso interactiva */}
-          <div
-            className="jf-turntable-progress-wrap"
-            onClick={handleSeekClick}
-            role="progressbar"
-            aria-valuenow={currentTime}
-            aria-valuemin={0}
-            aria-valuemax={totalDuration}
-            title="Haz clic para avanzar o retroceder"
-          >
-            <div className="jf-turntable-progress-track">
-              <div
-                className="jf-turntable-progress-fill"
-                style={{ width: `${progressPercent}%` }}
-              >
-                <span className="jf-turntable-progress-thumb" />
-              </div>
-            </div>
-          </div>
-
-          {/* Tiempos de reproducción */}
-          <div className="jf-turntable-times-row">
-            <span className="jf-turntable-time">{formatTime(currentTime)}</span>
-            <span className="jf-turntable-time">{formatTime(totalDuration)}</span>
-          </div>
+          {/* Barra de progreso interactiva y tiempos de reproducción aislados */}
+          <TurntableProgress totalDuration={totalDuration} />
 
           {/* Controles táctiles inmediatos (Prev, Play/Pausa, Next) */}
           <div className="jf-turntable-controls-row">
@@ -344,50 +265,11 @@ export function HomeSideWidget() {
           </div>
         </div>
 
-        {/* Espectro reactivo de audio en tiempo real (20 barras vivas sincronizadas con Web Audio) */}
-        <div className={`jf-turntable-spectrum ${isPlaying ? 'is-active' : ''}`} title="Espectro reactivo en vivo a las frecuencias del sonido">
-          {frequencies.map((freqHeight, i) => (
-            <span
-              key={i}
-              className={`jf-spec-bar ${isPlaying ? 'is-active' : ''}`}
-              style={{
-                height: `${freqHeight}%`,
-                transition: 'height 0.08s ease',
-              }}
-            />
-          ))}
-        </div>
+        {/* Espectro reactivo de audio en tiempo real con manipulación directa del DOM (0 lag / 0 re-renders en React) */}
+        <TurntableSpectrum isPlaying={isPlaying} />
 
         {/* Letra activa actual en sneak-peek con clic directo a modo Karaoke */}
-        <div
-          className="jf-turntable-lyric-peek"
-          onClick={() => ui.setMainView('lyrics')}
-          role="button"
-          tabIndex={0}
-          title="Haz clic para ver letras completas en grande (Modo Karaoke)"
-        >
-          <TextT size={16} weight="bold" className="jf-lyric-peek-icon" />
-          <div className="jf-lyric-peek-content">
-            <AnimatePresence mode="wait">
-              {currentLyricLine ? (
-                <motion.p
-                  key={currentLyricLine}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="jf-turntable-lyric-text"
-                >
-                  «{currentLyricLine}»
-                </motion.p>
-              ) : (
-                <p className="jf-turntable-lyric-idle">
-                  {currentSong ? 'Letras sincronizadas disponibles · Clic para ver' : 'Selecciona una canción para comenzar'}
-                </p>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+        <TurntableLyricPeek song={currentSong} />
       </div>
 
       {/* ================= WIDGET 2: COLA PRIORITARIA & SIGUIENTES (CON ARRASTRE / REORDENAR) ================= */}
@@ -501,7 +383,7 @@ export function HomeSideWidget() {
         {/* Banner destacado: Buscar por Enlace (YouTube / MP3 / SoundCloud) */}
         <div
           className="jf-quick-banner jf-quick-banner--link"
-          onClick={() => ui.open('linkMusic')}
+          onClick={() => openModal('linkMusic')}
           role="button"
           tabIndex={0}
         >
@@ -518,7 +400,7 @@ export function HomeSideWidget() {
         {/* Banner destacado: Modo Letras y Karaoke */}
         <div
           className="jf-quick-banner jf-quick-banner--lyrics"
-          onClick={() => ui.setMainView('lyrics')}
+          onClick={() => setMainView('lyrics')}
           role="button"
           tabIndex={0}
         >
@@ -533,5 +415,146 @@ export function HomeSideWidget() {
         </div>
       </div>
     </aside>
+  );
+}
+
+function TurntableProgress({ totalDuration }: { totalDuration: number }) {
+  const currentTime = usePlayerStore((s) => s.currentTime);
+  const seek = usePlayerStore((s) => s.seek);
+  const progressPercent = totalDuration > 0 ? Math.min(100, Math.max(0, (currentTime / totalDuration) * 100)) : 0;
+
+  const handleSeekClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!totalDuration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+    seek(ratio * totalDuration);
+  };
+
+  return (
+    <>
+      <div
+        className="jf-turntable-progress-wrap"
+        onClick={handleSeekClick}
+        role="progressbar"
+        aria-valuenow={currentTime}
+        aria-valuemin={0}
+        aria-valuemax={totalDuration}
+        title="Haz clic para avanzar o retroceder"
+      >
+        <div className="jf-turntable-progress-track">
+          <div className="jf-turntable-progress-fill" style={{ width: `${progressPercent}%` }}>
+            <span className="jf-turntable-progress-thumb" />
+          </div>
+        </div>
+      </div>
+      <div className="jf-turntable-times-row">
+        <span className="jf-turntable-time">{formatTime(currentTime)}</span>
+        <span className="jf-turntable-time">{formatTime(totalDuration)}</span>
+      </div>
+    </>
+  );
+}
+
+function TurntableSpectrum({ isPlaying }: { isPlaying: boolean }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const bars = container.children as HTMLCollectionOf<HTMLSpanElement>;
+    if (!bars || bars.length === 0) return;
+
+    if (!isPlaying) {
+      for (let i = 0; i < bars.length; i++) {
+        bars[i].style.height = '12%';
+      }
+      return;
+    }
+
+    let animId: number;
+    let phase = 0;
+
+    const updateSpectrum = () => {
+      phase += 0.05;
+      const analyser = equalizerApi.getAnalyser();
+      if (analyser) {
+        const buffer = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(buffer);
+        const step = Math.max(1, Math.floor(buffer.length / 24));
+        for (let i = 0; i < bars.length; i++) {
+          const val = buffer[i * step] || 0;
+          const h = Math.max(12, Math.min(100, Math.round((val / 255) * 100)));
+          bars[i].style.height = `${h}%`;
+        }
+      } else {
+        for (let i = 0; i < bars.length; i++) {
+          const wave = Math.sin(phase + i * 0.45) * 35 + 45;
+          bars[i].style.height = `${Math.round(wave)}%`;
+        }
+      }
+      animId = requestAnimationFrame(updateSpectrum);
+    };
+
+    animId = requestAnimationFrame(updateSpectrum);
+    return () => cancelAnimationFrame(animId);
+  }, [isPlaying]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`jf-turntable-spectrum ${isPlaying ? 'is-active' : ''}`}
+      title="Espectro reactivo en vivo a las frecuencias del sonido"
+    >
+      {Array.from({ length: 20 }).map((_, i) => (
+        <span
+          key={i}
+          className={`jf-spec-bar ${isPlaying ? 'is-active' : ''}`}
+          style={{ height: '12%', transition: 'height 0.08s ease' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TurntableLyricPeek({ song }: { song: any }) {
+  const setMainView = useUiStore((s) => s.setMainView);
+  const { lines, activeIndex } = useLyrics(
+    song?.name ?? null,
+    songArtistMeta(song),
+    song?.lyrics ?? null,
+  );
+  const currentLyricLine = activeIndex >= 0 && lines[activeIndex] ? lines[activeIndex].text : null;
+
+  return (
+    <div
+      className="jf-turntable-lyric-peek"
+      onClick={() => setMainView('lyrics')}
+      role="button"
+      tabIndex={0}
+      title="Haz clic para ver letras completas en grande (Modo Karaoke)"
+    >
+      <TextT size={16} weight="bold" className="jf-lyric-peek-icon" />
+      <div className="jf-lyric-peek-content">
+        <AnimatePresence mode="wait">
+          {currentLyricLine ? (
+            <motion.p
+              key={currentLyricLine}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.2 }}
+              className="jf-turntable-lyric-text"
+            >
+              «{currentLyricLine}»
+            </motion.p>
+          ) : (
+            <p className="jf-turntable-lyric-idle">
+              {song ? 'Letras sincronizadas disponibles · Clic para ver' : 'Selecciona una canción para comenzar'}
+            </p>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }
