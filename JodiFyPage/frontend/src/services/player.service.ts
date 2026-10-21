@@ -71,10 +71,13 @@ export async function preloadNextTrack(song: Song | null | undefined): Promise<v
 
     // 2. Si es remota, inicializar preload en elemento silencioso para calentar buffer de red
     const ytId = extractYoutubeId(song);
-    let candidate = '';
     if (ytId) {
-      candidate = `${API_BASE}/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`;
-    } else if (song.url) {
+      // Las canciones de YouTube se transmiten de forma nativa en el reproductor de YouTube
+      return;
+    }
+
+    let candidate = '';
+    if (song.url) {
       candidate = (song.url.includes('search_query') || song.url.includes('spotify.com') || song.source === 'spotify')
         ? `${API_BASE}/links/stream?url=${encodeURIComponent(song.url)}`
         : resolveMediaUrl(song.url);
@@ -372,51 +375,40 @@ async function executePlaySong(rawSong: Song, options: { fades?: boolean } = {})
     player.setSourceUrl(song.url);
     player.setOfflinePlayback(false);
 
-    // En la app de escritorio o navegador, probar streams de audio directos de alta fidelidad
-    const streamCandidates: string[] = [];
-    const desktopPlayer = (window as any).jodifyPlayer;
-    if (desktopPlayer && typeof desktopPlayer.resolveStream === 'function') {
-      try {
-        const directUrl = await desktopPlayer.resolveStream(ytId);
-        if (directUrl) streamCandidates.push(directUrl);
-      } catch (err) {
-        console.warn('[player.service] Error obteniendo stream local:', err);
-      }
-    }
-    // Fallback robusto al stream del backend
-    streamCandidates.push(`${API_BASE}/links/stream?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`);
-
-    for (const streamCandidate of streamCandidates) {
-      if (!audio) break;
-      try {
-        useToastStore.getState().show(`Cargando «${song.name}»…`, 'info', 1200);
-        ytPlayerService.stop();
-        audio.src = streamCandidate;
-        audio.volume = player.volume;
-        audio.muted = player.muted;
-        await audio.play();
-        if (audio.error) {
-          throw new Error('Audio element error: ' + audio.error.message);
+    // En la app de escritorio Electron con acelerador nativo local, probar stream directo local si existe:
+    const isDesktopApp = typeof window !== 'undefined' && Boolean((window as any).electron || (window as any).jodifyPlayer);
+    if (isDesktopApp) {
+      const desktopPlayer = (window as any).jodifyPlayer;
+      if (desktopPlayer && typeof desktopPlayer.resolveStream === 'function') {
+        try {
+          const directUrl = await desktopPlayer.resolveStream(ytId);
+          if (directUrl && audio) {
+            ytPlayerService.stop();
+            audio.src = directUrl;
+            audio.volume = player.volume;
+            audio.muted = player.muted;
+            await audio.play();
+            player.setIsPlaying(true);
+            player.setSourceUrl(directUrl);
+            useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
+            logListeningHistory(song, false);
+            return true;
+          }
+        } catch (err) {
+          console.warn('[player.service] Error obteniendo stream local de escritorio:', err);
         }
-        player.setIsPlaying(true);
-        player.setSourceUrl(streamCandidate);
-        useToastStore.getState().show(`Reproduciendo «${song.name}»`, 'success', 2000);
-        logListeningHistory(song, false);
-        void audioCacheService.cacheTrack(song.id, streamCandidate);
-        return true;
-      } catch (err) {
-        // En entornos web o cuando el backend no dispone de stream directo, pasar fluidamente al reproductor de YouTube
-        console.info(`[player.service] Stream directo no disponible, cambiando fluidamente al reproductor YouTube oficial.`);
       }
     }
 
+    // En navegador web (o fallback de escritorio): reproducir directamente con YouTube Iframe
+    // Esto garantiza 0 peticiones al backend (evitando bloqueos de IP de datacenter y errores de formato yt-dlp)
     if (audio) {
       audio.pause();
       audio.removeAttribute('src');
       audio.load();
     }
 
-    // 1ª prioridad: reproducir el video original directamente en el player de YouTube integrado
+    useToastStore.getState().show(`Cargando «${song.name}»…`, 'info', 1200);
     const ytSuccess = await ytPlayerService.playVideo(ytId);
     if (ytSuccess) {
       player.setIsPlaying(true);

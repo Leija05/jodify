@@ -133,7 +133,7 @@ def _download_song_sync(url: str, output_path: str) -> tuple[str, str | None]:
         "extractor_args": {
             "youtube": {
 
-                "player_client": ["visionos", "android"],
+                "player_client": ["visionos", "android_vr", "android"],
             }
         },
     }
@@ -353,7 +353,20 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                 }
             },
         },
-        # 2. Cliente android puro
+        # 2. Cliente android_vr
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": False if is_search else True,
+            "socket_timeout": 8,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android_vr"],
+                }
+            },
+        },
+        # 3. Cliente android
         {
             "quiet": True,
             "no_warnings": True,
@@ -365,27 +378,6 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
                     "player_client": ["android"],
                 }
             },
-        },
-        # 3. Clientes combinados visionos + android
-        {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos", "android"],
-                }
-            },
-        },
-        # 4. Fallback estándar sin restricciones de cliente
-        {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-            "noplaylist": False if is_search else True,
-            "socket_timeout": 8,
         },
     ])
 

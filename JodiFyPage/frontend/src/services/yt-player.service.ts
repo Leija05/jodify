@@ -1,4 +1,5 @@
 import { usePlayerStore } from '../store/player.store';
+import { useToastStore } from '../store/toast.store';
 import { clamp } from '../lib/utils';
 
 declare global {
@@ -15,6 +16,7 @@ class YouTubePlayerService {
   private pendingVideoId: string | null = null;
   private timer: number | null = null;
   private initPromise: Promise<void> | null = null;
+  private isHandlingError = false;
 
   public init(): Promise<void> {
     if (this.isReady && this.player) return Promise.resolve();
@@ -69,13 +71,14 @@ class YouTubePlayerService {
       container = document.createElement('div');
       container.id = 'jodify-yt-player-container';
       container.style.position = 'fixed';
-      container.style.bottom = '-200px';
-      container.style.right = '-200px';
-      container.style.width = '100px';
-      container.style.height = '100px';
+      container.style.bottom = '0px';
+      container.style.right = '0px';
+      container.style.width = '200px';
+      container.style.height = '200px';
       container.style.overflow = 'hidden';
-      container.style.opacity = '1';
-      container.style.zIndex = '-9999';
+      container.style.opacity = '0.001';
+      container.style.pointerEvents = 'none';
+      container.style.zIndex = '-999';
       document.body.appendChild(container);
     }
 
@@ -92,15 +95,18 @@ class YouTubePlayerService {
         : undefined;
 
       this.player = new window.YT.Player('jodify-yt-player', {
-        height: '100',
-        width: '100',
+        height: '200',
+        width: '200',
         playerVars: {
           autoplay: 1,
           controls: 0,
           disablekb: 1,
+          enablejsapi: 1,
           fs: 0,
           playsinline: 1,
           rel: 0,
+          iv_load_policy: 3,
+          modestbranding: 1,
           ...(origin ? { origin } : {}),
         },
         events: {
@@ -120,7 +126,7 @@ class YouTubePlayerService {
           onError: (event: any) => {
             const errorCode = typeof event === 'object' && event !== null ? event.data : event;
             console.warn('[YT Player Service] Error del reproductor YouTube:', errorCode);
-            this.handleError(errorCode);
+            void this.handleError(errorCode);
           },
         },
       });
@@ -130,24 +136,50 @@ class YouTubePlayerService {
     }
   }
 
-  private handleError(code: any) {
+  private async handleError(code: any) {
+    if (this.isHandlingError) return;
+    this.isHandlingError = true;
     this.stopProgressTracker();
     const store = usePlayerStore.getState();
-    store.setIsPlaying(false);
+    const current = store.currentSong;
+    const failedVideoId = this.currentVideoId;
     this.currentVideoId = null;
 
-    // Errores 101 y 150: Inserción prohibida por el dueño del video
-    if (code === 150 || code === 101) {
-      console.warn('[YT Player Service] Video con restricción de derechos de autor para inserción externa (Error 150/101).');
+    console.warn(`[YT Player Service] Error en video YouTube (${failedVideoId}): código ${code}`);
+
+    // Errores 101/150 (inserción bloqueada por copyright) o 100 (video no encontrado):
+    // Intentar buscar automáticamente una versión alternativa (audio o lyric video) del mismo tema
+    if ((code === 150 || code === 101 || code === 100) && current && !(current as any)._altRetried) {
+      try {
+        const { linksService } = await import('./links.service');
+        const altMatch = await linksService.matchTrack(current.artist || '', current.name, failedVideoId || undefined);
+        if (altMatch && altMatch.youtube_id && altMatch.youtube_id !== failedVideoId) {
+          (current as any)._altRetried = true;
+          current.youtube_id = altMatch.youtube_id;
+          current.url = altMatch.url;
+          store.setCurrentSong({ ...current });
+          const success = await this.playVideo(altMatch.youtube_id);
+          this.isHandlingError = false;
+          if (success) {
+            useToastStore.getState().show(`Reproduciendo versión alternativa de «${current.name}»`, 'info', 2500);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[YT Player Service] No se pudo encontrar versión alternativa:', err);
+      }
     }
 
-    // Auto-recuperación: avanzar a la siguiente canción en la cola
+    this.isHandlingError = false;
+    store.setIsPlaying(false);
+    useToastStore.getState().show(`No se pudo reproducir este video de YouTube. Saltando al siguiente…`, 'warning', 2500);
+
     setTimeout(() => {
-      const current = usePlayerStore.getState().currentSong;
-      if (current) {
+      const nowSong = usePlayerStore.getState().currentSong;
+      if (nowSong && nowSong.id === current?.id) {
         void usePlayerStore.getState().next();
       }
-    }, 1200);
+    }, 1500);
   }
 
   private handleStateChange(state: number) {
@@ -219,10 +251,10 @@ class YouTubePlayerService {
         this.player.unMute();
       }
       if (typeof this.player.loadVideoById === 'function') {
-        this.player.loadVideoById(videoId);
-      }
-      if (typeof this.player.playVideo === 'function') {
-        this.player.playVideo();
+        this.player.loadVideoById({
+          videoId: videoId,
+          startSeconds: 0,
+        });
       }
       this.startProgressTracker();
       return true;
@@ -238,6 +270,11 @@ class YouTubePlayerService {
       this.pendingVideoId = videoId;
       await this.init();
       if (this.isReady) {
+        if (this.pendingVideoId === null) {
+          // onReady ya disparó executePlayVideo
+          return true;
+        }
+        this.pendingVideoId = null;
         return this.executePlayVideo(videoId);
       }
       return false;
