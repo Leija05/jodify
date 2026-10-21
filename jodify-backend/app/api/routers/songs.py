@@ -301,6 +301,28 @@ async def register_songs_batch(body: RegisterBatchSongsRequest) -> dict:
         }
         to_insert_docs.append(doc)
 
+    # 2.5 Enriquecer youtube_id para canciones que no lo tengan o vengan con search_query
+    songs_needing_yt = [d for d in to_insert_docs if not d.get("youtube_id") or "search_query" in (d.get("url") or "")]
+    if songs_needing_yt:
+        from ...services.link_resolver import _search_youtube_video_id
+        sem_yt_batch = asyncio.Semaphore(8)
+
+        async def _resolve_doc_yt(d_item: dict):
+            q = f"{d_item.get('artist', '')} {d_item.get('name', '')}".strip()
+            async with sem_yt_batch:
+                try:
+                    yid = await _search_youtube_video_id(q)
+                    if yid:
+                        d_item["youtube_id"] = yid
+                        d_item["url"] = f"https://www.youtube.com/watch?v={yid}"
+                        d_item["source"] = "youtube"
+                        if not d_item.get("cover_url"):
+                            d_item["cover_url"] = f"https://i.ytimg.com/vi/{yid}/hqdefault.jpg"
+                except Exception:
+                    pass
+
+        await asyncio.gather(*[_resolve_doc_yt(d) for d in songs_needing_yt], return_exceptions=True)
+
     # 3. Enriquecer carátulas individuales originales para canciones del lote que perdieron la de playlist o no tienen
     songs_needing_art = [d for d in to_insert_docs if not d.get("cover_url") or "ab67706c" in str(d.get("cover_url"))]
     if songs_needing_art:

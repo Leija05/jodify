@@ -429,7 +429,7 @@ def _get_raw_stream_url(url: str) -> tuple[str, dict[str, str]]:
         ]
         for api_url in piped_instances:
             try:
-                with httpx.Client(timeout=6.0, follow_redirects=True) as client:
+                with httpx.Client(timeout=2.0, follow_redirects=True) as client:
                     resp = client.get(api_url)
                     if resp.status_code == 200:
                         data = resp.json()
@@ -541,14 +541,27 @@ async def get_import_queue_task(task_id: str) -> dict[str, Any]:
     }
 
 
-@router.get("/stream")
+@router.api_route("/stream", methods=["GET", "HEAD"])
 async def stream_audio_link(
     url: str = Query(...),
     request: Request = None,
 ):
-    """Transmite audio de YouTube, SoundCloud o enlaces web directamente al reproductor con soporte de Range."""
+    """Transmite audio de YouTube, SoundCloud o enlaces web directamente al reproductor con soporte de Range y HEAD."""
     if is_direct_audio_url(url):
         return RedirectResponse(url)
+
+    # Respuesta rápida e inmediata a sondas HEAD de reproductores móviles (Android/iOS)
+    if request and request.method == "HEAD":
+        from fastapi.responses import Response
+        return Response(
+            status_code=200,
+            media_type="audio/mpeg",
+            headers={
+                "Accept-Ranges": "bytes",
+                "Content-Type": "audio/mpeg",
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
 
     # Si la URL es una búsqueda de YouTube o proviene de Spotify
     from ...services.link_resolver import _search_youtube_video_id
@@ -558,7 +571,16 @@ async def stream_audio_link(
             query = urllib.parse.unquote_plus(m.group(1)).replace("+", " ")
             matched_id = await _search_youtube_video_id(query)
             if matched_id:
-                url = f"https://www.youtube.com/watch?v={matched_id}"
+                canonical_yt = f"https://www.youtube.com/watch?v={matched_id}"
+                url = canonical_yt
+                # Persistencia automática y auto-reparación en la base de datos
+                asyncio.create_task(col("songs").update_many(
+                    {"$or": [
+                        {"url": {"$regex": re.escape(m.group(1))}},
+                        {"youtube_id": None, "name": {"$regex": re.escape(query), "$options": "i"}},
+                    ]},
+                    {"$set": {"youtube_id": matched_id, "url": canonical_yt, "source": "youtube"}}
+                ))
             else:
                 url = f"ytsearch1:{query}"
 

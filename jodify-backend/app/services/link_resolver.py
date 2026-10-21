@@ -362,8 +362,8 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                             ]
                             await asyncio.gather(*cover_tasks, return_exceptions=True)
 
-                            # Para los primeros 3 temas: emparejar también audio YouTube para preview instantáneo
-                            preview_items = playlist_items[:3]
+                            # Emparejar también audio YouTube para todas las canciones de la playlist
+                            sem_yt = asyncio.Semaphore(8)
                             async def _pair_preview_yt(p_item: dict[str, Any]):
                                 q = f"{p_item.get('artist', '')} {p_item.get('title', '')}".strip()
                                 if q:
@@ -380,7 +380,7 @@ async def _resolve_spotify(url: str) -> dict[str, Any]:
                                         except Exception:
                                             pass
 
-                            await asyncio.gather(*[_pair_preview_yt(p) for p in preview_items], return_exceptions=True)
+                            await asyncio.gather(*[_pair_preview_yt(p) for p in playlist_items], return_exceptions=True)
     except Exception as exc:
         logger.warning(f"Error parseando Spotify embed para {url}: {exc}")
 
