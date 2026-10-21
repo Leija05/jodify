@@ -23,6 +23,19 @@
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85) !important;
 }
 
+[data-reduce-blur="true"] .jf-intro-video-bg,
+[data-performance-mode="true"] .jf-intro-video-bg {
+  opacity: 0.85 !important;
+  filter: brightness(0.88) saturate(1.12) !important;
+}
+
+[data-reduce-blur="true"] .jf-intro-video-overlay,
+[data-performance-mode="true"] .jf-intro-video-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: radial-gradient(ellipse at 50% 30%, rgba(5, 4, 10, 0.22) 0%, rgba(5, 4, 10, 0.72) 60%, #030306 96%) !important;
+}
+
 [data-reduce-blur="true"] .jf-player-bar,
 [data-performance-mode="true"] .jf-player-bar {
   background: #0d121f !important;

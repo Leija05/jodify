@@ -223,6 +223,18 @@
   color: #fff;
 }
 
+.jf-btn-header-action--perf {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: rgba(0, 240, 255, 0.4);
+  color: #00f0ff;
+}
+
+.jf-btn-header-action--perf:hover {
+  background: rgba(0, 240, 255, 0.22);
+  border-color: #00f0ff;
+  color: #fff;
+}
+
 @media (max-width: 1260px) {
   .jf-home-header-actions .jf-btn-header-action span {
     display: none;

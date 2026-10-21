@@ -25,7 +25,10 @@ import {
   Disc,
   Keyboard,
   CloudSlash,
+  Drop,
+  Eye,
 } from '@phosphor-icons/react';
+import { useSettingsStore } from '../../store/settings.store';
 import { usePlayerStore } from '../../store/player.store';
 import { useLibraryStore } from '../../store/library.store';
 import { useBackendStore } from '../../store/backend.store';
@@ -61,6 +64,8 @@ export function HomeShowcaseView() {
   const backendStatus = useBackendStore((s) => s.status);
   const backendRetrying = useBackendStore((s) => s.retrying);
   const checkBackendNow = useBackendStore((s) => s.checkNow);
+  const reduceBlur = useSettingsStore((s) => s.reduceBlur);
+  const setSettings = useSettingsStore((s) => s.set);
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'liked' | 'recent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -417,6 +422,20 @@ export function HomeShowcaseView() {
                 <span>Dev</span>
               </button>
             )}
+
+            <button
+              type="button"
+              className={`jf-btn-header-action ${reduceBlur ? 'jf-btn-header-action--perf' : ''}`}
+              onClick={() => setSettings({ reduceBlur: !reduceBlur })}
+              title={
+                reduceBlur
+                  ? 'Modo Video Nítido / Alto Rendimiento activo (0 lag). Haz clic para difuminado suave.'
+                  : 'Difuminado estético activo. Haz clic para desactivar difuminado y obtener 60 FPS fluidos.'
+              }
+            >
+              {reduceBlur ? <Eye size={16} weight="bold" /> : <Drop size={16} weight="fill" />}
+              <span>{reduceBlur ? 'Video Nítido' : 'Difuminado'}</span>
+            </button>
 
             <button
               type="button"
